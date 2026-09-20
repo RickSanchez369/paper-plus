@@ -38,6 +38,11 @@ class Product(BaseModel):
         default=True,
         verbose_name="فعال",
     )
+    is_onboarded = models.BooleanField(
+        default=False,
+        verbose_name="موجودی اولیه ثبت شده",
+        help_text="پس از ثبت موجودی اولیه True می‌شود و ثبت مجدد ممکن نیست.",
+    )
 
     class Meta:
         verbose_name = "کالا"
