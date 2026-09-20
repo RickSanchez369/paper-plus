@@ -62,6 +62,10 @@ Excluded from v1: cheques, returns, multi-unit conversion, costing/profit,
 FinancialObligation, PaymentAllocation, AuditLog, custom roles, Docker, CI,
 PDF, reports, OpenAPI, Vue.
 System is SHADOW until its numbers match the paper ledger three days running.
+- HARD GATE: before the first real record, clear all of section 6.
+- HARD GATE: system stays SHADOW (paper ledger runs in parallel) until three
+  consecutive days of zero discrepancy. Every discrepancy is a bug — log it,
+  never fix it by hand.
 
 ## 8. Working agreement
 - One task per message; Sina runs it and reports `ok` or pastes the error.
