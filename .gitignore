@@ -10,3 +10,4 @@ staticfiles/
 backups/
 .idea/
 .vscode/
+scripts/
