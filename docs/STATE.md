@@ -28,17 +28,22 @@ Infrastructure complete. First model created. No real data yet.
 - App `apps/partners`; `Customer` and `Supplier` (business FK PROTECT, name,
   phone, address, note, is_active; unique(business,name) each) — migrated & tested
 - Decision D-010 logged
+- App `apps/inventory`; `InventoryMovement` (business, product PROTECT,
+  movement_type choices, quantity PositiveInteger, note, created_by PROTECT;
+  CheckConstraint quantity>0; index on (product, created_at)) — migrated & tested
+- Stock verified by aggregation over the ledger (opening 10 - sale 3 = 7)
+- Decisions D-010, D-011, D-012 logged
 
 
 ## 3. Next step
-`InventoryMovement` in a new app `apps/inventory`:
-- business FK, product FK (PROTECT), movement_type (opening/purchase/sale/adjustment)
-- quantity: DecimalField (positive number; direction comes from movement_type)
-- source document reference: deferred until PurchaseInvoice/SalesInvoice exist
-- created_by FK to settings.AUTH_USER_MODEL (PROTECT)
-- Stock = aggregate over this ledger. Never a field on Product.
-- Decide first (needs a D-entry): DecimalField precision for quantity, and whether
-  quantity is signed or direction is derived from movement_type.
+`PurchaseInvoice` + `PurchaseItem` in a new app `apps/purchasing`:
+- PurchaseInvoice: business, supplier (PROTECT), invoice_number (unique per business),
+  invoice_date, status (draft/confirmed), note, created_by
+- PurchaseItem: invoice FK (CASCADE), product FK (PROTECT), quantity, unit_price
+- Then service `confirm_purchase` (Sina writes it): inside transaction.atomic,
+  creates one InventoryMovement per item and flips status to confirmed.
+- Decide first (needs a D-entry): money field type (DecimalField digits/places,
+  Rial vs Toman), and whether a confirmed invoice can be edited.
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -67,6 +72,9 @@ Infrastructure complete. First model created. No real data yet.
   returns None after a previous test cleaned up, and the failure then looks like a
   different bug (NotNullViolation, false-positive "unique works").
 - Constraints on new models appear inside CreateModel options, not as separate AddConstraint.
+- `CheckConstraint` uses `condition=` in Django 5.1+, not `check=`.
+- InventoryMovement is append-only. Corrections are new adjustment_in/adjustment_out
+  rows, never edits or deletes.
 
 ## 6. Security debt (must clear before real data)
 - [ ] Rotate `SECRET_KEY` — the current one was exposed in chat
