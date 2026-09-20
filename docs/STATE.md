@@ -33,17 +33,28 @@ Infrastructure complete. First model created. No real data yet.
   CheckConstraint quantity>0; index on (product, created_at)) — migrated & tested
 - Stock verified by aggregation over the ledger (opening 10 - sale 3 = 7)
 - Decisions D-010, D-011, D-012 logged
+- `apps/shared/utils.py`: format_number, rial_to_toman, format_rial (display only)
+- App `apps/purchasing`; `PurchaseInvoice` (supplier PROTECT, invoice_number unique
+  per business, invoice_date, status draft/confirmed, confirmed_at, created_by)
+  and `PurchaseItem` (invoice CASCADE, product PROTECT, quantity, unit_price BigInteger;
+  CHECK qty>0, price>=0; unique(invoice,product)) — migrated & tested
+- Decisions D-013, D-014 logged
 
 
 ## 3. Next step
-`PurchaseInvoice` + `PurchaseItem` in a new app `apps/purchasing`:
-- PurchaseInvoice: business, supplier (PROTECT), invoice_number (unique per business),
-  invoice_date, status (draft/confirmed), note, created_by
-- PurchaseItem: invoice FK (CASCADE), product FK (PROTECT), quantity, unit_price
-- Then service `confirm_purchase` (Sina writes it): inside transaction.atomic,
-  creates one InventoryMovement per item and flips status to confirmed.
-- Decide first (needs a D-entry): money field type (DecimalField digits/places,
-  Rial vs Toman), and whether a confirmed invoice can be edited.
+Service `confirm_purchase` — SINA WRITES THIS, Claude reviews.
+File: `apps/purchasing/services.py`
+Contract:
+  confirm_purchase(invoice, user) -> PurchaseInvoice
+  - raise if invoice.status != draft
+  - raise if invoice has no items
+  - inside transaction.atomic:
+      * one InventoryMovement per item (movement_type=purchase, quantity=item.quantity,
+        business=invoice.business, product=item.product, created_by=user)
+      * set status=confirmed, confirmed_at=timezone.now(), save
+  - use select_for_update on the invoice to prevent double confirmation
+Errors: raise django.core.exceptions.ValidationError with a Persian message.
+
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -75,6 +86,9 @@ Infrastructure complete. First model created. No real data yet.
 - `CheckConstraint` uses `condition=` in Django 5.1+, not `check=`.
 - InventoryMovement is append-only. Corrections are new adjustment_in/adjustment_out
   rows, never edits or deletes.
+  - Money: BigIntegerField, whole Rial. Never Decimal, never Toman in storage.
+- Display formatting lives in apps/shared/utils.py, never in models.
+
 
 ## 6. Security debt (must clear before real data)
 - [ ] Rotate `SECRET_KEY` — the current one was exposed in chat
