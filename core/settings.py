@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.shared',
+    'apps.users',
 ]
 
 MIDDLEWARE = [
@@ -128,3 +129,6 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+# The custom user model. Changing this after migrations exist is extremely costly.
+AUTH_USER_MODEL = "users.User"

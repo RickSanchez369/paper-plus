@@ -14,11 +14,16 @@ Infrastructure complete. First model created. No real data yet.
 - `Business` model: name, legal_name, registration_number, phone, address, is_active
 - Migration `shared.0001_initial` applied and verified in PostgreSQL
 - Decisions D-001 to D-006 logged
+- Custom `User` model (`users.User`): phone as USERNAME_FIELD, UUID pk, UserManager
+- `AUTH_USER_MODEL` set; database dropped and rebuilt from scratch (no data existed)
+- Superuser created and verified
+- Decisions D-007, D-008 logged
 
 ## 3. Next step
-Custom `User` model. MUST be done before any real data exists — swapping the
-user model after migrations are applied is extremely painful.
-Open question to answer first: login by username or by phone number?
+## 3. Next step
+`BusinessMembership` — which user belongs to which business, and in what role.
+This is what makes every later query business-scoped.
+Open question: role as a simple choices field, or a separate Role model?
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)

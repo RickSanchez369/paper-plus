@@ -71,3 +71,29 @@ If this log and SPEC.md disagree, this log wins.
 - Options considered: allowing both `null` and `blank`.
 - Rationale: two representations of "empty" force every query to check both.
 - Affects: all models.
+
+### D-007: Users log in with their mobile phone number
+- Status: Final
+- Date: 2026-09-20
+- Decided by: me (on recommendation)
+- Decision: Custom user model `users.User` based on `AbstractBaseUser` +
+  `PermissionsMixin`, with `USERNAME_FIELD = "phone"`. A `UserManager` provides
+  `create_user` / `create_superuser` keyed on phone. `AUTH_USER_MODEL = "users.User"`.
+  Phone format validated as `^09\d{9}$`.
+- Options considered: Django default `username`; email; mobile phone.
+- Rationale: the real users are business owners and salespeople, not developers;
+  a phone number is what they already remember. The user model cannot be swapped
+  once real data exists, so it was set up before any data entry.
+- Affects: `apps/users`, `core/settings.AUTH_USER_MODEL`, every future `created_by` FK.
+
+### D-008: User is not scoped to a Business
+- Status: Final
+- Date: 2026-09-20
+- Decided by: me
+- Decision: `User` carries no `business` FK, deliberately departing from
+  non-negotiable rule 1. The user-to-business relation lives in a separate
+  `BusinessMembership` model.
+- Options considered: one `business` FK on User.
+- Rationale: one person may work in more than one business; a direct FK would
+  force duplicate user accounts and duplicate credentials.
+- Affects: `apps/users`, upcoming `BusinessMembership`.
