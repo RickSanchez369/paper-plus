@@ -21,13 +21,17 @@ Infrastructure complete. First model created. No real data yet.
 - `BusinessMembership` (business FK, user FK, role choices, is_active, unique(business,user))
 - Migration `shared.0002_businessmembership` applied and verified
 - Decision D-009 logged
+- `BusinessMembership` (business FK, user FK, role choices, is_active, unique(business,user)) — migrated & tested
+- App `apps/products` created and registered
+- `Product` (business FK PROTECT, name, sku, unit, description, is_active; unique(business,sku)) — migrated & tested
+- Decision D-009 logged
+
 
 
 ## 3. Next step
-`Product` in a new app `apps/products`:
-- `business` FK, name, sku (unique per business), unit, is_active
-- Inherits BaseModel. No `stock` field (derived from InventoryMovement).
-- Remember: fix `name = "apps.products"` in apps.py after startapp.
+`Customer` and `Supplier` in a new app `apps/partners`:
+- business FK, name, phone, address, is_active — inherit BaseModel
+- decide first: two models or one `Partner` with a type field → needs a D-entry
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -52,6 +56,10 @@ Infrastructure complete. First model created. No real data yet.
 - Never reference the user model directly; use `settings.AUTH_USER_MODEL` in FKs.
 - `sqlmigrate` output is display-garbled for Persian; data is correct.
 - New models: constraints appear inside CreateModel options, not as separate AddConstraint.
+- Shell tests: create the Business inside the same test block. `Business.objects.first()`
+  returns None after a previous test cleaned up, and the failure then looks like a
+  different bug (NotNullViolation, false-positive "unique works").
+- Constraints on new models appear inside CreateModel options, not as separate AddConstraint.
 
 ## 6. Security debt (must clear before real data)
 - [ ] Rotate `SECRET_KEY` — the current one was exposed in chat
@@ -74,3 +82,5 @@ System is SHADOW until its numbers match the paper ledger three days running.
 - One task per message; Sina runs it and reports `ok` or pastes the error.
 - Claude writes models and serializers; Sina writes the service layer.
 - Explanations alongside steps, in Persian. Code and comments in English.
+- Replies: code + test + notes only. No conceptual explanations unless asked.
+- End of every completed unit: give the commit message.
