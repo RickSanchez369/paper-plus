@@ -97,3 +97,15 @@ If this log and SPEC.md disagree, this log wins.
 - Rationale: one person may work in more than one business; a direct FK would
   force duplicate user accounts and duplicate credentials.
 - Affects: `apps/users`, upcoming `BusinessMembership`.
+
+### D-009: Roles as a choices field, not a separate model
+- Status: Final
+- Date: 2026-09-20
+- Decided by: me (on recommendation)
+- Decision: `BusinessMembership.role` is a `CharField` with fixed choices
+  (owner, salesperson), not a `Role` model.
+- Options considered: separate `Role` model with dynamic permissions.
+- Rationale: SPEC.md describes two owners and a few salespeople; roles are not
+  expected to be dynamic. Migrating from choices to a model later is a one-day
+  job, cheaper than carrying the complexity now.
+- Affects: upcoming `BusinessMembership`.

@@ -20,10 +20,13 @@ Infrastructure complete. First model created. No real data yet.
 - Decisions D-007, D-008 logged
 
 ## 3. Next step
-## 3. Next step
-`BusinessMembership` — which user belongs to which business, and in what role.
-This is what makes every later query business-scoped.
-Open question: role as a simple choices field, or a separate Role model?
+`BusinessMembership` in `apps/shared`:
+- FK to `Business`, FK to `settings.AUTH_USER_MODEL`
+- `role`: CharField with choices (owner, salesperson) — see D-009
+- `is_active`: BooleanField
+- `unique_together` / UniqueConstraint on (business, user)
+- Inherits `BaseModel`
+Then: `Product` in a new `apps/products`.
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -45,6 +48,7 @@ Open question: role as a simple choices field, or a separate Role model?
 - `pg_dump` lives at `C:\Program Files\PostgreSQL\18\bin` — not in PATH yet.
 - git commits fail silently if not verified: always run `git log --oneline` after committing.
 - Read every migration and run `sqlmigrate` before `migrate`.
+- Never reference the user model directly; use `settings.AUTH_USER_MODEL` in FKs.
 
 ## 6. Security debt (must clear before real data)
 - [ ] Rotate `SECRET_KEY` — the current one was exposed in chat
