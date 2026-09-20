@@ -18,15 +18,16 @@ Infrastructure complete. First model created. No real data yet.
 - `AUTH_USER_MODEL` set; database dropped and rebuilt from scratch (no data existed)
 - Superuser created and verified
 - Decisions D-007, D-008 logged
+- `BusinessMembership` (business FK, user FK, role choices, is_active, unique(business,user))
+- Migration `shared.0002_businessmembership` applied and verified
+- Decision D-009 logged
+
 
 ## 3. Next step
-`BusinessMembership` in `apps/shared`:
-- FK to `Business`, FK to `settings.AUTH_USER_MODEL`
-- `role`: CharField with choices (owner, salesperson) — see D-009
-- `is_active`: BooleanField
-- `unique_together` / UniqueConstraint on (business, user)
-- Inherits `BaseModel`
-Then: `Product` in a new `apps/products`.
+`Product` in a new app `apps/products`:
+- `business` FK, name, sku (unique per business), unit, is_active
+- Inherits BaseModel. No `stock` field (derived from InventoryMovement).
+- Remember: fix `name = "apps.products"` in apps.py after startapp.
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -49,6 +50,8 @@ Then: `Product` in a new `apps/products`.
 - git commits fail silently if not verified: always run `git log --oneline` after committing.
 - Read every migration and run `sqlmigrate` before `migrate`.
 - Never reference the user model directly; use `settings.AUTH_USER_MODEL` in FKs.
+- `sqlmigrate` output is display-garbled for Persian; data is correct.
+- New models: constraints appear inside CreateModel options, not as separate AddConstraint.
 
 ## 6. Security debt (must clear before real data)
 - [ ] Rotate `SECRET_KEY` — the current one was exposed in chat

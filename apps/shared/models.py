@@ -2,6 +2,7 @@
 
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -74,3 +75,46 @@ class Business(BaseModel):
 
     def __str__(self):
         return self.name
+    
+    
+class BusinessMembership(BaseModel):
+    """Which user belongs to which business, and in what role."""
+
+    class Role(models.TextChoices):
+        OWNER = "owner", "مالک"
+        SALESPERSON = "salesperson", "فروشنده"
+
+    business = models.ForeignKey(
+        Business,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        verbose_name="کسب‌وکار",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        verbose_name="کاربر",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        verbose_name="نقش",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="فعال",
+    )
+
+    class Meta:
+        verbose_name = "عضویت در کسب‌وکار"
+        verbose_name_plural = "عضویت‌های کسب‌وکار"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["business", "user"],
+                name="unique_membership_per_business_user",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user} @ {self.business} ({self.get_role_display()})"
