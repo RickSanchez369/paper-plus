@@ -109,3 +109,16 @@ If this log and SPEC.md disagree, this log wins.
   expected to be dynamic. Migrating from choices to a model later is a one-day
   job, cheaper than carrying the complexity now.
 - Affects: upcoming `BusinessMembership`.
+
+
+### D-010: Customer and Supplier are two separate models
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me
+- Decision: `Customer` and `Supplier` are separate models in `apps/partners`,
+  not one `Partner` model with a `type` field.
+- Options considered: single `Partner` model with a type field; two models.
+- Rationale: in this business a customer is never also a supplier. A shared
+  model would allow invalid combinations (a sales invoice pointing at a
+  supplier) that the database could not prevent.
+- Affects: `apps/partners`, `SalesInvoice.customer`, `PurchaseInvoice.supplier`.
