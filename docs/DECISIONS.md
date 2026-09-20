@@ -122,3 +122,28 @@ If this log and SPEC.md disagree, this log wins.
   model would allow invalid combinations (a sales invoice pointing at a
   supplier) that the database could not prevent.
 - Affects: `apps/partners`, `SalesInvoice.customer`, `PurchaseInvoice.supplier`.
+
+
+### D-011: Inventory quantity is a whole number
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me
+- Decision: `InventoryMovement.quantity` is a `PositiveIntegerField`. Products are
+  counted in whole packages (بسته); fractional quantities do not exist in v1.
+- Options considered: DecimalField(12,3) for weight/length-based units.
+- Rationale: the real business sells only by the package. An integer makes stock
+  arithmetic exact with no rounding questions.
+- Affects: `apps/inventory`, all stock aggregation.
+- Note: if a weight- or length-based unit is ever introduced, this must be
+  superseded by a new decision and a data migration, not edited in place.
+
+### D-012: Movement direction comes from movement_type, not from the sign
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: `quantity` is always > 0. Whether a movement adds to or removes from
+  stock is determined by `movement_type`. A `CheckConstraint` enforces quantity > 0.
+- Options considered: signed quantity (negative = outflow).
+- Rationale: a wrong sign is silent data corruption; a wrong type is visible.
+  The database can reject an impossible quantity, but it cannot reject a wrong sign.
+- Affects: `apps/inventory`, `confirm_purchase`, `confirm_sale`.
