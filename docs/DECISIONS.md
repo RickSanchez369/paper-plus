@@ -147,3 +147,32 @@ If this log and SPEC.md disagree, this log wins.
 - Rationale: a wrong sign is silent data corruption; a wrong type is visible.
   The database can reject an impossible quantity, but it cannot reject a wrong sign.
 - Affects: `apps/inventory`, `confirm_purchase`, `confirm_sale`.
+
+
+### D-013: Money is stored as whole Rial in BigIntegerField
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me
+- Decision: All money fields are `BigIntegerField` holding whole Rial. No decimals.
+  Toman display and thousand separators are presentation concerns: a shared helper
+  in `apps/shared` formats numbers as `1,234,567` and shows a Toman hint under
+  price inputs. Storage never changes.
+- Options considered: Toman as integer; DecimalField with 2 places.
+- Rationale: the paper ledger is in Rial; converting at storage time would create
+  rounding and a permanent ambiguity about which unit a row is in. Integer Rial
+  makes every sum exact.
+- Affects: `PurchaseItem.unit_price`, `SaleItem.unit_price`, all future money fields,
+  admin and serializers.
+
+### D-014: A confirmed invoice is immutable
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: Once `status = confirmed`, an invoice and its items cannot be edited
+  or deleted. Mistakes are corrected with an `adjustment_in` / `adjustment_out`
+  InventoryMovement carrying a reason in `note`.
+- Options considered: free editing with recalculation of stock movements.
+- Rationale: the system runs SHADOW against a paper ledger. Editing history makes
+  yesterday's stock unknowable and hides the discrepancies the shadow phase exists
+  to surface.
+- Affects: `apps/purchasing`, `apps/sales`, `confirm_purchase`, `confirm_sale`, admin.
