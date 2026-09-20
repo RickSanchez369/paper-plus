@@ -25,13 +25,20 @@ Infrastructure complete. First model created. No real data yet.
 - App `apps/products` created and registered
 - `Product` (business FK PROTECT, name, sku, unit, description, is_active; unique(business,sku)) — migrated & tested
 - Decision D-009 logged
-
+- App `apps/partners`; `Customer` and `Supplier` (business FK PROTECT, name,
+  phone, address, note, is_active; unique(business,name) each) — migrated & tested
+- Decision D-010 logged
 
 
 ## 3. Next step
-`Customer` and `Supplier` in a new app `apps/partners`:
-- business FK, name, phone, address, is_active — inherit BaseModel
-- decide first: two models or one `Partner` with a type field → needs a D-entry
+`InventoryMovement` in a new app `apps/inventory`:
+- business FK, product FK (PROTECT), movement_type (opening/purchase/sale/adjustment)
+- quantity: DecimalField (positive number; direction comes from movement_type)
+- source document reference: deferred until PurchaseInvoice/SalesInvoice exist
+- created_by FK to settings.AUTH_USER_MODEL (PROTECT)
+- Stock = aggregate over this ledger. Never a field on Product.
+- Decide first (needs a D-entry): DecimalField precision for quantity, and whether
+  quantity is signed or direction is derived from movement_type.
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
