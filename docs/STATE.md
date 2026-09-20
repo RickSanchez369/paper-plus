@@ -56,13 +56,14 @@ Infrastructure complete. First model created. No real data yet.
 
 ## 3. Next step
 Opening stock (build order item 7):
-- `is_onboarded` BooleanField on Product (default False) — marks that the
-  product's opening stock has been entered.
-- Service `set_opening_stock(product, quantity, user)` in apps/inventory/services.py:
-  reject if product.is_onboarded is already True; create one movement with
-  movement_type=opening; set is_onboarded=True. All inside transaction.atomic.
-- Decide first: what happens if opening stock is entered AFTER sales already
-  exist for that product (needs a D-entry).
+1. `is_onboarded` BooleanField(default=False) on Product + migration
+2. `apps/inventory/services.py`: `set_opening_stock(product, quantity, user)`
+   - reject if product.is_onboarded is True
+   - reject if product already has any InventoryMovement
+   - quantity == 0 -> no movement, just mark onboarded (D-017)
+   - quantity > 0 -> one movement_type=opening movement
+   - all inside transaction.atomic, select_for_update on the product row
+3. Test script, then commit
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)

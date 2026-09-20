@@ -204,3 +204,19 @@ If this log and SPEC.md disagree, this log wins.
 - Affects: `apps/sales/services.confirm_sale`, future reporting.
 - Note: during SHADOW, every negative stock event is a discrepancy to log, not
   a normal outcome.
+
+
+### D-017: Opening stock is entered once, before any other movement
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: `set_opening_stock` refuses if the product already has any
+  InventoryMovement, or if `is_onboarded` is already True. A product whose
+  opening stock is zero is marked onboarded with no movement row, because the
+  ledger forbids quantity = 0 (D-012). Later corrections use `adjustment_in` /
+  `adjustment_out`, never a second opening.
+- Options considered: allowing opening stock at any time.
+- Rationale: an opening movement inserted after sales rewrites the past; every
+  stock figure already reported becomes wrong and the shadow-phase comparison
+  against the paper ledger loses its meaning.
+- Affects: `apps/inventory/services.set_opening_stock`, `Product.is_onboarded`.

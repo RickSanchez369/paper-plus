@@ -38,3 +38,15 @@ For git commands the user always pastes output — git fails silently.
 ## Scope
 See STATE.md section 7. Anything outside it is out of scope — say so
 and move on. Do not add features because they seem useful.
+
+## Reply style
+- Code, tests, and notes only. No conceptual explanations unless asked.
+- Every completed unit ends with the commit message.
+- Minimum tokens. No preamble, no recap of what was just done.
+
+## Testing
+- Verification scripts live in `scripts/` (gitignored), not in the shell.
+- Run with:
+  python manage.py shell -c "exec(open('scripts/NAME.py', encoding='utf-8').read())"
+- Never pipe a file into `manage.py shell`, and never paste a try/except block
+  into the REPL — both break on the blank-line rule.
