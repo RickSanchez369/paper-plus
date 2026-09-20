@@ -88,6 +88,13 @@ Errors: raise django.core.exceptions.ValidationError with a Persian message.
   rows, never edits or deletes.
   - Money: BigIntegerField, whole Rial. Never Decimal, never Toman in storage.
 - Display formatting lives in apps/shared/utils.py, never in models.
+- Never pipe a script into `manage.py shell` — it replays line by line and any
+  try/except block breaks. Use:
+  python manage.py shell -c "exec(open('path.py', encoding='utf-8').read())"
+- VS Code / PowerShell may write UTF-8 files with a BOM; Python then fails on the
+  first line. Strip it with UTF8Encoding($false).
+
+
 
 
 ## 6. Security debt (must clear before real data)
