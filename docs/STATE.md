@@ -39,22 +39,30 @@ Infrastructure complete. First model created. No real data yet.
   and `PurchaseItem` (invoice CASCADE, product PROTECT, quantity, unit_price BigInteger;
   CHECK qty>0, price>=0; unique(invoice,product)) — migrated & tested
 - Decisions D-013, D-014 logged
+- `apps/purchasing/services.py`: `confirm_purchase(invoice, user)` — select_for_update
+  on the invoice, rejects non-draft / empty / foreign-business product or supplier,
+  bulk_creates one purchase InventoryMovement per item, sets status+confirmed_at.
+  Verified: empty, happy path (stock 10/4), double-confirm, foreign product (no write).
+- App `apps/sales`; `SalesInvoice` + `SaleItem` (mirror of purchasing) — migrated & tested
+- `apps/inventory/selectors.py`: `get_stock(product)`, `get_stock_map(ids)` — read-only,
+  signed-quantity CASE in SQL
+- `apps/sales/services.py`: `confirm_sale(invoice, user) -> (invoice, shortages)`
+  — select_for_update on invoice + on Product rows (sorted by pk, no deadlock),
+  same validations as purchase, allows negative stock and marks it in the note.
+  Verified: empty, happy path (10→7), oversell (4−6=−2 reported), double-confirm,
+  foreign product.
+- Decisions D-015, D-016 logged
 
 
 ## 3. Next step
-Service `confirm_purchase` — SINA WRITES THIS, Claude reviews.
-File: `apps/purchasing/services.py`
-Contract:
-  confirm_purchase(invoice, user) -> PurchaseInvoice
-  - raise if invoice.status != draft
-  - raise if invoice has no items
-  - inside transaction.atomic:
-      * one InventoryMovement per item (movement_type=purchase, quantity=item.quantity,
-        business=invoice.business, product=item.product, created_by=user)
-      * set status=confirmed, confirmed_at=timezone.now(), save
-  - use select_for_update on the invoice to prevent double confirmation
-Errors: raise django.core.exceptions.ValidationError with a Persian message.
-
+Opening stock (build order item 7):
+- `is_onboarded` BooleanField on Product (default False) — marks that the
+  product's opening stock has been entered.
+- Service `set_opening_stock(product, quantity, user)` in apps/inventory/services.py:
+  reject if product.is_onboarded is already True; create one movement with
+  movement_type=opening; set is_onboarded=True. All inside transaction.atomic.
+- Decide first: what happens if opening stock is entered AFTER sales already
+  exist for that product (needs a D-entry).
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -93,7 +101,9 @@ Errors: raise django.core.exceptions.ValidationError with a Persian message.
   python manage.py shell -c "exec(open('path.py', encoding='utf-8').read())"
 - VS Code / PowerShell may write UTF-8 files with a BOM; Python then fails on the
   first line. Strip it with UTF8Encoding($false).
-
+- Locking a lazy queryset does nothing: wrap `select_for_update()` in `list()`.
+- Always order locked rows by pk; unordered locks across transactions deadlock.
+- `confirm_sale` returns a tuple `(invoice, shortages)`, unlike `confirm_purchase`.
 
 
 

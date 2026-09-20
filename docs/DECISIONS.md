@@ -176,3 +176,31 @@ If this log and SPEC.md disagree, this log wins.
   yesterday's stock unknowable and hides the discrepancies the shadow phase exists
   to surface.
 - Affects: `apps/purchasing`, `apps/sales`, `confirm_purchase`, `confirm_sale`, admin.
+
+
+### D-015: Stock concurrency is guarded by locking Product rows
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: `confirm_sale` calls `select_for_update()` on the `Product` rows of
+  the invoice before reading stock. The product row is used purely as a mutex;
+  its columns are not modified.
+- Options considered: locking the whole InventoryMovement table; no locking.
+- Rationale: stock is derived from a ledger, so there is no stock row to lock.
+  Two concurrent sales of the same product must serialise, or both pass the
+  same availability check.
+- Affects: `apps/sales/services.confirm_sale`.
+
+### D-016: A sale may drive stock negative
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me
+- Decision: Insufficient stock does not block `confirm_sale`. The sale is
+  recorded, the resulting movements are marked in their `note`, and the service
+  returns the list of products that went negative so the caller can warn the user.
+- Options considered: hard rejection with a ValidationError.
+- Rationale: the paper ledger already works this way — goods are sold before the
+  purchase invoice reaches the office. Blocking would force staff to falsify dates.
+- Affects: `apps/sales/services.confirm_sale`, future reporting.
+- Note: during SHADOW, every negative stock event is a discrepancy to log, not
+  a normal outcome.
