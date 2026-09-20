@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-09-20, after task 21.
+Last updated: 2026-09-21, after opening stock.
 
 ## 1. Where we are
 Infrastructure complete. First model created. No real data yet.
@@ -52,18 +52,21 @@ Infrastructure complete. First model created. No real data yet.
   Verified: empty, happy path (10→7), oversell (4−6=−2 reported), double-confirm,
   foreign product.
 - Decisions D-015, D-016 logged
+- `Product.is_onboarded` BooleanField + migration `products.0002` — applied & verified
+- `apps/inventory/services.set_opening_stock(product, quantity, user)` — atomic,
+  select_for_update on Product, rejects onboarded / has-movements / negative,
+  quantity 0 marks onboarded without a movement row. 15/15 checks passed.
+- Decision D-017 logged
+- `scripts/` untracked from git (was committed by mistake, now gitignored)
 
 
 ## 3. Next step
-Opening stock (build order item 7):
-1. `is_onboarded` BooleanField(default=False) on Product + migration
-2. `apps/inventory/services.py`: `set_opening_stock(product, quantity, user)`
-   - reject if product.is_onboarded is True
-   - reject if product already has any InventoryMovement
-   - quantity == 0 -> no movement, just mark onboarded (D-017)
-   - quantity > 0 -> one movement_type=opening movement
-   - all inside transaction.atomic, select_for_update on the product row
-3. Test script, then commit
+`pg_dump` backup script (build order item 8):
+1. Add `C:\Program Files\PostgreSQL\18\bin` to PATH (or call pg_dump by full path)
+2. `scripts/backup.ps1` — timestamped dump of `paper_plus` into a gitignored
+   `backups/` folder, password from `.env`, not typed on the command line
+3. Verify the dump restores into a scratch database
+4. Then: clear section 6 (HARD GATE) before any real data entry
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
