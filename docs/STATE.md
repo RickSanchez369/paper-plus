@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-09-21, after opening stock.
+Last updated: 2026-09-21, after the security gate was cleared.
 
 ## 1. Where we are
 Infrastructure complete. First model created. No real data yet.
@@ -58,15 +58,22 @@ Infrastructure complete. First model created. No real data yet.
   quantity 0 marks onboarded without a movement row. 15/15 checks passed.
 - Decision D-017 logged
 - `scripts/` untracked from git (was committed by mistake, now gitignored)
-
+- `tools/backup.ps1`: pg_dump to a gitignored `backups/`, credentials read from
+  `.env`, password passed via PGPASSWORD. Restore into a scratch database verified
+  (20 tables), scratch database dropped.
+- Security gate cleared: SECRET_KEY rotated; DB role `paper_app` created and made
+  owner of the database, schema and all tables (`tools/reassign_ownership.sql`);
+  `DATABASE_URL` switched to `paper_app`; `postgres` password rotated twice and the
+  old one proven dead; DEBUG and ALLOWED_HOSTS read from `.env` with safe defaults.
+- Decisions D-017, D-018, D-019 logged
 
 ## 3. Next step
-`pg_dump` backup script (build order item 8):
-1. Add `C:\Program Files\PostgreSQL\18\bin` to PATH (or call pg_dump by full path)
-2. `scripts/backup.ps1` — timestamped dump of `paper_plus` into a gitignored
-   `backups/` folder, password from `.env`, not typed on the command line
-3. Verify the dump restores into a scratch database
-4. Then: clear section 6 (HARD GATE) before any real data entry
+Real data entry (build order item 8 complete; section 6 cleared).
+1. Create the real Business row and the real users (owner + salespeople)
+2. Enter the product catalogue, then opening stock per product via
+   `set_opening_stock` — once per product, no exceptions
+3. Run `.\tools\backup.ps1` before each entry session
+4. SHADOW begins: every number is compared against the paper ledger daily
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -108,15 +115,21 @@ Infrastructure complete. First model created. No real data yet.
 - Locking a lazy queryset does nothing: wrap `select_for_update()` in `list()`.
 - Always order locked rows by pk; unordered locks across transactions deadlock.
 - `confirm_sale` returns a tuple `(invoice, shortages)`, unlike `confirm_purchase`.
+- Django connects as `paper_app`, not `postgres`. New tables created outside
+  `migrate` must have their owner set, or `migrate` fails with
+  "permission denied for table ...".
+- `psql --command` with `$$` blocks: put the SQL in a file, PowerShell eats `$$`.
+- Backup: `.\tools\backup.ps1`. Restore test = createdb scratch, psql --file, drop it.
 
 
 
 ## 6. Security debt (must clear before real data)
-- [ ] Rotate `SECRET_KEY` — the current one was exposed in chat
-- [ ] Replace weak postgres password (`admin`)
-- [ ] Create a dedicated DB user instead of the `postgres` superuser
-- [ ] `DEBUG=False` + `ALLOWED_HOSTS` for production
-- [ ] `pg_dump` before every `migrate` once real data exists
+- [-] Rotate `SECRET_KEY` — the current one was exposed in chat
+- [-] Replace weak postgres password (`admin`)
+- [-] Create a dedicated DB user instead of the `postgres` superuser
+- [-] `DEBUG=False` + `ALLOWED_HOSTS` for production
+- [-] `pg_dump` before every `migrate` once real data exists
+- [x] All cleared 2026-09-21. `pg_dump` before every `migrate` is now a standing rule.
 
 ## 7. Scope rules for this slice
 Excluded from v1: cheques, returns, multi-unit conversion, costing/profit,
