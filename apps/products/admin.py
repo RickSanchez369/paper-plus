@@ -3,13 +3,20 @@ Admin for Product.
 
 Stock is never stored on Product; it is derived from the InventoryMovement
 ledger through apps.inventory.selectors. The admin only displays it.
-`is_onboarded` is owned by set_opening_stock (D-017) and is read-only here.
+
+Opening stock (D-017) is entered through a non-model form field that is
+shown only while the product is not onboarded. After the product is saved,
+the value is passed to set_opening_stock; the admin never writes the
+movement itself. `is_onboarded` is owned by that service and is read-only.
+
 Products are deactivated, never deleted: movements and invoice items
 reference them through PROTECT foreign keys.
 """
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 
 from apps.inventory.selectors import get_stock, get_stock_map
+from apps.inventory.services import set_opening_stock
 from apps.shared.utils import format_number
 
 from .models import Product
@@ -18,10 +25,33 @@ from .models import Product
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
 
+class ProductAdminForm(forms.ModelForm):
+    """
+    Product form plus a one-time opening stock field.
+
+    Blank  -> not counted yet; the product stays un-onboarded.
+    0      -> onboarded with no movement row (the ledger forbids quantity 0).
+    N > 0  -> one `opening` movement of N packages.
+    Negative values are rejected here, before the service is reached.
+    """
+
+    opening_quantity = forms.IntegerField(
+        label="موجودی اولیه",
+        required=False,
+        min_value=0,
+        help_text="فقط یک بار قابل ثبت است. اگر هنوز شمارش نشده، خالی بگذارید.",
+    )
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    """Product catalogue with a live, read-only stock column."""
+    """Product catalogue with a live stock column and one-time opening stock."""
 
+    form = ProductAdminForm
     list_display = ("name", "sku", "business", "unit", "stock_display", "is_onboarded", "is_active")
     list_filter = ("business", "is_active", "is_onboarded")
     search_fields = ("name", "sku")
@@ -30,12 +60,37 @@ class ProductAdmin(admin.ModelAdmin):
     # Search box instead of a dropdown; BusinessAdmin has search_fields.
     autocomplete_fields = ("business",)
     readonly_fields = ("stock_display", "is_onboarded") + SYSTEM_FIELDS
-    fieldsets = (
-        ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description")}),
-        ("موجودی", {"fields": ("stock_display", "is_onboarded")}),
-        ("وضعیت", {"fields": ("is_active",)}),
-        ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
-    )
+
+    def get_fieldsets(self, request, obj=None):
+        # The opening field exists only until the product is onboarded (D-017).
+        stock_fields = ("stock_display", "is_onboarded")
+        if obj is None or not obj.is_onboarded:
+            stock_fields = ("opening_quantity",) + stock_fields
+        return (
+            ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description")}),
+            ("موجودی", {"fields": stock_fields}),
+            ("وضعیت", {"fields": ("is_active",)}),
+            ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
+        )
+
+    def save_model(self, request, obj, form, change):
+        """
+        Save the product, then hand opening stock to the service.
+
+        The product must be saved first: the movement row needs its pk.
+        Both run inside the admin's request transaction, so a service
+        failure also rolls back the product save.
+        """
+        super().save_model(request, obj, form, change)
+        quantity = form.cleaned_data.get("opening_quantity")
+        if quantity is None or obj.is_onboarded:
+            return
+        set_opening_stock(obj, quantity, request.user)
+        self.message_user(
+            request,
+            f"موجودی اولیه‌ی «{obj.name}» ثبت شد: {format_number(quantity)}",
+            messages.SUCCESS,
+        )
 
     def get_changelist_instance(self, request):
         """
