@@ -220,3 +220,28 @@ If this log and SPEC.md disagree, this log wins.
   stock figure already reported becomes wrong and the shadow-phase comparison
   against the paper ledger loses its meaning.
 - Affects: `apps/inventory/services.set_opening_stock`, `Product.is_onboarded`.
+
+
+### D-018: The application connects as a dedicated, non-superuser database role
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: Django connects as `paper_app`, which owns the `paper_plus` database,
+  its `public` schema, and every table in it. The `postgres` superuser is used
+  only for server-level administration, never by the application.
+- Options considered: keeping the `postgres` superuser in `DATABASE_URL`.
+- Rationale: a bug or an injected query running as superuser could reach every
+  database on the server. Ownership (not GRANT) is required because `migrate`
+  issues `ALTER TABLE` and `DROP`, which only the owner may run.
+- Affects: `.env DATABASE_URL`, `tools/backup.ps1`, `tools/reassign_ownership.sql`.
+
+### D-019: DEBUG and ALLOWED_HOSTS come from the environment and default to safe
+- Status: Final
+- Date: 2026-09-21
+- Decision: `DEBUG = env.bool("DEBUG", default=False)` and
+  `ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])`.
+- Options considered: hardcoding DEBUG per environment.
+- Rationale: a missing `.env` must fail closed, not expose tracebacks. HTTPS-related
+  warnings from `check --deploy` (HSTS, SSL redirect, secure cookies) are deferred
+  until an actual deployment exists.
+- Affects: `core/settings.py`, `.env.example`.
