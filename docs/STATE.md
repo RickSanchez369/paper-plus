@@ -1,10 +1,10 @@
 # Project State
 
-Last updated: 2026-09-21, after the admin layer was completed.
+Last updated: 2026-09-21, after the remake plan was accepted (D-020..D-026).
 
 ## 1. Where we are
 Infrastructure, models, services and admin complete. Only test data in the
-database. Next: wipe test data, then real data entry under SHADOW.
+database. Scope expanded by D-020; the full task order is in ROADMAP.md.
 
 ## 2. Done
 - Django 6.1.1 project on Python 3.13.2, venv at `.venv`
@@ -83,16 +83,12 @@ database. Next: wipe test data, then real data entry under SHADOW.
   double-confirm rejected, opening stock 10 / 0 / blank / -5
 
 ## 3. Next step
-Wipe test data before the first real record. Order:
-1. `.\tools\backup.ps1` (keep the test-data dump, just in case)
-2. `python manage.py flush` (empties all tables, schema untouched, superuser gone)
-3. `python manage.py createsuperuser` (real owner phone)
-4. Create the real Business in admin, then memberships
-5. Real data entry: products with opening stock, customers, suppliers
-Then SHADOW: log every discrepancy, three clean days in a row to exit.
+ROADMAP.md task 0.3 (`tools/project_map.py`), then 1.1.
+Test data stays until ROADMAP phase 3: schema changes in phases 1 and 2
+run on an empty-of-real-data database.
 
 ## 4. Build order after that
-All items done (see section 2). Next build work is decided after SHADOW.
+See ROADMAP.md. This file no longer holds the build order.
 
 ## 5. Traps and reminders
 - Windows / PowerShell only. No WSL.
@@ -149,15 +145,15 @@ All items done (see section 2). Next build work is decided after SHADOW.
 - [-] `pg_dump` before every `migrate` once real data exists
 - [x] All cleared 2026-09-21. `pg_dump` before every `migrate` is now a standing rule.
 
-## 7. Scope rules for this slice
-Excluded from v1: cheques, returns, multi-unit conversion, costing/profit,
-FinancialObligation, PaymentAllocation, AuditLog, custom roles, Docker, CI,
-PDF, reports, OpenAPI, Vue.
-System is SHADOW until its numbers match the paper ledger three days running.
-- HARD GATE: before the first real record, clear all of section 6.
+## 7. Scope rules
+Scope is ROADMAP.md (D-020). Anything not in it is out of scope — say so
+and move on. Still excluded: Docker, CI, PDF, OpenAPI, Vue.
+- HARD GATE: every schema change of ROADMAP phases 1 and 2 is done before
+  the first real record (phase 3).
 - HARD GATE: system stays SHADOW (paper ledger runs in parallel) until three
   consecutive days of zero discrepancy. Every discrepancy is a bug — log it,
   never fix it by hand.
+- Integrity rules no role bypasses: D-014, D-017, D-023, D-024.
 
 ## 8. Working agreement
 - One task per message; Sina runs it and reports `ok` or pastes the error.

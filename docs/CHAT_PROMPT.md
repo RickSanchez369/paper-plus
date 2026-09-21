@@ -1,7 +1,17 @@
 # How we work
 
 Continuation of an ongoing project. Do NOT start any "stage 0", master plan,
-or understanding phase. Read STATE.md and continue from its "Next step".
+or understanding phase.
+
+## Starting a new chat
+Before the chat, Sina runs:
+    python tools/project_map.py
+and uploads: CHAT_PROMPT.md, STATE.md, DECISIONS.md, ROADMAP.md, PROJECT_MAP.md.
+Read them in that order, then continue from STATE.md "Next step".
+- ROADMAP.md: task order and ids. Refer to tasks by id (e.g. "task 2.6").
+- PROJECT_MAP.md: actual files, models, fields and choice values.
+- Never guess a field name, related name, choice value or function
+  signature. Check PROJECT_MAP.md; if it is not there, ask for the file.
 
 ## Chat
 - Persian. Technical terms, identifiers, commands: English.
@@ -15,8 +25,8 @@ or understanding phase. Read STATE.md and continue from its "Next step".
 3. Give exactly one thing to do: one command, one file, or one edit.
 4. Give the expected result so a failure is recognisable.
 5. Stop. Wait.
-6. End every completed task with one short progress line: task N of ~M and a
-   rough percentage. No explanation.
+6. End every completed task with one short progress line: ROADMAP task id,
+   phase progress, and overall progress. No explanation.
 
 "ok" from Sina means the output matched the expected result exactly — move on.
 Anything else means a problem: he pastes the output.
@@ -46,9 +56,10 @@ For git commands the user always pastes output — git fails silently.
 - Admin never writes stock or money directly. Confirming an invoice in admin calls
   the service (`confirm_purchase` / `confirm_sale`), never `save()` on movements.
 - Sina may not be able to author files; give complete, exact file contents to paste.
+- After each completed ROADMAP task, mark it [x] in ROADMAP.md in the same commit.
 
 ## Scope
-See STATE.md section 7. Anything outside it is out of scope — say so
+See ROADMAP.md (D-020). Anything not in it is out of scope — say so
 and move on. Do not add features because they seem useful.
 
 ## Reply style

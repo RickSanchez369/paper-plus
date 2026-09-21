@@ -245,3 +245,100 @@ If this log and SPEC.md disagree, this log wins.
   warnings from `check --deploy` (HSTS, SSL redirect, secure cookies) are deferred
   until an actual deployment exists.
 - Affects: `core/settings.py`, `.env.example`.
+
+
+### D-020: Scope expanded to the full remake request
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me
+- Decision: The exclusions in STATE.md section 7 are lifted. Roles and
+  permissions, audit trail, auto numbering, discount, payments, cheques,
+  customer account, returns and inventory valuation are in scope.
+  Order and phases live in ROADMAP.md.
+- Options considered: SHADOW first with the existing features; full scope.
+- Rationale: the owner wants every requested feature. Ordering keeps risk
+  low: permissions and audit first, invoice schema changes before real
+  data, new financial modules built in parallel with SHADOW.
+- Affects: STATE.md section 7, ROADMAP.md, all apps.
+
+### D-021: Negative stock is allowed by role
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: `confirm_sale` rejects a shortage when the confirming user is a
+  Seller. Owner and superuser may confirm it; the sale is recorded and the
+  shortage is reported as a warning, as in D-016.
+- Options considered: always block; always allow (D-016 alone).
+- Rationale: goods are sometimes sold before the purchase invoice arrives,
+  so blocking everyone would force staff to falsify dates. Restricting the
+  exception to owners keeps each negative-stock event a deliberate decision.
+- Affects: `apps/sales/services.confirm_sale`, `apps/shared/permissions`.
+- Note: complements D-016, does not supersede it.
+
+### D-022: Invoice numbers are generated at confirmation
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: Sales and purchase invoice numbers are assigned by the system
+  from a `DocumentSequence` row (one per business and document type),
+  locked with `select_for_update`, at the moment of confirmation. The
+  starting number of each sequence is configurable. Drafts have no number.
+  The UUID pk stays the internal id (D-003). Purchase invoices also get
+  `supplier_invoice_number` for the supplier's own printed number.
+- Options considered: number at creation; `max() + 1`; a manually typed number.
+- Rationale: numbering at confirmation leaves no gaps when a draft is
+  deleted. `max() + 1` gives duplicates under concurrency. The paper
+  ledger has no own numbering, so there is nothing to match manually.
+- Affects: `apps/shared` (DocumentSequence), `apps/purchasing`, `apps/sales`.
+
+### D-023: A confirmed invoice is cancelled, never edited
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: `cancel_sale` / `cancel_purchase` set status `cancelled` and write
+  reversing InventoryMovement rows inside `transaction.atomic`. Only Owner
+  and superuser may cancel. A cancelled invoice keeps its number. The
+  correct invoice is entered as a new one.
+- Options considered: editing a confirmed invoice; hard delete.
+- Rationale: keeps D-014 intact. History and the audit trail survive, and
+  stock is corrected by the ledger itself.
+- Affects: `apps/purchasing`, `apps/sales`, `apps/inventory`, admin.
+
+### D-024: Hard delete only for unreferenced records
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: A superuser may hard-delete a record only when nothing
+  references it; PROTECT foreign keys enforce this. InventoryMovement rows
+  and confirmed or cancelled invoices are never deleted, by anyone. Every
+  other case uses `is_active`.
+- Options considered: full delete rights for superuser.
+- Rationale: deleting a ledger row or a confirmed invoice rewrites every
+  stock and balance figure after it. This is an integrity rule, not a
+  permission, so no role bypasses it.
+- Affects: all admins.
+
+### D-025: Payment status is derived, never stored by hand
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me (on recommendation)
+- Decision: Payment method is a field on the invoice. Payment status
+  (unpaid / partial / paid) is computed from `PaymentAllocation` rows.
+  No field lets a user type it.
+- Options considered: a manual `payment_status` field.
+- Rationale: a typed status drifts from the real payments; a derived one
+  cannot.
+- Affects: `apps/sales`, the upcoming payments module.
+
+### D-026: Sellers use the admin, scoped to their business
+- Status: Final
+- Date: 2026-09-21
+- Decided by: me
+- Decision: Sellers log in to the Django admin. Every admin filters its
+  queryset and foreign-key choices to the businesses the user belongs to.
+  Role checks are also enforced inside services, not only in the admin.
+  Superuser is not scoped.
+- Options considered: a separate frontend for sellers (Vue, deferred).
+- Rationale: the admin is the only UI in this phase. Scoping in both the
+  admin and the services means a hidden button is never the only barrier.
+- Affects: all admins, `apps/shared/permissions`, all services.

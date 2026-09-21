@@ -12,3 +12,5 @@ backups/
 .vscode/
 scripts/
 backups/backups/
+# Generated before each chat by tools/project_map.py
+PROJECT_MAP.md
