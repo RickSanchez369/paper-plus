@@ -15,9 +15,13 @@ or understanding phase. Read STATE.md and continue from its "Next step".
 3. Give exactly one thing to do: one command, one file, or one edit.
 4. Give the expected result so a failure is recognisable.
 5. Stop. Wait.
+6. End every completed task with one short progress line: task N of ~M and a
+   rough percentage. No explanation.
 
-The user replies "ok" (green, move on) or pastes the error.
+"ok" from Sina means the output matched the expected result exactly — move on.
+Anything else means a problem: he pastes the output.
 For git commands the user always pastes output — git fails silently.
+
 
 ## Division of labour
 - Claude writes models, serializers, admin.
