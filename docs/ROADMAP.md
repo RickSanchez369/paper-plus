@@ -15,7 +15,7 @@ Status: [ ] todo  [~] in progress  [x] done
 - [x] 0.3 `tools/project_map.py` generates PROJECT_MAP.md from the code
 
 ## Phase 1 — Permissions and audit (before any real data)
-- [ ] 1.1 `apps/shared/permissions.py`: get membership, `is_owner`,
+- [x] 1.1 `apps/shared/permissions.py`: get membership, `is_owner`,
       `require_role`; used by services, not only by admin        [R 1, 17B]
 - [ ] 1.2 Admin scoping mixin: queryset and FK choices limited to the
       user's businesses; superuser unscoped; applied to all admins (D-026) [R 1, 2]
