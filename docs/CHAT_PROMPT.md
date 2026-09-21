@@ -43,6 +43,9 @@ For git commands the user always pastes output — git fails silently.
   If a secret is pasted anyway, rotating it is the next task, before anything else.
 - Django connects to PostgreSQL as `paper_app`, never as `postgres`.
 - Run `.\tools\backup.ps1` before every `migrate` once real data exists.
+- Admin never writes stock or money directly. Confirming an invoice in admin calls
+  the service (`confirm_purchase` / `confirm_sale`), never `save()` on movements.
+- Sina may not be able to author files; give complete, exact file contents to paste.
 
 ## Scope
 See STATE.md section 7. Anything outside it is out of scope — say so

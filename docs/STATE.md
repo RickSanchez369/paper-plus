@@ -68,12 +68,19 @@ Infrastructure complete. First model created. No real data yet.
 - Decisions D-017, D-018, D-019 logged
 
 ## 3. Next step
-Real data entry (build order item 8 complete; section 6 cleared).
-1. Create the real Business row and the real users (owner + salespeople)
-2. Enter the product catalogue, then opening stock per product via
-   `set_opening_stock` — once per product, no exceptions
-3. Run `.\tools\backup.ps1` before each entry session
-4. SHADOW begins: every number is compared against the paper ledger daily
+Django admin for data entry (prerequisite for real data, agreed 2026-09-21).
+Build order:
+1. `apps/shared/admin.py` — Business, BusinessMembership
+2. `apps/users/admin.py` — User (custom UserAdmin; phone as USERNAME_FIELD,
+   no username field, password handled via UserAdmin's forms)
+3. `apps/products/admin.py` — Product (+ stock as a read-only computed column,
+   `is_onboarded` read-only)
+4. `apps/partners/admin.py` — Customer, Supplier
+5. `apps/purchasing/admin.py` + `apps/sales/admin.py` — invoice + item inline,
+   confirmed invoices read-only (D-014), a "confirm" admin action calling the
+   service (never writing movements directly)
+6. `apps/inventory/admin.py` — InventoryMovement read-only (append-only ledger)
+Then: real data entry, then SHADOW.
 
 ## 4. Build order after that
 1. `User` + `BusinessMembership` (which user belongs to which business)
@@ -120,6 +127,9 @@ Real data entry (build order item 8 complete; section 6 cleared).
   "permission denied for table ...".
 - `psql --command` with `$$` blocks: put the SQL in a file, PowerShell eats `$$`.
 - Backup: `.\tools\backup.ps1`. Restore test = createdb scratch, psql --file, drop it.
+- Use `git --no-pager log/show/diff` in PowerShell; the pager blocks the terminal.
+- `git commit` reporting fewer files than expected is usually fine: the rest were
+  already committed. Verify with `git --no-pager show --stat HEAD`, not by guessing.
 
 
 
