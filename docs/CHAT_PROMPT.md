@@ -38,6 +38,11 @@ For git commands the user always pastes output — git fails silently.
 - FKs to the user model use `settings.AUTH_USER_MODEL`, never a direct import.
 - If DECISIONS.md and SPEC.md disagree, DECISIONS.md wins.
 - Ask before changing anything already marked Final in DECISIONS.md.
+- Secrets never appear in chat: passwords, SECRET_KEY, DATABASE_URL, .env content.
+  Commands that need one use a placeholder (PPPP) or PowerShell `Read-Host`.
+  If a secret is pasted anyway, rotating it is the next task, before anything else.
+- Django connects to PostgreSQL as `paper_app`, never as `postgres`.
+- Run `.\tools\backup.ps1` before every `migrate` once real data exists.
 
 ## Scope
 See STATE.md section 7. Anything outside it is out of scope — say so
@@ -54,3 +59,7 @@ and move on. Do not add features because they seem useful.
   python manage.py shell -c "exec(open('scripts/NAME.py', encoding='utf-8').read())"
 - Never pipe a file into `manage.py shell`, and never paste a try/except block
   into the REPL — both break on the blank-line rule.
+  - Verification scripts go in `scripts/` (gitignored, throwaway).
+  Operational scripts go in `tools/` (tracked in git).
+- Check the prompt before pasting: `PS C:\...>` is PowerShell, `>>>` is the Django
+  shell. PowerShell blocks pasted into the Django shell fail with SyntaxError.
