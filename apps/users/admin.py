@@ -9,7 +9,7 @@ and invoices is a PROTECT foreign key, and the audit trail depends on it.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import BaseUserCreationForm, UserChangeForm
-
+from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from .models import User
 
 # Fields a non-superuser must never edit. Without this, any staff user with
@@ -45,12 +45,17 @@ class UserEditForm(UserChangeForm):
 
 
 @admin.register(User)
-class UserAdmin(DjangoUserAdmin):
+class UserAdmin(BusinessScopedAdminMixin, DjangoUserAdmin):
     """User admin keyed on phone instead of username."""
 
+    # User has no business FK (D-008); the link is through memberships.
+    # To-many path: distinct() stops a user shared across two of the
+    # viewer's businesses from appearing twice. Users with no membership
+    # are invisible to non-superusers until ROADMAP 1.3.
+    business_lookup = "memberships__business"
+    scope_distinct = True
     form = UserEditForm
     add_form = UserCreateForm
-
     list_display = ("phone", "first_name", "last_name", "is_active", "is_staff", "last_login")
     list_filter = ("is_active", "is_staff", "is_superuser", "groups")
     # Also required later by autocomplete_fields in other admins (admin.E039).

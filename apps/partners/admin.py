@@ -6,14 +6,14 @@ one base class. Partners are deactivated, never deleted: sales and
 purchase invoices reference them through PROTECT foreign keys.
 """
 from django.contrib import admin
-
+from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from .models import Customer, Supplier
 
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
 
-class PartnerAdmin(admin.ModelAdmin):
+class PartnerAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """
     Shared configuration for Customer and Supplier.
 

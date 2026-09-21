@@ -10,6 +10,7 @@ and deleting a membership erases who had access and when.
 """
 from django.contrib import admin
 
+from .admin_mixins import BusinessScopedAdminMixin
 from .models import Business, BusinessMembership
 
 # Site-wide Persian titles. Set here because `shared` is the base app
@@ -23,7 +24,7 @@ admin.site.index_title = "پنل مدیریت"
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
 
-class BusinessMembershipInline(admin.TabularInline):
+class BusinessMembershipInline(BusinessScopedAdminMixin, admin.TabularInline):
     """
     Members of one business, edited inside the Business change page.
 
@@ -43,8 +44,11 @@ class BusinessMembershipInline(admin.TabularInline):
 
 
 @admin.register(Business)
-class BusinessAdmin(admin.ModelAdmin):
+class BusinessAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """Admin for the tenant root. Every business-data row points here."""
+
+    # The model IS Business, so the scope path is its own primary key.
+    business_lookup = "pk"
 
     list_display = ("name", "legal_name", "phone", "is_active", "created_at")
     list_filter = ("is_active",)
@@ -65,7 +69,7 @@ class BusinessAdmin(admin.ModelAdmin):
 
 
 @admin.register(BusinessMembership)
-class BusinessMembershipAdmin(admin.ModelAdmin):
+class BusinessMembershipAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """
     Cross-business view of memberships: answers "who has access where".
 

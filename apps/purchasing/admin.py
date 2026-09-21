@@ -11,6 +11,7 @@ Rules enforced here:
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
+from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import PurchaseInvoice, PurchaseItem
@@ -28,7 +29,7 @@ def is_locked(invoice):
     return invoice is not None and invoice.status != DRAFT_STATUS
 
 
-class PurchaseItemInline(admin.TabularInline):
+class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
     """
     Invoice lines, edited inside the invoice page.
 
@@ -37,6 +38,8 @@ class PurchaseItemInline(admin.TabularInline):
     """
 
     model = PurchaseItem
+    # Items have no business FK; they reach it through their invoice.
+    business_lookup = "invoice__business"
     extra = 1
     fields = ("product", "quantity", "unit_price", "line_total")
     readonly_fields = ("line_total",)
@@ -61,7 +64,7 @@ class PurchaseItemInline(admin.TabularInline):
 
 
 @admin.register(PurchaseInvoice)
-class PurchaseInvoiceAdmin(admin.ModelAdmin):
+class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """Purchase invoices: draft entry in admin, confirmation via the service."""
 
     list_display = (

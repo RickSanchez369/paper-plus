@@ -9,11 +9,13 @@ This page exists to trace discrepancies against the paper ledger.
 """
 from django.contrib import admin
 
+from apps.shared.admin_mixins import BusinessScopedAdminMixin
+
 from .models import InventoryMovement
 
 
 @admin.register(InventoryMovement)
-class InventoryMovementAdmin(admin.ModelAdmin):
+class InventoryMovementAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """Read-only ledger browser: filter, search, inspect. Never write."""
 
     list_display = ("created_at", "product", "movement_type", "quantity", "business", "created_by", "note")

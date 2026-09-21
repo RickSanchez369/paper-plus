@@ -94,3 +94,27 @@ def require_role(user, business, *roles):
     """
     if not has_role(user, business, *roles):
         raise PermissionDenied("شما اجازه‌ی انجام این کار را در این کسب‌وکار ندارید.")
+    
+
+
+def get_business_ids(user):
+    """
+    Ids of the businesses where ``user`` has an active membership in an
+    active business. Used to scope admin querysets and FK choices (D-026).
+
+    Superuser status is NOT considered: a superuser gets only the businesses
+    he is a real member of. Callers that must not scope a superuser (the
+    admin mixin) check ``user.is_superuser`` themselves, explicitly.
+
+    Returns a list, evaluated once, so one request does not re-run the
+    subquery for every filter and form field that uses it.
+    """
+    if not _is_active_user(user):
+        return []
+    return list(
+        BusinessMembership.objects.filter(
+            user=user,
+            is_active=True,
+            business__is_active=True,
+        ).values_list("business_id", flat=True)
+    )

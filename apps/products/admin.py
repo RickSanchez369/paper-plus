@@ -14,11 +14,10 @@ reference them through PROTECT foreign keys.
 """
 from django import forms
 from django.contrib import admin, messages
-
 from apps.inventory.selectors import get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
+from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_number
-
 from .models import Product
 
 # Inherited from BaseModel; visible for debugging, never editable.
@@ -48,7 +47,7 @@ class ProductAdminForm(forms.ModelForm):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """Product catalogue with a live stock column and one-time opening stock."""
 
     form = ProductAdminForm
