@@ -1,4 +1,4 @@
-# .apps/shared/admin.py
+# apps/shared/admin.py
 """
 Admin registration for the shared app: Business and BusinessMembership.
 
@@ -37,9 +37,9 @@ class BusinessMembershipInline(admin.TabularInline):
     fields = ("user", "role", "is_active")
     # Deactivate instead of delete, so access history is preserved.
     can_delete = False
-    # `user` is a plain dropdown for now. Switch to autocomplete_fields
-    # after UserAdmin (task 2) is registered with search_fields;
-    # doing it earlier fails the system check (admin.E039).
+    # Search by phone or name instead of loading every user into a
+    # dropdown. Requires UserAdmin.search_fields (admin.E039).
+    autocomplete_fields = ("user",)
 
 
 @admin.register(Business)
@@ -78,6 +78,8 @@ class BusinessMembershipAdmin(admin.ModelAdmin):
     search_fields = ("user__phone", "business__name")
     # One JOIN instead of one extra query per row for user and business.
     list_select_related = ("user", "business")
+    # Same search boxes on the standalone membership page.
+    autocomplete_fields = ("business", "user")
     readonly_fields = SYSTEM_FIELDS
     fields = ("business", "user", "role", "is_active") + SYSTEM_FIELDS
 
