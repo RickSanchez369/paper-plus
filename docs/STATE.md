@@ -1,9 +1,10 @@
 # Project State
 
-Last updated: 2026-09-21, after the security gate was cleared.
+Last updated: 2026-09-21, after the admin layer was completed.
 
 ## 1. Where we are
-Infrastructure complete. First model created. No real data yet.
+Infrastructure, models, services and admin complete. Only test data in the
+database. Next: wipe test data, then real data entry under SHADOW.
 
 ## 2. Done
 - Django 6.1.1 project on Python 3.13.2, venv at `.venv`
@@ -66,31 +67,32 @@ Infrastructure complete. First model created. No real data yet.
   `DATABASE_URL` switched to `paper_app`; `postgres` password rotated twice and the
   old one proven dead; DEBUG and ALLOWED_HOSTS read from `.env` with safe defaults.
 - Decisions D-017, D-018, D-019 logged
+- Admin layer complete (Persian labels, no deletes anywhere except draft invoices):
+  - `shared`: Business (+ membership inline), BusinessMembership; site titles in Persian
+  - `users`: custom UserAdmin on phone; BaseUserCreationForm; privilege fields
+    read-only for non-superusers
+  - `products`: stock column via one `get_stock_map` per page; one-time
+    "opening stock" form field calling `set_opening_stock` (blank = not counted,
+    0 = onboarded without movement)
+  - `partners`: Customer, Supplier via shared PartnerAdmin base
+  - `purchasing` / `sales`: invoice + item inline, `created_by` set in save_model,
+    confirm action calls the service, confirmed invoice view-only, bulk delete
+    removed; sales shows shortages as a warning (D-016)
+  - `inventory`: ledger view-only for everyone, superuser included
+- Verified in admin: purchase confirm, sale confirm incl. negative stock warning,
+  double-confirm rejected, opening stock 10 / 0 / blank / -5
 
 ## 3. Next step
-Django admin for data entry (prerequisite for real data, agreed 2026-09-21).
-Build order:
-1. `apps/shared/admin.py` — Business, BusinessMembership
-2. `apps/users/admin.py` — User (custom UserAdmin; phone as USERNAME_FIELD,
-   no username field, password handled via UserAdmin's forms)
-3. `apps/products/admin.py` — Product (+ stock as a read-only computed column,
-   `is_onboarded` read-only)
-4. `apps/partners/admin.py` — Customer, Supplier
-5. `apps/purchasing/admin.py` + `apps/sales/admin.py` — invoice + item inline,
-   confirmed invoices read-only (D-014), a "confirm" admin action calling the
-   service (never writing movements directly)
-6. `apps/inventory/admin.py` — InventoryMovement read-only (append-only ledger)
-Then: real data entry, then SHADOW.
+Wipe test data before the first real record. Order:
+1. `.\tools\backup.ps1` (keep the test-data dump, just in case)
+2. `python manage.py flush` (empties all tables, schema untouched, superuser gone)
+3. `python manage.py createsuperuser` (real owner phone)
+4. Create the real Business in admin, then memberships
+5. Real data entry: products with opening stock, customers, suppliers
+Then SHADOW: log every discrepancy, three clean days in a row to exit.
 
 ## 4. Build order after that
-1. `User` + `BusinessMembership` (which user belongs to which business)
-2. `Product` (no multi-unit in v1 slice)
-3. `Customer`, `Supplier`
-4. `InventoryMovement` (ledger, source of truth for stock)
-5. `PurchaseInvoice` + `PurchaseItem` + `confirm_purchase` service
-6. `SalesInvoice` + `SaleItem` + `confirm_sale` service (stock check, select_for_update)
-7. Opening stock (`movement_type=opening`) + `is_onboarded` flag on Product
-8. `pg_dump` backup script, then real data entry
+All items done (see section 2). Next build work is decided after SHADOW.
 
 ## 5. Traps and reminders
 - Windows / PowerShell only. No WSL.
@@ -130,6 +132,12 @@ Then: real data entry, then SHADOW.
 - Use `git --no-pager log/show/diff` in PowerShell; the pager blocks the terminal.
 - `git commit` reporting fewer files than expected is usually fine: the rest were
   already committed. Verify with `git --no-pager show --stat HEAD`, not by guessing.
+  - Admin: `has_delete_permission(obj=None)` returning False is what removes the
+  bulk "delete selected" action; per-object checks alone do not.
+- Admin inline permission methods receive the PARENT object, not the row.
+- `autocomplete_fields` requires `search_fields` on the target's admin (admin.E039).
+- An exception raised in `ProductAdmin.save_model` (service rejection) is a 500,
+  but the request transaction rolls back the product save too.
 
 
 
@@ -157,3 +165,7 @@ System is SHADOW until its numbers match the paper ledger three days running.
 - Explanations alongside steps, in Persian. Code and comments in English.
 - Replies: code + test + notes only. No conceptual explanations unless asked.
 - End of every completed unit: give the commit message.
+- Every file: thorough English comments (WHY, not just what), docstrings on
+  every class and public function; Persian `verbose_name`, admin labels,
+  action descriptions and messages. Identifiers stay English (D-005).
+- Replies: concise, no filler, but complete and exact.
