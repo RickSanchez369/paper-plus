@@ -49,7 +49,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 ### Phase 2 — Invoice core (schema changes before real data)
 - [x] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
 - [x] 2.2 Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5]
-- [ ] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
+- [x] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
 - [ ] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
 - [ ] 2.5 Product autocomplete label shows current stock [R 6]
 - [ ] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
