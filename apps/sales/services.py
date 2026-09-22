@@ -14,6 +14,7 @@ from django.utils import timezone
 from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.products.models import Product
+from apps.shared.audit import log_event
 
 from .models import SalesInvoice
 
@@ -98,5 +99,13 @@ def confirm_sale(invoice, user):
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
     locked_invoice.save(update_fields=["status", "confirmed_at", "updated_at"])
+    
+    log_event(
+        business=locked_invoice.business,
+        actor=user,
+        event_type="confirm_sale",
+        target=locked_invoice,
+        payload={"item_count": len(items), "shortage_count": len(shortages)},
+    )
 
     return locked_invoice, shortages

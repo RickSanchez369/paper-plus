@@ -4,6 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 
 class BaseModel(models.Model):
@@ -106,6 +107,8 @@ class BusinessMembership(BaseModel):
         verbose_name="فعال",
     )
 
+    history = HistoricalRecords()
+
     class Meta:
         verbose_name = "عضویت در کسب‌وکار"
         verbose_name_plural = "عضویت‌های کسب‌وکار"
@@ -118,3 +121,60 @@ class BusinessMembership(BaseModel):
 
     def __str__(self):
         return f"{self.user} @ {self.business} ({self.get_role_display()})"
+
+
+class AuditLog(BaseModel):
+    """
+    Append-only record of service-level events (D-029).
+
+    Never updated or deleted after creation; edit/delete are blocked
+    at the admin layer, same policy as InventoryMovement (D-012).
+    """
+
+    class EventType(models.TextChoices):
+        OPENING_STOCK = "opening_stock", "ثبت موجودی اولیه"
+        CONFIRM_PURCHASE = "confirm_purchase", "تأیید فاکتور خرید"
+        CONFIRM_SALE = "confirm_sale", "تأیید فاکتور فروش"
+
+    business = models.ForeignKey(
+        Business,
+        on_delete=models.PROTECT,
+        related_name="audit_logs",
+        verbose_name="کسب‌وکار",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="audit_logs",
+        verbose_name="عامل",
+    )
+    event_type = models.CharField(
+        max_length=30,
+        choices=EventType.choices,
+        verbose_name="نوع رویداد",
+    )
+    # lightweight reference instead of GenericForeignKey, e.g. "purchasing.PurchaseInvoice"
+    target_type = models.CharField(
+        max_length=100,
+        verbose_name="نوع هدف",
+    )
+    target_id = models.UUIDField(
+        verbose_name="شناسه هدف",
+    )
+    payload = models.JSONField(
+        blank=True,
+        default=dict,
+        verbose_name="جزئیات",
+    )
+
+    class Meta:
+        verbose_name = "رویداد ممیزی"
+        verbose_name_plural = "رویدادهای ممیزی"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["business", "created_at"]),
+            models.Index(fields=["target_type", "target_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} — {self.target_type}:{self.target_id}"

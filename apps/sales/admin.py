@@ -1,3 +1,4 @@
+#path: apps/sales/admin.py
 """
 Admin for SalesInvoice and its items.
 
@@ -14,6 +15,7 @@ Rules enforced here:
 """
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from simple_history.admin import SimpleHistoryAdmin
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
@@ -68,7 +70,7 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
 
 
 @admin.register(SalesInvoice)
-class SalesInvoiceAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
     """Sales invoices: draft entry in admin, confirmation via the service."""
 
     list_display = (

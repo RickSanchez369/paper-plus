@@ -17,6 +17,7 @@ admin.TabularInline, so its methods run before Django's.
 """
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 
 from apps.shared.models import Business
@@ -78,8 +79,15 @@ class BusinessScopedAdminMixin:
                 kwargs["queryset"] = base.filter(pk__in=ids)
             elif _has_business_fk(related):
                 kwargs["queryset"] = base.filter(business_id__in=ids)
-            # FKs to models without a business (e.g. User) are not narrowed
-            # here; the user FK on memberships is handled in ROADMAP 1.3.
+            elif related is get_user_model():
+                # Only users already active members of the viewer's own
+                # businesses (D-028). Without this, the user dropdown /
+                # autocomplete on BusinessMembership leaks every phone
+                # number in the system to every Owner.
+                kwargs["queryset"] = base.filter(
+                    memberships__business__in=ids,
+                    memberships__is_active=True,
+                ).distinct()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     
     

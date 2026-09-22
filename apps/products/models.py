@@ -1,6 +1,7 @@
 # path: apps/products/models.py
 
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.shared.models import BaseModel, Business
 
@@ -43,6 +44,8 @@ class Product(BaseModel):
         verbose_name="موجودی اولیه ثبت شده",
         help_text="پس از ثبت موجودی اولیه True می‌شود و ثبت مجدد ممکن نیست.",
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "کالا"

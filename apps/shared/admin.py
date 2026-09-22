@@ -9,9 +9,10 @@ referenced by products, partners and invoices through PROTECT foreign keys,
 and deleting a membership erases who had access and when.
 """
 from django.contrib import admin
+from simple_history.admin import SimpleHistoryAdmin
 
 from .admin_mixins import BusinessScopedAdminMixin
-from .models import Business, BusinessMembership
+from .models import AuditLog, Business, BusinessMembership
 
 # Site-wide Persian titles. Set here because `shared` is the base app
 # every other app depends on, so this module is always loaded.
@@ -67,9 +68,16 @@ class BusinessAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
         # A business is deactivated, never deleted (see module docstring).
         return False
 
+    def has_add_permission(self, request):
+        # A non-superuser's new Business would have no membership, so it
+        # would be invisible to everyone including its creator (D-028).
+        return request.user.is_superuser
+
 
 @admin.register(BusinessMembership)
-class BusinessMembershipAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+
+
+class BusinessMembershipAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
     """
     Cross-business view of memberships: answers "who has access where".
 
@@ -89,4 +97,29 @@ class BusinessMembershipAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         # Deactivate instead of delete, so access history is preserved.
+        return False
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+    """
+    Read-only view of AuditLog rows (D-029).
+
+    No add/change/delete: rows are written only by log_event() from inside
+    services, inside the same atomic transaction as the event itself.
+    """
+
+    list_display = ("event_type", "target_type", "target_id", "actor", "business", "created_at")
+    list_filter = ("event_type", "business")
+    search_fields = ("target_id", "actor__phone")
+    list_select_related = ("actor", "business")
+    readonly_fields = SYSTEM_FIELDS + ("business", "actor", "event_type", "target_type", "target_id", "payload")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False

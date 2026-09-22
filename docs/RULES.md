@@ -23,10 +23,20 @@ Read in that order; continue from STATE.md "Next".
 5. Stop and wait.
 6. Completed task ends with the commit message and `x.y | Phase n: a/b | Overall: a/34 (~%)`.
 - "ok" = output matched exactly; move on. Anything else: Sina pastes the output.
+- Read-only/verify commands may be chained in one message (e.g. `git status` + `git log`).
+  State-changing steps (migrate, git commit, anything touching the DB) are never chained.
+- "ok" = output matched exactly; move on. Anything else: Sina pastes the output.
 - git: output is always pasted. Verify with `git --no-pager show --stat HEAD`.
+- Branch: all work on `dev`. Check `git branch` shows `* dev` at the start of every session.
+- Push after every completed task: `git push`.
+- End of a phase: `git switch main; git pull; git merge --no-ff dev -m "merge: phase N"; git push; git switch dev`.
 - Commit: `git commit -m "type(scope): message (ROADMAP x.y)"`, one line, nothing before it. The ROADMAP `[x]` goes in the same commit.
 - Replies: code, tests, notes. No preamble, no recap, no concept lessons unless asked.
 - Flaws are labelled Critical / Major / Minor.
+- Exception: after an "ok", two steps may go in one message only if the second is a
+  pure read/verification command with no schema, service, or data write (e.g. `sqlmigrate`
+  after `makemigrations`). Never batch: `migrate` itself, model/service edits, or anything
+  touching D-014/D-017/D-023/D-024.
 
 ## Division of labour
 - Claude writes models, serializers, admin. Sina writes the service layer; Claude reviews.
@@ -101,3 +111,7 @@ Read in that order; continue from STATE.md "Next".
 - D-024 Hard delete only for unreferenced records. Movements and confirmed/cancelled invoices are never deleted, by anyone.
 - D-025 Payment status is derived from PaymentAllocation, never typed.
 - D-026 Sellers use the admin. Admins and services are scoped to the user's businesses; superuser is not scoped.
+- D-027 Seller: sell only, from existing Product/Customer; no purchasing; no create on Product/Customer/Supplier.
+- D-028 New user + first membership created atomically from UserAdmin; scoped by viewer.
+- D-029 AuditLog target reference is target_type + target_id, not GenericForeignKey.
+- D-030 Chat rhythm: read-only commands may chain; state-changing steps never chain; task or ~15 msgs.

@@ -342,3 +342,28 @@ If this log and SPEC.md disagree, this log wins.
 - Rationale: the admin is the only UI in this phase. Scoping in both the
   admin and the services means a hidden button is never the only barrier.
 - Affects: all admins, `apps/shared/permissions`, all services.
+
+
+## D-027 — Seller permission scope
+Seller may create, view, and confirm SalesInvoice/SaleItem for their
+business only, selecting Product and Customer from existing records.
+No access to purchasing app. No create/edit on Product, Customer,
+Supplier. InventoryMovement ledger is view-only (admin-wide rule).
+Owner has full CRUD within their business, subject to D-024 limits.
+Decided 2026-09-22.
+
+
+## D-028
+D-028 — New user + first membership created together from UserAdmin add page, in one transaction; business/role required. Owner sees 
+only own businesses; superuser sees all. A user with no business is created via createsuperuser, not admin.
+
+
+## D-029
+D-029 AuditLog target reference is target_type (CharField, model label) + target_id (UUIDField),
+not GenericForeignKey — no GFK used anywhere else in the project; actor FK is PROTECT, non-null,
+since all three current services require a user.
+
+## D-030
+D-030 Chat rhythm: read-only/verify commands may be chained in one message; state-changing steps
+(migrate, commit, DB writes) never chain. A chat still ends at task completion or ~15 messages,
+whichever comes first — supersedes the earlier fixed "5 exchanges" limit.

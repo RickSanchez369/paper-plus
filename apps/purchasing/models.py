@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Supplier
 from apps.products.models import Product
@@ -62,6 +63,8 @@ class PurchaseInvoice(BaseModel):
         related_name="purchase_invoices",
         verbose_name="ثبت‌کننده",
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "فاکتور خرید"

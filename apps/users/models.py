@@ -3,6 +3,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.validators import RegexValidator
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.shared.models import BaseModel
 
@@ -78,6 +79,8 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         default=False,  # required by Django admin
         verbose_name="دسترسی به پنل مدیریت",
     )
+
+    history = HistoricalRecords()
 
     objects = UserManager()
 
