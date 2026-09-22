@@ -3,10 +3,11 @@
 Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase 3.
 
 ## Next
-1.5 (in progress) — django-simple-history: Product done (model+migration+admin).
-Remaining: User, BusinessMembership, PurchaseInvoice, SalesInvoice — same pattern
-(HistoricalRecords field + admin.py: mixin becomes BusinessScopedAdminMixin, SimpleHistoryAdmin
-or DjangoUserAdmin as needed — check MRO per admin). One migration per app, sqlmigrate before migrate.
+1.6 — AuditLog for service events: confirm, cancel, adjustment, opening stock, price change [R 16].
+Design AuditLog model in apps/shared (business FK, actor, event_type, target content, timestamp,
+payload/details field), then call it from services: confirm_purchase, confirm_sale (+ set_opening_stock).
+cancel_sale/cancel_purchase and price-change hooks don't exist yet — those AuditLog calls land when
+2.10 / 4.7 are built; for now cover only the three existing services.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -32,8 +33,8 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 1.1 `apps/shared/permissions.py`, used by services [R 1, 17B]
 - [x] 1.2 Admin scoping mixin on all admins; superuser unscoped (D-026) [R 1, 2]
 - [x] 1.3 Owner manages Owners and Sellers of own business; cannot touch superuser or privilege fields [R 2]
-- [ ] 1.4 Seller self-deactivation (deactivate, never delete) [R 2]
-- [ ] 1.5 `django-simple-history` on Product, User, BusinessMembership, invoices [R 16]
+- [x] 1.4 Seller self-deactivation (deactivate, never delete) [R 2]
+- [x] 1.5 `django-simple-history` on Product, User, BusinessMembership, invoices [R 16]
 - [ ] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]
 
 ### Phase 2 — Invoice core (schema changes before real data)
