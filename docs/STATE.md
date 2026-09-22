@@ -3,8 +3,8 @@
 Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase 3.
 
 ## Next
-1.3 — Owner manages Owners and Sellers of own business. Must also close these (found in 1.2):
-- Owner/Seller have no Django model permissions: admin shows nothing and inlines return `.none()`. Needs defined permissions per role (e.g. Groups "Owner" / "Seller").
+1.3 (in progress) — Owner manages Owners and Sellers of own business. Remaining:
+- Verify Owner/Seller admin access now works (Groups seeded + synced from role via signal, D-027, 2026-09-22) — not yet checked in browser.
 - Creating a Business: superuser only. A non-superuser's new Business is invisible to him (no membership).
 - `user` FK on memberships is not scoped. UserAdmin is scoped via `memberships__business`, so a user with no membership is invisible to an Owner and cannot be added.
 
@@ -17,6 +17,7 @@ Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase
 - Admin: Persian labels; no deletes except draft invoices; confirm actions call the services; ledger view-only for everyone.
 - `tools/`: `backup.ps1` (restore verified), `project_map.py`, `reassign_ownership.sql`.
 - Security gate cleared 2026-09-21: SECRET_KEY rotated, `paper_app` role, postgres password rotated, DEBUG/ALLOWED_HOSTS from env.
+- D-027 Seller permission scope; Owner/Seller Group seeded (migration 0003) + synced from BusinessMembership.role via signal (apps/shared/signals.py).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
