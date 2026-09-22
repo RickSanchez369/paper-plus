@@ -1,13 +1,11 @@
 # STATE — paper-plus
 
-Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase 3.
+Updated 2026-09-22, after ROADMAP 1.6. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-1.6 — AuditLog for service events: confirm, cancel, adjustment, opening stock, price change [R 16].
-Design AuditLog model in apps/shared (business FK, actor, event_type, target content, timestamp,
-payload/details field), then call it from services: confirm_purchase, confirm_sale (+ set_opening_stock).
-cancel_sale/cancel_purchase and price-change hooks don't exist yet — those AuditLog calls land when
-2.10 / 4.7 are built; for now cover only the three existing services.
+2.1 — `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5].
+Model in a suitable app (likely apps/shared or a new apps/documents — decide and confirm before writing),
+with a service function that locks the row and returns the next number atomically.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -20,6 +18,10 @@ cancel_sale/cancel_purchase and price-change hooks don't exist yet — those Aud
 - Security gate cleared 2026-09-21: SECRET_KEY rotated, `paper_app` role, postgres password rotated, DEBUG/ALLOWED_HOSTS from env.
 - D-027 Seller permission scope; Owner/Seller Group seeded (migration 0003) + synced from BusinessMembership.role via signal (apps/shared/signals.py).
 - D-028: Business add restricted to superuser; BusinessMembership.user and UserCreateForm.business scoped to viewer's own businesses; user+membership+group created atomically from UserAdmin (verified 8/8, scripts/test_owner_user_admin.py).
+- D-029/1.6: `AuditLog` model (apps/shared) + `log_event()` helper (apps/shared/audit.py), called from
+  set_opening_stock, confirm_purchase, confirm_sale, inside the same atomic transaction. Admin is
+  view-only (no add/change/delete). Verified 3/3, scripts/test_audit_log.py.
+
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -35,7 +37,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 1.3 Owner manages Owners and Sellers of own business; cannot touch superuser or privilege fields [R 2]
 - [x] 1.4 Seller self-deactivation (deactivate, never delete) [R 2]
 - [x] 1.5 `django-simple-history` on Product, User, BusinessMembership, invoices [R 16]
-- [ ] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]
+- [x] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]
 
 ### Phase 2 — Invoice core (schema changes before real data)
 - [ ] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
