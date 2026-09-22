@@ -1,3 +1,4 @@
+#path: apps/inventory/services.py
 """Write services for the inventory ledger."""
 
 from django.core.exceptions import ValidationError
