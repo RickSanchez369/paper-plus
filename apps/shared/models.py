@@ -178,3 +178,47 @@ class AuditLog(BaseModel):
 
     def __str__(self):
         return f"{self.get_event_type_display()} — {self.target_type}:{self.target_id}"
+
+
+class DocumentSequence(BaseModel):
+    """
+    Per-business, per-document-type counter for invoice numbers (D-022).
+
+    ``next_number`` is the number to hand out next. Issuing it safely
+    under concurrency is the job of the service function that locks
+    this row with ``select_for_update()`` inside a transaction — this
+    model only holds the state.
+    """
+
+    class DocType(models.TextChoices):
+        SALE = "sale", "فاکتور فروش"
+        PURCHASE = "purchase", "فاکتور خرید"
+
+    business = models.ForeignKey(
+        Business,
+        on_delete=models.PROTECT,
+        related_name="document_sequences",
+        verbose_name="کسب‌وکار",
+    )
+    doc_type = models.CharField(
+        max_length=20,
+        choices=DocType.choices,
+        verbose_name="نوع سند",
+    )
+    next_number = models.PositiveIntegerField(
+        default=1,  # configurable per business at creation time
+        verbose_name="شماره بعدی",
+    )
+
+    class Meta:
+        verbose_name = "شمارنده سند"
+        verbose_name_plural = "شمارنده‌های سند"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["business", "doc_type"],
+                name="unique_document_sequence_per_business_doctype",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.business} — {self.get_doc_type_display()} ({self.next_number})"

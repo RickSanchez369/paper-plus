@@ -39,8 +39,8 @@ Read in that order; continue from STATE.md "Next".
   touching D-014/D-017/D-023/D-024.
 
 ## Division of labour
-- Claude writes models, serializers, admin. Sina writes the service layer; Claude reviews.
-- Sina may not be able to author files: give complete file contents, or exact find -> replace edits.
+- Claude writes everything: models, serializers, admin, services — complete file contents or exact find -> replace edits.
+- Sina reads each block before running it, especially anything touching D-014/D-017/D-023/D-024.
 - Every file: English comments explaining WHY; docstrings on every class and public function.
 
 ## Non-negotiable

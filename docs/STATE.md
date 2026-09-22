@@ -3,9 +3,7 @@
 Updated 2026-09-22, after ROADMAP 1.6. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.1 — `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5].
-Model in a suitable app (likely apps/shared or a new apps/documents — decide and confirm before writing),
-with a service function that locks the row and returns the next number atomically.
+2.2 — Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5].
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -21,7 +19,9 @@ with a service function that locks the row and returns the next number atomicall
 - D-029/1.6: `AuditLog` model (apps/shared) + `log_event()` helper (apps/shared/audit.py), called from
   set_opening_stock, confirm_purchase, confirm_sale, inside the same atomic transaction. Admin is
   view-only (no add/change/delete). Verified 3/3, scripts/test_audit_log.py.
-
+- 2.1: `DocumentSequence` model (apps/shared) + `get_next_document_number()` service
+  (apps/shared/services.py), select_for_update inside transaction.atomic. Verified 6/6,
+  scripts/test_document_sequence.py.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -40,7 +40,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]
 
 ### Phase 2 — Invoice core (schema changes before real data)
-- [ ] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
+- [x] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
 - [ ] 2.2 Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5]
 - [ ] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
 - [ ] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
