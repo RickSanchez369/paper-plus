@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-22, after ROADMAP 1.6. Phase 1 merged to main. Database holds test data only until phase 3.
+Updated 2026-09-22, after ROADMAP 2.2. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.2 — Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5].
+2.3 — `Product.default_selling_price` (Rial, BigInteger) [R 7, 15].
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -22,6 +22,10 @@ Updated 2026-09-22, after ROADMAP 1.6. Phase 1 merged to main. Database holds te
 - 2.1: `DocumentSequence` model (apps/shared) + `get_next_document_number()` service
   (apps/shared/services.py), select_for_update inside transaction.atomic. Verified 6/6,
   scripts/test_document_sequence.py.
+- 2.2: `invoice_number` auto-assigned by `confirm_purchase`/`confirm_sale` at confirmation
+  (blank while draft, conditional unique constraint); `PurchaseInvoice.supplier_invoice_number`
+  added; both `invoice_number` fields read-only in admin. Verified 5/5,
+  scripts/test_auto_invoice_number.py.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -41,7 +45,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 
 ### Phase 2 — Invoice core (schema changes before real data)
 - [x] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
-- [ ] 2.2 Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5]
+- [x] 2.2 Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5]
 - [ ] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
 - [ ] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
 - [ ] 2.5 Product autocomplete label shows current stock [R 6]
