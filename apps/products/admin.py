@@ -14,6 +14,7 @@ reference them through PROTECT foreign keys.
 """
 from django import forms
 from django.contrib import admin, messages
+from simple_history.admin import SimpleHistoryAdmin
 from apps.inventory.selectors import get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
@@ -47,7 +48,7 @@ class ProductAdminForm(forms.ModelForm):
 
 
 @admin.register(Product)
-class ProductAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
     """Product catalogue with a live stock column and one-time opening stock."""
 
     form = ProductAdminForm
