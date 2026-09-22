@@ -44,6 +44,11 @@ class Product(BaseModel):
         verbose_name="موجودی اولیه ثبت شده",
         help_text="پس از ثبت موجودی اولیه True می‌شود و ثبت مجدد ممکن نیست.",
     )
+    default_selling_price = models.BigIntegerField(
+        default=0,
+        verbose_name="قیمت فروش پیش‌فرض (ریال)",
+        help_text="برای پر کردن خودکار قیمت در فاکتور فروش؛ تغییر آن قیمت فاکتورهای قبلی را عوض نمی‌کند.",
+    )
 
     history = HistoricalRecords()
 
@@ -55,6 +60,10 @@ class Product(BaseModel):
             models.UniqueConstraint(
                 fields=["business", "sku"],
                 name="unique_sku_per_business",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(default_selling_price__gte=0),
+                name="product_default_selling_price_non_negative",
             ),
         ]
 

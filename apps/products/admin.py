@@ -67,7 +67,7 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         if obj is None or not obj.is_onboarded:
             stock_fields = ("opening_quantity",) + stock_fields
         return (
-            ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description")}),
+            ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description", "default_selling_price")}),
             ("موجودی", {"fields": stock_fields}),
             ("وضعیت", {"fields": ("is_active",)}),
             ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
