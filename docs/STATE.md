@@ -3,10 +3,10 @@
 Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase 3.
 
 ## Next
-1.3 (in progress) — Owner manages Owners and Sellers of own business. Remaining:
-- Verify Owner/Seller admin access now works (Groups seeded + synced from role via signal, D-027, 2026-09-22) — not yet checked in browser.
-- Creating a Business: superuser only. A non-superuser's new Business is invisible to him (no membership).
-- `user` FK on memberships is not scoped. UserAdmin is scoped via `memberships__business`, so a user with no membership is invisible to an Owner and cannot be added.
+1.5 (in progress) — django-simple-history: Product done (model+migration+admin).
+Remaining: User, BusinessMembership, PurchaseInvoice, SalesInvoice — same pattern
+(HistoricalRecords field + admin.py: mixin becomes BusinessScopedAdminMixin, SimpleHistoryAdmin
+or DjangoUserAdmin as needed — check MRO per admin). One migration per app, sqlmigrate before migrate.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
