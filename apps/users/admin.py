@@ -11,6 +11,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import BaseUserCreationForm, UserChangeForm
 from django.db import transaction
+from simple_history.admin import SimpleHistoryAdmin
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.models import Business, BusinessMembership
@@ -70,7 +71,7 @@ class UserEditForm(UserChangeForm):
 
 
 @admin.register(User)
-class UserAdmin(BusinessScopedAdminMixin, DjangoUserAdmin):
+class UserAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, DjangoUserAdmin):
     """User admin keyed on phone instead of username."""
 
     # User has no business FK (D-008); the link is through memberships.
