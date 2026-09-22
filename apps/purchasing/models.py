@@ -36,10 +36,16 @@ class PurchaseInvoice(BaseModel):
     )
     invoice_number = models.CharField(
         max_length=50,
-        verbose_name="شماره فاکتور",  # human-readable, not the pk (D-003)
+        blank=True,  # assigned by confirm_purchase at confirmation (D-022); empty while draft
+        verbose_name="شماره فاکتور",
+    )
+    supplier_invoice_number = models.CharField(
+        max_length=50,
+        blank=True,  # number on the supplier's own paper invoice, typed by hand (D-022)
+        verbose_name="شماره فاکتور تأمین‌کننده",
     )
     invoice_date = models.DateField(
-        verbose_name="تاریخ فاکتور",  # the date written on the paper document
+        verbose_name="تاریخ فاکتور",
     )
     status = models.CharField(
         max_length=20,
@@ -73,6 +79,7 @@ class PurchaseInvoice(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "invoice_number"],
+                condition=~models.Q(invoice_number=""),
                 name="unique_purchase_invoice_number_per_business",
             ),
         ]

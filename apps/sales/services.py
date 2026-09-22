@@ -15,6 +15,7 @@ from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.products.models import Product
 from apps.shared.audit import log_event
+from apps.shared.services import get_next_document_number
 
 from .models import SalesInvoice
 
@@ -57,7 +58,12 @@ def confirm_sale(invoice, user):
     if locked_invoice.customer.business_id != locked_invoice.business_id:
         raise ValidationError("مشتری متعلق به کسب‌وکار دیگری است.")
 
-    # Lock the product rows before reading stock. The rows are not modified;
+    # Number assigned only now, at confirmation (D-022) — never while draft.
+    locked_invoice.invoice_number = get_next_document_number(
+        locked_invoice.business, "sale"
+    )
+
+    # Lock the product rows before reading stock.
     # they act as a mutex so a second concurrent sale of the same products
     # waits here and then reads a stock figure that already includes this sale.
     # Ordered by pk to give every transaction the same lock order (no deadlock).
@@ -98,7 +104,9 @@ def confirm_sale(invoice, user):
 
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
-    locked_invoice.save(update_fields=["status", "confirmed_at", "updated_at"])
+    locked_invoice.save(
+        update_fields=["status", "confirmed_at", "invoice_number", "updated_at"]
+    )
     
     log_event(
         business=locked_invoice.business,

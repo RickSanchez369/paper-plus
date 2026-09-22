@@ -80,10 +80,12 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
     autocomplete_fields = ("business", "supplier")
     date_hierarchy = "invoice_date"
     # status/confirmed_at belong to the service; created_by to save_model.
-    readonly_fields = ("status", "confirmed_at", "created_by") + SYSTEM_FIELDS
+    # invoice_number is assigned by confirm_purchase at confirmation (D-022);
+    # never editable in the admin.
+    readonly_fields = ("invoice_number", "status", "confirmed_at", "created_by") + SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات فاکتور", {"fields": ("business", "supplier", "invoice_number", "invoice_date")}),
-        ("وضعیت", {"fields": ("status", "confirmed_at", "created_by")}),
+        ("اطلاعات فاکتور", {"fields": ("business", "supplier", "supplier_invoice_number", "invoice_date")}),
+        ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
     inlines = (PurchaseItemInline,)

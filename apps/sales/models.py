@@ -36,6 +36,7 @@ class SalesInvoice(BaseModel):
     )
     invoice_number = models.CharField(
         max_length=50,
+        blank=True,  # assigned by confirm_sale at confirmation (D-022); empty while draft
         verbose_name="شماره فاکتور",
     )
     invoice_date = models.DateField(
@@ -73,6 +74,7 @@ class SalesInvoice(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "invoice_number"],
+                condition=~models.Q(invoice_number=""),
                 name="unique_sales_invoice_number_per_business",
             ),
         ]

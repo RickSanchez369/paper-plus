@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.inventory.models import InventoryMovement
 from apps.shared.audit import log_event
+from apps.shared.services import get_next_document_number
 
 from .models import PurchaseInvoice
 
@@ -59,6 +60,12 @@ def confirm_purchase(invoice, user):
     # Same rule for the supplier.
     if locked_invoice.supplier.business_id != locked_invoice.business_id:
         raise ValidationError("تأمین‌کننده متعلق به کسب‌وکار دیگری است.")
+
+    # Number assigned only now, at confirmation (D-022) — never while draft.
+    locked_invoice.invoice_number = get_next_document_number(
+        locked_invoice.business, "purchase"
+    )
+
     # One ledger row per line. quantity stays positive; the type carries
     # the direction (D-012).
     
@@ -77,7 +84,9 @@ def confirm_purchase(invoice, user):
 
     locked_invoice.status = PurchaseInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
-    locked_invoice.save(update_fields=["status", "confirmed_at", "updated_at"])
+    locked_invoice.save(
+        update_fields=["status", "confirmed_at", "invoice_number", "updated_at"]
+    )
 
     log_event(
         business=locked_invoice.business,
