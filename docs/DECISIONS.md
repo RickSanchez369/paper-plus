@@ -342,3 +342,13 @@ If this log and SPEC.md disagree, this log wins.
 - Rationale: the admin is the only UI in this phase. Scoping in both the
   admin and the services means a hidden button is never the only barrier.
 - Affects: all admins, `apps/shared/permissions`, all services.
+
+
+## D-027 — Seller permission scope
+Seller may create, view, and confirm SalesInvoice/SaleItem for their
+business only, selecting Product and Customer from existing records.
+No access to purchasing app. No create/edit on Product, Customer,
+Supplier. InventoryMovement ledger is view-only (admin-wide rule).
+Owner has full CRUD within their business, subject to D-024 limits.
+Decided 2026-09-22.
+
