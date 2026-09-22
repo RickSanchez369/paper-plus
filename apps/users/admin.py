@@ -21,6 +21,14 @@ from .models import User
 # "change user" permission could grant themselves superuser access.
 PRIVILEGE_FIELDS = ("is_superuser", "groups", "user_permissions")
 
+# D-029: a Seller reaching their own record may only view it and flip
+# is_active off. Everything else, including this list itself, stays locked.
+SELF_DEACTIVATION_READONLY = (
+    ("phone", "password", "first_name", "last_name", "is_staff")
+    + PRIVILEGE_FIELDS
+    + ("id", "last_login", "created_at", "updated_at")
+)
+
 
 class UserCreateForm(BaseUserCreationForm):
     """
@@ -100,7 +108,29 @@ class UserAdmin(BusinessScopedAdminMixin, DjangoUserAdmin):
         }),
     )
 
+    def _is_self_seller_edit(self, request, obj):
+        """True when a Seller (not Owner, not superuser) is on their own record (D-029)."""
+        return (
+            obj is not None
+            and obj.pk == request.user.pk
+            and not request.user.is_superuser
+            and request.user.groups.filter(name="Seller").exists()
+            and not request.user.groups.filter(name="Owner").exists()
+        )
+
+    def has_view_permission(self, request, obj=None):
+        if self._is_self_seller_edit(request, obj):
+            return True
+        return super().has_view_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        if self._is_self_seller_edit(request, obj):
+            return True
+        return super().has_change_permission(request, obj)
+
     def get_readonly_fields(self, request, obj=None):
+        if self._is_self_seller_edit(request, obj):
+            return SELF_DEACTIVATION_READONLY
         # Lock privilege fields for everyone except superusers.
         readonly = super().get_readonly_fields(request, obj)
         if not request.user.is_superuser:
@@ -121,7 +151,11 @@ class UserAdmin(BusinessScopedAdminMixin, DjangoUserAdmin):
         """
         Create the user and, on the add page, its first membership (D-028)
         in one transaction: a User row must never exist without a way in.
+        Self-service Seller edits may only turn is_active off, never back
+        on (D-029); readonly_fields already blocks every other field.
         """
+        if change and self._is_self_seller_edit(request, obj) and not User.objects.get(pk=obj.pk).is_active:
+            obj.is_active = False
         if not change:
             obj.is_staff = True
         with transaction.atomic():
