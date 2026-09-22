@@ -9,6 +9,7 @@ referenced by products, partners and invoices through PROTECT foreign keys,
 and deleting a membership erases who had access and when.
 """
 from django.contrib import admin
+from simple_history.admin import SimpleHistoryAdmin
 
 from .admin_mixins import BusinessScopedAdminMixin
 from .models import Business, BusinessMembership
@@ -76,7 +77,7 @@ class BusinessAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
 @admin.register(BusinessMembership)
 
 
-class BusinessMembershipAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class BusinessMembershipAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
     """
     Cross-business view of memberships: answers "who has access where".
 

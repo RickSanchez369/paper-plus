@@ -4,6 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 
 class BaseModel(models.Model):
@@ -105,6 +106,8 @@ class BusinessMembership(BaseModel):
         default=True,
         verbose_name="فعال",
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "عضویت در کسب‌وکار"
