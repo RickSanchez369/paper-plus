@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-22, after ROADMAP 2.2. Phase 1 merged to main. Database holds test data only until phase 3.
+Updated 2026-09-22, after ROADMAP 2.3. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.3 — `Product.default_selling_price` (Rial, BigInteger) [R 7, 15].
+2.4 — Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C].
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -26,6 +26,9 @@ Updated 2026-09-22, after ROADMAP 2.2. Phase 1 merged to main. Database holds te
   (blank while draft, conditional unique constraint); `PurchaseInvoice.supplier_invoice_number`
   added; both `invoice_number` fields read-only in admin. Verified 5/5,
   scripts/test_auto_invoice_number.py.
+- 2.3: `Product.default_selling_price` (BigIntegerField, default=0) + non-negative
+  CheckConstraint; shown in admin (اطلاعات اصلی). Verified 3/3,
+  scripts/test_default_selling_price.py.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
