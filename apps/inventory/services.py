@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from apps.products.models import Product
+from apps.shared.audit import log_event
 
 from .models import InventoryMovement
 
@@ -50,4 +51,13 @@ def set_opening_stock(product, quantity, user):
 
     product.is_onboarded = True
     product.save(update_fields=["is_onboarded", "updated_at"])
+
+    log_event(
+        business=product.business,
+        actor=user,
+        event_type="opening_stock",
+        target=movement or product,
+        payload={"quantity": quantity},
+    )
+
     return movement

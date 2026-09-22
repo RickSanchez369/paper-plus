@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.inventory.models import InventoryMovement
+from apps.shared.audit import log_event
 
 from .models import PurchaseInvoice
 
@@ -77,5 +78,13 @@ def confirm_purchase(invoice, user):
     locked_invoice.status = PurchaseInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
     locked_invoice.save(update_fields=["status", "confirmed_at", "updated_at"])
+
+    log_event(
+        business=locked_invoice.business,
+        actor=user,
+        event_type="confirm_purchase",
+        target=locked_invoice,
+        payload={"item_count": len(items)},
+    )
 
     return locked_invoice
