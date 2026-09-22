@@ -18,6 +18,7 @@ Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase
 - `tools/`: `backup.ps1` (restore verified), `project_map.py`, `reassign_ownership.sql`.
 - Security gate cleared 2026-09-21: SECRET_KEY rotated, `paper_app` role, postgres password rotated, DEBUG/ALLOWED_HOSTS from env.
 - D-027 Seller permission scope; Owner/Seller Group seeded (migration 0003) + synced from BusinessMembership.role via signal (apps/shared/signals.py).
+- D-028: Business add restricted to superuser; BusinessMembership.user and UserCreateForm.business scoped to viewer's own businesses; user+membership+group created atomically from UserAdmin (verified 8/8, scripts/test_owner_user_admin.py).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -30,7 +31,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 ### Phase 1 — Permissions and audit (before real data)
 - [x] 1.1 `apps/shared/permissions.py`, used by services [R 1, 17B]
 - [x] 1.2 Admin scoping mixin on all admins; superuser unscoped (D-026) [R 1, 2]
-- [ ] 1.3 Owner manages Owners and Sellers of own business; cannot touch superuser or privilege fields [R 2]
+- [x] 1.3 Owner manages Owners and Sellers of own business; cannot touch superuser or privilege fields [R 2]
 - [ ] 1.4 Seller self-deactivation (deactivate, never delete) [R 2]
 - [ ] 1.5 `django-simple-history` on Product, User, BusinessMembership, invoices [R 16]
 - [ ] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]

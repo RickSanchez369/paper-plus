@@ -67,8 +67,15 @@ class BusinessAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
         # A business is deactivated, never deleted (see module docstring).
         return False
 
+    def has_add_permission(self, request):
+        # A non-superuser's new Business would have no membership, so it
+        # would be invisible to everyone including its creator (D-028).
+        return request.user.is_superuser
+
 
 @admin.register(BusinessMembership)
+
+
 class BusinessMembershipAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """
     Cross-business view of memberships: answers "who has access where".

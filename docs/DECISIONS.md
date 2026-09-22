@@ -352,3 +352,6 @@ Supplier. InventoryMovement ledger is view-only (admin-wide rule).
 Owner has full CRUD within their business, subject to D-024 limits.
 Decided 2026-09-22.
 
+
+## D-028
+D-028 — New user + first membership created together from UserAdmin add page, in one transaction; business/role required. Owner sees only own businesses; superuser sees all. A user with no business is created via createsuperuser, not admin.

@@ -105,3 +105,4 @@ Read in that order; continue from STATE.md "Next".
 - D-025 Payment status is derived from PaymentAllocation, never typed.
 - D-026 Sellers use the admin. Admins and services are scoped to the user's businesses; superuser is not scoped.
 - D-027 Seller: sell only, from existing Product/Customer; no purchasing; no create on Product/Customer/Supplier.
+- D-028 New user + first membership created atomically from UserAdmin; scoped by viewer.
