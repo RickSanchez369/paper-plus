@@ -1,3 +1,4 @@
+#path: apps/purchasing/admin.py
 """
 Admin for PurchaseInvoice and its items.
 
@@ -10,6 +11,7 @@ Rules enforced here:
 """
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from simple_history.admin import SimpleHistoryAdmin
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
@@ -64,7 +66,7 @@ class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
 
 
 @admin.register(PurchaseInvoice)
-class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
     """Purchase invoices: draft entry in admin, confirmation via the service."""
 
     list_display = (
