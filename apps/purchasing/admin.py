@@ -17,7 +17,7 @@ from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import PurchaseInvoice, PurchaseItem
-from .services import confirm_purchase
+from .services import cancel_purchase, confirm_purchase
 
 # Only a draft invoice may be edited or deleted.
 DRAFT_STATUS = "draft"
@@ -90,7 +90,7 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
     inlines = (PurchaseItemInline,)
-    actions = ("confirm_selected",)
+    actions = ("confirm_selected", "cancel_selected")
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.
@@ -130,5 +130,30 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
                 self.message_user(
                     request,
                     f"فاکتور {invoice.invoice_number} تأیید شد.",
+                    messages.SUCCESS,
+                )
+
+    @admin.action(description="لغو فاکتورهای انتخاب‌شده", permissions=["change"])
+    def cancel_selected(self, request, queryset):
+        """
+        Cancel each selected invoice through cancel_purchase (D-023).
+
+        One service call per invoice: each runs in its own transaction, so
+        a rejected cancellation (wrong status, or user is not Owner) does
+        not roll back the others.
+        """
+        for invoice in queryset:
+            try:
+                cancel_purchase(invoice, request.user)
+            except ValidationError as error:
+                self.message_user(
+                    request,
+                    f"فاکتور {invoice.invoice_number} لغو نشد: {'؛ '.join(error.messages)}",
+                    messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request,
+                    f"فاکتور {invoice.invoice_number} لغو شد.",
                     messages.SUCCESS,
                 )

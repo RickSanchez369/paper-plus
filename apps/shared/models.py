@@ -135,6 +135,8 @@ class AuditLog(BaseModel):
         OPENING_STOCK = "opening_stock", "ثبت موجودی اولیه"
         CONFIRM_PURCHASE = "confirm_purchase", "تأیید فاکتور خرید"
         CONFIRM_SALE = "confirm_sale", "تأیید فاکتور فروش"
+        CANCEL_PURCHASE = "cancel_purchase", "لغو فاکتور خرید"
+        CANCEL_SALE = "cancel_sale", "لغو فاکتور فروش"
 
     business = models.ForeignKey(
         Business,

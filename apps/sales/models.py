@@ -21,6 +21,8 @@ class SalesInvoice(BaseModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "پیش‌نویس"
         CONFIRMED = "confirmed", "تأیید شده"
+        CANCELLED = "cancelled", "لغو شده"
+
 
     class PaymentMethod(models.TextChoices):
         CASH = "cash", "نقدی"
@@ -109,7 +111,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def is_editable(self):
-        """Confirmed invoices are frozen (D-014)."""
+        """Confirmed and cancelled invoices are both frozen (D-014, D-023)."""
         return self.status == self.Status.DRAFT
 
     @property
