@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 2.11. Phase 1 merged to main. Database holds test data only until phase 3.
+Updated 2026-09-24, after ROADMAP 3.1. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
 
 ## Next
-3.1 — Backup, then `flush` test data.
+3.2 — Real superuser, Business, memberships, document sequence starts.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -106,7 +106,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8]
 
 ### Phase 3 — Real data and SHADOW start
-- [ ] 3.1 Backup, then `flush` test data
+- [x] 3.1 Backup, then `flush` test data
 - [ ] 3.2 Real superuser, Business, memberships, document sequence starts
 - [ ] 3.3 Products with opening stock; customers; suppliers
 - [ ] 3.4 Daily discrepancy log started
