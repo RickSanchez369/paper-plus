@@ -87,11 +87,21 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 ### Phase 4 — Financial modules (in parallel with SHADOW)
 - [ ] 4.1 Inventory overview: stock, last purchase price, selling price, approximate value, status (negative / low / normal) [R 12, 14]
 - [ ] 4.2 Per-product transaction history with invoice link, user, price [R 13]
-- [ ] 4.3 `Payment` + `PaymentAllocation`; derived payment status (D-025) [R 10]
-- [ ] 4.4 `Cheque` lifecycle: pending / cleared / bounced [R 3, 10]
-- [ ] 4.5 Customer account: invoices, payments, cheques, running balance, statement [R 3]
+- [ ] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
+      `PaymentAllocation` referencing it for bank-transfer payments; derived
+      payment status (D-025) [R 10]
+- [ ] 4.4 `Cheque` lifecycle: pending / cleared / bounced, linked to a Payment [R 3, 10]
+- [ ] 4.5 Customer account: invoices, payments, cheques, running balance
+      (credit/نسیه derived from PaymentAllocation, never a stored debt field), statement [R 3]
 - [ ] 4.6 Sales and purchase returns as separate documents with own movement types [R 13]
 - [ ] 4.7 Purchase and selling price management with history [R 14, 15]
+
+### Phase 4 note
+Full money tracking (bank accounts, cheque lifecycle, customer debt/نسیه) is
+scoped here, not in 2.8 — 2.8 only adds a `payment_method` label + free-text
+note on invoices. Building the real ledger before Payment/PaymentAllocation
+exist would create a second, conflicting source of truth for debt (violates
+D-025). Deferred deliberately, not forgotten (Sina, 2026-09-23).
 
 ### Phase 5 — Acceptance
 - [ ] 5.1 One verification script per scenario in `scripts/` [R 19]
