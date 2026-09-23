@@ -65,6 +65,12 @@ Read in that order; continue from STATE.md "Next".
 - Script pattern: all data created inside one `transaction.atomic`, `raise _Rollback` at the end, print `n/N passed`. Create the Business inside the script.
 - Never pipe a file into `manage.py shell`; never paste try/except into the REPL.
 - `PS C:\...>` is PowerShell, `>>>` is the Django shell.
+- Unique fields (User.phone, etc.): generate randomly, e.g.
+  `f"09{random.randint(100000000, 999999999)}"`. Never a fixed/sequential
+  number (D-031) — the dev database is never assumed empty.
+- After calling a service that may lock/re-fetch (select_for_update),
+  assert on the object it *returns*, or call `.refresh_from_db()` first.
+  Never assert on the pre-call local variable (D-031).
 
 ## Traps
 - Activate the venv in every terminal: `.venv\Scripts\Activate.ps1`.

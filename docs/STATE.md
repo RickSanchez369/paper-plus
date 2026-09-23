@@ -37,6 +37,13 @@ Updated 2026-09-23, after ROADMAP 2.6. Phase 1 merged to main. Database holds te
   skipped via `self._state.adding`), so it appears wherever Product is
   autocompleted (SaleItemInline, PurchaseItemInline) with no admin.py
   change needed. Verified 3/3, scripts/test_product_str_shows_stock.py.
+- 2.6: `confirm_sale` rejects (raises ValidationError, nothing written) when
+  the sale would drive any product's stock negative and the caller is not
+  an Owner/superuser (D-021); Owner/superuser still get it confirmed with
+  shortages returned as a warning (D-016). Verified 4/4,
+  scripts/test_shortage_policy.py.
+- D-031: verification-script rules (random unique ids; assert on a
+  service's returned object, not a stale local reference).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -60,7 +67,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
 - [x] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
 - [x] 2.5 Product autocomplete label shows current stock [R 6]
-- [ ] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
+- [x] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
 - [ ] 2.7 Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9]
 - [ ] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
 - [ ] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
