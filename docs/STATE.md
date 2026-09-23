@@ -3,7 +3,7 @@
 Updated 2026-09-23, after ROADMAP 2.7. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.9 — InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13].
+2.10 — `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11].
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -54,6 +54,13 @@ Updated 2026-09-23, after ROADMAP 2.7. Phase 1 merged to main. Database holds te
   Real bank account / cheque lifecycle / customer debt tracking is phase
   4.3-4.5 (see Phase 4 note), not this field. Verified 5/5,
   scripts/test_payment_method.py.
+- 2.9: `InventoryMovement.unit_price` (nullable, required in practice for
+  every type incl. opening/adjustment per Sina's call); `purchase_item` /
+  `sale_item` FKs (nullable, exactly one set per type, enforced by
+  `inventory_item_reference_matches_type` CHECK). `set_opening_stock` now
+  requires `unit_price`; `confirm_purchase`/`confirm_sale` populate the
+  item FK + unit_price from the invoice line. Verified 4/4,
+  scripts/test_movement_item_link.py.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -80,7 +87,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
 - [x] 2.7 Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9]
 - [x] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
-- [ ] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
+- [x] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
 - [ ] 2.10 `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11]
 - [ ] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8]
 

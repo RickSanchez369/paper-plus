@@ -75,6 +75,8 @@ def confirm_purchase(invoice, user):
             product=item.product,
             movement_type=InventoryMovement.MovementType.PURCHASE,
             quantity=item.quantity,
+            unit_price=item.unit_price,
+            purchase_item=item,
             created_by=user,
             note=f"فاکتور خرید {locked_invoice.invoice_number}",
         )

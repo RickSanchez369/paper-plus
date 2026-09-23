@@ -104,6 +104,8 @@ def confirm_sale(invoice, user):
                 product=item.product,
                 movement_type=InventoryMovement.MovementType.SALE,
                 quantity=item.quantity,
+                unit_price=item.unit_price,
+                sale_item=item,
                 created_by=user,
                 note=note,
             )

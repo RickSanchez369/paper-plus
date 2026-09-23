@@ -41,10 +41,30 @@ class ProductAdminForm(forms.ModelForm):
         min_value=0,
         help_text="فقط یک بار قابل ثبت است. اگر هنوز شمارش نشده، خالی بگذارید.",
     )
+    opening_unit_price = forms.IntegerField(
+        label="قیمت واحد موجودی اولیه (ریال)",
+        required=False,
+        min_value=0,
+        help_text="برای ارزش‌گذاری موجودی؛ همراه با موجودی اولیه الزامی است (R 13).",
+    )
 
     class Meta:
         model = Product
         fields = "__all__"
+
+    def clean(self):
+        # opening_quantity and opening_unit_price must arrive together --
+        # a quantity with no price would reach the service as an invalid
+        # None (2.9), so this is caught here, in the form, before that.
+        cleaned = super().clean()
+        quantity = cleaned.get("opening_quantity")
+        price = cleaned.get("opening_unit_price")
+        if quantity is not None and price is None:
+            self.add_error(
+                "opening_unit_price",
+                "همراه موجودی اولیه، قیمت واحد هم لازم است.",
+            )
+        return cleaned
 
 
 @admin.register(Product)
@@ -65,7 +85,7 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         # The opening field exists only until the product is onboarded (D-017).
         stock_fields = ("stock_display", "is_onboarded")
         if obj is None or not obj.is_onboarded:
-            stock_fields = ("opening_quantity",) + stock_fields
+            stock_fields = ("opening_quantity", "opening_unit_price") + stock_fields
         return (
             ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description", "default_selling_price")}),
             ("موجودی", {"fields": stock_fields}),
@@ -85,7 +105,8 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         quantity = form.cleaned_data.get("opening_quantity")
         if quantity is None or obj.is_onboarded:
             return
-        set_opening_stock(obj, quantity, request.user)
+        unit_price = form.cleaned_data.get("opening_unit_price")
+        set_opening_stock(obj, quantity, request.user, unit_price)
         self.message_user(
             request,
             f"موجودی اولیه‌ی «{obj.name}» ثبت شد: {format_number(quantity)}",
