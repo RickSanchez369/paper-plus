@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after the 3.4 math-verification simulation (3.4 itself still open). Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
+Updated 2026-09-24, after ROADMAP 4.1. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
 
 ## Next
-4.1 — Inventory overview: stock, last purchase price, selling price, approximate value, status. (3.4 stays open in the background — see note below; Phase 4 runs in parallel with SHADOW by roadmap design.)
+4.2 — Per-product transaction history with invoice link, user, price.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -95,6 +95,25 @@ Updated 2026-09-24, after the 3.4 math-verification simulation (3.4 itself still
   GATE. 3.4 stays `[ ]` open; the real daily comparison starts whenever
   Sina has real time for it. Moving on to Phase 4 meanwhile is intentional
   (roadmap already scopes Phase 4 as parallel to SHADOW).
+- 4.1: `apps/inventory/selectors.get_cost_map` (latest unit cost per product,
+  from its most recent opening/purchase movement). `ProductAdmin` gained
+  two columns -- "آخرین قیمت خرید" and "ارزش تقریبی موجودی" (stock × that
+  cost; valuation is cost-based, not selling price, per standard inventory
+  accounting -- Sina's call, 2026-09-24) -- plus a total-inventory-value
+  banner above the change list (first admin template override in the repo:
+  `apps/products/templates/admin/products/product/change_list.html`). No
+  low-stock threshold/status field -- Sina scoped 4.1 down to stock + cost
+  + value only; a separate date-range profit/loss report he described
+  (sales, costs, expenses, USD tracking) is a new feature outside every
+  existing roadmap id and needs its own decision (see PENDING note below),
+  not built here.
+
+## PENDING (raised, not decided -- do not build without Sina's go-ahead)
+- Financial report screen (date-range P&L: total sales, total purchase
+  cost, net profit, invoice list, expenses, USD exchange-rate tracking).
+  Described by Sina 2026-09-24. No Expense model exists; COGS method
+  (last-cost vs weighted-average vs FIFO) undecided. Needs a D-xxx entry
+  and a roadmap id (likely a new Phase 4 item) before any code.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -132,7 +151,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [ ] 3.4 Daily discrepancy log started
 
 ### Phase 4 — Financial modules (in parallel with SHADOW)
-- [ ] 4.1 Inventory overview: stock, last purchase price, selling price, approximate value, status (negative / low / normal) [R 12, 14]
+- [x] 4.1 Inventory overview: stock, last purchase price, selling price, approximate value, status (negative / low / normal) [R 12, 14]
 - [ ] 4.2 Per-product transaction history with invoice link, user, price [R 13]
 - [ ] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
       `PaymentAllocation` referencing it for bank-transfer payments; derived

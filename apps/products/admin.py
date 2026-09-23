@@ -15,7 +15,7 @@ reference them through PROTECT foreign keys.
 from django import forms
 from django.contrib import admin, messages
 from simple_history.admin import SimpleHistoryAdmin
-from apps.inventory.selectors import get_stock, get_stock_map
+from apps.inventory.selectors import get_cost_map, get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_number, format_rial
@@ -76,7 +76,8 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
     form = ProductAdminForm
     list_display = (
         "name", "sku", "business", "unit", "price_display",
-        "stock_display", "is_onboarded", "is_active",
+        "stock_display", "cost_display", "value_display",
+        "is_onboarded", "is_active",
     )
     list_filter = ("business", "is_active", "is_onboarded")
     search_fields = ("name", "sku")
@@ -120,18 +121,43 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
 
     def get_changelist_instance(self, request):
         """
-        Pre-compute stock for the current page in one query.
+        Pre-compute stock and cost for the current page in one query each.
 
         list() evaluates the page queryset and fills its cache, so the
-        template later iterates these same instances and finds `_stock`.
+        template later iterates these same instances and finds `_stock`/`_cost`.
         """
         changelist = super().get_changelist_instance(request)
         products = list(changelist.result_list)
-        stock_map = get_stock_map([p.pk for p in products])
+        product_ids = [p.pk for p in products]
+        stock_map = get_stock_map(product_ids)
+        cost_map = get_cost_map(product_ids)
         for product in products:
             # A product with no movements is absent from the map: stock 0.
             product._stock = stock_map.get(product.pk, 0)
+            # A product never purchased or onboarded has no known cost yet.
+            product._cost = cost_map.get(product.pk)
         return changelist
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Add the total inventory value (4.1: "دارایی کل") across the current
+        (filtered) page of products to the change list.
+
+        Reuses the same per-row `_stock`/`_cost` computed by
+        get_changelist_instance, so this costs no extra query.
+        """
+        response = super().changelist_view(request, extra_context=extra_context)
+        try:
+            products = response.context_data["cl"].result_list
+        except (AttributeError, KeyError):
+            return response
+        total = sum(
+            product._stock * product._cost
+            for product in products
+            if product._cost is not None
+        )
+        response.context_data["total_inventory_value_display"] = format_rial(total)
+        return response
 
     @admin.display(description="قیمت فروش پیش‌فرض")
     def price_display(self, obj):
@@ -149,6 +175,34 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         if quantity is None:
             quantity = get_stock(obj)
         return format_number(quantity)
+
+    @admin.display(description="آخرین قیمت خرید")
+    def cost_display(self, obj):
+        # Add page: not saved yet. Change page: obj has no _cost prefetch.
+        if obj is None or obj._state.adding:
+            return "-"
+        cost = getattr(obj, "_cost", "unset")
+        if cost == "unset":
+            cost = get_cost_map([obj.pk]).get(obj.pk)
+        if cost is None:
+            return "-"
+        return format_rial(cost)
+
+    @admin.display(description="ارزش تقریبی موجودی")
+    def value_display(self, obj):
+        # Value needs both a stock figure and a known cost (4.1); a product
+        # never purchased or onboarded has no cost basis yet.
+        if obj is None or obj._state.adding:
+            return "-"
+        stock = getattr(obj, "_stock", None)
+        if stock is None:
+            stock = get_stock(obj)
+        cost = getattr(obj, "_cost", "unset")
+        if cost == "unset":
+            cost = get_cost_map([obj.pk]).get(obj.pk)
+        if cost is None:
+            return "-"
+        return format_rial(stock * cost)
 
     def has_delete_permission(self, request, obj=None):
         # Deactivate with is_active instead (see module docstring).
