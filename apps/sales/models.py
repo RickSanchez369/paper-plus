@@ -112,6 +112,7 @@ class SaleItem(BaseModel):
         verbose_name="مقدار",
     )
     unit_price = models.BigIntegerField(
+        blank=True,  # admin may leave it empty; filled from the product default (R 7, 17C)
         verbose_name="قیمت واحد (ریال)",  # whole Rial (D-013)
     )
 
@@ -132,6 +133,21 @@ class SaleItem(BaseModel):
                 name="unique_product_per_sales_invoice",
             ),
         ]
+
+    def clean_fields(self, exclude=None):
+        """
+        Fill a blank unit_price from the product's current default before
+        the null/blank checks run (R 7, 17C).
+
+        Must happen here, not in save(): a ModelForm's full_clean() (the
+        admin included) validates before save() is ever reached, so a None
+        value fails validation first. Once filled, unit_price is a plain
+        stored field -- later changes to Product.default_selling_price
+        never touch it (it's a snapshot, not a live reference).
+        """
+        if self.unit_price is None and self.product_id:
+            self.unit_price = self.product.default_selling_price
+        super().clean_fields(exclude=exclude)
 
     def __str__(self):
         return f"{self.product} x {self.quantity}"
