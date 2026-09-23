@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 3.1. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
+Updated 2026-09-24, after ROADMAP 3.2. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
 
 ## Next
-3.2 — Real superuser, Business, memberships, document sequence starts.
+3.3 — Products with opening stock; customers; suppliers.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -75,6 +75,13 @@ Updated 2026-09-24, after ROADMAP 3.1. Phase 1 merged to main. Database flushed 
   every Rial input field (SaleItem.unit_price, PurchaseItem.unit_price,
   SalesInvoice.discount_amount, Product.default_selling_price / opening
   price). No new verification script (display-only, no service change).
+- 3.2: real superuser created (technical account only, no BusinessMembership);
+  real Business `paper-plus` created; a separate real Owner user created via
+  `UserAdmin`'s atomic add form (D-028) with an active `owner` membership on
+  `paper-plus` (Owner group synced automatically). `DocumentSequence` rows
+  for `sale` and `purchase` on `paper-plus` created with `next_number`
+  starting at a real business number (D-022, no zero-padding — the field is
+  a plain PositiveIntegerField, decided as out of scope for now).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -107,7 +114,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 
 ### Phase 3 — Real data and SHADOW start
 - [x] 3.1 Backup, then `flush` test data
-- [ ] 3.2 Real superuser, Business, memberships, document sequence starts
+- [x] 3.2 Real superuser, Business, memberships, document sequence starts
 - [ ] 3.3 Products with opening stock; customers; suppliers
 - [ ] 3.4 Daily discrepancy log started
 
