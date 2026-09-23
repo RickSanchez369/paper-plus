@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-23, after ROADMAP 2.7. Phase 1 merged to main. Database holds test data only until phase 3.
+Updated 2026-09-24, after ROADMAP 2.11. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.11 — Rial and Toman side by side everywhere; Toman hint under every price input [R 8].
+3.1 — Backup, then `flush` test data.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -68,6 +68,13 @@ Updated 2026-09-23, after ROADMAP 2.7. Phase 1 merged to main. Database holds te
   reopened; a mistake means a brand new invoice. `AuditLog.EventType`
   gained cancel_purchase/cancel_sale. Admin: "cancel_selected" action on
   both invoice admins. Verified 10/10, scripts/test_cancel_invoice.py.
+- 2.11: every Rial amount in admin shown via `format_rial` (list_display and
+  detail: unit_price on InventoryMovement, default_selling_price on Product,
+  subtotal/total on SalesInvoice, total on PurchaseInvoice); a fixed Toman
+  hint (`TOMAN_HINT`, 1 Toman = 10 Rial, D-013) added as `help_text` under
+  every Rial input field (SaleItem.unit_price, PurchaseItem.unit_price,
+  SalesInvoice.discount_amount, Product.default_selling_price / opening
+  price). No new verification script (display-only, no service change).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -96,7 +103,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
 - [x] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
 - [x] 2.10 `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11]
-- [ ] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8]
+- [x] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8]
 
 ### Phase 3 — Real data and SHADOW start
 - [ ] 3.1 Backup, then `flush` test data
