@@ -15,6 +15,7 @@ from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.products.models import Product
 from apps.shared.audit import log_event
+from apps.shared.permissions import is_owner
 from apps.shared.services import get_next_document_number
 
 from .models import SalesInvoice
@@ -39,7 +40,8 @@ def confirm_sale(invoice, user):
 
     Raises:
         ValidationError: invoice is not a draft, has no items, or references a
-        product or customer belonging to another business.
+        product or customer belonging to another business; or the sale would
+        drive stock negative and ``user`` is not an Owner/superuser (D-021).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -98,6 +100,15 @@ def confirm_sale(invoice, user):
                 created_by=user,
                 note=note,
             )
+        )
+
+    if shortages and not is_owner(user, locked_invoice.business):
+        # D-021: a Seller may not confirm a sale that goes negative; an
+        # Owner or superuser may, and gets it back as a warning (D-016).
+        names = "، ".join(s["product"].name for s in shortages)
+        raise ValidationError(
+            f"این فروش موجودی این کالاها را منفی می‌کند؛ فقط مالک یا ابرکاربر "
+            f"می‌تواند آن را تأیید کند: {names}"
         )
 
     InventoryMovement.objects.bulk_create(movements)

@@ -115,3 +115,4 @@ Read in that order; continue from STATE.md "Next".
 - D-028 New user + first membership created atomically from UserAdmin; scoped by viewer.
 - D-029 AuditLog target reference is target_type + target_id, not GenericForeignKey.
 - D-030 Chat rhythm: read-only commands may chain; state-changing steps never chain; task or ~15 msgs.
+- D-031 Verification scripts: random unique identifiers, never fixed; assert on a service's returned object or after refresh_from_db(), never a stale local reference.
