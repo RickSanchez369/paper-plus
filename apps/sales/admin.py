@@ -75,7 +75,7 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
 
     list_display = (
         "invoice_number", "customer", "business", "invoice_date",
-        "status", "confirmed_at", "created_by",
+        "status", "payment_method", "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
     search_fields = ("invoice_number", "customer__name")
@@ -89,6 +89,7 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
     readonly_fields = ("invoice_number", "status", "confirmed_at", "created_by") + SYSTEM_FIELDS
     fieldsets = (
         ("اطلاعات فاکتور", {"fields": ("business", "customer", "invoice_date")}),
+        ("پرداخت", {"fields": ("payment_method", "payment_note")}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )

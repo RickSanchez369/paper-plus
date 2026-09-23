@@ -22,6 +22,13 @@ class PurchaseInvoice(BaseModel):
         DRAFT = "draft", "پیش‌نویس"
         CONFIRMED = "confirmed", "تأیید شده"
 
+    class PaymentMethod(models.TextChoices):
+        CASH = "cash", "نقدی"
+        CARD = "card", "کارت‌خوان"
+        BANK_TRANSFER = "bank_transfer", "حواله بانکی"
+        CHEQUE = "cheque", "چک"
+        CREDIT = "credit", "نسیه"
+
     business = models.ForeignKey(
         Business,
         on_delete=models.PROTECT,
@@ -62,6 +69,16 @@ class PurchaseInvoice(BaseModel):
     note = models.TextField(
         blank=True,
         verbose_name="توضیحات",
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.CASH,
+        verbose_name="روش پرداخت",
+    )
+    payment_note = models.TextField(
+        blank=True,  # free text for now: bank/account name, cheque number, etc.
+        verbose_name="یادداشت پرداخت",  # real BankAccount/Cheque tracking is phase 4.3/4.4, not here
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

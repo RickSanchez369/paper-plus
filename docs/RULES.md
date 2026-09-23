@@ -60,6 +60,11 @@ Read in that order; continue from STATE.md "Next".
 - Integrity rules no role bypasses: D-014, D-017, D-023, D-024.
 
 ## Testing
+- Before writing a new verification script that calls confirm_sale/confirm_purchase/
+  set_opening_stock, open one existing passing script that already calls the same
+  service (see PROJECT_MAP.md's `scripts/` list) and copy its setup boilerplate
+  (Business, DocumentSequence, User, opening stock) verbatim. Never reconstruct
+  that boilerplate from memory.
 - Verification scripts: `scripts/` (gitignored, throwaway). Operational scripts: `tools/` (tracked).
 - Run: `python manage.py shell -c "exec(open('scripts/NAME.py', encoding='utf-8').read())"`
 - Script pattern: all data created inside one `transaction.atomic`, `raise _Rollback` at the end, print `n/N passed`. Create the Business inside the script.
