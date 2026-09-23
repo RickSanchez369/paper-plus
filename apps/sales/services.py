@@ -39,9 +39,10 @@ def confirm_sale(invoice, user):
         {"product": Product, "available": int, "requested": int, "resulting": int}
 
     Raises:
-        ValidationError: invoice is not a draft, has no items, or references a
-        product or customer belonging to another business; or the sale would
-        drive stock negative and ``user`` is not an Owner/superuser (D-021).
+        ValidationError: invoice is not a draft, has no items, references a
+        product or customer belonging to another business, or has a discount
+        exceeding its subtotal; or the sale would drive stock negative and
+        ``user`` is not an Owner/superuser (D-021).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -51,6 +52,12 @@ def confirm_sale(invoice, user):
     items = list(locked_invoice.items.select_related("product").all())
     if not items:
         raise ValidationError("فاکتور بدون قلم قابل تأیید نیست.")
+
+    subtotal = sum(i.line_total for i in items)
+    if locked_invoice.discount_amount > subtotal:
+        raise ValidationError(
+            "تخفیف نمی‌تواند از جمع اقلام فاکتور بیشتر باشد."
+        )
 
     foreign = [i for i in items if i.product.business_id != locked_invoice.business_id]
     if foreign:

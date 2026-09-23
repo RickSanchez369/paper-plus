@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-23, after ROADMAP 2.6. Phase 1 merged to main. Database holds test data only until phase 3.
+Updated 2026-09-23, after ROADMAP 2.7. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.7 — Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9].س
+2.8 — `payment_method` on invoices (status comes in 4.3) [R 10].
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -44,6 +44,10 @@ Updated 2026-09-23, after ROADMAP 2.6. Phase 1 merged to main. Database holds te
   scripts/test_shortage_policy.py.
 - D-031: verification-script rules (random unique ids; assert on a
   service's returned object, not a stale local reference).
+- 2.7/D-032: `SalesInvoice.discount_amount` (BigIntegerField, default 0,
+  non-negative CHECK); `subtotal`/`total` properties; confirm_sale rejects
+  discount_amount > subtotal. Sales only, invoice-level only. Verified 3/3,
+  scripts/test_invoice_discount.py.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -68,7 +72,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
 - [x] 2.5 Product autocomplete label shows current stock [R 6]
 - [x] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
-- [ ] 2.7 Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9]
+- [x] 2.7 Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9]
 - [ ] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
 - [ ] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
 - [ ] 2.10 `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11]

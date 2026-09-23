@@ -58,6 +58,10 @@ class SalesInvoice(BaseModel):
         blank=True,
         verbose_name="توضیحات",
     )
+    discount_amount = models.BigIntegerField(
+        default=0,
+        verbose_name="تخفیف (ریال)",  # invoice-level only for now; line-level discount is a later step (R 9)
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -77,6 +81,10 @@ class SalesInvoice(BaseModel):
                 condition=~models.Q(invoice_number=""),
                 name="unique_sales_invoice_number_per_business",
             ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__gte=0),
+                name="sales_invoice_discount_non_negative",
+            ),
         ]
 
     def __str__(self):
@@ -88,9 +96,19 @@ class SalesInvoice(BaseModel):
         return self.status == self.Status.DRAFT
 
     @property
-    def total_amount(self):
-        """Sum of line totals, in Rial."""
+    def subtotal(self):
+        """Sum of line totals, before discount, in Rial (R 9)."""
         return sum(item.line_total for item in self.items.all())
+
+    @property
+    def total_amount(self):
+        """Deprecated alias for `subtotal`; kept until admin.py is checked (2.7 cleanup)."""
+        return self.subtotal
+
+    @property
+    def total(self):
+        """Subtotal minus the invoice-level discount, in Rial (R 9)."""
+        return self.subtotal - self.discount_amount
 
 
 class SaleItem(BaseModel):
