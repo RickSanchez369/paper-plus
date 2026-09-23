@@ -39,8 +39,8 @@ Read in that order; continue from STATE.md "Next".
   touching D-014/D-017/D-023/D-024.
 
 ## Division of labour
-- Claude writes models, serializers, admin. Sina writes the service layer; Claude reviews.
-- Sina may not be able to author files: give complete file contents, or exact find -> replace edits.
+- Claude writes everything: models, serializers, admin, services — complete file contents or exact find -> replace edits.
+- Sina reads each block before running it, especially anything touching D-014/D-017/D-023/D-024.
 - Every file: English comments explaining WHY; docstrings on every class and public function.
 
 ## Non-negotiable
@@ -60,11 +60,22 @@ Read in that order; continue from STATE.md "Next".
 - Integrity rules no role bypasses: D-014, D-017, D-023, D-024.
 
 ## Testing
+- Before writing a new verification script that calls confirm_sale/confirm_purchase/
+  set_opening_stock, open one existing passing script that already calls the same
+  service (see PROJECT_MAP.md's `scripts/` list) and copy its setup boilerplate
+  (Business, DocumentSequence, User, opening stock) verbatim. Never reconstruct
+  that boilerplate from memory.
 - Verification scripts: `scripts/` (gitignored, throwaway). Operational scripts: `tools/` (tracked).
 - Run: `python manage.py shell -c "exec(open('scripts/NAME.py', encoding='utf-8').read())"`
 - Script pattern: all data created inside one `transaction.atomic`, `raise _Rollback` at the end, print `n/N passed`. Create the Business inside the script.
 - Never pipe a file into `manage.py shell`; never paste try/except into the REPL.
 - `PS C:\...>` is PowerShell, `>>>` is the Django shell.
+- Unique fields (User.phone, etc.): generate randomly, e.g.
+  `f"09{random.randint(100000000, 999999999)}"`. Never a fixed/sequential
+  number (D-031) — the dev database is never assumed empty.
+- After calling a service that may lock/re-fetch (select_for_update),
+  assert on the object it *returns*, or call `.refresh_from_db()` first.
+  Never assert on the pre-call local variable (D-031).
 
 ## Traps
 - Activate the venv in every terminal: `.venv\Scripts\Activate.ps1`.
@@ -115,3 +126,5 @@ Read in that order; continue from STATE.md "Next".
 - D-028 New user + first membership created atomically from UserAdmin; scoped by viewer.
 - D-029 AuditLog target reference is target_type + target_id, not GenericForeignKey.
 - D-030 Chat rhythm: read-only commands may chain; state-changing steps never chain; task or ~15 msgs.
+- D-031 Verification scripts: random unique identifiers, never fixed; assert on a service's returned object or after refresh_from_db(), never a stale local reference.
+- D-032 Invoice discount: fixed Rial amount (not %), invoice-level only, sales invoices only for now; validated against subtotal in confirm_sale, not clean().

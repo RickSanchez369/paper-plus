@@ -21,6 +21,15 @@ class PurchaseInvoice(BaseModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "پیش‌نویس"
         CONFIRMED = "confirmed", "تأیید شده"
+        CANCELLED = "cancelled", "لغو شده"
+
+
+    class PaymentMethod(models.TextChoices):
+        CASH = "cash", "نقدی"
+        CARD = "card", "کارت‌خوان"
+        BANK_TRANSFER = "bank_transfer", "حواله بانکی"
+        CHEQUE = "cheque", "چک"
+        CREDIT = "credit", "نسیه"
 
     business = models.ForeignKey(
         Business,
@@ -36,10 +45,16 @@ class PurchaseInvoice(BaseModel):
     )
     invoice_number = models.CharField(
         max_length=50,
-        verbose_name="شماره فاکتور",  # human-readable, not the pk (D-003)
+        blank=True,  # assigned by confirm_purchase at confirmation (D-022); empty while draft
+        verbose_name="شماره فاکتور",
+    )
+    supplier_invoice_number = models.CharField(
+        max_length=50,
+        blank=True,  # number on the supplier's own paper invoice, typed by hand (D-022)
+        verbose_name="شماره فاکتور تأمین‌کننده",
     )
     invoice_date = models.DateField(
-        verbose_name="تاریخ فاکتور",  # the date written on the paper document
+        verbose_name="تاریخ فاکتور",
     )
     status = models.CharField(
         max_length=20,
@@ -57,6 +72,16 @@ class PurchaseInvoice(BaseModel):
         blank=True,
         verbose_name="توضیحات",
     )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.CASH,
+        verbose_name="روش پرداخت",
+    )
+    payment_note = models.TextField(
+        blank=True,  # free text for now: bank/account name, cheque number, etc.
+        verbose_name="یادداشت پرداخت",  # real BankAccount/Cheque tracking is phase 4.3/4.4, not here
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -73,6 +98,7 @@ class PurchaseInvoice(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "invoice_number"],
+                condition=~models.Q(invoice_number=""),
                 name="unique_purchase_invoice_number_per_business",
             ),
         ]
@@ -82,7 +108,7 @@ class PurchaseInvoice(BaseModel):
 
     @property
     def is_editable(self):
-        """Confirmed invoices are frozen (D-014)."""
+        """Confirmed and cancelled invoices are both frozen (D-014, D-023)."""
         return self.status == self.Status.DRAFT
 
     @property

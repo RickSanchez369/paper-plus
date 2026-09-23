@@ -21,6 +21,15 @@ class SalesInvoice(BaseModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "پیش‌نویس"
         CONFIRMED = "confirmed", "تأیید شده"
+        CANCELLED = "cancelled", "لغو شده"
+
+
+    class PaymentMethod(models.TextChoices):
+        CASH = "cash", "نقدی"
+        CARD = "card", "کارت‌خوان"
+        BANK_TRANSFER = "bank_transfer", "حواله بانکی"
+        CHEQUE = "cheque", "چک"
+        CREDIT = "credit", "نسیه"
 
     business = models.ForeignKey(
         Business,
@@ -36,6 +45,7 @@ class SalesInvoice(BaseModel):
     )
     invoice_number = models.CharField(
         max_length=50,
+        blank=True,  # assigned by confirm_sale at confirmation (D-022); empty while draft
         verbose_name="شماره فاکتور",
     )
     invoice_date = models.DateField(
@@ -57,6 +67,20 @@ class SalesInvoice(BaseModel):
         blank=True,
         verbose_name="توضیحات",
     )
+    discount_amount = models.BigIntegerField(
+        default=0,
+        verbose_name="تخفیف (ریال)",  # invoice-level only for now; line-level discount is a later step (R 9)
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.CASH,
+        verbose_name="روش پرداخت",
+    )
+    payment_note = models.TextField(
+        blank=True,  # free text for now: bank/account name, cheque number, etc.
+        verbose_name="یادداشت پرداخت",  # real BankAccount/Cheque tracking is phase 4.3/4.4, not here
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -73,7 +97,12 @@ class SalesInvoice(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "invoice_number"],
+                condition=~models.Q(invoice_number=""),
                 name="unique_sales_invoice_number_per_business",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__gte=0),
+                name="sales_invoice_discount_non_negative",
             ),
         ]
 
@@ -82,13 +111,23 @@ class SalesInvoice(BaseModel):
 
     @property
     def is_editable(self):
-        """Confirmed invoices are frozen (D-014)."""
+        """Confirmed and cancelled invoices are both frozen (D-014, D-023)."""
         return self.status == self.Status.DRAFT
 
     @property
-    def total_amount(self):
-        """Sum of line totals, in Rial."""
+    def subtotal(self):
+        """Sum of line totals, before discount, in Rial (R 9)."""
         return sum(item.line_total for item in self.items.all())
+
+    @property
+    def total_amount(self):
+        """Deprecated alias for `subtotal`; kept until admin.py is checked (2.7 cleanup)."""
+        return self.subtotal
+
+    @property
+    def total(self):
+        """Subtotal minus the invoice-level discount, in Rial (R 9)."""
+        return self.subtotal - self.discount_amount
 
 
 class SaleItem(BaseModel):
@@ -110,6 +149,7 @@ class SaleItem(BaseModel):
         verbose_name="مقدار",
     )
     unit_price = models.BigIntegerField(
+        blank=True,  # admin may leave it empty; filled from the product default (R 7, 17C)
         verbose_name="قیمت واحد (ریال)",  # whole Rial (D-013)
     )
 
@@ -130,6 +170,21 @@ class SaleItem(BaseModel):
                 name="unique_product_per_sales_invoice",
             ),
         ]
+
+    def clean_fields(self, exclude=None):
+        """
+        Fill a blank unit_price from the product's current default before
+        the null/blank checks run (R 7, 17C).
+
+        Must happen here, not in save(): a ModelForm's full_clean() (the
+        admin included) validates before save() is ever reached, so a None
+        value fails validation first. Once filled, unit_price is a plain
+        stored field -- later changes to Product.default_selling_price
+        never touch it (it's a snapshot, not a live reference).
+        """
+        if self.unit_price is None and self.product_id:
+            self.unit_price = self.product.default_selling_price
+        super().clean_fields(exclude=exclude)
 
     def __str__(self):
         return f"{self.product} x {self.quantity}"

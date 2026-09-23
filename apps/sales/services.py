@@ -15,6 +15,8 @@ from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.products.models import Product
 from apps.shared.audit import log_event
+from apps.shared.permissions import is_owner
+from apps.shared.services import get_next_document_number
 
 from .models import SalesInvoice
 
@@ -37,8 +39,10 @@ def confirm_sale(invoice, user):
         {"product": Product, "available": int, "requested": int, "resulting": int}
 
     Raises:
-        ValidationError: invoice is not a draft, has no items, or references a
-        product or customer belonging to another business.
+        ValidationError: invoice is not a draft, has no items, references a
+        product or customer belonging to another business, or has a discount
+        exceeding its subtotal; or the sale would drive stock negative and
+        ``user`` is not an Owner/superuser (D-021).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -49,6 +53,12 @@ def confirm_sale(invoice, user):
     if not items:
         raise ValidationError("فاکتور بدون قلم قابل تأیید نیست.")
 
+    subtotal = sum(i.line_total for i in items)
+    if locked_invoice.discount_amount > subtotal:
+        raise ValidationError(
+            "تخفیف نمی‌تواند از جمع اقلام فاکتور بیشتر باشد."
+        )
+
     foreign = [i for i in items if i.product.business_id != locked_invoice.business_id]
     if foreign:
         names = "، ".join(i.product.name for i in foreign)
@@ -57,7 +67,12 @@ def confirm_sale(invoice, user):
     if locked_invoice.customer.business_id != locked_invoice.business_id:
         raise ValidationError("مشتری متعلق به کسب‌وکار دیگری است.")
 
-    # Lock the product rows before reading stock. The rows are not modified;
+    # Number assigned only now, at confirmation (D-022) — never while draft.
+    locked_invoice.invoice_number = get_next_document_number(
+        locked_invoice.business, "sale"
+    )
+
+    # Lock the product rows before reading stock.
     # they act as a mutex so a second concurrent sale of the same products
     # waits here and then reads a stock figure that already includes this sale.
     # Ordered by pk to give every transaction the same lock order (no deadlock).
@@ -89,16 +104,29 @@ def confirm_sale(invoice, user):
                 product=item.product,
                 movement_type=InventoryMovement.MovementType.SALE,
                 quantity=item.quantity,
+                unit_price=item.unit_price,
+                sale_item=item,
                 created_by=user,
                 note=note,
             )
+        )
+
+    if shortages and not is_owner(user, locked_invoice.business):
+        # D-021: a Seller may not confirm a sale that goes negative; an
+        # Owner or superuser may, and gets it back as a warning (D-016).
+        names = "، ".join(s["product"].name for s in shortages)
+        raise ValidationError(
+            f"این فروش موجودی این کالاها را منفی می‌کند؛ فقط مالک یا ابرکاربر "
+            f"می‌تواند آن را تأیید کند: {names}"
         )
 
     InventoryMovement.objects.bulk_create(movements)
 
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
-    locked_invoice.save(update_fields=["status", "confirmed_at", "updated_at"])
+    locked_invoice.save(
+        update_fields=["status", "confirmed_at", "invoice_number", "updated_at"]
+    )
     
     log_event(
         business=locked_invoice.business,
@@ -109,3 +137,65 @@ def confirm_sale(invoice, user):
     )
 
     return locked_invoice, shortages
+
+
+@transaction.atomic
+def cancel_sale(invoice, user):
+    """
+    Cancel a confirmed sales invoice: reverse its stock, freeze it (D-023).
+
+    The invoice is never edited or reopened -- only Owner/superuser may
+    cancel, and a mistaken sale is corrected by a brand new invoice, never
+    by editing this one (D-014 extended to cancelled invoices).
+
+    One ADJUSTMENT_IN movement per original line restores exactly the
+    quantity that confirm_sale removed, so the ledger stays a full,
+    auditable history rather than deleting or editing the original rows.
+
+    Args:
+        invoice: the SalesInvoice to cancel.
+        user: the user performing the action; must be an Owner or superuser.
+
+    Returns:
+        The cancelled SalesInvoice.
+
+    Raises:
+        ValidationError: invoice is not confirmed (draft or already
+        cancelled), or ``user`` is not an Owner/superuser (D-023).
+    """
+    locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
+
+    if locked_invoice.status != SalesInvoice.Status.CONFIRMED:
+        raise ValidationError("فقط فاکتور تأییدشده قابل لغو است.")
+
+    if not is_owner(user, locked_invoice.business):
+        raise ValidationError("فقط مالک یا ابرکاربر می‌تواند فاکتور را لغو کند.")
+
+    items = list(locked_invoice.items.select_related("product").all())
+
+    reversals = [
+        InventoryMovement(
+            business=locked_invoice.business,
+            product=item.product,
+            movement_type=InventoryMovement.MovementType.ADJUSTMENT_IN,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            created_by=user,
+            note=f"لغو فاکتور فروش {locked_invoice.invoice_number}",
+        )
+        for item in items
+    ]
+    InventoryMovement.objects.bulk_create(reversals)
+
+    locked_invoice.status = SalesInvoice.Status.CANCELLED
+    locked_invoice.save(update_fields=["status", "updated_at"])
+
+    log_event(
+        business=locked_invoice.business,
+        actor=user,
+        event_type="cancel_sale",
+        target=locked_invoice,
+        payload={"item_count": len(items)},
+    )
+
+    return locked_invoice

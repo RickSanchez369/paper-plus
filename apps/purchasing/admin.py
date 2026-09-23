@@ -9,15 +9,17 @@ Rules enforced here:
   its items can no longer be added, changed or deleted, and it cannot be
   deleted. Only drafts may be deleted.
 """
+from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.db.models import F, Sum
 from simple_history.admin import SimpleHistoryAdmin
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import PurchaseInvoice, PurchaseItem
-from .services import confirm_purchase
+from .services import cancel_purchase, confirm_purchase
 
 # Only a draft invoice may be edited or deleted.
 DRAFT_STATUS = "draft"
@@ -25,10 +27,22 @@ DRAFT_STATUS = "draft"
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
+# Shown under every Rial input; conversion is fixed (D-013), not live.
+TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
+
 
 def is_locked(invoice):
     """True when an invoice exists and is no longer a draft (D-014)."""
     return invoice is not None and invoice.status != DRAFT_STATUS
+
+
+class PurchaseItemForm(forms.ModelForm):
+    """Adds the Toman hint under the Rial price field (R 8)."""
+
+    class Meta:
+        model = PurchaseItem
+        fields = "__all__"
+        help_texts = {"unit_price": TOMAN_HINT}
 
 
 class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
@@ -40,6 +54,7 @@ class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
     """
 
     model = PurchaseItem
+    form = PurchaseItemForm
     # Items have no business FK; they reach it through their invoice.
     business_lookup = "invoice__business"
     extra = 1
@@ -71,7 +86,7 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
 
     list_display = (
         "invoice_number", "supplier", "business", "invoice_date",
-        "status", "confirmed_at", "created_by",
+        "status", "total_display", "payment_method", "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
     search_fields = ("invoice_number", "supplier__name")
@@ -80,14 +95,29 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
     autocomplete_fields = ("business", "supplier")
     date_hierarchy = "invoice_date"
     # status/confirmed_at belong to the service; created_by to save_model.
-    readonly_fields = ("status", "confirmed_at", "created_by") + SYSTEM_FIELDS
+    # invoice_number is assigned by confirm_purchase at confirmation (D-022);
+    # never editable in the admin.
+    readonly_fields = ("invoice_number", "status", "confirmed_at", "created_by") + SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات فاکتور", {"fields": ("business", "supplier", "invoice_number", "invoice_date")}),
-        ("وضعیت", {"fields": ("status", "confirmed_at", "created_by")}),
+        ("اطلاعات فاکتور", {"fields": ("business", "supplier", "supplier_invoice_number", "invoice_date")}),
+        ("پرداخت", {"fields": ("payment_method", "payment_note")}),
+        ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
     inlines = (PurchaseItemInline,)
-    actions = ("confirm_selected",)
+    actions = ("confirm_selected", "cancel_selected")
+
+    def get_queryset(self, request):
+        # PurchaseInvoice has no `total` property (unlike SalesInvoice, 2.7);
+        # annotate here instead of a query per row in total_display.
+        queryset = super().get_queryset(request)
+        return queryset.annotate(_total=Sum(F("items__quantity") * F("items__unit_price")))
+
+    @admin.display(description="جمع کل (ریال)")
+    def total_display(self, obj):
+        if obj is None:
+            return "-"
+        return format_rial(obj._total or 0)
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.
@@ -127,5 +157,30 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
                 self.message_user(
                     request,
                     f"فاکتور {invoice.invoice_number} تأیید شد.",
+                    messages.SUCCESS,
+                )
+
+    @admin.action(description="لغو فاکتورهای انتخاب‌شده", permissions=["change"])
+    def cancel_selected(self, request, queryset):
+        """
+        Cancel each selected invoice through cancel_purchase (D-023).
+
+        One service call per invoice: each runs in its own transaction, so
+        a rejected cancellation (wrong status, or user is not Owner) does
+        not roll back the others.
+        """
+        for invoice in queryset:
+            try:
+                cancel_purchase(invoice, request.user)
+            except ValidationError as error:
+                self.message_user(
+                    request,
+                    f"فاکتور {invoice.invoice_number} لغو نشد: {'؛ '.join(error.messages)}",
+                    messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request,
+                    f"فاکتور {invoice.invoice_number} لغو شد.",
                     messages.SUCCESS,
                 )

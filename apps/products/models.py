@@ -4,6 +4,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from apps.shared.models import BaseModel, Business
+from apps.shared.utils import format_number
 
 
 class Product(BaseModel):
@@ -44,6 +45,11 @@ class Product(BaseModel):
         verbose_name="موجودی اولیه ثبت شده",
         help_text="پس از ثبت موجودی اولیه True می‌شود و ثبت مجدد ممکن نیست.",
     )
+    default_selling_price = models.BigIntegerField(
+        default=0,
+        verbose_name="قیمت فروش پیش‌فرض (ریال)",
+        help_text="برای پر کردن خودکار قیمت در فاکتور فروش؛ تغییر آن قیمت فاکتورهای قبلی را عوض نمی‌کند.",
+    )
 
     history = HistoricalRecords()
 
@@ -56,7 +62,19 @@ class Product(BaseModel):
                 fields=["business", "sku"],
                 name="unique_sku_per_business",
             ),
+            models.CheckConstraint(
+                condition=models.Q(default_selling_price__gte=0),
+                name="product_default_selling_price_non_negative",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.sku})"
+        # Unsaved instance (e.g. an add-form preview): no pk yet, so no
+        # ledger to query.
+        if self._state.adding:
+            return f"{self.name} ({self.sku})"      
+        # Local import: apps.inventory.models imports Product, so importing
+        # apps.inventory.selectors at module level here would be circular.
+        from apps.inventory.selectors import get_stock
+
+        return f"{self.name} ({self.sku}) — موجودی: {format_number(get_stock(self))}"

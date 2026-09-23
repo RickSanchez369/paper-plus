@@ -50,6 +50,27 @@ class InventoryMovement(BaseModel):
     quantity = models.PositiveIntegerField(
         verbose_name="مقدار",  # always positive; see D-012
     )
+    unit_price = models.BigIntegerField(
+        null=True,
+        blank=True,  # required in practice for every type (2.9); nullable here only
+        verbose_name="قیمت واحد (ریال)",  # because a CHECK cannot express "required per type"
+    )
+    purchase_item = models.ForeignKey(
+        "purchasing.PurchaseItem",
+        on_delete=models.PROTECT,  # a confirmed invoice's items are frozen anyway (D-014)
+        null=True,
+        blank=True,
+        related_name="movements",
+        verbose_name="ردیف فاکتور خرید",
+    )
+    sale_item = models.ForeignKey(
+        "sales.SaleItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="movements",
+        verbose_name="ردیف فاکتور فروش",
+    )
     note = models.TextField(
         blank=True,
         verbose_name="توضیح",
@@ -73,6 +94,24 @@ class InventoryMovement(BaseModel):
             models.CheckConstraint(
                 condition=models.Q(quantity__gt=0),
                 name="inventory_quantity_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(unit_price__isnull=True) | models.Q(unit_price__gte=0),
+                name="inventory_unit_price_non_negative",
+            ),
+            models.CheckConstraint(
+                # Each row's item reference must match its own movement_type;
+                # opening/adjustment rows carry neither (R 13, ROADMAP 2.9).
+                condition=(
+                    models.Q(movement_type="purchase", purchase_item__isnull=False, sale_item__isnull=True)
+                    | models.Q(movement_type="sale", sale_item__isnull=False, purchase_item__isnull=True)
+                    | models.Q(
+                        movement_type__in=["opening", "adjustment_in", "adjustment_out"],
+                        purchase_item__isnull=True,
+                        sale_item__isnull=True,
+                    )
+                ),
+                name="inventory_item_reference_matches_type",
             ),
         ]
 

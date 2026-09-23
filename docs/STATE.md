@@ -1,13 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-21, after ROADMAP 1.2. Database holds test data only until phase 3.
+Updated 2026-09-23, after ROADMAP 2.7. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-1.6 — AuditLog for service events: confirm, cancel, adjustment, opening stock, price change [R 16].
-Design AuditLog model in apps/shared (business FK, actor, event_type, target content, timestamp,
-payload/details field), then call it from services: confirm_purchase, confirm_sale (+ set_opening_stock).
-cancel_sale/cancel_purchase and price-change hooks don't exist yet — those AuditLog calls land when
-2.10 / 4.7 are built; for now cover only the three existing services.
+2.11 — Rial and Toman side by side everywhere; Toman hint under every price input [R 8].
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -20,6 +16,58 @@ cancel_sale/cancel_purchase and price-change hooks don't exist yet — those Aud
 - Security gate cleared 2026-09-21: SECRET_KEY rotated, `paper_app` role, postgres password rotated, DEBUG/ALLOWED_HOSTS from env.
 - D-027 Seller permission scope; Owner/Seller Group seeded (migration 0003) + synced from BusinessMembership.role via signal (apps/shared/signals.py).
 - D-028: Business add restricted to superuser; BusinessMembership.user and UserCreateForm.business scoped to viewer's own businesses; user+membership+group created atomically from UserAdmin (verified 8/8, scripts/test_owner_user_admin.py).
+- D-029/1.6: `AuditLog` model (apps/shared) + `log_event()` helper (apps/shared/audit.py), called from
+  set_opening_stock, confirm_purchase, confirm_sale, inside the same atomic transaction. Admin is
+  view-only (no add/change/delete). Verified 3/3, scripts/test_audit_log.py.
+- 2.1: `DocumentSequence` model (apps/shared) + `get_next_document_number()` service
+  (apps/shared/services.py), select_for_update inside transaction.atomic. Verified 6/6,
+  scripts/test_document_sequence.py.
+- 2.2: `invoice_number` auto-assigned by `confirm_purchase`/`confirm_sale` at confirmation
+  (blank while draft, conditional unique constraint); `PurchaseInvoice.supplier_invoice_number`
+  added; both `invoice_number` fields read-only in admin. Verified 5/5,
+  scripts/test_auto_invoice_number.py.
+- 2.3: `Product.default_selling_price` (BigIntegerField, default=0) + non-negative
+  CheckConstraint; shown in admin (اطلاعات اصلی). Verified 3/3,
+  scripts/test_default_selling_price.py.
+- 2.4: `SaleItem.unit_price` now `blank=True`; `clean_fields()` fills a blank
+  price from `Product.default_selling_price` before validation — a
+  one-time snapshot, never re-synced if the product's default changes
+  later. Verified 3/3, scripts/test_default_price_snapshot.py.
+- 2.5: `Product.__str__` shows live stock via `get_stock()` (unsaved instances
+  skipped via `self._state.adding`), so it appears wherever Product is
+  autocompleted (SaleItemInline, PurchaseItemInline) with no admin.py
+  change needed. Verified 3/3, scripts/test_product_str_shows_stock.py.
+- 2.6: `confirm_sale` rejects (raises ValidationError, nothing written) when
+  the sale would drive any product's stock negative and the caller is not
+  an Owner/superuser (D-021); Owner/superuser still get it confirmed with
+  shortages returned as a warning (D-016). Verified 4/4,
+  scripts/test_shortage_policy.py.
+- D-031: verification-script rules (random unique ids; assert on a
+  service's returned object, not a stale local reference).
+- 2.7/D-032: `SalesInvoice.discount_amount` (BigIntegerField, default 0,
+  non-negative CHECK); `subtotal`/`total` properties; confirm_sale rejects
+  discount_amount > subtotal. Sales only, invoice-level only. Verified 3/3,
+  scripts/test_invoice_discount.py.
+- 2.8: `payment_method` (choices: cash/card/bank_transfer/cheque/credit,
+  default cash) + free-text `payment_note` on both PurchaseInvoice and
+  SalesInvoice; editable after confirmation (label only, no ledger effect).
+  Real bank account / cheque lifecycle / customer debt tracking is phase
+  4.3-4.5 (see Phase 4 note), not this field. Verified 5/5,
+  scripts/test_payment_method.py.
+- 2.9: `InventoryMovement.unit_price` (nullable, required in practice for
+  every type incl. opening/adjustment per Sina's call); `purchase_item` /
+  `sale_item` FKs (nullable, exactly one set per type, enforced by
+  `inventory_item_reference_matches_type` CHECK). `set_opening_stock` now
+  requires `unit_price`; `confirm_purchase`/`confirm_sale` populate the
+  item FK + unit_price from the invoice line. Verified 4/4,
+  scripts/test_movement_item_link.py.
+- 2.10: `Status.CANCELLED` on both invoices; `cancel_purchase`/`cancel_sale`
+  (Owner/superuser only, D-023) reject anything but a confirmed invoice,
+  write one ADJUSTMENT_OUT/ADJUSTMENT_IN movement per original line to
+  fully reverse stock, then freeze the invoice -- never edited, never
+  reopened; a mistake means a brand new invoice. `AuditLog.EventType`
+  gained cancel_purchase/cancel_sale. Admin: "cancel_selected" action on
+  both invoice admins. Verified 10/10, scripts/test_cancel_invoice.py.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -35,19 +83,19 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 1.3 Owner manages Owners and Sellers of own business; cannot touch superuser or privilege fields [R 2]
 - [x] 1.4 Seller self-deactivation (deactivate, never delete) [R 2]
 - [x] 1.5 `django-simple-history` on Product, User, BusinessMembership, invoices [R 16]
-- [ ] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]
+- [x] 1.6 `AuditLog` for service events: confirm, cancel, adjustment, opening stock, price change [R 16]
 
 ### Phase 2 — Invoice core (schema changes before real data)
-- [ ] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
-- [ ] 2.2 Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5]
-- [ ] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
-- [ ] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
-- [ ] 2.5 Product autocomplete label shows current stock [R 6]
-- [ ] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
-- [ ] 2.7 Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9]
-- [ ] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
-- [ ] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
-- [ ] 2.10 `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11]
+- [x] 2.1 `DocumentSequence` (business, doc type, next number, configurable start), `select_for_update` (D-022) [R 4, 5]
+- [x] 2.2 Auto number at confirmation for sales and purchase; `supplier_invoice_number`; number read-only [R 4, 5]
+- [x] 2.3 `Product.default_selling_price` (Rial, BigInteger) [R 7, 15]
+- [x] 2.4 Blank sale-item price filled from the default; stored price is a snapshot, never updated [R 7, 17C]
+- [x] 2.5 Product autocomplete label shows current stock [R 6]
+- [x] 2.6 Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E]
+- [x] 2.7 Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9]
+- [x] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
+- [x] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
+- [x] 2.10 `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11]
 - [ ] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8]
 
 ### Phase 3 — Real data and SHADOW start
@@ -59,11 +107,21 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 ### Phase 4 — Financial modules (in parallel with SHADOW)
 - [ ] 4.1 Inventory overview: stock, last purchase price, selling price, approximate value, status (negative / low / normal) [R 12, 14]
 - [ ] 4.2 Per-product transaction history with invoice link, user, price [R 13]
-- [ ] 4.3 `Payment` + `PaymentAllocation`; derived payment status (D-025) [R 10]
-- [ ] 4.4 `Cheque` lifecycle: pending / cleared / bounced [R 3, 10]
-- [ ] 4.5 Customer account: invoices, payments, cheques, running balance, statement [R 3]
+- [ ] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
+      `PaymentAllocation` referencing it for bank-transfer payments; derived
+      payment status (D-025) [R 10]
+- [ ] 4.4 `Cheque` lifecycle: pending / cleared / bounced, linked to a Payment [R 3, 10]
+- [ ] 4.5 Customer account: invoices, payments, cheques, running balance
+      (credit/نسیه derived from PaymentAllocation, never a stored debt field), statement [R 3]
 - [ ] 4.6 Sales and purchase returns as separate documents with own movement types [R 13]
 - [ ] 4.7 Purchase and selling price management with history [R 14, 15]
+
+### Phase 4 note
+Full money tracking (bank accounts, cheque lifecycle, customer debt/نسیه) is
+scoped here, not in 2.8 — 2.8 only adds a `payment_method` label + free-text
+note on invoices. Building the real ledger before Payment/PaymentAllocation
+exist would create a second, conflicting source of truth for debt (violates
+D-025). Deferred deliberately, not forgotten (Sina, 2026-09-23).
 
 ### Phase 5 — Acceptance
 - [ ] 5.1 One verification script per scenario in `scripts/` [R 19]

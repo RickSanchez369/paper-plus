@@ -10,6 +10,7 @@ This page exists to trace discrepancies against the paper ledger.
 from django.contrib import admin
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
+from apps.shared.utils import format_rial
 
 from .models import InventoryMovement
 
@@ -18,7 +19,10 @@ from .models import InventoryMovement
 class InventoryMovementAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     """Read-only ledger browser: filter, search, inspect. Never write."""
 
-    list_display = ("created_at", "product", "movement_type", "quantity", "business", "created_by", "note")
+    list_display = (
+        "created_at", "product", "movement_type", "quantity",
+        "unit_price_display", "business", "created_by", "note",
+    )
     list_filter = ("business", "movement_type", "created_at")
     search_fields = ("product__name", "product__sku", "note")
     # One JOIN per related column instead of one query per row.
@@ -30,8 +34,16 @@ class InventoryMovementAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     # Django renders every field read-only anyway.
     fields = (
         "business", "product", "movement_type", "quantity",
-        "note", "created_by", "id", "created_at", "updated_at",
+        "unit_price_display", "note", "created_by", "id", "created_at", "updated_at",
     )
+
+    @admin.display(description="قیمت واحد")
+    def unit_price_display(self, obj):
+        # unit_price is nullable at the DB level (2.9); guard anyway.
+        if obj is None or obj.unit_price is None:
+            return "-"
+        return format_rial(obj.unit_price)
+
 
     def has_add_permission(self, request):
         # Movements are created only by services.

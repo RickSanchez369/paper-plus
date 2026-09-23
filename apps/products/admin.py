@@ -18,12 +18,14 @@ from simple_history.admin import SimpleHistoryAdmin
 from apps.inventory.selectors import get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
-from apps.shared.utils import format_number
+from apps.shared.utils import format_number, format_rial
 from .models import Product
 
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
+# Shown under every Rial input; conversion is fixed (D-013), not live.
+TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
 
 class ProductAdminForm(forms.ModelForm):
     """
@@ -41,10 +43,30 @@ class ProductAdminForm(forms.ModelForm):
         min_value=0,
         help_text="فقط یک بار قابل ثبت است. اگر هنوز شمارش نشده، خالی بگذارید.",
     )
+    opening_unit_price = forms.IntegerField(
+        label="قیمت واحد موجودی اولیه (ریال)",
+        required=False,
+        min_value=0,
+        help_text=f"برای ارزش‌گذاری موجودی؛ همراه با موجودی اولیه الزامی است (R 13). {TOMAN_HINT}",
+    )
 
     class Meta:
         model = Product
         fields = "__all__"
+        help_texts = {"default_selling_price": TOMAN_HINT}
+    def clean(self):
+        # opening_quantity and opening_unit_price must arrive together --
+        # a quantity with no price would reach the service as an invalid
+        # None (2.9), so this is caught here, in the form, before that.
+        cleaned = super().clean()
+        quantity = cleaned.get("opening_quantity")
+        price = cleaned.get("opening_unit_price")
+        if quantity is not None and price is None:
+            self.add_error(
+                "opening_unit_price",
+                "همراه موجودی اولیه، قیمت واحد هم لازم است.",
+            )
+        return cleaned
 
 
 @admin.register(Product)
@@ -52,7 +74,10 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
     """Product catalogue with a live stock column and one-time opening stock."""
 
     form = ProductAdminForm
-    list_display = ("name", "sku", "business", "unit", "stock_display", "is_onboarded", "is_active")
+    list_display = (
+        "name", "sku", "business", "unit", "price_display",
+        "stock_display", "is_onboarded", "is_active",
+    )
     list_filter = ("business", "is_active", "is_onboarded")
     search_fields = ("name", "sku")
     # One JOIN for the business column instead of one query per row.
@@ -65,9 +90,9 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         # The opening field exists only until the product is onboarded (D-017).
         stock_fields = ("stock_display", "is_onboarded")
         if obj is None or not obj.is_onboarded:
-            stock_fields = ("opening_quantity",) + stock_fields
+            stock_fields = ("opening_quantity", "opening_unit_price") + stock_fields
         return (
-            ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description")}),
+            ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description", "default_selling_price")}),
             ("موجودی", {"fields": stock_fields}),
             ("وضعیت", {"fields": ("is_active",)}),
             ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
@@ -85,7 +110,8 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         quantity = form.cleaned_data.get("opening_quantity")
         if quantity is None or obj.is_onboarded:
             return
-        set_opening_stock(obj, quantity, request.user)
+        unit_price = form.cleaned_data.get("opening_unit_price")
+        set_opening_stock(obj, quantity, request.user, unit_price)
         self.message_user(
             request,
             f"موجودی اولیه‌ی «{obj.name}» ثبت شد: {format_number(quantity)}",
@@ -106,6 +132,12 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
             # A product with no movements is absent from the map: stock 0.
             product._stock = stock_map.get(product.pk, 0)
         return changelist
+
+    @admin.display(description="قیمت فروش پیش‌فرض")
+    def price_display(self, obj):
+        if obj is None or obj._state.adding:
+            return "-"
+        return format_rial(obj.default_selling_price)
 
     @admin.display(description="موجودی")
     def stock_display(self, obj):

@@ -367,3 +367,49 @@ since all three current services require a user.
 D-030 Chat rhythm: read-only/verify commands may be chained in one message; state-changing steps
 (migrate, commit, DB writes) never chain. A chat still ends at task completion or ~15 messages,
 whichever comes first — supersedes the earlier fixed "5 exchanges" limit.
+
+## D-031 — Verification scripts: unique identifiers and post-call object references
+
+Date: 2026-09-23
+
+Context: Two verification scripts failed for reasons unrelated to the code
+under test: (1) a hardcoded phone number collided with pre-existing data in
+the dev database, and (2) a script asserted on a locally-held object after
+calling a service that internally re-fetches and returns a fresh instance
+(e.g. confirm_sale's select_for_update), so the assertion checked a stale
+Python object instead of the actual result.
+
+Decision:
+- Every unique field a verification script creates (User.phone, and any
+  other globally- or business-scoped unique field) gets a randomly
+  generated value, never a fixed/sequential one. The dev database is never
+  assumed to be empty.
+- After calling any service/function that may lock, re-fetch, or otherwise
+  return a different Python object than what was passed in, scripts assert
+  against the *returned* object, or call `refresh_from_db()` on the
+  original before asserting — never against the pre-call local reference.
+
+Consequences: Verification scripts are slightly more verbose (random value
+generation, explicit refresh) but no longer depend on the database's prior
+state or on assumptions about object identity across a service call.
+
+## D-032 — Invoice discount: fixed amount, sales-only, invoice-level
+Date: 2026-09-23
+Status: Final
+
+SalesInvoice.discount_amount is a fixed Rial amount (BigIntegerField, default 0,
+CHECK >= 0), not a percentage. Chosen over percentage to avoid rounding rules on
+BigInteger Rial values (D-013).
+
+Invoice-level only for now, shaped so a later line-level discount can be added
+without migrating this field: SalesInvoice.subtotal/.total are properties
+computed from items, not stored, so adding per-item discounts later only
+changes how subtotal is computed, not the SalesInvoice schema.
+
+Sales only — PurchaseInvoice has no discount_amount. Rationale: no product
+requirement for purchase discount yet; add via a symmetrical migration if
+that changes (do not reuse this field across apps).
+
+Validation: discount_amount > subtotal is rejected in confirm_sale (not in
+clean()), because subtotal depends on SaleItem rows that can still change
+while the invoice is draft (ROADMAP 2.7).
