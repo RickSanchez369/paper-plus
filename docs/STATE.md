@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 3.2. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
+Updated 2026-09-24, after ROADMAP 3.3. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
 
 ## Next
-3.3 — Products with opening stock; customers; suppliers.
+3.4 — Daily discrepancy log started.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -82,6 +82,10 @@ Updated 2026-09-24, after ROADMAP 3.2. Phase 1 merged to main. Database flushed 
   for `sale` and `purchase` on `paper-plus` created with `next_number`
   starting at a real business number (D-022, no zero-padding — the field is
   a plain PositiveIntegerField, decided as out of scope for now).
+- 3.3: 6 real paper products (A4/A5, two brands, two sheet-count variants
+  each) onboarded on `paper-plus` via `set_opening_stock` (D-017, actor =
+  the real Owner user); 2 real customers, 2 real suppliers created. No test
+  placeholders (Phase 3 hard gate: real data only, to keep SHADOW accurate).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
@@ -115,7 +119,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 ### Phase 3 — Real data and SHADOW start
 - [x] 3.1 Backup, then `flush` test data
 - [x] 3.2 Real superuser, Business, memberships, document sequence starts
-- [ ] 3.3 Products with opening stock; customers; suppliers
+- [x] 3.3 Products with opening stock; customers; suppliers
 - [ ] 3.4 Daily discrepancy log started
 
 ### Phase 4 — Financial modules (in parallel with SHADOW)
