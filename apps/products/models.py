@@ -4,6 +4,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from apps.shared.models import BaseModel, Business
+from apps.shared.utils import format_number
 
 
 class Product(BaseModel):
@@ -68,4 +69,12 @@ class Product(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.sku})"
+        # Unsaved instance (e.g. an add-form preview): no pk yet, so no
+        # ledger to query.
+        if self._state.adding:
+            return f"{self.name} ({self.sku})"      
+        # Local import: apps.inventory.models imports Product, so importing
+        # apps.inventory.selectors at module level here would be circular.
+        from apps.inventory.selectors import get_stock
+
+        return f"{self.name} ({self.sku}) — موجودی: {format_number(get_stock(self))}"
