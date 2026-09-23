@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-23, after ROADMAP 2.5. Phase 1 merged to main. Database holds test data only until phase 3.
+Updated 2026-09-23, after ROADMAP 2.6. Phase 1 merged to main. Database holds test data only until phase 3.
 
 ## Next
-2.6 — Shortage policy by role in `confirm_sale` (D-021) [R 6, 17E].
+2.7 — Invoice-level discount; subtotal / discount / total; shaped for a later line discount [R 9].س
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
