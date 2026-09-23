@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 3.3. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
+Updated 2026-09-24, after the 3.4 math-verification simulation (3.4 itself still open). Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway.
 
 ## Next
-3.4 — Daily discrepancy log started.
+4.1 — Inventory overview: stock, last purchase price, selling price, approximate value, status. (3.4 stays open in the background — see note below; Phase 4 runs in parallel with SHADOW by roadmap design.)
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -86,6 +86,15 @@ Updated 2026-09-24, after ROADMAP 3.3. Phase 1 merged to main. Database flushed 
   each) onboarded on `paper-plus` via `set_opening_stock` (D-017, actor =
   the real Owner user); 2 real customers, 2 real suppliers created. No test
   placeholders (Phase 3 hard gate: real data only, to keep SHADOW accurate).
+- 3.4 note (Sina's call, 2026-09-24): a real 3-consecutive-day SHADOW run
+  needs real elapsed days and real physical counts, which Sina does not
+  have time for right now. In its place, `scripts/test_shadow_simulation.py`
+  ran 3 invoice-dates back to back against a hand-kept stock figure
+  (16/16 passed) — this only confirms the math (acceptance scenarios 4, 6,
+  8, 9, 10, 11 + D-016/D-021/D-023), it does **not** satisfy the real HARD
+  GATE. 3.4 stays `[ ]` open; the real daily comparison starts whenever
+  Sina has real time for it. Moving on to Phase 4 meanwhile is intentional
+  (roadmap already scopes Phase 4 as parallel to SHADOW).
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
