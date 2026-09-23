@@ -13,6 +13,7 @@ Rules enforced here:
 - A confirmed invoice is immutable (D-014): its page becomes view-only,
   its items are locked, and it cannot be deleted. Only drafts may be deleted.
 """
+from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from simple_history.admin import SimpleHistoryAdmin
@@ -29,10 +30,21 @@ DRAFT_STATUS = "draft"
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
+# Shown under every Rial input; conversion is fixed (D-013), not live.
+TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
 
 def is_locked(invoice):
     """True when an invoice exists and is no longer a draft (D-014)."""
     return invoice is not None and invoice.status != DRAFT_STATUS
+
+
+class SaleItemForm(forms.ModelForm):
+    """Adds the Toman hint under the Rial price field (R 8)."""
+
+    class Meta:
+        model = SaleItem
+        fields = "__all__"
+        help_texts = {"unit_price": TOMAN_HINT}
 
 
 class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
@@ -44,6 +56,7 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
     """
 
     model = SaleItem
+    form = SaleItemForm
     # Items have no business FK; they reach it through their invoice.
     business_lookup = "invoice__business"
     extra = 1
@@ -69,13 +82,23 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
         return not is_locked(obj) and super().has_delete_permission(request, obj)
 
 
+class SalesInvoiceForm(forms.ModelForm):
+    """Adds the Toman hint under the discount field (R 8)."""
+
+    class Meta:
+        model = SalesInvoice
+        fields = "__all__"
+        help_texts = {"discount_amount": TOMAN_HINT}
+
+
 @admin.register(SalesInvoice)
 class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
     """Sales invoices: draft entry in admin, confirmation via the service."""
 
+    form = SalesInvoiceForm
     list_display = (
         "invoice_number", "customer", "business", "invoice_date",
-        "status", "payment_method", "confirmed_at", "created_by",
+        "status", "total_display", "payment_method", "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
     search_fields = ("invoice_number", "customer__name")
@@ -86,15 +109,36 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
     # status/confirmed_at belong to the service; created_by to save_model.
     # invoice_number is assigned by confirm_sale at confirmation (D-022);
     # never editable in the admin.
-    readonly_fields = ("invoice_number", "status", "confirmed_at", "created_by") + SYSTEM_FIELDS
+    readonly_fields = (
+        "invoice_number", "status", "confirmed_at", "created_by",
+        "subtotal_display", "total_display",
+    ) + SYSTEM_FIELDS
     fieldsets = (
         ("اطلاعات فاکتور", {"fields": ("business", "customer", "invoice_date")}),
+        ("مبلغ", {"fields": ("discount_amount", "subtotal_display", "total_display")}),
         ("پرداخت", {"fields": ("payment_method", "payment_note")}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
     inlines = (SaleItemInline,)
     actions = ("confirm_selected", "cancel_selected")
+
+    def get_queryset(self, request):
+        # subtotal/total each iterate obj.items; prefetch once per page
+        # instead of one query per row.
+        return super().get_queryset(request).prefetch_related("items")
+
+    @admin.display(description="جمع جزء (ریال)")
+    def subtotal_display(self, obj):
+        if obj is None or obj._state.adding:
+            return "-"
+        return format_rial(obj.subtotal)
+
+    @admin.display(description="جمع نهایی (ریال)")
+    def total_display(self, obj):
+        if obj is None or obj._state.adding:
+            return "-"
+        return format_rial(obj.total)
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.

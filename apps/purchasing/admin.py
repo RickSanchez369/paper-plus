@@ -9,8 +9,10 @@ Rules enforced here:
   its items can no longer be added, changed or deleted, and it cannot be
   deleted. Only drafts may be deleted.
 """
+from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.db.models import F, Sum
 from simple_history.admin import SimpleHistoryAdmin
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
@@ -25,10 +27,22 @@ DRAFT_STATUS = "draft"
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
+# Shown under every Rial input; conversion is fixed (D-013), not live.
+TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
+
 
 def is_locked(invoice):
     """True when an invoice exists and is no longer a draft (D-014)."""
     return invoice is not None and invoice.status != DRAFT_STATUS
+
+
+class PurchaseItemForm(forms.ModelForm):
+    """Adds the Toman hint under the Rial price field (R 8)."""
+
+    class Meta:
+        model = PurchaseItem
+        fields = "__all__"
+        help_texts = {"unit_price": TOMAN_HINT}
 
 
 class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
@@ -40,6 +54,7 @@ class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
     """
 
     model = PurchaseItem
+    form = PurchaseItemForm
     # Items have no business FK; they reach it through their invoice.
     business_lookup = "invoice__business"
     extra = 1
@@ -71,7 +86,7 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
 
     list_display = (
         "invoice_number", "supplier", "business", "invoice_date",
-        "status", "payment_method", "confirmed_at", "created_by",
+        "status", "total_display", "payment_method", "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
     search_fields = ("invoice_number", "supplier__name")
@@ -91,6 +106,18 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
     )
     inlines = (PurchaseItemInline,)
     actions = ("confirm_selected", "cancel_selected")
+
+    def get_queryset(self, request):
+        # PurchaseInvoice has no `total` property (unlike SalesInvoice, 2.7);
+        # annotate here instead of a query per row in total_display.
+        queryset = super().get_queryset(request)
+        return queryset.annotate(_total=Sum(F("items__quantity") * F("items__unit_price")))
+
+    @admin.display(description="جمع کل (ریال)")
+    def total_display(self, obj):
+        if obj is None:
+            return "-"
+        return format_rial(obj._total or 0)
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.

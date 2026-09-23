@@ -18,12 +18,14 @@ from simple_history.admin import SimpleHistoryAdmin
 from apps.inventory.selectors import get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
-from apps.shared.utils import format_number
+from apps.shared.utils import format_number, format_rial
 from .models import Product
 
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
+# Shown under every Rial input; conversion is fixed (D-013), not live.
+TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
 
 class ProductAdminForm(forms.ModelForm):
     """
@@ -45,13 +47,13 @@ class ProductAdminForm(forms.ModelForm):
         label="قیمت واحد موجودی اولیه (ریال)",
         required=False,
         min_value=0,
-        help_text="برای ارزش‌گذاری موجودی؛ همراه با موجودی اولیه الزامی است (R 13).",
+        help_text=f"برای ارزش‌گذاری موجودی؛ همراه با موجودی اولیه الزامی است (R 13). {TOMAN_HINT}",
     )
 
     class Meta:
         model = Product
         fields = "__all__"
-
+        help_texts = {"default_selling_price": TOMAN_HINT}
     def clean(self):
         # opening_quantity and opening_unit_price must arrive together --
         # a quantity with no price would reach the service as an invalid
@@ -72,7 +74,10 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
     """Product catalogue with a live stock column and one-time opening stock."""
 
     form = ProductAdminForm
-    list_display = ("name", "sku", "business", "unit", "stock_display", "is_onboarded", "is_active")
+    list_display = (
+        "name", "sku", "business", "unit", "price_display",
+        "stock_display", "is_onboarded", "is_active",
+    )
     list_filter = ("business", "is_active", "is_onboarded")
     search_fields = ("name", "sku")
     # One JOIN for the business column instead of one query per row.
@@ -127,6 +132,12 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
             # A product with no movements is absent from the map: stock 0.
             product._stock = stock_map.get(product.pk, 0)
         return changelist
+
+    @admin.display(description="قیمت فروش پیش‌فرض")
+    def price_display(self, obj):
+        if obj is None or obj._state.adding:
+            return "-"
+        return format_rial(obj.default_selling_price)
 
     @admin.display(description="موجودی")
     def stock_display(self, obj):
