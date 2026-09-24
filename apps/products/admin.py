@@ -20,7 +20,6 @@ from django.utils.html import format_html
 from simple_history.admin import SimpleHistoryAdmin
 from apps.inventory.selectors import get_cost_map, get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_number, format_rial
 from .models import Product
 
@@ -73,21 +72,17 @@ class ProductAdminForm(forms.ModelForm):
 
 
 @admin.register(Product)
-class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
+class ProductAdmin(SimpleHistoryAdmin):
     """Product catalogue with a live stock column and one-time opening stock."""
 
     form = ProductAdminForm
     list_display = (
-        "name", "sku", "business", "unit", "price_display",
+        "name", "sku", "unit", "price_display",
         "stock_display", "cost_display", "value_display", "history_link",
         "is_onboarded", "is_active",
     )
-    list_filter = ("business", "is_active", "is_onboarded")
+    list_filter = ("is_active", "is_onboarded")
     search_fields = ("name", "sku")
-    # One JOIN for the business column instead of one query per row.
-    list_select_related = ("business",)
-    # Search box instead of a dropdown; BusinessAdmin has search_fields.
-    autocomplete_fields = ("business",)
     readonly_fields = ("stock_display", "is_onboarded") + SYSTEM_FIELDS
 
     def get_fieldsets(self, request, obj=None):
@@ -96,7 +91,7 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         if obj is None or not obj.is_onboarded:
             stock_fields = ("opening_quantity", "opening_unit_price") + stock_fields
         return (
-            ("اطلاعات اصلی", {"fields": ("business", "name", "sku", "unit", "description", "default_selling_price")}),
+            ("اطلاعات اصلی", {"fields": ("name", "sku", "unit", "description", "default_selling_price")}),
             ("موجودی", {"fields": stock_fields}),
             ("وضعیت", {"fields": ("is_active",)}),
             ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
@@ -234,8 +229,6 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         return custom + super().get_urls()
 
     def default_price_view(self, request, pk):
-        # Scoped through get_queryset like everything else here (D-026):
-        # a Seller cannot probe another business's product price this way.
         product = self.get_queryset(request).filter(pk=pk).first()
         if product is None:
             return JsonResponse({"error": "not found"}, status=404)

@@ -2,18 +2,12 @@
 
 from django.db import models
 
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 
 
 class Customer(BaseModel):
     """A buyer of the business's products."""
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,  # customers hold financial history
-        related_name="customers",
-        verbose_name="کسب‌وکار",
-    )
     name = models.CharField(
         max_length=200,
         verbose_name="نام مشتری",
@@ -42,8 +36,8 @@ class Customer(BaseModel):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "name"],
-                name="unique_customer_name_per_business",
+                fields=["name"],
+                name="unique_customer_name",
             ),
         ]
 
@@ -54,12 +48,6 @@ class Customer(BaseModel):
 class Supplier(BaseModel):
     """A vendor the business buys products from."""
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="suppliers",
-        verbose_name="کسب‌وکار",
-    )
     name = models.CharField(
         max_length=200,
         verbose_name="نام تأمین‌کننده",
@@ -88,8 +76,8 @@ class Supplier(BaseModel):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "name"],
-                name="unique_supplier_name_per_business",
+                fields=["name"],
+                name="unique_supplier_name",
             ),
         ]
 

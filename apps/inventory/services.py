@@ -48,7 +48,6 @@ def set_opening_stock(product, quantity, user, unit_price):
     movement = None
     if quantity > 0:
         movement = InventoryMovement.objects.create(
-            business=product.business,
             product=product,
             movement_type=InventoryMovement.MovementType.OPENING,
             quantity=quantity,
@@ -61,7 +60,6 @@ def set_opening_stock(product, quantity, user, unit_price):
     product.save(update_fields=["is_onboarded", "updated_at"])
 
     log_event(
-        business=product.business,
         actor=user,
         event_type="opening_stock",
         target=movement or product,

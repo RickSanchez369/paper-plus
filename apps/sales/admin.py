@@ -18,7 +18,6 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from simple_history.admin import SimpleHistoryAdmin
 
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
@@ -47,7 +46,7 @@ class SaleItemForm(forms.ModelForm):
         help_texts = {"unit_price": TOMAN_HINT}
 
 
-class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
+class SaleItemInline(admin.TabularInline):
     """
     Invoice lines, edited inside the invoice page.
 
@@ -57,8 +56,6 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
 
     model = SaleItem
     form = SaleItemForm
-    # Items have no business FK; they reach it through their invoice.
-    business_lookup = "invoice__business"
     extra = 1
     fields = ("product", "quantity", "unit_price", "line_total")
     readonly_fields = ("line_total",)
@@ -100,7 +97,7 @@ class SalesPaymentEntryForm(forms.ModelForm):
         help_texts = {"amount": TOMAN_HINT}
 
 
-class SalesPaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
+class SalesPaymentEntryInline(admin.TabularInline):
     """
     Planned payment lines, edited inside the invoice page while it is a
     draft; confirm_sale turns each row into a real Payment or Cheque (4.3b).
@@ -108,7 +105,6 @@ class SalesPaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
 
     model = SalesPaymentEntry
     form = SalesPaymentEntryForm
-    business_lookup = "invoice__business"
     extra = 0
     fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
     autocomplete_fields = ("bank_account",)
@@ -137,20 +133,20 @@ class SalesInvoiceForm(forms.ModelForm):
 
 
 @admin.register(SalesInvoice)
-class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
+class SalesInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
     """Sales invoices: draft entry in admin, confirmation via the service."""
 
     form = SalesInvoiceForm
     list_display = (
-        "invoice_number", "customer", "business", "invoice_date",
+        "invoice_number", "customer", "invoice_date",
         "status", "total_display", "payment_status_display",
         "confirmed_at", "created_by",
     )
-    list_filter = ("business", "status", "invoice_date")
+    list_filter = ("status", "invoice_date")
     search_fields = ("invoice_number", "customer__name")
     # One JOIN per related column instead of one query per row.
-    list_select_related = ("customer", "business", "created_by")
-    autocomplete_fields = ("business", "customer")
+    list_select_related = ("customer", "created_by")
+    autocomplete_fields = ("customer",)
     date_hierarchy = "invoice_date"
     # status/confirmed_at belong to the service; created_by to save_model.
     # invoice_number is assigned by confirm_sale at confirmation (D-022);
@@ -160,7 +156,7 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
         "subtotal_display", "total_display", "payment_status_display",
     ) + SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات فاکتور", {"fields": ("business", "customer", "invoice_date")}),
+        ("اطلاعات فاکتور", {"fields": ("customer", "invoice_date")}),
         ("مبلغ", {"fields": ("discount_amount", "subtotal_display", "total_display")}),
         # payment_method/payment_note (2.8) are superseded by the payment-entry
         # rows below (4.3b): one place to pick method + amount, not two (Sina,
@@ -257,8 +253,8 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
         Cancel each selected invoice through cancel_sale (D-023).
 
         One service call per invoice: each runs in its own transaction, so
-        a rejected cancellation (wrong status, or user is not Owner) does
-        not roll back the others.
+        a rejected cancellation (wrong status, or user is not a
+        superuser) does not roll back the others.
         """
         for invoice in queryset:
             try:

@@ -17,18 +17,12 @@ layer, apps/payments/admin.py).
 from django.conf import settings
 from django.db import models
 
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 
 
 class BankAccount(BaseModel):
-    """A bank account belonging to a business, used to record where money moved."""
+    """A bank account of the business, used to record where money moved."""
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="bank_accounts",
-        verbose_name="کسب‌وکار",
-    )
     name = models.CharField(
         max_length=100,
         verbose_name="نام حساب",
@@ -48,8 +42,8 @@ class BankAccount(BaseModel):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "account_number"],
-                name="unique_account_number_per_business",
+                fields=["account_number"],
+                name="unique_bank_account_number",
             ),
         ]
 
@@ -69,12 +63,6 @@ class Payment(BaseModel):
         IN = "in", "دریافت"
         OUT = "out", "پرداخت"
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="payments",
-        verbose_name="کسب‌وکار",
-    )
     bank_account = models.ForeignKey(
         BankAccount,
         on_delete=models.PROTECT,
@@ -206,12 +194,6 @@ class Cheque(BaseModel):
         CLEARED = "cleared", "وصول شده"
         BOUNCED = "bounced", "برگشت خورده"
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="cheques",
-        verbose_name="کسب‌وکار",
-    )
     direction = models.CharField(
         max_length=10,
         choices=Payment.Direction.choices,

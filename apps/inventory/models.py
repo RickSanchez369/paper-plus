@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.products.models import Product
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 
 
 class InventoryMovement(BaseModel):
@@ -30,12 +30,6 @@ class InventoryMovement(BaseModel):
         MovementType.ADJUSTMENT_IN,
     )
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="inventory_movements",
-        verbose_name="کسب‌وکار",
-    )
     product = models.ForeignKey(
         Product,
         on_delete=models.PROTECT,  # a product with history can never be deleted

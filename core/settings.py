@@ -36,7 +36,9 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # Superuser-only admin site (REDESIGN_VISION 2.1), in place of
+    # 'django.contrib.admin'.
+    'apps.shared.admin_site.PaperPlusAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

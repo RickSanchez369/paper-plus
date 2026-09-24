@@ -6,7 +6,7 @@ from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Supplier
 from apps.products.models import Product
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 
 
 class PurchaseInvoice(BaseModel):
@@ -31,12 +31,6 @@ class PurchaseInvoice(BaseModel):
         CHEQUE = "cheque", "چک"
         CREDIT = "credit", "نسیه"
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="purchase_invoices",
-        verbose_name="کسب‌وکار",
-    )
     supplier = models.ForeignKey(
         Supplier,
         on_delete=models.PROTECT,
@@ -97,9 +91,9 @@ class PurchaseInvoice(BaseModel):
         ordering = ["-invoice_date", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "invoice_number"],
+                fields=["invoice_number"],
                 condition=~models.Q(invoice_number=""),
-                name="unique_purchase_invoice_number_per_business",
+                name="unique_purchase_invoice_number",
             ),
         ]
 

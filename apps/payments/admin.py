@@ -15,7 +15,6 @@ from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import BankAccount, Cheque, Payment, PaymentAllocation
@@ -24,11 +23,10 @@ from .services import allocate_payment, bounce_cheque, clear_cheque, record_cheq
 
 
 @admin.register(BankAccount)
-class BankAccountAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
-    list_display = ("name", "account_number", "business", "balance_display", "is_active")
-    list_filter = ("business", "is_active")
+class BankAccountAdmin(admin.ModelAdmin):
+    list_display = ("name", "account_number", "balance_display", "is_active")
+    list_filter = ("is_active",)
     search_fields = ("name", "account_number")
-    autocomplete_fields = ("business",)
 
     @admin.display(description="موجودی")
     def balance_display(self, obj):
@@ -40,22 +38,22 @@ class BankAccountAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ("business", "bank_account", "direction", "amount", "payment_date", "note")
+        fields = ("bank_account", "direction", "amount", "payment_date", "note")
 
 
 @admin.register(Payment)
-class PaymentAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class PaymentAdmin(admin.ModelAdmin):
     """Add-only: every Payment is created through `record_payment` (see save_model)."""
 
     form = PaymentForm
     list_display = (
         "payment_date", "direction", "amount_display", "bank_account",
-        "allocation_display", "business", "created_by",
+        "allocation_display", "created_by",
     )
-    list_filter = ("business", "direction", "bank_account")
-    search_fields = ("note", "business__name")
-    autocomplete_fields = ("business", "bank_account")
-    list_select_related = ("bank_account", "business", "created_by")
+    list_filter = ("direction", "bank_account")
+    search_fields = ("note",)
+    autocomplete_fields = ("bank_account",)
+    list_select_related = ("bank_account", "created_by")
     date_hierarchy = "payment_date"
     ordering = ("-payment_date", "-created_at")
     readonly_fields = ("created_by", "id", "created_at", "updated_at")
@@ -89,11 +87,10 @@ class PaymentAllocationForm(forms.ModelForm):
 
 
 @admin.register(PaymentAllocation)
-class PaymentAllocationAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class PaymentAllocationAdmin(admin.ModelAdmin):
     """Add-only: every allocation is created through `allocate_payment` (see save_model)."""
 
     form = PaymentAllocationForm
-    business_lookup = "payment__business"
     list_display = ("payment", "sales_invoice", "purchase_invoice", "amount_display")
     autocomplete_fields = ("payment", "sales_invoice", "purchase_invoice")
     list_select_related = ("payment", "sales_invoice", "purchase_invoice")
@@ -132,7 +129,7 @@ class ChequeForm(forms.ModelForm):
     class Meta:
         model = Cheque
         fields = (
-            "business", "direction", "customer", "supplier", "bank_account",
+            "direction", "customer", "supplier", "bank_account",
             "cheque_number", "bank_name", "due_date", "amount",
             "sales_invoice", "purchase_invoice", "note",
         )
@@ -158,7 +155,7 @@ class ChequeForm(forms.ModelForm):
 
 
 @admin.register(Cheque)
-class ChequeAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class ChequeAdmin(admin.ModelAdmin):
     """
     A PENDING cheque is still editable (Sina, 2026-09-24: entering one
     incomplete from an invoice and finishing its details here later must
@@ -171,16 +168,16 @@ class ChequeAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     form = ChequeForm
     list_display = (
         "cheque_number", "direction", "party_display", "amount_display",
-        "due_date", "status", "invoice_display", "business",
+        "due_date", "status", "invoice_display",
     )
-    list_filter = ("business", "direction", "status")
+    list_filter = ("direction", "status")
     search_fields = ("cheque_number", "customer__name", "supplier__name")
     autocomplete_fields = (
-        "business", "customer", "supplier", "bank_account",
+        "customer", "supplier", "bank_account",
         "sales_invoice", "purchase_invoice",
     )
     list_select_related = (
-        "customer", "supplier", "bank_account", "business", "payment",
+        "customer", "supplier", "bank_account", "payment",
         "sales_invoice", "purchase_invoice",
     )
     date_hierarchy = "due_date"

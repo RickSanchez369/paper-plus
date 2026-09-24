@@ -21,13 +21,12 @@ def record_payment(payment, user):
     `allocate_payment` for that.
 
     Args:
-        payment: an unsaved Payment with business, direction, amount,
+        payment: an unsaved Payment with direction, amount,
             payment_date, and optionally bank_account/note already set.
         user: the user performing the action; recorded as `created_by`.
 
     Raises:
-        ValidationError: payment already exists, amount is not positive,
-            or bank_account belongs to a different business.
+        ValidationError: payment already exists, or amount is not positive.
     """
     if not payment._state.adding:
         # pk is never None here (BaseModel.id defaults to uuid4() on
@@ -35,13 +34,9 @@ def record_payment(payment, user):
         raise ValidationError("پرداخت قابل ویرایش نیست.")
     if payment.amount is None or payment.amount <= 0:
         raise ValidationError("مبلغ پرداخت باید بزرگ‌تر از صفر باشد.")
-    if payment.bank_account_id is not None and payment.bank_account.business_id != payment.business_id:
-        raise ValidationError("حساب بانکی متعلق به کسب‌وکار دیگری است.")
-
     payment.created_by = user
     payment.save()
     log_event(
-        business=payment.business,
         actor=user,
         event_type="record_payment",
         target=payment,
@@ -69,9 +64,8 @@ def allocate_payment(allocation, user):
 
     Raises:
         ValidationError: allocation already exists; not exactly one
-            invoice side is set; the invoice is not confirmed; invoice and
-            payment belong to different businesses; the payment's
-            direction does not match the invoice side (IN -> sales,
+            invoice side is set; the invoice is not confirmed; the
+            payment's direction does not match the invoice side (IN -> sales,
             OUT -> purchase); amount exceeds the payment's or the
             invoice's remaining balance.
     """
@@ -99,9 +93,6 @@ def allocate_payment(allocation, user):
         invoice = PurchaseInvoice.objects.select_for_update().get(pk=allocation.purchase_invoice_id)
         remaining_on_invoice = invoice.total_amount - invoice.paid_amount
 
-    if invoice.business_id != payment.business_id:
-        raise ValidationError("فاکتور و پرداخت متعلق به یک کسب‌وکار نیستند.")
-
     if invoice.status != invoice.Status.CONFIRMED:
         raise ValidationError("فقط فاکتور تأییدشده قابل تخصیص پرداخت است.")
 
@@ -113,7 +104,6 @@ def allocate_payment(allocation, user):
 
     allocation.save()
     log_event(
-        business=payment.business,
         actor=user,
         event_type="allocate_payment",
         target=allocation,
@@ -132,14 +122,14 @@ def record_cheque(cheque, user):
     a pending cheque is closed out.
 
     Args:
-        cheque: an unsaved Cheque with business, direction, exactly one of
+        cheque: an unsaved Cheque with direction, exactly one of
             customer/supplier, cheque_number, due_date, amount, and
             optionally bank_account/bank_name/note already set.
         user: the user performing the action.
 
     Raises:
-        ValidationError: cheque already exists; amount is not positive;
-            customer/supplier or bank_account belongs to another business.
+        ValidationError: cheque already exists; amount is not positive; or
+            the direction/party pair is invalid.
     """
     if not cheque._state.adding:
         raise ValidationError("چک قابل ویرایش نیست.")
@@ -155,17 +145,9 @@ def record_cheque(cheque, user):
             raise ValidationError("چک پرداختی باید دقیقاً یک تأمین‌کننده داشته باشد، بدون مشتری.")
     else:
         raise ValidationError("جهت چک نامعتبر است.")
-    if cheque.customer_id is not None and cheque.customer.business_id != cheque.business_id:
-        raise ValidationError("مشتری متعلق به کسب‌وکار دیگری است.")
-    if cheque.supplier_id is not None and cheque.supplier.business_id != cheque.business_id:
-        raise ValidationError("تأمین‌کننده متعلق به کسب‌وکار دیگری است.")
-    if cheque.bank_account_id is not None and cheque.bank_account.business_id != cheque.business_id:
-        raise ValidationError("حساب بانکی متعلق به کسب‌وکار دیگری است.")
-
     cheque.status = Cheque.Status.PENDING
     cheque.save()
     log_event(
-        business=cheque.business,
         actor=user,
         event_type="record_cheque",
         target=cheque,
@@ -198,7 +180,6 @@ def clear_cheque(cheque, user, bank_account=None):
 
     payment = record_payment(
         Payment(
-            business=locked.business,
             bank_account=bank_account or locked.bank_account,
             direction=locked.direction,
             amount=locked.amount,
@@ -228,7 +209,6 @@ def clear_cheque(cheque, user, bank_account=None):
         )
 
     log_event(
-        business=locked.business,
         actor=user,
         event_type="clear_cheque",
         target=locked,
@@ -253,7 +233,6 @@ def bounce_cheque(cheque, user):
     locked.status = Cheque.Status.BOUNCED
     locked.save(update_fields=["status", "updated_at"])
     log_event(
-        business=locked.business,
         actor=user,
         event_type="bounce_cheque",
         target=locked,

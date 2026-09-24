@@ -11,25 +11,24 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import InventoryMovement
 
 
 @admin.register(InventoryMovement)
-class InventoryMovementAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class InventoryMovementAdmin(admin.ModelAdmin):
     """Read-only ledger browser: filter, search, inspect. Never write."""
 
     list_display = (
         "created_at", "product", "movement_type", "quantity",
-        "unit_price_display", "invoice_display", "business", "created_by", "note",
+        "unit_price_display", "invoice_display", "created_by", "note",
     )
-    list_filter = ("business", "movement_type", "created_at")
+    list_filter = ("movement_type", "created_at")
     search_fields = ("product__name", "product__sku", "note")
     # One JOIN per related column instead of one query per row.
     list_select_related = (
-        "product", "business", "created_by",
+        "product", "created_by",
         "purchase_item__invoice", "sale_item__invoice",
     )
     date_hierarchy = "created_at"
@@ -38,7 +37,7 @@ class InventoryMovementAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     # Keeps the detail page readable; with change permission closed,
     # Django renders every field read-only anyway.
     fields = (
-        "business", "product", "movement_type", "quantity",
+        "product", "movement_type", "quantity",
         "unit_price_display", "invoice_display", "note", "created_by",
         "id", "created_at", "updated_at",
     )

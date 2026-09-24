@@ -15,7 +15,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import F, Sum
 from simple_history.admin import SimpleHistoryAdmin
 
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
 from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
@@ -45,7 +44,7 @@ class PurchaseItemForm(forms.ModelForm):
         help_texts = {"unit_price": TOMAN_HINT}
 
 
-class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
+class PurchaseItemInline(admin.TabularInline):
     """
     Invoice lines, edited inside the invoice page.
 
@@ -55,8 +54,6 @@ class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
 
     model = PurchaseItem
     form = PurchaseItemForm
-    # Items have no business FK; they reach it through their invoice.
-    business_lookup = "invoice__business"
     extra = 1
     fields = ("product", "quantity", "unit_price", "line_total")
     readonly_fields = ("line_total",)
@@ -93,7 +90,7 @@ class PurchasePaymentEntryForm(forms.ModelForm):
         help_texts = {"amount": TOMAN_HINT}
 
 
-class PurchasePaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
+class PurchasePaymentEntryInline(admin.TabularInline):
     """
     Planned payment lines, edited inside the invoice page while it is a
     draft; confirm_purchase turns each row into a real Payment or Cheque
@@ -102,7 +99,6 @@ class PurchasePaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
 
     model = PurchasePaymentEntry
     form = PurchasePaymentEntryForm
-    business_lookup = "invoice__business"
     extra = 0
     fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
     autocomplete_fields = ("bank_account",)
@@ -122,19 +118,19 @@ class PurchasePaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
 
 
 @admin.register(PurchaseInvoice)
-class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
+class PurchaseInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
     """Purchase invoices: draft entry in admin, confirmation via the service."""
 
     list_display = (
-        "invoice_number", "supplier", "business", "invoice_date",
+        "invoice_number", "supplier", "invoice_date",
         "status", "total_display", "payment_status_display",
         "confirmed_at", "created_by",
     )
-    list_filter = ("business", "status", "invoice_date")
+    list_filter = ("status", "invoice_date")
     search_fields = ("invoice_number", "supplier__name")
     # One JOIN per related column instead of one query per row.
-    list_select_related = ("supplier", "business", "created_by")
-    autocomplete_fields = ("business", "supplier")
+    list_select_related = ("supplier", "created_by")
+    autocomplete_fields = ("supplier",)
     date_hierarchy = "invoice_date"
     # status/confirmed_at belong to the service; created_by to save_model.
     # invoice_number is assigned by confirm_purchase at confirmation (D-022);
@@ -143,7 +139,7 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
         "invoice_number", "status", "confirmed_at", "created_by", "payment_status_display",
     ) + SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات فاکتور", {"fields": ("business", "supplier", "supplier_invoice_number", "invoice_date")}),
+        ("اطلاعات فاکتور", {"fields": ("supplier", "supplier_invoice_number", "invoice_date")}),
         # payment_method/payment_note (2.8) are superseded by the payment-entry
         # rows below (4.3b): one place to pick method + amount, not two (Sina,
         # 2026-09-24). The fields stay on the model, just unused from here on.
@@ -223,8 +219,8 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
         Cancel each selected invoice through cancel_purchase (D-023).
 
         One service call per invoice: each runs in its own transaction, so
-        a rejected cancellation (wrong status, or user is not Owner) does
-        not roll back the others.
+        a rejected cancellation (wrong status, or user is not a
+        superuser) does not roll back the others.
         """
         for invoice in queryset:
             try:
