@@ -14,7 +14,8 @@ reference them through PROTECT foreign keys.
 """
 from django import forms
 from django.contrib import admin, messages
-from django.urls import reverse
+from django.http import JsonResponse
+from django.urls import path, reverse
 from django.utils.html import format_html
 from simple_history.admin import SimpleHistoryAdmin
 from apps.inventory.selectors import get_cost_map, get_stock, get_stock_map
@@ -219,3 +220,23 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
     def has_delete_permission(self, request, obj=None):
         # Deactivate with is_active instead (see module docstring).
         return False
+
+    def get_urls(self):
+        # JSON endpoint the sales-invoice product-price autofill JS calls
+        # (4.3b UX: Sina, "قیمت پیش‌فرض برای فروش رو باید خود به خود بیاره").
+        custom = [
+            path(
+                "<uuid:pk>/default-price/",
+                self.admin_site.admin_view(self.default_price_view),
+                name="products_product_default_price",
+            ),
+        ]
+        return custom + super().get_urls()
+
+    def default_price_view(self, request, pk):
+        # Scoped through get_queryset like everything else here (D-026):
+        # a Seller cannot probe another business's product price this way.
+        product = self.get_queryset(request).filter(pk=pk).first()
+        if product is None:
+            return JsonResponse({"error": "not found"}, status=404)
+        return JsonResponse({"default_selling_price": product.default_selling_price})

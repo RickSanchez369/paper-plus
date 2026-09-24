@@ -18,7 +18,7 @@ from simple_history.admin import SimpleHistoryAdmin
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
-from .models import PurchaseInvoice, PurchaseItem
+from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
 from .services import cancel_purchase, confirm_purchase
 
 # Only a draft invoice may be edited or deleted.
@@ -80,13 +80,54 @@ class PurchaseItemInline(BusinessScopedAdminMixin, admin.TabularInline):
         return not is_locked(obj) and super().has_delete_permission(request, obj)
 
 
+class PurchasePaymentEntryForm(forms.ModelForm):
+    """
+    The cheque fields are optional here on purpose, mirrors
+    sales.SalesPaymentEntryForm (Sina, 2026-09-24): finish an incomplete
+    cheque later on the Cheques page, while it is still PENDING.
+    """
+
+    class Meta:
+        model = PurchasePaymentEntry
+        fields = "__all__"
+        help_texts = {"amount": TOMAN_HINT}
+
+
+class PurchasePaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
+    """
+    Planned payment lines, edited inside the invoice page while it is a
+    draft; confirm_purchase turns each row into a real Payment or Cheque
+    (4.3b, mirrors sales.SalesPaymentEntryInline).
+    """
+
+    model = PurchasePaymentEntry
+    form = PurchasePaymentEntryForm
+    business_lookup = "invoice__business"
+    extra = 0
+    fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
+    autocomplete_fields = ("bank_account",)
+
+    class Media:
+        # Pre-fills a new row's amount with the invoice's remaining total (4.3b UX).
+        js = ("shared/js/payment_entry_autofill.js",)
+
+    def has_add_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_add_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_delete_permission(request, obj)
+
+
 @admin.register(PurchaseInvoice)
 class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
     """Purchase invoices: draft entry in admin, confirmation via the service."""
 
     list_display = (
         "invoice_number", "supplier", "business", "invoice_date",
-        "status", "total_display", "payment_method", "payment_status_display",
+        "status", "total_display", "payment_status_display",
         "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
@@ -103,11 +144,14 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
     ) + SYSTEM_FIELDS
     fieldsets = (
         ("اطلاعات فاکتور", {"fields": ("business", "supplier", "supplier_invoice_number", "invoice_date")}),
-        ("پرداخت", {"fields": ("payment_method", "payment_note", "payment_status_display")}),
+        # payment_method/payment_note (2.8) are superseded by the payment-entry
+        # rows below (4.3b): one place to pick method + amount, not two (Sina,
+        # 2026-09-24). The fields stay on the model, just unused from here on.
+        ("پرداخت", {"fields": ("payment_status_display",)}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
-    inlines = (PurchaseItemInline,)
+    inlines = (PurchaseItemInline, PurchasePaymentEntryInline)
     actions = ("confirm_selected", "cancel_selected")
 
     def get_queryset(self, request):

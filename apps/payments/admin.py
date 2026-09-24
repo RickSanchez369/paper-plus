@@ -1,23 +1,26 @@
 # path: apps/payments/admin.py
 
 """
-Admin for BankAccount, Payment and PaymentAllocation (ROADMAP 4.3).
+Admin for BankAccount, Payment, PaymentAllocation and Cheque (ROADMAP 4.3, 4.4).
 
-Payments and their allocations are append-only, like InventoryMovement
+Payments, allocations and cheques are append-only, like InventoryMovement
 (D-012): every add goes through a service (record_payment /
-allocate_payment), never a raw model save; change and delete are closed
-to everyone, superusers included -- a mistake means a new, correcting
-entry, not an edit.
+allocate_payment / record_cheque), never a raw model save; change and
+delete are closed to everyone, superusers included -- a mistake means a
+new, correcting entry, not an edit. A cheque's pending -> cleared/bounced
+transition is a dedicated admin action, not a field edit, for the same
+reason.
 """
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
 
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
-from .models import BankAccount, Payment, PaymentAllocation
+from .models import BankAccount, Cheque, Payment, PaymentAllocation
 from .selectors import get_bank_account_balance
-from .services import allocate_payment, record_payment
+from .services import allocate_payment, bounce_cheque, clear_cheque, record_cheque, record_payment
 
 
 @admin.register(BankAccount)
@@ -109,3 +112,150 @@ class PaymentAllocationAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class ChequeForm(forms.ModelForm):
+    """
+    Shows a friendly Persian error for the direction/party (or
+    direction/invoice) mismatch instead of Django's generic "Constraint
+    ... is violated" (Django 4.1+ validates CheckConstraints as part of
+    full_clean(), before save_model() -- and therefore before
+    record_cheque()'s own check -- ever runs).
+
+    sales_invoice/purchase_invoice are editable here (unlike most other
+    fields on a saved Cheque, see ChequeAdmin.has_change_permission): a
+    cheque entered incomplete from an invoice's payment rows (4.3b) can be
+    attached to, or corrected to, an invoice later, as long as it is still
+    PENDING.
+    """
+
+    class Meta:
+        model = Cheque
+        fields = (
+            "business", "direction", "customer", "supplier", "bank_account",
+            "cheque_number", "bank_name", "due_date", "amount",
+            "sales_invoice", "purchase_invoice", "note",
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        direction = cleaned.get("direction")
+        customer = cleaned.get("customer")
+        supplier = cleaned.get("supplier")
+        sales_invoice = cleaned.get("sales_invoice")
+        purchase_invoice = cleaned.get("purchase_invoice")
+        if direction == "in" and (not customer or supplier):
+            self.add_error("customer", "چک دریافتی باید دقیقاً یک مشتری داشته باشد، بدون تأمین‌کننده.")
+        elif direction == "out" and (not supplier or customer):
+            self.add_error("supplier", "چک پرداختی باید دقیقاً یک تأمین‌کننده داشته باشد، بدون مشتری.")
+        if sales_invoice and purchase_invoice:
+            self.add_error("purchase_invoice", "چک نمی‌تواند هم‌زمان به فاکتور فروش و خرید وصل باشد.")
+        elif sales_invoice and direction != "in":
+            self.add_error("sales_invoice", "فقط چک دریافتی («جهت: دریافت») می‌تواند به فاکتور فروش وصل شود.")
+        elif purchase_invoice and direction != "out":
+            self.add_error("purchase_invoice", "فقط چک پرداختی («جهت: پرداخت») می‌تواند به فاکتور خرید وصل شود.")
+        return cleaned
+
+
+@admin.register(Cheque)
+class ChequeAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+    """
+    A PENDING cheque is still editable (Sina, 2026-09-24: entering one
+    incomplete from an invoice and finishing its details here later must
+    work) -- `record_cheque` runs on add, a plain save on change. Once
+    CLEARED or BOUNCED it locks, same as a confirmed invoice (D-014
+    style): `status`/`payment` never come from a field edit, only from the
+    two actions below.
+    """
+
+    form = ChequeForm
+    list_display = (
+        "cheque_number", "direction", "party_display", "amount_display",
+        "due_date", "status", "invoice_display", "business",
+    )
+    list_filter = ("business", "direction", "status")
+    search_fields = ("cheque_number", "customer__name", "supplier__name")
+    autocomplete_fields = (
+        "business", "customer", "supplier", "bank_account",
+        "sales_invoice", "purchase_invoice",
+    )
+    list_select_related = (
+        "customer", "supplier", "bank_account", "business", "payment",
+        "sales_invoice", "purchase_invoice",
+    )
+    date_hierarchy = "due_date"
+    ordering = ("due_date",)
+    readonly_fields = ("status", "payment", "id", "created_at", "updated_at")
+    actions = ("mark_cleared", "mark_bounced")
+
+    @admin.display(description="طرف حساب")
+    def party_display(self, obj):
+        if obj is None:
+            return "-"
+        return obj.customer or obj.supplier
+
+    @admin.display(description="فاکتور")
+    def invoice_display(self, obj):
+        # Set automatically when the cheque was entered on an invoice's
+        # payment rows (4.3b); blank for a general, unattached cheque.
+        if obj is None:
+            return "-"
+        invoice = obj.sales_invoice or obj.purchase_invoice
+        return invoice.invoice_number or "-" if invoice else "-"
+
+    @admin.display(description="مبلغ")
+    def amount_display(self, obj):
+        if obj is None:
+            return "-"
+        return format_rial(obj.amount)
+
+    def save_model(self, request, obj, form, change):
+        if change:
+            # Only a still-PENDING cheque reaches here at all (see
+            # has_change_permission); status/payment are readonly, so this
+            # can only touch the descriptive fields.
+            obj.save()
+        else:
+            record_cheque(obj, request.user)
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.status != Cheque.Status.PENDING:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description="وصول چک‌های انتخاب‌شده")
+    def mark_cleared(self, request, queryset):
+        """One clear_cheque call per row; a rejected one does not affect the rest."""
+        for cheque in queryset:
+            try:
+                clear_cheque(cheque, request.user)
+            except ValidationError as error:
+                self.message_user(
+                    request,
+                    f"چک {cheque.cheque_number} وصول نشد: {'؛ '.join(error.messages)}",
+                    messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request, f"چک {cheque.cheque_number} وصول شد.", messages.SUCCESS,
+                )
+
+    @admin.action(description="برگشت خوردن چک‌های انتخاب‌شده")
+    def mark_bounced(self, request, queryset):
+        """One bounce_cheque call per row; a rejected one does not affect the rest."""
+        for cheque in queryset:
+            try:
+                bounce_cheque(cheque, request.user)
+            except ValidationError as error:
+                self.message_user(
+                    request,
+                    f"چک {cheque.cheque_number} ثبت برگشت نشد: {'؛ '.join(error.messages)}",
+                    messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request, f"چک {cheque.cheque_number} برگشت خورد.", messages.WARNING,
+                )

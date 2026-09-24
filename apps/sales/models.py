@@ -212,3 +212,74 @@ class SaleItem(BaseModel):
     @property
     def line_total(self):
         return self.quantity * self.unit_price
+
+
+class SalesPaymentEntry(BaseModel):
+    """
+    One planned payment line on a draft sales invoice (added at Sina's
+    request, 2026-09-24): "2M by cheque, 1M cash, the rest بقیه بانکی,
+    leave 2M as نسیه" -- entered while drafting, turned into real
+    `Payment`/`Cheque` rows by `confirm_sale` at confirmation, the same
+    way `SaleItem` rows turn into `InventoryMovement` rows.
+
+    Rows do not need to add up to the invoice total; whatever is left
+    over is exactly the نسیه/credit portion -- it already shows up as
+    SalesInvoice.payment_status, no separate tracking needed.
+    """
+
+    class Method(models.TextChoices):
+        CASH = "cash", "نقدی"
+        CARD = "card", "کارت‌خوان"
+        BANK_TRANSFER = "bank_transfer", "حواله بانکی"
+        CHEQUE = "cheque", "چک"
+
+    invoice = models.ForeignKey(
+        SalesInvoice,
+        on_delete=models.CASCADE,  # a line has no meaning without its invoice
+        related_name="payment_entries",
+        verbose_name="فاکتور",
+    )
+    method = models.CharField(
+        max_length=20,
+        choices=Method.choices,
+        verbose_name="روش",
+    )
+    amount = models.BigIntegerField(
+        verbose_name="مبلغ (ریال)",
+    )
+    bank_account = models.ForeignKey(
+        "payments.BankAccount",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="حساب بانکی",
+    )
+    cheque_number = models.CharField(
+        max_length=50,
+        blank=True,  # required only when method=cheque (validated in the admin form)
+        verbose_name="شماره چک",
+    )
+    bank_name = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="نام بانک صادرکننده چک",
+    )
+    due_date = models.DateField(
+        null=True,
+        blank=True,  # required only when method=cheque (validated in the admin form)
+        verbose_name="تاریخ سررسید چک",
+    )
+
+    class Meta:
+        verbose_name = "ردیف پرداخت فاکتور فروش"
+        verbose_name_plural = "ردیف‌های پرداخت فاکتور فروش"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="sales_payment_entry_amount_positive",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_method_display()} - {self.amount}"

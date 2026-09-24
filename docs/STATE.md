@@ -1,9 +1,25 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 4.3. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql, refreshed again 2026-09-24 03:51 before the 4.3 migration); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
+Updated 2026-09-24, after ROADMAP 4.4 and the 4.3b invoice-side payment-entry extension (round 2, after real browser QA). Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql, refreshed again before each schema migration since); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
+
+## URGENT -- do this before anything else next session
+**The real Owner account (phone 09364817249) currently has zero working
+permissions and cannot use the admin at all (403 on everything).** Root
+cause: `flush` (3.1) wiped `auth_group`/`auth_group_permissions`; the
+Owner/Seller Group's permissions were only ever set once, by a one-time
+data migration (`apps/shared/migrations/0003_seed_role_groups.py`), which
+Django never replays after a flush. `apps/shared/signals.py` recreates the
+bare Group (0 permissions) whenever a membership is saved, which is why
+nobody noticed sooner -- the Group *exists*, it is just empty. Confirmed
+by testing with a throwaway QA account (see below): identical 403.
+Not fixed yet -- reported to Sina, waiting for his go-ahead (2026-09-24)
+on: (a) turning the seeding into a re-runnable `tools/` script instead of
+a one-time migration, and (b) what Owner/Seller should be allowed to do
+on the newer payments models (BankAccount, Payment, PaymentAllocation,
+Cheque) that 0003 predates entirely.
 
 ## Next
-Sina paused here on purpose (2026-09-24) before 4.4 -- he has something else to do first. Do not start 4.4 until he says so.
+4.5 — Customer account: invoices, payments, cheques, running balance (credit/نسیه derived from PaymentAllocation), statement. Sina already previewed part of this need while testing 4.3b ("بیارم ببینم مشتری چه فاکتور/چک/بدهی‌ای داره") -- 4.5 is that, built properly with its own view/report, not squeezed into the Cheques list. Blocked on the Owner-permissions fix above being resolved first if Sina wants to test 4.5 as a real Owner rather than superuser.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -148,6 +164,86 @@ Sina paused here on purpose (2026-09-24) before 4.4 -- he has something else to 
   functional impact (Django does not enforce `choices` in the database),
   caught and closed by the same `makemigrations` run
   (purchasing/0005, sales/0007).
+- 4.4: `Cheque` (apps/payments/models.py) -- pending/cleared/bounced.
+  Sina's call, 2026-09-24: a **pending** cheque is not yet money -- no
+  `Payment` exists for it and it does not count toward any invoice's
+  `payment_status`. `clear_cheque` creates the `Payment` and (if the
+  cheque came from an invoice, see 4.3b) auto-allocates it; `bounce_cheque`
+  closes it with no `Payment` at all, ever. Both are one-way. `ChequeAdmin`
+  add-only (via `record_cheque`), with `mark_cleared`/`mark_bounced`
+  bulk actions (never a field edit) -- same append-only philosophy as
+  InventoryMovement/Payment. Direction/party consistency is a friendly
+  Persian form error (`ChequeForm.clean()`), not Django's generic
+  "Constraint ... is violated" (Django 4.1+ validates CheckConstraints in
+  `full_clean()`, before `save_model()` ever runs -- caught live when Sina
+  hit exactly that raw error while testing). Verified 15/15,
+  scripts/test_cheque_lifecycle.py.
+- 4.3b (Sina's request after seeing 4.3/4.4 live, 2026-09-24): split
+  payment entry directly on the invoice. `SalesPaymentEntry` /
+  `PurchasePaymentEntry` (one per invoice app, mirrors SaleItem/
+  PurchaseItem -- not a shared payments-app model, since each belongs to
+  exactly one invoice type) let Sina draft rows like "2M cheque, 1M cash"
+  on a draft invoice; whatever is left under the invoice total is simply
+  the نسیه/credit portion, no row needed for it.
+  `confirm_sale`/`confirm_purchase` turn each row into a real `Payment`
+  (auto-allocated to the same invoice immediately) or a pending `Cheque`
+  pre-linked to that invoice (`Cheque.sales_invoice`/`purchase_invoice`,
+  new nullable pair + CHECK, mirrors `PaymentAllocation`) -- so
+  `clear_cheque` later allocates it automatically too, no manual second
+  visit to the Cheques page. Rows may not sum above the invoice total
+  (`ValidationError`, checked in the same all-or-nothing transaction).
+  `ChequeAdmin` shows which invoice a cheque came from (blank = a general,
+  unattached cheque, still supported for cash cheques not tied to any
+  invoice). Bugfix caught by this work before it closed: appending
+  `SalesPaymentEntry` after `SaleItem` in apps/sales/models.py (and the
+  purchasing mirror) accidentally swallowed `SaleItem.__str__`/
+  `line_total` into the new class, because the edit's anchor text ended
+  one method short of the file's actual tail -- Python attached the
+  following indented methods to the nearer, newly-opened class instead of
+  `SaleItem`. Fixed by moving them back; `manage.py check` did not catch
+  it (not a schema/import problem), the verification script did.
+  Verified 13/13, scripts/test_invoice_payment_entries.py.
+- 4.3b round 2 (Sina's live-testing feedback, 2026-09-24: "هیچ‌چیز درست
+  کار نمی‌کنه"): four real UX problems, each verified by actually driving
+  the admin in a browser (throwaway QA business "ZZZ-TEST-QA (delete me)"
+  + a QA user with direct permissions, isolated from real data -- offer to
+  delete it, not done yet) rather than trusting the backend scripts alone.
+  1. Two competing payment UIs on the invoice -- removed `payment_method`/
+     `payment_note` from SalesInvoiceAdmin/PurchaseInvoiceAdmin's
+     `fieldsets` and `list_display` (fields stay on the model, unused).
+     The payment-entry rows are now the one place to pick method + amount.
+  2. Picking a product in a sale-item row now fills its price live, via a
+     new JSON endpoint (`ProductAdmin.default_price_view`, business-scoped
+     through `get_queryset`) and `apps/sales/static/sales/js/
+     sale_item_autoprice.js`.
+  3. Adding a new payment-entry row now pre-fills its amount with the
+     invoice's remaining total, via `apps/shared/static/shared/js/
+     payment_entry_autofill.js` (shared between sales and purchasing).
+  4. A cheque entered from an invoice can be left incomplete (no cheque
+     number/due date yet) and finished later on the Cheques page:
+     `Cheque.cheque_number`/`due_date` are now optional at the DB level,
+     `ChequeForm` no longer requires them, and `ChequeAdmin` allows editing
+     (including re-pointing `sales_invoice`/`purchase_invoice`) as long as
+     `status == PENDING` -- it locks only once cleared/bounced, mirroring
+     invoice draft/confirmed immutability (D-014 style).
+  Two real bugs surfaced only by browser testing, invisible to `manage.py
+  check` or the shell scripts: (a) both new JS files ran *before*
+  `admin/js/jquery.init.js` (Media ordering put them first), so
+  `django.jQuery` did not exist yet at parse time -- fixed by deferring
+  each script's setup to `DOMContentLoaded`. (b) Django 6.1 dispatches
+  `formset:added` as a plain `CustomEvent` on the new row itself
+  (`detail.formsetName`), not the older jQuery-trigger convention this was
+  first written against (`function(event, $row, formsetName)`) -- fixed to
+  read `event.target`/`event.detail.formsetName` directly, dropping the
+  jQuery dependency for that file entirely. Full end-to-end flow confirmed
+  live: incomplete cheque entered on a draft invoice -> invoice confirmed
+  -> pending Cheque auto-created and linked -> completed with a cheque
+  number/due date on the Cheques page -> cleared -> automatically
+  allocated back to the same invoice, payment_status unpaid -> partial,
+  with zero manual allocation step.
+- 4.3b round 2 also surfaced (unrelated to 4.3b itself, found only because
+  QA logged in as a real role account instead of superuser) the Owner
+  permissions bug -- see the URGENT note at the top of this file.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
@@ -197,7 +293,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
       `PaymentAllocation` referencing it for bank-transfer payments; derived
       payment status (D-025) [R 10]
-- [ ] 4.4 `Cheque` lifecycle: pending / cleared / bounced, linked to a Payment [R 3, 10]
+- [x] 4.4 `Cheque` lifecycle: pending / cleared / bounced, linked to a Payment [R 3, 10]
 - [ ] 4.5 Customer account: invoices, payments, cheques, running balance
       (credit/نسیه derived from PaymentAllocation, never a stored debt field), statement [R 3]
 - [ ] 4.6 Sales and purchase returns as separate documents with own movement types [R 13]

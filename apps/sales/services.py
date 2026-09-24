@@ -13,12 +13,14 @@ from django.utils import timezone
 
 from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
+from apps.payments.models import Cheque, Payment, PaymentAllocation
+from apps.payments.services import allocate_payment, record_cheque, record_payment
 from apps.products.models import Product
 from apps.shared.audit import log_event
 from apps.shared.permissions import is_owner
 from apps.shared.services import get_next_document_number
 
-from .models import SalesInvoice
+from .models import SalesInvoice, SalesPaymentEntry
 
 
 @transaction.atomic
@@ -127,7 +129,49 @@ def confirm_sale(invoice, user):
     locked_invoice.save(
         update_fields=["status", "confirmed_at", "invoice_number", "updated_at"]
     )
-    
+
+    # Payment entries drafted on the invoice (Sina, 2026-09-24: "2M by
+    # cheque, 1M cash, the rest نسیه"): each becomes a real Payment,
+    # allocated to this invoice immediately, or a pending Cheque tied to
+    # it (auto-allocated later when it clears -- see clear_cheque).
+    # Whatever is left over than these rows is simply the نسیه/credit
+    # portion; it needs no row of its own, payment_status already shows it.
+    entries = list(locked_invoice.payment_entries.all())
+    if sum(entry.amount for entry in entries) > locked_invoice.total:
+        raise ValidationError("جمع ردیف‌های پرداخت از مبلغ کل فاکتور بیشتر است.")
+    for entry in entries:
+        if entry.method == SalesPaymentEntry.Method.CHEQUE:
+            record_cheque(
+                Cheque(
+                    business=locked_invoice.business,
+                    direction=Payment.Direction.IN,
+                    customer=locked_invoice.customer,
+                    bank_account=entry.bank_account,
+                    cheque_number=entry.cheque_number,
+                    bank_name=entry.bank_name,
+                    due_date=entry.due_date,
+                    amount=entry.amount,
+                    sales_invoice=locked_invoice,
+                ),
+                user,
+            )
+        else:
+            new_payment = record_payment(
+                Payment(
+                    business=locked_invoice.business,
+                    bank_account=entry.bank_account,
+                    direction=Payment.Direction.IN,
+                    amount=entry.amount,
+                    payment_date=locked_invoice.invoice_date,
+                    note=f"فاکتور فروش {locked_invoice.invoice_number}",
+                ),
+                user,
+            )
+            allocate_payment(
+                PaymentAllocation(payment=new_payment, sales_invoice=locked_invoice, amount=entry.amount),
+                user,
+            )
+
     log_event(
         business=locked_invoice.business,
         actor=user,

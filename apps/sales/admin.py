@@ -21,7 +21,7 @@ from simple_history.admin import SimpleHistoryAdmin
 from apps.shared.admin_mixins import BusinessScopedAdminMixin
 from apps.shared.utils import format_rial
 
-from .models import SaleItem, SalesInvoice
+from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 from .services import cancel_sale, confirm_sale
 
 # Only a draft invoice may be edited or deleted.
@@ -65,12 +65,57 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
     # Search box instead of a dropdown of every product.
     autocomplete_fields = ("product",)
 
+    class Media:
+        # Autofill unit_price from the product's default on selection (4.3b UX).
+        js = ("sales/js/sale_item_autoprice.js",)
+
     @admin.display(description="جمع ردیف (ریال)")
     def line_total(self, obj):
         # Unsaved row: quantity and price may still be empty.
         if obj is None or obj._state.adding:
             return "-"
         return format_rial(obj.quantity * obj.unit_price)
+
+    def has_add_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_add_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_delete_permission(request, obj)
+
+
+class SalesPaymentEntryForm(forms.ModelForm):
+    """
+    The cheque fields (number/bank/due date) are optional here on purpose
+    (Sina, 2026-09-24): a cheque row can be left incomplete at invoice time
+    and finished later on the Cheques page, since a PENDING Cheque stays
+    editable (see apps/payments/admin.ChequeAdmin.has_change_permission).
+    """
+
+    class Meta:
+        model = SalesPaymentEntry
+        fields = "__all__"
+        help_texts = {"amount": TOMAN_HINT}
+
+
+class SalesPaymentEntryInline(BusinessScopedAdminMixin, admin.TabularInline):
+    """
+    Planned payment lines, edited inside the invoice page while it is a
+    draft; confirm_sale turns each row into a real Payment or Cheque (4.3b).
+    """
+
+    model = SalesPaymentEntry
+    form = SalesPaymentEntryForm
+    business_lookup = "invoice__business"
+    extra = 0
+    fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
+    autocomplete_fields = ("bank_account",)
+
+    class Media:
+        # Pre-fills a new row's amount with the invoice's remaining total (4.3b UX).
+        js = ("shared/js/payment_entry_autofill.js",)
 
     def has_add_permission(self, request, obj=None):
         return not is_locked(obj) and super().has_add_permission(request, obj)
@@ -98,7 +143,7 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
     form = SalesInvoiceForm
     list_display = (
         "invoice_number", "customer", "business", "invoice_date",
-        "status", "total_display", "payment_method", "payment_status_display",
+        "status", "total_display", "payment_status_display",
         "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
@@ -117,11 +162,14 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
     fieldsets = (
         ("اطلاعات فاکتور", {"fields": ("business", "customer", "invoice_date")}),
         ("مبلغ", {"fields": ("discount_amount", "subtotal_display", "total_display")}),
-        ("پرداخت", {"fields": ("payment_method", "payment_note", "payment_status_display")}),
+        # payment_method/payment_note (2.8) are superseded by the payment-entry
+        # rows below (4.3b): one place to pick method + amount, not two (Sina,
+        # 2026-09-24). The fields stay on the model, just unused from here on.
+        ("پرداخت", {"fields": ("payment_status_display",)}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
-    inlines = (SaleItemInline,)
+    inlines = (SaleItemInline, SalesPaymentEntryInline)
     actions = ("confirm_selected", "cancel_selected")
 
     def get_queryset(self, request):

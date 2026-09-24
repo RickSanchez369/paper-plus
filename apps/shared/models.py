@@ -139,6 +139,9 @@ class AuditLog(BaseModel):
         CANCEL_SALE = "cancel_sale", "لغو فاکتور فروش"
         RECORD_PAYMENT = "record_payment", "ثبت پرداخت"
         ALLOCATE_PAYMENT = "allocate_payment", "تخصیص پرداخت"
+        RECORD_CHEQUE = "record_cheque", "ثبت چک"
+        CLEAR_CHEQUE = "clear_cheque", "وصول چک"
+        BOUNCE_CHEQUE = "bounce_cheque", "برگشت چک"
 
     business = models.ForeignKey(
         Business,
