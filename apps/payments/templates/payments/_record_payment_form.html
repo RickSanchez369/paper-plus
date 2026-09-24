@@ -1,0 +1,54 @@
+{% load paper %}
+{% comment %}
+"ثبت پرداخت", the one implementation (REDESIGN_VISION 8, item 2).
+
+Rendered from Receivables, Payables, Customer detail and Supplier detail.
+The caller passes `form` and `post_url`; the party is already fixed by the
+page that opened it, so it is not a field here — a form that let you switch
+customer mid-payment would be a way to pay the wrong person's invoice.
+
+Submitted over htmx so the page behind it does not reload; `hx-target`
+swaps this partial back in with errors, or the caller's success fragment.
+{% endcomment %}
+<form class="payment-form"
+      hx-post="{{ post_url }}"
+      hx-target="closest .payment-form"
+      hx-swap="outerHTML">
+  {% csrf_token %}
+
+  {% include "shared/_form_errors.html" %}
+
+  <div class="payment-form__party">
+    <span class="field__label">طرف حساب</span>
+    <strong>{{ form.customer|default:form.supplier }}</strong>
+  </div>
+
+  {% include "shared/_field.html" with field=form.amount %}
+  {% include "shared/_field.html" with field=form.payment_date %}
+  {% include "shared/_field.html" with field=form.bank_account %}
+
+  {% if form.open_invoices %}
+    <div class="field">
+      <span class="field__label">{{ form.invoices.label }}</span>
+      <p class="field__hint">
+        اگر هیچ فاکتوری را انتخاب نکنید، پرداخت به نام همین طرف حساب ثبت می‌شود
+        و بعداً قابل تخصیص است.
+      </p>
+      <div class="invoice-picker">
+        {% for choice in form.invoices %}
+          <label class="invoice-picker__row">
+            {{ choice.tag }}
+            <span class="invoice-picker__label">{{ choice.choice_label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      {% for error in form.invoices.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+    </div>
+  {% else %}
+    <p class="field__hint">این طرف حساب فاکتور بازی ندارد؛ پرداخت بدون تخصیص ثبت می‌شود.</p>
+  {% endif %}
+
+  {% include "shared/_field.html" with field=form.note %}
+
+  <button type="submit" class="btn btn--block">ثبت پرداخت</button>
+</form>

@@ -11,6 +11,7 @@
   {% comment %} Vendored, not from a CDN: this is an internal tool that has to keep
      working when the office internet does not. {% endcomment %}
   <script src="{% static 'shared/js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'shared/js/jalali_picker.js' %}" defer></script>
   {% block head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

@@ -501,3 +501,265 @@ h2 { font-size: 16px; }
     padding-inline: var(--space-4);
   }
 }
+
+/* ------------------------------------------------- jalali date picker */
+
+.jdp {
+  position: absolute;
+  z-index: 100;
+  width: 252px;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  user-select: none;
+}
+
+.jdp__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.jdp__title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.jdp__nav {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jdp__nav:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+.jdp__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.jdp__weekday {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jdp__cell {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.jdp__cell:hover {
+  background: var(--ink-100);
+}
+
+.jdp__cell--empty {
+  cursor: default;
+}
+
+.jdp__cell--empty:hover {
+  background: transparent;
+}
+
+/* Today is a hint, the selection is the answer -- so today is an outline
+   and the selection is filled, never both competing as solid blocks. */
+.jdp__cell.is-today {
+  box-shadow: inset 0 0 0 1px var(--accent-500);
+  color: var(--accent-700);
+}
+
+.jdp__cell.is-selected {
+  background: var(--accent-600);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.jdp__foot {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.jdp__action {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.jdp__action:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+/* ------------------------------------------------- shared components */
+
+.field__hint {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.daterange {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.daterange__presets {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.daterange__preset {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.daterange__presets .daterange__preset + .daterange__preset {
+  border-inline-start: 1px solid var(--border);
+}
+
+.daterange__preset:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+.daterange__preset.is-active {
+  background: var(--accent-600);
+  color: var(--white);
+}
+
+.daterange__custom {
+  position: relative;
+}
+
+/* The disclosure triangle is noise next to buttons that look like a group. */
+.daterange__custom > summary {
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  display: inline-block;
+}
+
+.daterange__custom > summary::-webkit-details-marker {
+  display: none;
+}
+
+.daterange__panel {
+  position: absolute;
+  z-index: 20;
+  inset-inline-end: 0;
+  margin-top: var(--space-2);
+  width: 240px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.daterange__panel .btn {
+  margin-top: var(--space-4);
+}
+
+.payment-form__party {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.invoice-picker {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+
+.invoice-picker__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.invoice-picker__row:hover {
+  background: var(--ink-100);
+}
+
+.quick-party__head {
+  margin-bottom: var(--space-4);
+  font-weight: 600;
+}
+
+.quick-party,
+.payment-form {
+  display: block;
+}
+
+.page-head__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.placeholder__range {
+  font-size: 13px;
+}
+
+.placeholder__range span {
+  font-weight: 600;
+  color: var(--text);
+}

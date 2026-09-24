@@ -1,0 +1,25 @@
+{% comment %}
+One month of the picker, rendered by the server so the calendar has exactly
+one implementation (see DatePickerMonthView). Each day carries the precise
+string JalaliDateField parses, so a clicked day can never be a day the form
+refuses.
+{% endcomment %}
+<div class="jdp__head">
+  <button type="button" class="jdp__nav" data-jdp="prev" aria-label="ماه قبل">›</button>
+  <span class="jdp__title">{{ grid.title }}</span>
+  <button type="button" class="jdp__nav" data-jdp="next" aria-label="ماه بعد">‹</button>
+</div>
+<div class="jdp__grid" data-year="{{ grid.year }}" data-month="{{ grid.month }}">
+  {% for weekday in weekdays %}<span class="jdp__weekday">{{ weekday }}</span>{% endfor %}
+  {% for _ in grid.leading_blanks %}<span class="jdp__cell jdp__cell--empty"></span>{% endfor %}
+  {% for day in grid.days %}
+    <button type="button"
+            class="jdp__cell{% if day.is_today %} is-today{% endif %}"
+            data-jdp="day"
+            data-value="{{ day.value }}">{{ day.day }}</button>
+  {% endfor %}
+</div>
+<div class="jdp__foot">
+  <button type="button" class="jdp__action" data-jdp="today">امروز</button>
+  <button type="button" class="jdp__action" data-jdp="clear">پاک کردن</button>
+</div>

@@ -1,15 +1,22 @@
 {% extends "shared/base.html" %}
+{% load paper %}
 
-{% comment %} A stub on purpose (REDESIGN_VISION 4.10): the dashboard only aggregates
-   the other modules, so it is built last. Inventing numbers here would be
-   worse than showing none. {% endcomment %}
+{% comment %}
+A stub on purpose (REDESIGN_VISION 4.10): the dashboard only aggregates the
+other modules, so it is built last. Inventing numbers here would be worse
+than showing none. The date-range filter is real already, because the
+dashboard is one of the three pages that owns it.
+{% endcomment %}
 
 {% block title %}داشبورد{% endblock %}
 {% block header %}داشبورد{% endblock %}
 
 {% block content %}
 <div class="page-head">
-  <h1>خوش آمدید</h1>
+  <div class="page-head__row">
+    <h1>خوش آمدید</h1>
+    {% include "shared/_date_range.html" with form=range_form %}
+  </div>
   <p class="page-head__lede">
     داشبورد خلاصهٔ فروش، خرید، هزینه، مطالبات، بدهی و موجودی را نشان می‌دهد.
     چون فقط جمع‌بندی بقیهٔ بخش‌هاست، بعد از آن‌ها ساخته می‌شود.
@@ -20,6 +27,9 @@
   <div class="placeholder">
     <span class="placeholder__tag">در دست ساخت</span>
     <p>از منوی کنار می‌توانید به بخش‌های دیگر بروید.</p>
+    <p class="placeholder__range">
+      بازهٔ انتخابی: <span>{{ date_range.0|jalali }}</span> تا <span>{{ date_range.1|jalali }}</span>
+    </p>
   </div>
 </div>
 {% endblock %}

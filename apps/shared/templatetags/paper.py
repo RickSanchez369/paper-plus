@@ -1,0 +1,57 @@
+# path: apps/shared/templatetags/paper.py
+
+"""
+Display filters for templates. These never change how a value is stored.
+
+Money formatting already lived in apps/shared/utils.py; the date filters
+wrap apps/shared/dates.py so no template ever converts a calendar itself.
+"""
+
+from django import template
+
+from apps.shared import dates
+from apps.shared.utils import format_number, format_rial
+
+register = template.Library()
+
+
+@register.filter(name="jalali")
+def jalali(value):
+    """"۱۴۰۵/۰۷/۰۳" — the everyday form, for table cells."""
+    return dates.format_date(value)
+
+
+@register.filter(name="jalali_long")
+def jalali_long(value):
+    """"۳ مهر ۱۴۰۵" — for headings and invoice bodies, where it reads as prose."""
+    return dates.format_date(value, with_month_name=True)
+
+
+@register.filter(name="jalali_at")
+def jalali_at(value):
+    """"۱۴۰۵/۰۷/۰۳ ساعت ۱۴:۳۰" — for audit rows, where the time is the point."""
+    return dates.format_datetime(value)
+
+
+@register.filter(name="rial")
+def rial(value):
+    """"۲٬۵۰۰٬۰۰۰ ریال" with Persian digits, for a Persian page."""
+    if value is None:
+        return ""
+    return dates.to_persian_digits(f"{format_number(value)} ریال").replace(",", "٬")
+
+
+@register.filter(name="rial_toman")
+def rial_toman(value):
+    """Rial with the Toman equivalent beside it (D-013), Persian digits."""
+    if value is None:
+        return ""
+    return dates.to_persian_digits(format_rial(value)).replace(",", "٬")
+
+
+@register.filter(name="fa_number")
+def fa_number(value):
+    """A plain count in Persian digits: quantities, invoice counts, page numbers."""
+    if value is None:
+        return ""
+    return dates.to_persian_digits(format_number(value)).replace(",", "٬")

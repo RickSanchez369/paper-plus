@@ -1,0 +1,35 @@
+{% comment %}
+The shared date-range picker (REDESIGN_VISION 4.8, 4.9, 4.10).
+
+A GET form, so the chosen range lives in the URL and can be bookmarked or
+sent to someone — 2.9 says the only thing worth saving about a report is
+its filter, never its numbers.
+
+The presets submit immediately; "بازهٔ دلخواه" reveals the two Jalali date
+fields instead. No JavaScript is required for any of it: the presets are
+submit buttons and the custom panel is a <details>, so it still works if
+the picker script never loads.
+{% endcomment %}
+<form method="get" class="daterange" action="{{ range_action|default:'' }}">
+  <div class="daterange__presets">
+    {% for value, label in form.fields.preset.choices %}
+      {% if value != "custom" %}
+        <button type="submit" name="preset" value="{{ value }}"
+                class="daterange__preset{% if form.active_preset == value %} is-active{% endif %}">
+          {{ label }}
+        </button>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <details class="daterange__custom"{% if form.active_preset == "custom" or form.errors %} open{% endif %}>
+    <summary class="daterange__preset{% if form.active_preset == 'custom' %} is-active{% endif %}">بازهٔ دلخواه</summary>
+    <div class="daterange__panel">
+      {% include "shared/_form_errors.html" %}
+      <input type="hidden" name="preset" value="custom">
+      {% include "shared/_field.html" with field=form.start %}
+      {% include "shared/_field.html" with field=form.end %}
+      <button type="submit" class="btn btn--block">اعمال</button>
+    </div>
+  </details>
+</form>
