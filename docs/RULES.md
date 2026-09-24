@@ -2,6 +2,13 @@
 
 Continuation of an ongoing project. No "stage 0", master plan or understanding phase.
 
+> **Rebuild in progress (branch `explore/vision-rethink`).**
+> `docs/REDESIGN_VISION.md` and `docs/MASTER_PROMPT.md` are the source of
+> truth for that work and override anything here they contradict — including
+> the one-task-per-message rhythm, which Sina suspended for the rebuild.
+> Rules below that are already superseded are marked inline (D-033..D-040).
+> Everything unmarked still holds.
+
 ## Start of chat
 Sina runs `python tools/project_map.py` and uploads RULES.md, STATE.md, PROJECT_MAP.md.
 Read in that order; continue from STATE.md "Next".
@@ -27,7 +34,7 @@ Read in that order; continue from STATE.md "Next".
   State-changing steps (migrate, git commit, anything touching the DB) are never chained.
 - "ok" = output matched exactly; move on. Anything else: Sina pastes the output.
 - git: output is always pasted. Verify with `git --no-pager show --stat HEAD`.
-- Branch: all work on `dev`. Check `git branch` shows `* dev` at the start of every session.
+- Branch: normally `dev`. The rebuild lives on `explore/vision-rethink`, and merging it into `dev` needs Sina's explicit review first (MASTER_PROMPT 2).
 - Push after every completed task: `git push`.
 - End of a phase: `git switch main; git pull; git merge --no-ff dev -m "merge: phase N"; git push; git switch dev`.
 - Commit: `git commit -m "type(scope): message (ROADMAP x.y)"`, one line, nothing before it. The ROADMAP `[x]` goes in the same commit.
@@ -45,7 +52,7 @@ Read in that order; continue from STATE.md "Next".
 
 ## Non-negotiable
 - Windows / PowerShell only. No WSL, bash, Docker.
-- Every business-data model has a `business` FK (exception: User, D-008).
+- ~~Every business-data model has a `business` FK~~ — single business now, no `business` FK anywhere (D-033).
 - Writes that touch stock or money go through a service inside `transaction.atomic`. Admin calls the service; it never writes movements or money.
 - Stock is derived from `InventoryMovement`; no stock field. The ledger is append-only; corrections are adjustment rows.
 - Money: BigIntegerField, whole Rial. Formatting only in `apps/shared/utils.py`.
@@ -57,17 +64,20 @@ Read in that order; continue from STATE.md "Next".
 - Scope = the roadmap in STATE.md (D-020). Anything else: say "out of scope" and move on. Excluded: Docker, CI, PDF, OpenAPI, Vue.
 - HARD GATE: every schema change of phases 1-2 is done before the first real record (phase 3).
 - HARD GATE: SHADOW (paper ledger in parallel) until 3 consecutive days of 0 discrepancies. Every discrepancy is a bug: log it, never fix data by hand.
-- Integrity rules no role bypasses: D-014, D-017, D-023, D-024.
+- Integrity rules nothing bypasses: D-014, D-017, D-023, D-024. The Owner gate in D-021/D-023 is now `is_superuser` (D-034).
 
 ## Testing
 - Before writing a new verification script that calls confirm_sale/confirm_purchase/
   set_opening_stock, open one existing passing script that already calls the same
   service (see PROJECT_MAP.md's `scripts/` list) and copy its setup boilerplate
-  (Business, DocumentSequence, User, opening stock) verbatim. Never reconstruct
+  (DocumentSequence, User, opening stock) verbatim. Never reconstruct
   that boilerplate from memory.
 - Verification scripts: `scripts/` (gitignored, throwaway). Operational scripts: `tools/` (tracked).
 - Run: `python manage.py shell -c "exec(open('scripts/NAME.py', encoding='utf-8').read())"`
-- Script pattern: all data created inside one `transaction.atomic`, `raise _Rollback` at the end, print `n/N passed`. Create the Business inside the script.
+- Script pattern: all data created inside one `transaction.atomic`, `raise _Rollback` at the end, print `n/N passed`.
+- `DocumentSequence` is a singleton per `doc_type` now (D-033): reuse the real row with
+  `get_or_create`, or `update_or_create` to reset its counter when the script asserts on
+  concrete invoice numbers. Never `create` one — it violates the unique constraint.
 - Never pipe a file into `manage.py shell`; never paste try/except into the REPL.
 - `PS C:\...>` is PowerShell, `>>>` is the Django shell.
 - Unique fields (User.phone, etc.): generate randomly, e.g.
@@ -81,7 +91,7 @@ Read in that order; continue from STATE.md "Next".
 - Activate the venv in every terminal: `.venv\Scripts\Activate.ps1`.
 - `startapp` in a subfolder: set `name = "apps.<app>"` in its `apps.py`.
 - Write files as UTF-8 without BOM: `[Text.UTF8Encoding]::new($false)`. A BOM gives SyntaxError on line 1. `Set-Content -Encoding UTF8` (PS 5.1) adds a BOM.
-- The console garbles Persian (`Get-Content`, `sqlmigrate`); the data is fine. Verify through Python. `chcp 65001` fixes one window.
+- The console garbles Persian (`Get-Content`, `sqlmigrate`); the data is fine. Verify through Python. `chcp 65001` fixes one window; `$env:PYTHONIOENCODING="utf-8"` fixes a script that prints Persian (a bare `print()` of Persian raises UnicodeEncodeError under cp1256).
 - Install `"psycopg[binary]"` (quoted), never psycopg2.
 - `pg_dump` is in `C:\Program Files\PostgreSQL\18\bin`, not in PATH.
 - Always `git --no-pager`; the pager blocks the terminal.
@@ -91,7 +101,6 @@ Read in that order; continue from STATE.md "Next".
 - `select_for_update()` on a lazy queryset locks nothing: wrap in `list()`. Always order locked rows by pk.
 - `confirm_sale` returns `(invoice, shortages)`; `confirm_purchase` returns the invoice.
 - Admin: `has_delete_permission(obj=None)` returning False removes bulk delete. Inline permission methods receive the PARENT object. `autocomplete_fields` needs `search_fields` on the target admin (E039).
-- Admin scoping: `BusinessScopedAdminMixin` goes first in the bases. Set `business_lookup` when the FK is not direct (`pk`, `invoice__business`, `memberships__business`); `scope_distinct = True` for to-many paths.
 - Inline `get_queryset` returns `.none()` without a Django view/change permission; ModelAdmin does not.
 - An exception in `save_model` is a 500, but the request transaction rolls back the save.
 
@@ -103,8 +112,8 @@ Read in that order; continue from STATE.md "Next".
 - D-005 Persian user-facing strings; English identifiers.
 - D-006 Optional text fields: `blank=True`, never `null=True`.
 - D-007 Login by phone (`^09\d{9}$`); custom `users.User`.
-- D-008 User has no business FK; BusinessMembership links user and business.
-- D-009 Role is a choices field (owner, salesperson), not a model.
+- ~~D-008~~ superseded by D-033 (no Business at all).
+- ~~D-009~~ superseded by D-034 (no roles).
 - D-010 Customer and Supplier are separate models.
 - D-011 Quantity is a whole number (PositiveInteger).
 - D-012 Direction comes from movement_type; quantity > 0 (CHECK).
@@ -116,15 +125,23 @@ Read in that order; continue from STATE.md "Next".
 - D-018 The app DB role `paper_app` owns the database, schema and tables.
 - D-019 DEBUG and ALLOWED_HOSTS from env, safe defaults.
 - D-020 Scope = full remake request; order in the STATE.md roadmap.
-- D-021 Shortage on sale: Seller rejected; Owner and superuser allowed with a warning.
+- D-021 Shortage on sale: rejected unless the caller is a superuser (gate narrowed by D-034).
 - D-022 Invoice number assigned at confirmation from a locked DocumentSequence; configurable start; purchase also gets `supplier_invoice_number`.
-- D-023 A confirmed invoice is cancelled (status + reversing movements), never edited. Owner and superuser only.
+- D-023 A confirmed invoice is cancelled (status + reversing movements), never edited. Superuser only (D-034).
 - D-024 Hard delete only for unreferenced records. Movements and confirmed/cancelled invoices are never deleted, by anyone.
-- D-025 Payment status is derived from PaymentAllocation, never typed.
-- D-026 Sellers use the admin. Admins and services are scoped to the user's businesses; superuser is not scoped.
-- D-027 Seller: sell only, from existing Product/Customer; no purchasing; no create on Product/Customer/Supplier.
-- D-028 New user + first membership created atomically from UserAdmin; scoped by viewer.
+- D-025 Payment status is derived from PaymentAllocation, never typed. One sanctioned exception: `InventoryLayer.quantity_remaining` (D-036).
+- ~~D-026~~ superseded by D-035 (`/admin/` is superuser-only; the frontend is the user surface).
+- ~~D-027~~ superseded by D-034 (no roles).
+- ~~D-028~~ superseded by D-034 (no memberships).
 - D-029 AuditLog target reference is target_type + target_id, not GenericForeignKey.
 - D-030 Chat rhythm: read-only commands may chain; state-changing steps never chain; task or ~15 msgs.
 - D-031 Verification scripts: random unique identifiers, never fixed; assert on a service's returned object or after refresh_from_db(), never a stale local reference.
 - D-032 Invoice discount: fixed Rial amount (not %), invoice-level only, sales invoices only for now; validated against subtotal in confirm_sale, not clean().
+- D-033 Single business: Business/BusinessMembership and every `business` FK deleted; unique constraints global; DocumentSequence singleton per doc_type.
+- D-034 No roles: `is_superuser` is the only distinction; it gates oversell and cancellation only.
+- D-035 `/admin/` is superuser-only (PaperPlusAdminSite); the frontend is the user surface.
+- D-036 FIFO cost layers: InventoryLayer + signed InventoryConsumption; purchase cancel blocked once any of its stock was sold.
+- D-037 Profit is realised profit — zero unless confirmed; oversold units are surfaced as uncosted, never priced.
+- D-038 Payment gains customer/supplier (at most one, matching direction), so unallocated money is still traceable.
+- D-039 Cheque gains CANCELLED, from PENDING only, with no Payment.
+- D-040 Expense lives in apps.payments, backed by a real Payment(OUT); related_person is free text.

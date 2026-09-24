@@ -1,34 +1,53 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 4.4 and the 4.3b invoice-side payment-entry extension (round 2, after real browser QA). Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql, refreshed again before each schema migration since); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
+Updated 2026-09-25, after Phase A of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
-## URGENT -- do this before anything else next session
-**The real Owner account (phone 09364817249) currently has zero working
-permissions and cannot use the admin at all (403 on everything).** Root
-cause: `flush` (3.1) wiped `auth_group`/`auth_group_permissions`; the
-Owner/Seller Group's permissions were only ever set once, by a one-time
-data migration (`apps/shared/migrations/0003_seed_role_groups.py`), which
-Django never replays after a flush. `apps/shared/signals.py` recreates the
-bare Group (0 permissions) whenever a membership is saved, which is why
-nobody noticed sooner -- the Group *exists*, it is just empty. Confirmed
-by testing with a throwaway QA account (see below): identical 403.
-Not fixed yet -- reported to Sina, waiting for his go-ahead (2026-09-24)
-on: (a) turning the seeding into a re-runnable `tools/` script instead of
-a one-time migration, and (b) what Owner/Seller should be allowed to do
-on the newer payments models (BankAccount, Payment, PaymentAllocation,
-Cheque) that 0003 predates entirely.
+## Rebuild in progress — branch `explore/vision-rethink`
+
+`docs/REDESIGN_VISION.md` + `docs/MASTER_PROMPT.md` drive this work and
+override the roadmap below wherever they disagree. The ROADMAP entries that
+survive are being rebuilt as pages, not as Admin screens.
+
+**The old URGENT item (the real Owner account having no admin permissions
+after the 3.1 flush) is closed, not fixed:** roles are gone entirely
+(D-034), so there is no Owner/Seller Group left to seed. `/admin/` is now
+superuser-only (D-035) and both real accounts are superusers.
+
+The database was flushed again 2026-09-25 (Sina's call, backup:
+`backups/paper_plus_2026-09-24_232818.sql`) because dropping the `business`
+column would otherwise have merged the QA tenant's rows into the real ones.
+`manage.py flush` could not do it — see `tools/flush_all.py`. Real data
+(6 products + opening stock, 2 customers, 2 suppliers, 1 bank account) has
+to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-4.5 — Customer account: invoices, payments, cheques, running balance (credit/نسیه derived from PaymentAllocation), statement. Sina already previewed part of this need while testing 4.3b ("بیارم ببینم مشتری چه فاکتور/چک/بدهی‌ای داره") -- 4.5 is that, built properly with its own view/report, not squeezed into the Cheques list. Blocked on the Owner-permissions fix above being resolved first if Sina wants to test 4.5 as a real Owner rather than superuser.
+**Phase B — frontend skeleton** (MASTER_PROMPT 3): base template with the
+persistent 11-module sidebar, header and content block; login page (phone +
+password, no business picker); stub dashboard route; HTMX wired in; and the
+three shared components that must exist once and be reused — date-range
+picker, "record payment" form, inline "new customer"/"new supplier".
+
+Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
+(drop multi-tenancy and roles), `19d25b3` (FIFO cost layers), `01ec98e`
+(payment party, cheque cancellation, expenses).
+
+### Carried forward, not yet built
+- **Manual stock adjustment** (REDESIGN_VISION 4.3) has no service. When it
+  gets one, `adjustment_out` must consume FIFO layers and `adjustment_in`
+  must carry a unit cost, or layer totals and movement totals diverge (D-036).
+- **3.4 real SHADOW** never closed; it now depends on Phase C pages existing
+  to be worth running at all.
+- **ROADMAP 4.6 (returns)** is explicitly out of scope for this round
+  (Sina, 2026-09-24). Do not design around it.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
-- Models: Business, BusinessMembership, User (phone login), Product (+ is_onboarded), Customer, Supplier, InventoryMovement, PurchaseInvoice/Item, SalesInvoice/Item.
-- Services: `set_opening_stock`, `confirm_purchase`, `confirm_sale`. Selectors: `get_stock`, `get_stock_map`.
-- `apps/shared/permissions.py`: `get_membership`, `has_role`, `is_owner`, `require_role`, `get_business_ids`.
-- `apps/shared/admin_mixins.py`: `BusinessScopedAdminMixin` on every admin (queryset, FK choices, business list filter). Verified 20/20.
+- Models: User (phone login), Product (+ is_onboarded), Customer, Supplier, InventoryMovement, InventoryLayer, InventoryConsumption, PurchaseInvoice/Item, SalesInvoice/Item, BankAccount, Payment, PaymentAllocation, Cheque, Expense, AuditLog, DocumentSequence. (Business/BusinessMembership deleted, D-033.)
+- Services: `set_opening_stock`, `consume_fifo`, `restore_consumptions`, `cancel_layer`, `confirm_purchase`/`cancel_purchase`, `confirm_sale`/`cancel_sale`, `record_payment`, `allocate_payment`, `record_cheque`, `clear_cheque`, `bounce_cheque`, `cancel_cheque`, `record_expense`, `cancel_expense`, `get_next_document_number`. Selectors: `get_stock`, `get_stock_map`, `get_active_layers`, `get_current_cost_map`, `get_last_known_cost_map`, `get_inventory_value_map`, `get_total_inventory_value`, `get_layer_balance`, `get_bank_account_balance`.
+- `apps/shared/permissions.py`: `is_privileged`, `require_privileged` (the per-business role helpers are deleted, D-034).
+- `apps/shared/admin_site.py`: `PaperPlusAdminSite`, superuser-only (D-035). `admin_mixins.py` deleted with multi-tenancy.
 - Admin: Persian labels; no deletes except draft invoices; confirm actions call the services; ledger view-only for everyone.
-- `tools/`: `backup.ps1` (restore verified), `project_map.py`, `reassign_ownership.sql`.
+- `tools/`: `backup.ps1` (restore verified), `project_map.py`, `reassign_ownership.sql`, `flush_all.py`.
 - Security gate cleared 2026-09-21: SECRET_KEY rotated, `paper_app` role, postgres password rotated, DEBUG/ALLOWED_HOSTS from env.
 - D-027 Seller permission scope; Owner/Seller Group seeded (migration 0003) + synced from BusinessMembership.role via signal (apps/shared/signals.py).
 - D-028: Business add restricted to superuser; BusinessMembership.user and UserCreateForm.business scoped to viewer's own businesses; user+membership+group created atomically from UserAdmin (verified 8/8, scripts/test_owner_user_admin.py).

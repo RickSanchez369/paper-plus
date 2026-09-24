@@ -413,3 +413,226 @@ that changes (do not reuse this field across apps).
 Validation: discount_amount > subtotal is rejected in confirm_sale (not in
 clean()), because subtotal depends on SaleItem rows that can still change
 while the invoice is draft (ROADMAP 2.7).
+
+## D-033 — Single business: Business/BusinessMembership removed entirely
+Date: 2026-09-24
+Status: Final
+Supersedes: D-008, and the multi-tenant half of D-026
+
+Context: `paper-plus` was built multi-tenant (every business-data model
+carried a `business` FK, every admin was scoped by `BusinessScopedAdminMixin`).
+Sina's redesign vision (REDESIGN_VISION 2.2, his words: "یک قسمت عضویت
+کسب‌وکارها و خود کسب‌وکار رو حذف کنیم") establishes that this is one
+business, and a second one would be a separate deployment, not a tenant in
+this database.
+
+Decision: `shared.Business` and `shared.BusinessMembership` are deleted,
+along with the `business` FK on Product, Customer, Supplier, SalesInvoice,
+PurchaseInvoice, InventoryMovement, DocumentSequence, AuditLog, BankAccount,
+Payment and Cheque. Every `unique_*_per_business` constraint becomes global
+(`unique_product_sku`, `unique_customer_name`, `unique_supplier_name`,
+`unique_bank_account_number`, `unique_sales_invoice_number`,
+`unique_purchase_invoice_number`), and a `DocumentSequence` row is now a
+singleton per `doc_type`. `BusinessScopedAdminMixin` is deleted;
+`get_business_ids` with it.
+
+Consequences: The cross-business validation inside `confirm_sale` /
+`confirm_purchase` / `record_payment` / `record_cheque` is gone — those
+checks existed only to stop one tenant's data from leaking into another.
+Verification scripts no longer create a Business, and must reuse the
+existing `DocumentSequence` rows (`get_or_create` / `update_or_create`)
+rather than inserting their own, which would now violate uniqueness.
+A dev database mid-rebuild can hold tables whose model was already deleted,
+which `manage.py flush` cannot truncate — hence `tools/flush_all.py`.
+
+## D-034 — No role system: `is_superuser` is the only distinction
+Date: 2026-09-24
+Status: Final
+Supersedes: D-009, D-027, D-028; narrows D-021 and D-023
+
+Context: Owner/Seller lived on `BusinessMembership.role`, mirrored into auth
+Groups by a signal. With Business gone the role has nowhere to live, and Sina
+chose (REDESIGN_VISION 2.3, "کلاً فعلاً حذفش می‌کنیم و بعداً از پنل ادمین
+اضافه می‌شه") to drop the concept rather than move it onto User.
+
+Decision: No role field anywhere. Any authenticated user may use every page
+and every action, with exactly two exceptions, both now gated on Django's
+own builtin `is_superuser`:
+- confirming a sale that would drive stock negative (was D-021's Owner gate),
+- cancelling a sales or purchase invoice (was D-023's Owner gate).
+`apps/shared/permissions.py` keeps one pair of helpers, `is_privileged(user)`
+and `require_privileged(user)`; `get_membership`, `has_role`, `is_owner`,
+`require_role` and `get_business_ids` are deleted. `apps/shared/signals.py`
+(role -> Group sync) is deleted. Creating and deactivating logins stays an
+admin-panel task, not a page in the new frontend.
+
+Consequences: `is_privileged` keeps the old helper's rule that an inactive or
+anonymous user never passes, so a deactivated superuser cannot cancel
+anything. Multiple logins still exist purely for attribution —
+`created_by`/`actor` stay on every model and the audit trail is unchanged.
+Migration `shared/0003_seed_role_groups` stays in history but its Owner/Seller
+Groups are now meaningless.
+
+## D-035 — `/admin/` is superuser-only
+Date: 2026-09-24
+Status: Final
+Supersedes: D-026
+
+Context: D-026 made the admin the Seller's workplace, which was safe only
+because every page was business-scoped and role-gated through the Owner/Seller
+Groups. D-033 and D-034 remove both of those at once, so `is_staff` alone
+would have handed any staff login raw write access to every financial model —
+a real regression, not a theoretical one.
+
+Decision: `apps/shared/admin_site.py` defines `PaperPlusAdminSite`, whose
+`has_permission` requires `is_active and is_superuser`, installed by replacing
+`django.contrib.admin` with `PaperPlusAdminConfig` in `INSTALLED_APPS`.
+`/admin/` is a technical backend for whoever maintains the system; end users
+get the real frontend (REDESIGN_VISION 2.1). Site-wide Persian admin titles
+move onto that class.
+
+Consequences: `UserAdmin` loses the business/role fields on its add page, the
+Seller self-deactivation carve-out, and the `PRIVILEGE_FIELDS` lockout —
+every remaining visitor is a superuser. New users are no longer given
+`is_staff` on creation, because the frontend, not the admin, is their surface.
+
+## D-036 — FIFO cost layers: InventoryLayer + InventoryConsumption
+Date: 2026-09-25
+Status: Final
+Replaces: `get_cost_map` (latest-purchase-price valuation, ROADMAP 4.1)
+
+Context: `get_cost_map` returned the most recent purchase price of a product
+and multiplied it by total stock. That is not FIFO, cannot say what a
+particular sale cost, and therefore cannot produce real per-invoice profit —
+which REDESIGN_VISION 2.4 requires in full, not in a simplified form.
+
+Decision: Two new models in `apps.inventory`.
+- `InventoryLayer`: one batch of stock at one known `unit_cost`, created by
+  `set_opening_stock` (source `opening_stock`) or per line by
+  `confirm_purchase` (source `purchase_item`, OneToOne to the line). Holds
+  the immutable original `quantity` and a maintained `quantity_remaining`.
+- `InventoryConsumption`: `sale_item`, `layer`, signed `quantity`.
+`confirm_sale` consumes oldest layer first, ordered by `(created_at, id)` so
+ties resolve the same way every time. `cancel_sale` restores by recorded
+amount per layer, not in FIFO order, because a later sale may have drawn from
+the same layers in between.
+
+`quantity_remaining` is a stored running balance, which looks like a stored
+derived fact (D-025). It is allowed here on one condition: it must always
+equal `quantity - sum(that layer's consumption quantities)`. That is why
+reversal adds an opposite row instead of editing or deleting the original —
+the same append-only shape `InventoryMovement` already uses for corrections —
+and why `get_layer_balance()` exists to prove the two never drifted.
+
+`InventoryLayer` does not duplicate `InventoryMovement`. The movement ledger
+stays the immutable source of truth for *how much* stock exists and is never
+mutated; a layer answers *what it cost*.
+
+Purchase cancellation guard: `cancel_purchase` is rejected unless every
+layer it created is still untouched (`quantity_remaining == quantity`), and
+otherwise marks the layer `cancelled_at` rather than deleting it. Cancelled
+layers leave the FIFO pool and all valuation. This is stricter than a sale's
+cancel rule, deliberately: withdrawing stock that has already been sold would
+leave that sale's recorded cost pointing at stock the system says never
+existed. Note the rule is "currently untouched", not "never touched" — a
+purchase whose only sale was itself cancelled becomes cancellable again,
+because nothing depends on it any more.
+
+Consequences: `get_cost_map` is replaced by `get_current_cost_map` (the
+oldest active layer's cost — what the next sale will actually consume),
+`get_last_known_cost_map` (display-only fallback once stock hits zero,
+REDESIGN_VISION 8 item 5), `get_inventory_value_map` and
+`get_total_inventory_value` (each layer at its own cost, since layers of one
+product carry different costs). Manual stock adjustment (REDESIGN_VISION 4.3)
+has no service yet; when it gets one, `adjustment_out` must consume layers
+and `adjustment_in` must carry a unit cost, or layer totals and movement
+totals will diverge.
+
+## D-037 — Profit is realised profit: zero unless the invoice is confirmed
+Date: 2026-09-25
+Status: Final
+
+Context: `SaleItem.profit` was first written as `line_total - cost_of_goods`.
+A cancelled invoice's consumptions net to zero cost, and a draft has no
+consumptions at all, so both reported their entire revenue as profit. Any
+card, report or statement summing this property would have counted cancelled
+invoices — exactly what REDESIGN_VISION 8 item 4 forbids across every page.
+Caught by `scripts/test_fifo_layers.py`, not by review.
+
+Decision: `SaleItem.profit` and `SalesInvoice.profit` return 0 unless the
+invoice status is CONFIRMED. `line_total`, `subtotal` and `total` are
+deliberately *not* changed — a cancelled invoice must still display its own
+amounts on its own page; it is the aggregates that must exclude it. The rule
+lives on the model so no caller can forget it.
+
+Oversell has no cost basis: when a superuser confirms a sale that drives
+stock negative (D-016), the uncovered units find no layer. No price is
+invented for them. `SaleItem.uncosted_quantity` and
+`SalesInvoice.has_uncosted_items` surface them, so a page showing profit can
+say that it is overstated by whatever those units really cost.
+
+## D-038 — Payment gains customer / supplier
+Date: 2026-09-25
+Status: Final
+
+Context: A `Payment` reached its party only through `PaymentAllocation`, so
+an unallocated payment — a prepayment taken before any invoice is picked —
+had no trace to anyone at all. That breaks the founding principle that no
+money moves without an origin, a destination and a person
+(REDESIGN_VISION 1). Found while reviewing, not asked for.
+
+Decision: `Payment.customer` and `Payment.supplier`, both nullable, mirroring
+`Cheque`'s pair but with a looser constraint: at most one may be set, and it
+must agree with `direction` (IN -> customer, OUT -> supplier). Neither is
+required, because an expense's payment belongs to no party.
+`confirm_sale`, `confirm_purchase` and `clear_cheque` all set it
+automatically. `record_payment` raises a Persian ValidationError for each bad
+combination before the CHECK constraint can surface a raw IntegrityError
+(the ChequeForm lesson from ROADMAP 4.4).
+
+Consequences: A customer's or supplier's payments are now directly
+queryable (`Payment.objects.filter(customer=...)`) regardless of allocation
+state, which is what the Customer-detail statement (REDESIGN_VISION 4.7)
+and the Receivables page read.
+
+## D-039 — Cheque gains CANCELLED
+Date: 2026-09-25
+Status: Final
+
+Decision: `Cheque.Status.CANCELLED`, reachable only from PENDING, via a
+`cancel_cheque` service shaped like `bounce_cheque`. No Payment is created or
+touched: a pending cheque was never counted toward any invoice's
+payment_status (the ROADMAP 4.4 rule), so withdrawing one moves no money.
+This is "I entered this by mistake", not a reversal. The row is never
+deleted — it stays as history, like a cancelled invoice. New AuditLog event
+type `cancel_cheque`.
+
+## D-040 — Expense lives in apps.payments, backed by a real Payment
+Date: 2026-09-25
+Status: Final
+
+Context: REDESIGN_VISION 3 leaves the placement open ("either its own small
+app or inside apps.payments, your call").
+
+Decision: `Expense` goes in `apps.payments`, because it is a `Payment(OUT)`
+with a reason attached — it shares the "blank bank_account means cash" rule
+(REDESIGN_VISION 2.6), and a separate app for one model would only add an
+import boundary. `record_expense` creates the Expense and its Payment
+atomically (`Expense.payment`, OneToOne, non-null); `cancel_expense` books an
+opposite `Payment(IN)` into `Expense.reversal_payment` and sets
+`cancelled_at`/`cancelled_by`. Nothing is edited or deleted
+(REDESIGN_VISION 2.7). A CHECK keeps the three cancellation fields all-set or
+all-null.
+
+Reusing the Payment ledger is the point: bank balances, cash flow and every
+report already read `Payment`, so an expense needs no second accounting path.
+
+`related_person` is free text, not an FK to Supplier: a landlord or a
+mechanic is not a supplier, and forcing one into the partner list would put
+people the business never buys goods from into payables.
+
+`Expense.counts_toward_totals` is False once cancelled, stated on the model
+rather than left to each page, because every place that totals money has to
+agree (REDESIGN_VISION 8 item 4). New AuditLog event types `record_expense`
+and `cancel_expense`. `document` is an optional FileField, which is why
+MEDIA_ROOT/MEDIA_URL and the DEBUG-only media route now exist.

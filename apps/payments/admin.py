@@ -45,9 +45,38 @@ class BankAccountAdmin(admin.ModelAdmin):
 
 
 class PaymentForm(forms.ModelForm):
+    """
+    Turns the model's CHECK constraints into Persian field errors.
+
+    Django validates CheckConstraints inside full_clean(), which runs before
+    save_model() and therefore before record_payment()'s own checks -- so
+    without this the user sees "Constraint ... is violated" instead of a
+    sentence. Same fix as ChequeForm below, for the same reason
+    (ROADMAP 4.4's lesson, restated in REDESIGN_VISION 2.5).
+    """
+
     class Meta:
         model = Payment
         fields = ("bank_account", "direction", "customer", "supplier", "amount", "payment_date", "note")
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount")
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError("مبلغ پرداخت باید بزرگ‌تر از صفر باشد.")
+        return amount
+
+    def clean(self):
+        cleaned = super().clean()
+        direction = cleaned.get("direction")
+        customer = cleaned.get("customer")
+        supplier = cleaned.get("supplier")
+        if customer and supplier:
+            self.add_error("supplier", "یک پرداخت نمی‌تواند هم‌زمان مشتری و تأمین‌کننده داشته باشد.")
+        elif customer and direction != Payment.Direction.IN:
+            self.add_error("customer", "فقط دریافتی می‌تواند به مشتری نسبت داده شود.")
+        elif supplier and direction != Payment.Direction.OUT:
+            self.add_error("supplier", "فقط پرداختی می‌تواند به تأمین‌کننده نسبت داده شود.")
+        return cleaned
 
 
 @admin.register(Payment)
@@ -97,9 +126,26 @@ class PaymentAdmin(admin.ModelAdmin):
 
 
 class PaymentAllocationForm(forms.ModelForm):
+    """Persian errors for the amount and exactly-one-invoice CHECKs (see PaymentForm)."""
+
     class Meta:
         model = PaymentAllocation
         fields = ("payment", "sales_invoice", "purchase_invoice", "amount")
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount")
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError("مبلغ تخصیص باید بزرگ‌تر از صفر باشد.")
+        return amount
+
+    def clean(self):
+        cleaned = super().clean()
+        if bool(cleaned.get("sales_invoice")) == bool(cleaned.get("purchase_invoice")):
+            self.add_error(
+                "sales_invoice",
+                "دقیقاً یکی از فاکتور فروش یا خرید باید انتخاب شود.",
+            )
+        return cleaned
 
 
 @admin.register(PaymentAllocation)
@@ -292,7 +338,12 @@ class ChequeAdmin(admin.ModelAdmin):
 
 
 class ExpenseForm(forms.ModelForm):
-    """`payment` and the cancellation fields belong to the services, not a form."""
+    """
+    `payment` and the cancellation fields belong to the services, not a form.
+
+    `clean_amount` keeps expense_amount_positive from surfacing as a raw
+    constraint message, same reasoning as PaymentForm.
+    """
 
     class Meta:
         model = Expense
@@ -300,6 +351,12 @@ class ExpenseForm(forms.ModelForm):
             "expense_date", "amount", "related_person", "reason",
             "bank_account", "document", "note",
         )
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount")
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError("مبلغ هزینه باید بزرگ‌تر از صفر باشد.")
+        return amount
 
 
 @admin.register(Expense)
