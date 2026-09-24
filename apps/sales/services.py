@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
+from apps.inventory.services import consume_fifo, restore_consumptions
 from apps.payments.models import Cheque, Payment, PaymentAllocation
 from apps.payments.services import allocate_payment, record_cheque, record_payment
 from apps.products.models import Product
@@ -38,7 +39,9 @@ def confirm_sale(invoice, user):
 
     Returns:
         (invoice, shortages) where shortages is a list of dicts:
-        {"product": Product, "available": int, "requested": int, "resulting": int}
+        {"product": Product, "available": int, "requested": int,
+         "resulting": int, and "uncosted": int when some sold units found
+         no FIFO layer at all}
 
     Raises:
         ValidationError: invoice is not a draft, has no items, or has a
@@ -111,6 +114,27 @@ def confirm_sale(invoice, user):
         )
 
     InventoryMovement.objects.bulk_create(movements)
+
+    # FIFO: each line takes from the oldest layers still holding stock, and
+    # what it took is recorded per layer, so the line's real cost is known
+    # and a later cancellation can put back exactly those amounts
+    # (REDESIGN_VISION 3). The product rows are already locked above, which
+    # is what keeps two concurrent sales from draining the same layer twice.
+    for item in items:
+        _, uncosted = consume_fifo(
+            item,
+            item.quantity,
+            user,
+            note=f"فاکتور فروش {locked_invoice.invoice_number}",
+        )
+        if uncosted:
+            # Only reachable on an oversell, which a superuser has just been
+            # allowed to make. Those units have no layer and therefore no
+            # cost basis; SaleItem.uncosted_quantity surfaces them instead of
+            # inventing a price for them.
+            for shortage in shortages:
+                if shortage["product"].pk == item.product_id:
+                    shortage["uncosted"] = uncosted
 
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
@@ -201,6 +225,16 @@ def cancel_sale(invoice, user):
         raise ValidationError("فقط ابرکاربر می‌تواند فاکتور را لغو کند.")
 
     items = list(locked_invoice.items.select_related("product").all())
+
+    # Undo the FIFO draw first: every unit goes back to the exact layer it
+    # came from, by recorded amount rather than by FIFO order, so a layer a
+    # later sale has since drawn from still adds up (REDESIGN_VISION 8).
+    for item in items:
+        restore_consumptions(
+            item,
+            user,
+            note=f"لغو فاکتور فروش {locked_invoice.invoice_number}",
+        )
 
     reversals = [
         InventoryMovement(

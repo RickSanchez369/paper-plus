@@ -18,7 +18,13 @@ from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 from simple_history.admin import SimpleHistoryAdmin
-from apps.inventory.selectors import get_cost_map, get_stock, get_stock_map
+from apps.inventory.selectors import (
+    get_current_cost_map,
+    get_inventory_value_map,
+    get_last_known_cost_map,
+    get_stock,
+    get_stock_map,
+)
 from apps.inventory.services import set_opening_stock
 from apps.shared.utils import format_number, format_rial
 from .models import Product
@@ -128,12 +134,17 @@ class ProductAdmin(SimpleHistoryAdmin):
         products = list(changelist.result_list)
         product_ids = [p.pk for p in products]
         stock_map = get_stock_map(product_ids)
-        cost_map = get_cost_map(product_ids)
+        cost_map = get_current_cost_map(product_ids)
+        # Fallback so a sold-out product shows the cost it was last bought
+        # at instead of a blank (REDESIGN_VISION 8, item 5). Display only.
+        last_cost_map = get_last_known_cost_map(product_ids)
+        value_map = get_inventory_value_map(product_ids)
         for product in products:
             # A product with no movements is absent from the map: stock 0.
             product._stock = stock_map.get(product.pk, 0)
             # A product never purchased or onboarded has no known cost yet.
-            product._cost = cost_map.get(product.pk)
+            product._cost = cost_map.get(product.pk, last_cost_map.get(product.pk))
+            product._value = value_map.get(product.pk, 0)
         return changelist
 
     def changelist_view(self, request, extra_context=None):
@@ -149,11 +160,9 @@ class ProductAdmin(SimpleHistoryAdmin):
             products = response.context_data["cl"].result_list
         except (AttributeError, KeyError):
             return response
-        total = sum(
-            product._stock * product._cost
-            for product in products
-            if product._cost is not None
-        )
+        # Every layer at its own cost -- layers of the same product carry
+        # different costs, so "stock x one cost" would be wrong (4.3).
+        total = sum(product._value for product in products)
         response.context_data["total_inventory_value_display"] = format_rial(total)
         return response
 
@@ -174,33 +183,31 @@ class ProductAdmin(SimpleHistoryAdmin):
             quantity = get_stock(obj)
         return format_number(quantity)
 
-    @admin.display(description="آخرین قیمت خرید")
+    @admin.display(description="بهای خرید جاری")
     def cost_display(self, obj):
-        # Add page: not saved yet. Change page: obj has no _cost prefetch.
+        # The cost the NEXT sale will consume: the oldest active layer's own
+        # cost, not the latest purchase price (4.3). Falls back to the last
+        # known cost once stock hits zero.
         if obj is None or obj._state.adding:
             return "-"
         cost = getattr(obj, "_cost", "unset")
         if cost == "unset":
-            cost = get_cost_map([obj.pk]).get(obj.pk)
+            cost = get_current_cost_map([obj.pk]).get(
+                obj.pk, get_last_known_cost_map([obj.pk]).get(obj.pk)
+            )
         if cost is None:
             return "-"
         return format_rial(cost)
 
-    @admin.display(description="ارزش تقریبی موجودی")
+    @admin.display(description="ارزش موجودی")
     def value_display(self, obj):
-        # Value needs both a stock figure and a known cost (4.1); a product
-        # never purchased or onboarded has no cost basis yet.
+        # Sum of this product's active layers, each at its own cost (4.3).
         if obj is None or obj._state.adding:
             return "-"
-        stock = getattr(obj, "_stock", None)
-        if stock is None:
-            stock = get_stock(obj)
-        cost = getattr(obj, "_cost", "unset")
-        if cost == "unset":
-            cost = get_cost_map([obj.pk]).get(obj.pk)
-        if cost is None:
-            return "-"
-        return format_rial(stock * cost)
+        value = getattr(obj, "_value", None)
+        if value is None:
+            value = get_inventory_value_map([obj.pk]).get(obj.pk, 0)
+        return format_rial(value)
 
     @admin.display(description="تاریخچه تراکنش‌ها")
     def history_link(self, obj):

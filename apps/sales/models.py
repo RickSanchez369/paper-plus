@@ -143,6 +143,29 @@ class SalesInvoice(BaseModel):
             return self.PaymentStatus.PARTIAL
         return self.PaymentStatus.PAID
 
+    @property
+    def cost_of_goods(self):
+        """Real FIFO cost of everything on this invoice, in Rial."""
+        return sum(item.cost_of_goods for item in self.items.all())
+
+    @property
+    def profit(self):
+        """
+        Realised profit: invoice total minus real cost of goods, in Rial.
+
+        The discount comes off the total, so it comes out of profit -- it
+        is a price reduction, not a cost. Zero for a draft or cancelled
+        invoice, same rule as SaleItem.profit.
+        """
+        if self.status != self.Status.CONFIRMED:
+            return 0
+        return self.total - self.cost_of_goods
+
+    @property
+    def has_uncosted_items(self):
+        """True when any line was sold without a cost basis (see SaleItem)."""
+        return any(item.uncosted_quantity for item in self.items.all())
+
 
 class SaleItem(BaseModel):
     """One line of a sales invoice."""
@@ -206,6 +229,54 @@ class SaleItem(BaseModel):
     @property
     def line_total(self):
         return self.quantity * self.unit_price
+
+    @property
+    def cost_of_goods(self):
+        """
+        What these units actually cost, in Rial, from the FIFO layers this
+        line drew from (REDESIGN_VISION 3). Derived, never stored (D-025):
+        it is the sum over this line's InventoryConsumption rows of
+        quantity x that layer's own unit_cost, so a cancelled line -- whose
+        consumptions net to zero -- correctly costs nothing.
+        """
+        return sum(
+            consumption.quantity * consumption.layer.unit_cost
+            for consumption in self.consumptions.select_related("layer")
+        )
+
+    @property
+    def costed_quantity(self):
+        """How many of these units FIFO could actually find a layer for."""
+        return sum(consumption.quantity for consumption in self.consumptions.all())
+
+    @property
+    def uncosted_quantity(self):
+        """
+        Units sold with no layer behind them, so no cost basis at all.
+
+        Non-zero only after an oversell, which is superuser-only (D-016).
+        Surfaced rather than hidden: profit on those units is overstated by
+        exactly whatever they really cost, and a page showing profit has to
+        be able to say so.
+        """
+        if self.invoice.status != SalesInvoice.Status.CONFIRMED:
+            return 0
+        return self.quantity - self.costed_quantity
+
+    @property
+    def profit(self):
+        """
+        Realised profit: line total minus its real FIFO cost, in Rial.
+
+        Zero unless the invoice is confirmed. A draft has not sold anything
+        yet, and a cancelled line's consumptions net back to zero cost --
+        without this guard both would report their whole revenue as profit,
+        and every total built on this property would count cancelled
+        invoices (REDESIGN_VISION 8, item 4).
+        """
+        if self.invoice.status != SalesInvoice.Status.CONFIRMED:
+            return 0
+        return self.line_total - self.cost_of_goods
 
 
 class SalesPaymentEntry(BaseModel):

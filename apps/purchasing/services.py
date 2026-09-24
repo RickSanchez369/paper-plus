@@ -10,7 +10,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.inventory.models import InventoryMovement
+from apps.inventory.models import InventoryLayer, InventoryMovement
+from apps.inventory.services import cancel_layer
 from apps.payments.models import Cheque, Payment, PaymentAllocation
 from apps.payments.services import allocate_payment, record_cheque, record_payment
 from apps.shared.audit import log_event
@@ -72,6 +73,21 @@ def confirm_purchase(invoice, user):
         for item in items
     ]
     InventoryMovement.objects.bulk_create(movements)
+
+    # One FIFO cost layer per line: this is the stock a later sale will
+    # consume, at the price it was actually bought for (REDESIGN_VISION 3).
+    InventoryLayer.objects.bulk_create([
+        InventoryLayer(
+            product=item.product,
+            source=InventoryLayer.Source.PURCHASE,
+            purchase_item=item,
+            quantity=item.quantity,
+            quantity_remaining=item.quantity,
+            unit_cost=item.unit_price,
+            created_by=user,
+        )
+        for item in items
+    ])
 
     locked_invoice.status = PurchaseInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
@@ -150,8 +166,9 @@ def cancel_purchase(invoice, user):
 
     Raises:
         ValidationError: invoice is not confirmed (draft or already
-        cancelled), or ``user`` is not a superuser (D-023, now
-        REDESIGN_VISION §2.3).
+        cancelled); ``user`` is not a superuser (D-023, now
+        REDESIGN_VISION §2.3); or any of the stock this purchase brought
+        in has already been sold (REDESIGN_VISION §3).
     """
     locked_invoice = (
         PurchaseInvoice.objects.select_for_update().get(pk=invoice.pk)
@@ -164,6 +181,15 @@ def cancel_purchase(invoice, user):
         raise ValidationError("فقط ابرکاربر می‌تواند فاکتور را لغو کند.")
 
     items = list(locked_invoice.items.select_related("product").all())
+
+    # FIFO integrity guard, stricter than a sale's cancel rule: this stock
+    # may only be withdrawn while none of it has been sold. Checked for
+    # every line before anything is written, so a rejected cancellation
+    # leaves the invoice exactly as it was (REDESIGN_VISION 3).
+    for layer in InventoryLayer.objects.select_related("product").filter(
+        purchase_item__in=items
+    ):
+        cancel_layer(layer, user)
 
     reversals = [
         InventoryMovement(

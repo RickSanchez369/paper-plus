@@ -8,7 +8,7 @@ Selectors never write. Anything that writes belongs in a service.
 
 from django.db.models import Case, F, IntegerField, Sum, When
 
-from .models import InventoryMovement
+from .models import InventoryConsumption, InventoryLayer, InventoryMovement
 
 
 def _signed_quantity_expression():
@@ -44,24 +44,97 @@ def get_stock_map(product_ids):
     return {row["product_id"]: row["stock"] or 0 for row in rows}
 
 
-def get_cost_map(product_ids):
+def get_active_layers(product):
     """
-    Latest known unit cost per product (Rial), for inventory valuation (4.1).
+    This product's still-sellable layers, oldest first (FIFO order).
 
-    Cost is the unit_price of the most recent opening or purchase movement --
-    sale/adjustment rows never carry a cost basis. One query instead of N;
-    products with neither kind of movement are absent from the result.
+    Excludes cancelled layers (a cancelled purchase's stock is gone) and
+    exhausted ones. `select_for_update()` belongs in the service that
+    consumes them, not here -- a selector never locks.
+    """
+    return (
+        InventoryLayer.objects
+        .filter(product=product, cancelled_at__isnull=True, quantity_remaining__gt=0)
+        .order_by("created_at", "id")
+    )
+
+
+def get_current_cost_map(product_ids):
+    """
+    Cost the *next* sale of each product will consume: {product_id: Rial}.
+
+    That is the oldest active layer's own cost, which is what FIFO will
+    draw from next -- not an average and not the latest purchase price
+    (the old `get_cost_map`, which was never FIFO). Products with no
+    active layer are absent; callers that need a display fallback use
+    `get_last_known_cost_map`.
     """
     rows = (
-        InventoryMovement.objects
-        .filter(
-            product_id__in=product_ids,
-            movement_type__in=[InventoryMovement.MovementType.OPENING, InventoryMovement.MovementType.PURCHASE],
-        )
-        .order_by("product_id", "-created_at")
-        .values("product_id", "unit_price")
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True, quantity_remaining__gt=0)
+        .order_by("product_id", "created_at", "id")
+        .values("product_id", "unit_cost")
     )
     cost_map = {}
     for row in rows:
-        cost_map.setdefault(row["product_id"], row["unit_price"])
+        cost_map.setdefault(row["product_id"], row["unit_cost"])
     return cost_map
+
+
+def get_last_known_cost_map(product_ids):
+    """
+    Most recent known cost per product, including exhausted layers.
+
+    Display-only fallback for a product whose stock has hit zero, so its
+    "قیمت خرید جاری" column shows the last cost it was bought at instead
+    of a blank (REDESIGN_VISION 8, item 5). Never feeds a calculation.
+    """
+    rows = (
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True)
+        .order_by("product_id", "-created_at", "-id")
+        .values("product_id", "unit_cost")
+    )
+    cost_map = {}
+    for row in rows:
+        cost_map.setdefault(row["product_id"], row["unit_cost"])
+    return cost_map
+
+
+def get_inventory_value_map(product_ids):
+    """
+    Rial value of each product's stock: {product_id: value}.
+
+    Sum of every active layer's own remaining quantity times its own cost
+    -- layers carry different costs, so a single "stock x latest cost"
+    figure would be wrong (REDESIGN_VISION 4.3).
+    """
+    rows = (
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True)
+        .values("product_id")
+        .annotate(value=Sum(F("quantity_remaining") * F("unit_cost")))
+    )
+    return {row["product_id"]: row["value"] or 0 for row in rows}
+
+
+def get_total_inventory_value():
+    """Rial value of all stock on hand, across every product."""
+    result = InventoryLayer.objects.filter(cancelled_at__isnull=True).aggregate(
+        value=Sum(F("quantity_remaining") * F("unit_cost"))
+    )
+    return result["value"] or 0
+
+
+def get_layer_balance(layer):
+    """
+    A layer's remaining quantity rebuilt from its consumption rows.
+
+    `InventoryLayer.quantity_remaining` is a maintained running balance;
+    this recomputes it from scratch so a verification script (or a future
+    reconciliation page) can prove the two never drifted apart.
+    """
+    consumed = InventoryConsumption.objects.filter(layer=layer).aggregate(
+        total=Sum("quantity")
+    )["total"] or 0
+    return layer.quantity - consumed
