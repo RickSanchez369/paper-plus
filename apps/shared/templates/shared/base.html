@@ -1,0 +1,46 @@
+{% load static %}<!DOCTYPE html>
+{% comment %} The shell every signed-in page renders inside: sidebar, header, content
+   (REDESIGN_VISION 4.10 — the nav lives outside the dashboard, it is not
+   part of it). RTL is not a modifier here, it is the only direction. {% endcomment %}
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
+  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+  {% comment %} Vendored, not from a CDN: this is an internal tool that has to keep
+     working when the office internet does not. {% endcomment %}
+  <script src="{% static 'shared/js/htmx.min.js' %}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <div class="app">
+    {% include "shared/_sidebar.html" %}
+
+    <div class="main">
+      <header class="header">
+        <div class="header__title">{% block header %}{{ page_title }}{% endblock %}</div>
+        <div class="header__user">
+          <span>{{ request.user.get_full_name|default:request.user.phone }}</span>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--quiet">خروج</button>
+          </form>
+        </div>
+      </header>
+
+      <main class="content">
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message message--{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

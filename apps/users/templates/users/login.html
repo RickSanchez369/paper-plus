@@ -1,0 +1,51 @@
+{% load static %}<!DOCTYPE html>
+{% comment %} Standalone page: it must not extend the app shell, because the shell's
+   sidebar and header assume a signed-in user. {% endcomment %}
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ورود | پیپر پلاس</title>
+  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+</head>
+<body>
+  <main class="auth">
+    <div class="auth__card">
+      <div class="auth__brand">
+        <span class="sidebar__mark">پ</span>
+        <span class="auth__title">پیپر پلاس</span>
+      </div>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% comment %} Non-field errors are the wrong-credentials case; they belong above
+           the fields, not attached to one of them. {% endcomment %}
+        {% if form.non_field_errors %}
+          <div class="form-error">
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}
+
+        {% for field in form %}
+          <div class="field">
+            <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+
+        <div class="field">
+          <button type="submit" class="btn btn--block">ورود</button>
+        </div>
+
+        <input type="hidden" name="next" value="{{ next }}">
+      </form>
+
+      {% comment %} User accounts are created in the admin panel, not self-service
+         (D-034), so there is no "sign up" link and there never will be. {% endcomment %}
+      <p class="auth__note">حساب کاربری را مدیر سیستم می‌سازد.</p>
+    </div>
+  </main>
+</body>
+</html>

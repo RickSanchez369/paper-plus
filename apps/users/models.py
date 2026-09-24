@@ -94,5 +94,19 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         ordering = ["phone"]
 
     def __str__(self):
-        full_name = f"{self.first_name} {self.last_name}".strip()
-        return f"{full_name} ({self.phone})" if full_name else self.phone
+        return f"{self.get_full_name()} ({self.phone})" if self.get_full_name() else self.phone
+
+    def get_full_name(self):
+        """
+        First + last name, or "" when neither is set.
+
+        AbstractBaseUser does not provide this (only AbstractUser does), but
+        Django's admin and any template writing `user.get_full_name` expect
+        it -- without it a template silently falls back instead of failing,
+        which hides the mistake rather than fixing it.
+        """
+        return f"{self.first_name} {self.last_name}".strip()
+
+    def get_short_name(self):
+        """First name if known, otherwise the phone number."""
+        return self.first_name or self.phone

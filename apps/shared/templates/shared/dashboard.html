@@ -1,0 +1,25 @@
+{% extends "shared/base.html" %}
+
+{% comment %} A stub on purpose (REDESIGN_VISION 4.10): the dashboard only aggregates
+   the other modules, so it is built last. Inventing numbers here would be
+   worse than showing none. {% endcomment %}
+
+{% block title %}داشبورد{% endblock %}
+{% block header %}داشبورد{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>خوش آمدید</h1>
+  <p class="page-head__lede">
+    داشبورد خلاصهٔ فروش، خرید، هزینه، مطالبات، بدهی و موجودی را نشان می‌دهد.
+    چون فقط جمع‌بندی بقیهٔ بخش‌هاست، بعد از آن‌ها ساخته می‌شود.
+  </p>
+</div>
+
+<div class="card">
+  <div class="placeholder">
+    <span class="placeholder__tag">در دست ساخت</span>
+    <p>از منوی کنار می‌توانید به بخش‌های دیگر بروید.</p>
+  </div>
+</div>
+{% endblock %}
