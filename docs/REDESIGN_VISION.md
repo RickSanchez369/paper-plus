@@ -81,7 +81,17 @@ tool. Core principle, his words: "هیچ پول، کالا، چک، بدهی ی�
    append-only philosophy (Payment/PaymentAllocation/Cheque/InventoryMovement)
    to the two new things this redesign adds: `Expense` (cancel-only, never
    edit/delete) and `Cheque` (gains a `CANCELLED` status, see §3).
-8. **Financial reports are never snapshotted.** Sina confirmed: everything
+8. **Frontend interactivity stack: HTMX + Django templates**, confirmed by
+   Sina 2026-09-24 after being given the tradeoff directly (plain
+   vanilla JS/fetch was the runner-up; a full SPA + DRF API was rejected
+   as unwarranted scope for a single-business internal tool with no
+   mobile/offline requirement anywhere in the vision doc). Every live-
+   interaction need identified in §4 (price autofill, live remaining-
+   amount calculation, repeating invoice-item rows) is a "server already
+   has the data, swap a page fragment" pattern — HTMX's exact use case.
+   One language (Python), no new API layer, no build tooling, reuses the
+   same views/forms the rebuild is writing anyway.
+9. **Financial reports are never snapshotted.** Sina confirmed: everything
    is derived live from the append-only ledgers (movements, payments,
    audit log) for whatever date range is picked, consistent with D-025
    ("never store a derived fact"). The only thing worth saving is a
