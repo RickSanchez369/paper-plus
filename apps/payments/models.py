@@ -27,6 +27,11 @@ class BankAccount(BaseModel):
         max_length=100,
         verbose_name="نام حساب",
     )
+    owner = models.CharField(
+        max_length=200,
+        blank=True,  # existing accounts predate this field; not every one is known
+        verbose_name="صاحب حساب",
+    )
     account_number = models.CharField(
         max_length=50,
         verbose_name="شماره حساب",
@@ -57,6 +62,13 @@ class Payment(BaseModel):
 
     `bank_account` is left blank for cash: the amount still counts toward
     invoice payment status, it just is not attributed to any account ledger.
+
+    `customer`/`supplier` answer "whose money is this" without going
+    through an allocation. Before they existed, a payment not yet tied to
+    an invoice -- a prepayment, say -- had no trace to anyone at all, which
+    breaks the rule that every movement of money resolves back to a person
+    (REDESIGN_VISION 3). Both stay optional: an expense's payment belongs
+    to neither. Mirrors `Cheque`'s pair, with a looser constraint.
     """
 
     class Direction(models.TextChoices):
@@ -70,6 +82,22 @@ class Payment(BaseModel):
         blank=True,  # blank = cash
         related_name="payments",
         verbose_name="حساب بانکی",
+    )
+    customer = models.ForeignKey(
+        "partners.Customer",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set when direction=in and the money came from a customer
+        related_name="payments",
+        verbose_name="مشتری",
+    )
+    supplier = models.ForeignKey(
+        "partners.Supplier",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set when direction=out and the money went to a supplier
+        related_name="payments",
+        verbose_name="تأمین‌کننده",
     )
     direction = models.CharField(
         max_length=10,
@@ -102,6 +130,18 @@ class Payment(BaseModel):
                 condition=models.Q(amount__gt=0),
                 name="payment_amount_positive",
             ),
+            models.CheckConstraint(
+                # At most one party, and it has to agree with the direction:
+                # money coming IN can only come from a customer, money going
+                # OUT can only go to a supplier. Neither is the expense /
+                # unattributed case. Same shape as Cheque's own constraint.
+                condition=(
+                    models.Q(customer__isnull=True, supplier__isnull=True)
+                    | models.Q(direction="in", customer__isnull=False, supplier__isnull=True)
+                    | models.Q(direction="out", supplier__isnull=False, customer__isnull=True)
+                ),
+                name="payment_party_matches_direction",
+            ),
         ]
 
     def __str__(self):
@@ -117,6 +157,11 @@ class Payment(BaseModel):
     def unallocated_amount(self):
         """How much of this payment has not yet been tied to an invoice."""
         return self.amount - self.allocated_amount
+
+    @property
+    def party(self):
+        """Whoever this money moved with, or None for an expense/unattributed row."""
+        return self.customer or self.supplier
 
 
 class PaymentAllocation(BaseModel):
@@ -184,15 +229,21 @@ class Cheque(BaseModel):
     A pending cheque is not yet money -- no Payment exists for it, and it
     does not count toward any invoice's payment_status (Sina's call,
     2026-09-24). `clear_cheque` (apps/payments/services.py) is the only
-    way a Payment gets created and linked here; `bounce_cheque` closes it
-    with no Payment at all. Both are one-way: a cleared or bounced cheque
-    never goes back to pending.
+    way a Payment gets created and linked here; `bounce_cheque` and
+    `cancel_cheque` close it with no Payment at all. All three are one-way:
+    a closed cheque never goes back to pending.
+
+    CANCELLED means "I entered this by mistake", not a reversal: a pending
+    cheque never counted toward anything, so withdrawing it moves no money
+    (REDESIGN_VISION 3). Nothing is ever deleted -- the row stays as
+    history, same as a cancelled invoice.
     """
 
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار وصول"
         CLEARED = "cleared", "وصول شده"
         BOUNCED = "bounced", "برگشت خورده"
+        CANCELLED = "cancelled", "لغو شده"
 
     direction = models.CharField(
         max_length=10,
@@ -307,3 +358,131 @@ class Cheque(BaseModel):
 
     def __str__(self):
         return f"چک {self.cheque_number} ({self.get_status_display()})"
+
+
+class Expense(BaseModel):
+    """
+    Money spent on running the business: rent, wages, fuel, a repair.
+
+    Deliberately backed by a real `Payment` rather than a second, parallel
+    accounting path (REDESIGN_VISION 3): an expense moves money out of a
+    bank account (or out of the till, when `bank_account` is blank) exactly
+    like any other payment, so bank balances, cash flow and the reports
+    built on `Payment` all pick it up for free. The Expense row adds only
+    what a payment cannot say: who it was for and what it was for.
+
+    `related_person` is free text on purpose -- a landlord or a mechanic is
+    not a Supplier, and forcing one into the partner list would pollute the
+    payables side with people the business never buys goods from.
+
+    Never edited or deleted after recording, like everything else financial
+    here (REDESIGN_VISION 2.7). A mistake is corrected by `cancel_expense`,
+    which books an opposite Payment and flags this row cancelled.
+    """
+
+    expense_date = models.DateField(
+        verbose_name="تاریخ",
+    )
+    amount = models.BigIntegerField(
+        verbose_name="مبلغ (ریال)",
+    )
+    related_person = models.CharField(
+        max_length=200,
+        blank=True,  # not every expense has a person attached to it
+        verbose_name="طرف حساب",
+    )
+    reason = models.CharField(
+        max_length=255,
+        verbose_name="بابت",
+    )
+    bank_account = models.ForeignKey(
+        BankAccount,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # blank = cash, same meaning as on Payment
+        related_name="expenses",
+        verbose_name="حساب بانکی",
+    )
+    document = models.FileField(
+        upload_to="expenses/%Y/%m/",
+        blank=True,
+        verbose_name="سند/رسید",
+    )
+    note = models.TextField(
+        blank=True,
+        verbose_name="توضیح",
+    )
+    payment = models.OneToOneField(
+        Payment,
+        on_delete=models.PROTECT,
+        related_name="expense",
+        verbose_name="پرداخت",  # created with the expense by record_expense
+    )
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="زمان لغو",
+    )
+    reversal_payment = models.OneToOneField(
+        Payment,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set by cancel_expense; the opposite entry that undoes it
+        related_name="reversed_expense",
+        verbose_name="پرداخت برگشتی",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="expenses",
+        verbose_name="ثبت‌کننده",
+    )
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cancelled_expenses",
+        verbose_name="لغوکننده",
+    )
+
+    class Meta:
+        verbose_name = "هزینه"
+        verbose_name_plural = "هزینه‌ها"
+        ordering = ["-expense_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["expense_date"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="expense_amount_positive",
+            ),
+            models.CheckConstraint(
+                # A cancelled expense always has both its timestamp and the
+                # payment that reversed it; neither is meaningful alone.
+                condition=(
+                    models.Q(cancelled_at__isnull=True, reversal_payment__isnull=True, cancelled_by__isnull=True)
+                    | models.Q(cancelled_at__isnull=False, reversal_payment__isnull=False, cancelled_by__isnull=False)
+                ),
+                name="expense_cancellation_is_complete",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.reason} — {self.amount}"
+
+    @property
+    def is_cancelled(self):
+        return self.cancelled_at is not None
+
+    @property
+    def counts_toward_totals(self):
+        """
+        False once cancelled, so no card, report or statement counts it.
+
+        Stated on the model rather than left to each page, because every
+        place that totals money has to agree (REDESIGN_VISION 8, item 4).
+        """
+        return not self.is_cancelled

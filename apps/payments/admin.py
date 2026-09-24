@@ -17,14 +17,23 @@ from django.core.exceptions import ValidationError
 
 from apps.shared.utils import format_rial
 
-from .models import BankAccount, Cheque, Payment, PaymentAllocation
+from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation
 from .selectors import get_bank_account_balance
-from .services import allocate_payment, bounce_cheque, clear_cheque, record_cheque, record_payment
+from .services import (
+    allocate_payment,
+    bounce_cheque,
+    cancel_cheque,
+    cancel_expense,
+    clear_cheque,
+    record_cheque,
+    record_expense,
+    record_payment,
+)
 
 
 @admin.register(BankAccount)
 class BankAccountAdmin(admin.ModelAdmin):
-    list_display = ("name", "account_number", "balance_display", "is_active")
+    list_display = ("name", "owner", "account_number", "balance_display", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name", "account_number")
 
@@ -38,7 +47,7 @@ class BankAccountAdmin(admin.ModelAdmin):
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ("bank_account", "direction", "amount", "payment_date", "note")
+        fields = ("bank_account", "direction", "customer", "supplier", "amount", "payment_date", "note")
 
 
 @admin.register(Payment)
@@ -48,12 +57,12 @@ class PaymentAdmin(admin.ModelAdmin):
     form = PaymentForm
     list_display = (
         "payment_date", "direction", "amount_display", "bank_account",
-        "allocation_display", "created_by",
+        "party_display", "allocation_display", "created_by",
     )
     list_filter = ("direction", "bank_account")
-    search_fields = ("note",)
-    autocomplete_fields = ("bank_account",)
-    list_select_related = ("bank_account", "created_by")
+    search_fields = ("note", "customer__name", "supplier__name")
+    autocomplete_fields = ("bank_account", "customer", "supplier")
+    list_select_related = ("bank_account", "customer", "supplier", "created_by")
     date_hierarchy = "payment_date"
     ordering = ("-payment_date", "-created_at")
     readonly_fields = ("created_by", "id", "created_at", "updated_at")
@@ -63,6 +72,13 @@ class PaymentAdmin(admin.ModelAdmin):
         if obj is None:
             return "-"
         return format_rial(obj.amount)
+
+    @admin.display(description="طرف حساب")
+    def party_display(self, obj):
+        # Blank for an expense's payment, and for anything not yet attributed.
+        if obj is None:
+            return "-"
+        return obj.party or "-"
 
     @admin.display(description="تخصیص‌یافته / مانده")
     def allocation_display(self, obj):
@@ -183,7 +199,7 @@ class ChequeAdmin(admin.ModelAdmin):
     date_hierarchy = "due_date"
     ordering = ("due_date",)
     readonly_fields = ("status", "payment", "id", "created_at", "updated_at")
-    actions = ("mark_cleared", "mark_bounced")
+    actions = ("mark_cleared", "mark_bounced", "mark_cancelled")
 
     @admin.display(description="طرف حساب")
     def party_display(self, obj):
@@ -240,6 +256,23 @@ class ChequeAdmin(admin.ModelAdmin):
                     request, f"چک {cheque.cheque_number} وصول شد.", messages.SUCCESS,
                 )
 
+    @admin.action(description="لغو چک‌های انتخاب‌شده")
+    def mark_cancelled(self, request, queryset):
+        """One cancel_cheque call per row; a rejected one does not affect the rest."""
+        for cheque in queryset:
+            try:
+                cancel_cheque(cheque, request.user)
+            except ValidationError as error:
+                self.message_user(
+                    request,
+                    f"چک {cheque.cheque_number} لغو نشد: {'؛ '.join(error.messages)}",
+                    messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request, f"چک {cheque.cheque_number} لغو شد.", messages.WARNING,
+                )
+
     @admin.action(description="برگشت خوردن چک‌های انتخاب‌شده")
     def mark_bounced(self, request, queryset):
         """One bounce_cheque call per row; a rejected one does not affect the rest."""
@@ -255,4 +288,88 @@ class ChequeAdmin(admin.ModelAdmin):
             else:
                 self.message_user(
                     request, f"چک {cheque.cheque_number} برگشت خورد.", messages.WARNING,
+                )
+
+
+class ExpenseForm(forms.ModelForm):
+    """`payment` and the cancellation fields belong to the services, not a form."""
+
+    class Meta:
+        model = Expense
+        fields = (
+            "expense_date", "amount", "related_person", "reason",
+            "bank_account", "document", "note",
+        )
+
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    """
+    Add-only: every Expense is created through `record_expense`, which also
+    books the Payment that moves the money (see save_model). Never edited or
+    deleted -- a mistake is undone by the "لغو" action, which books the
+    opposite entry (REDESIGN_VISION 2.7).
+    """
+
+    form = ExpenseForm
+    list_display = (
+        "expense_date", "reason", "related_person", "amount_display",
+        "bank_account_display", "document_display", "status_display", "created_by",
+    )
+    list_filter = ("expense_date", "bank_account")
+    search_fields = ("reason", "related_person", "note")
+    list_select_related = ("bank_account", "created_by")
+    autocomplete_fields = ("bank_account",)
+    date_hierarchy = "expense_date"
+    ordering = ("-expense_date", "-created_at")
+    readonly_fields = ("payment", "cancelled_at", "cancelled_by", "reversal_payment", "id", "created_at", "updated_at")
+    actions = ("mark_cancelled",)
+
+    @admin.display(description="مبلغ")
+    def amount_display(self, obj):
+        if obj is None:
+            return "-"
+        return format_rial(obj.amount)
+
+    @admin.display(description="حساب پرداخت")
+    def bank_account_display(self, obj):
+        # No account means it came out of the till, same rule as Payment (2.6).
+        if obj is None:
+            return "-"
+        return obj.bank_account or "نقدی"
+
+    @admin.display(description="سند", boolean=True)
+    def document_display(self, obj):
+        return bool(obj and obj.document)
+
+    @admin.display(description="وضعیت")
+    def status_display(self, obj):
+        if obj is None:
+            return "-"
+        return "لغو شده" if obj.is_cancelled else "ثبت شده"
+
+    def save_model(self, request, obj, form, change):
+        record_expense(obj, request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description="لغو هزینه‌های انتخاب‌شده")
+    def mark_cancelled(self, request, queryset):
+        """One cancel_expense call per row; a rejected one does not affect the rest."""
+        for expense in queryset:
+            try:
+                cancel_expense(expense, request.user)
+            except ValidationError as error:
+                self.message_user(
+                    request,
+                    f"هزینهٔ «{expense.reason}» لغو نشد: {'؛ '.join(error.messages)}",
+                    messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request, f"هزینهٔ «{expense.reason}» لغو شد.", messages.WARNING,
                 )

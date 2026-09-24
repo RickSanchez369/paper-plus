@@ -171,6 +171,7 @@ def confirm_sale(invoice, user):
                 Payment(
                     bank_account=entry.bank_account,
                     direction=Payment.Direction.IN,
+                    customer=locked_invoice.customer,  # whose money this is (REDESIGN_VISION 3)
                     amount=entry.amount,
                     payment_date=locked_invoice.invoice_date,
                     note=f"فاکتور فروش {locked_invoice.invoice_number}",

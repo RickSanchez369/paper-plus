@@ -129,6 +129,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Uploaded files (today: expense receipts). Kept out of the repo by
+# .gitignore -- they are business documents, not source.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

@@ -123,6 +123,7 @@ def confirm_purchase(invoice, user):
                 Payment(
                     bank_account=entry.bank_account,
                     direction=Payment.Direction.OUT,
+                    supplier=locked_invoice.supplier,  # who got this money (REDESIGN_VISION 3)
                     amount=entry.amount,
                     payment_date=locked_invoice.invoice_date,
                     note=f"فاکتور خرید {locked_invoice.invoice_number}",

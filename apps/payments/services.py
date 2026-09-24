@@ -10,7 +10,7 @@ from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared.audit import log_event
 
-from .models import Cheque, Payment, PaymentAllocation
+from .models import Cheque, Expense, Payment, PaymentAllocation
 
 
 @transaction.atomic
@@ -34,6 +34,14 @@ def record_payment(payment, user):
         raise ValidationError("پرداخت قابل ویرایش نیست.")
     if payment.amount is None or payment.amount <= 0:
         raise ValidationError("مبلغ پرداخت باید بزرگ‌تر از صفر باشد.")
+    # A friendly message before payment_party_matches_direction would
+    # otherwise surface as a raw IntegrityError.
+    if payment.customer_id and payment.supplier_id:
+        raise ValidationError("یک پرداخت نمی‌تواند هم‌زمان مشتری و تأمین‌کننده داشته باشد.")
+    if payment.customer_id and payment.direction != Payment.Direction.IN:
+        raise ValidationError("فقط دریافتی می‌تواند به مشتری نسبت داده شود.")
+    if payment.supplier_id and payment.direction != Payment.Direction.OUT:
+        raise ValidationError("فقط پرداختی می‌تواند به تأمین‌کننده نسبت داده شود.")
     payment.created_by = user
     payment.save()
     log_event(
@@ -182,6 +190,10 @@ def clear_cheque(cheque, user, bank_account=None):
         Payment(
             bank_account=bank_account or locked.bank_account,
             direction=locked.direction,
+            # Carry the cheque's own party across, so the money this cheque
+            # became is still traceable to a person (REDESIGN_VISION 3).
+            customer=locked.customer,
+            supplier=locked.supplier,
             amount=locked.amount,
             payment_date=timezone.now().date(),
             note=f"وصول چک {locked.cheque_number}",
@@ -235,6 +247,128 @@ def bounce_cheque(cheque, user):
     log_event(
         actor=user,
         event_type="bounce_cheque",
+        target=locked,
+        payload={"amount": locked.amount},
+    )
+    return locked
+
+@transaction.atomic
+def cancel_cheque(cheque, user):
+    """
+    Withdraw a cheque that should never have been entered.
+
+    Reachable only from PENDING, one-way, and financially a no-op: a
+    pending cheque was never counted toward any invoice's payment_status
+    (ROADMAP 4.4), so there is nothing to reverse and no Payment is
+    involved either way. Mirrors `bounce_cheque`'s shape; the row survives
+    as history rather than being deleted (REDESIGN_VISION 2.7).
+
+    Raises:
+        ValidationError: cheque is not pending.
+    """
+    locked = Cheque.objects.select_for_update().get(pk=cheque.pk)
+    if locked.status != Cheque.Status.PENDING:
+        raise ValidationError("فقط چک در انتظار وصول قابل لغو است.")
+
+    locked.status = Cheque.Status.CANCELLED
+    locked.save(update_fields=["status", "updated_at"])
+    log_event(
+        actor=user,
+        event_type="cancel_cheque",
+        target=locked,
+        payload={"amount": locked.amount},
+    )
+    return locked
+
+
+@transaction.atomic
+def record_expense(expense, user):
+    """
+    Record a business expense and the money that left with it, together.
+
+    Creates the Payment (direction OUT, no allocations -- an expense
+    settles no invoice) and links it to the Expense in one transaction, so
+    the two can never exist apart. Reusing the Payment ledger is the whole
+    point: bank balances and every cash-flow figure already read from it,
+    so an expense needs no parallel accounting path
+    (REDESIGN_VISION 3, vision doc 27).
+
+    Args:
+        expense: an unsaved Expense with expense_date, amount, reason and
+            optionally related_person/bank_account/document/note set.
+            `payment` must NOT be set -- this creates it.
+        user: the user performing the action; recorded on both rows.
+
+    Raises:
+        ValidationError: expense already exists, amount is not positive,
+            reason is blank, or a payment was pre-attached.
+    """
+    if not expense._state.adding:
+        raise ValidationError("هزینه قابل ویرایش نیست.")
+    if expense.amount is None or expense.amount <= 0:
+        raise ValidationError("مبلغ هزینه باید بزرگ‌تر از صفر باشد.")
+    if not (expense.reason or "").strip():
+        raise ValidationError("ثبت «بابت» برای هزینه الزامی است.")
+    if expense.payment_id is not None:
+        raise ValidationError("پرداخت هزینه را خود سرویس می‌سازد.")
+
+    expense.payment = record_payment(
+        Payment(
+            bank_account=expense.bank_account,
+            direction=Payment.Direction.OUT,
+            amount=expense.amount,
+            payment_date=expense.expense_date,
+            note=f"هزینه: {expense.reason}",
+        ),
+        user,
+    )
+    expense.created_by = user
+    expense.save()
+
+    log_event(
+        actor=user,
+        event_type="record_expense",
+        target=expense,
+        payload={"amount": expense.amount, "reason": expense.reason},
+    )
+    return expense
+
+
+@transaction.atomic
+def cancel_expense(expense, user):
+    """
+    Undo an expense with an opposite entry, never by deleting it.
+
+    Books a Payment of the same amount in the opposite direction against
+    the same account, so the bank balance returns to where it was and the
+    ledger keeps both halves of the story (REDESIGN_VISION 2.7). The
+    Expense row itself stays, flagged cancelled, and stops counting toward
+    any total (`counts_toward_totals`).
+
+    Raises:
+        ValidationError: expense is already cancelled.
+    """
+    locked = Expense.objects.select_for_update().get(pk=expense.pk)
+    if locked.is_cancelled:
+        raise ValidationError("این هزینه قبلاً لغو شده است.")
+
+    locked.reversal_payment = record_payment(
+        Payment(
+            bank_account=locked.bank_account,
+            direction=Payment.Direction.IN,
+            amount=locked.amount,
+            payment_date=timezone.now().date(),
+            note=f"لغو هزینه: {locked.reason}",
+        ),
+        user,
+    )
+    locked.cancelled_at = timezone.now()
+    locked.cancelled_by = user
+    locked.save(update_fields=["reversal_payment", "cancelled_at", "cancelled_by", "updated_at"])
+
+    log_event(
+        actor=user,
+        event_type="cancel_expense",
         target=locked,
         payload={"amount": locked.amount},
     )
