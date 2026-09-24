@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 4.2. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
+Updated 2026-09-24, after ROADMAP 4.3. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql, refreshed again 2026-09-24 03:51 before the 4.3 migration); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
 
 ## Next
-4.3 — `BankAccount` model; `Payment` + `PaymentAllocation` for bank-transfer payments; derived payment status (D-025).
+Sina paused here on purpose (2026-09-24) before 4.4 -- he has something else to do first. Do not start 4.4 until he says so.
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -115,6 +115,39 @@ Updated 2026-09-24, after ROADMAP 4.2. Phase 1 merged to main. Database flushed 
   (`?product__id__exact=<pk>`) -- the user (`created_by`) and price
   (`unit_price_display`) columns already existed there since 2.9/2.11.
   Verified 5/5, scripts/test_transaction_history.py.
+- 4.3: new app `apps.payments` -- `BankAccount` (name, account number,
+  business); `Payment` (D-012-style: `amount` always positive, `direction`
+  in/out carries the sign; `bank_account` nullable = cash); `PaymentAllocation`
+  ties part of a Payment to exactly one of `SalesInvoice`/`PurchaseInvoice`
+  (explicit FK pair + CHECK, mirroring InventoryMovement.purchase_item/
+  sale_item from 2.9 -- not a GenericForeignKey). Covers **both** sides of
+  the ledger (money in from customers, money out to suppliers) -- Sina's
+  call, 2026-09-24: "رد پول" tracking is the whole point of the project.
+  Services `record_payment`/`allocate_payment` (apps/payments/services.py)
+  take an unsaved instance, validate (direction matches invoice side, same
+  business, invoice confirmed, amount within both the payment's and the
+  invoice's remaining balance) and save it, locking the payment + invoice
+  rows first (D-015-style). `SalesInvoice`/`PurchaseInvoice` gained
+  `paid_amount`/`payment_status` (unpaid/partial/paid) as properties,
+  never a stored field (D-025) -- shown read-only on both invoice admins.
+  `BankAccountAdmin` shows each account's net balance (IN minus OUT).
+  Payment/PaymentAllocation admins are add-only (no change/delete),
+  same append-only philosophy as InventoryMovement; allocation happens on
+  its own admin page (pick payment + invoice), not an inline on either --
+  simpler to route through the service, at the cost of one extra click.
+  AuditLog.EventType gained record_payment/allocate_payment.
+  Bugfix caught by the verification script before this closed: both
+  services checked `instance.pk is not None` to detect "already saved",
+  but `BaseModel.id` defaults to `uuid4()` at construction time, so `pk`
+  is never `None` even for a brand-new instance -- fixed to check
+  `instance._state.adding` instead (the pattern already used elsewhere in
+  admin.py, e.g. `stock_display`). Verified 15/15, scripts/test_payments.py.
+- 4.3 also caught (harmless, unrelated to 4.3 itself): the 2.10 `cancelled`
+  status choice on both invoices was never migrated -- it existed in
+  models.py but the migration state still only had draft/confirmed. No
+  functional impact (Django does not enforce `choices` in the database),
+  caught and closed by the same `makemigrations` run
+  (purchasing/0005, sales/0007).
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
@@ -161,7 +194,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 ### Phase 4 — Financial modules (in parallel with SHADOW)
 - [x] 4.1 Inventory overview: stock, last purchase price, selling price, approximate value, status (negative / low / normal) [R 12, 14]
 - [x] 4.2 Per-product transaction history with invoice link, user, price [R 13]
-- [ ] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
+- [x] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
       `PaymentAllocation` referencing it for bank-transfer payments; derived
       payment status (D-025) [R 10]
 - [ ] 4.4 `Cheque` lifecycle: pending / cleared / bounced, linked to a Payment [R 3, 10]

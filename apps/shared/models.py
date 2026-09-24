@@ -137,6 +137,8 @@ class AuditLog(BaseModel):
         CONFIRM_SALE = "confirm_sale", "تأیید فاکتور فروش"
         CANCEL_PURCHASE = "cancel_purchase", "لغو فاکتور خرید"
         CANCEL_SALE = "cancel_sale", "لغو فاکتور فروش"
+        RECORD_PAYMENT = "record_payment", "ثبت پرداخت"
+        ALLOCATE_PAYMENT = "allocate_payment", "تخصیص پرداخت"
 
     business = models.ForeignKey(
         Business,

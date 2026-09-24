@@ -86,7 +86,8 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
 
     list_display = (
         "invoice_number", "supplier", "business", "invoice_date",
-        "status", "total_display", "payment_method", "confirmed_at", "created_by",
+        "status", "total_display", "payment_method", "payment_status_display",
+        "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
     search_fields = ("invoice_number", "supplier__name")
@@ -97,10 +98,12 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
     # status/confirmed_at belong to the service; created_by to save_model.
     # invoice_number is assigned by confirm_purchase at confirmation (D-022);
     # never editable in the admin.
-    readonly_fields = ("invoice_number", "status", "confirmed_at", "created_by") + SYSTEM_FIELDS
+    readonly_fields = (
+        "invoice_number", "status", "confirmed_at", "created_by", "payment_status_display",
+    ) + SYSTEM_FIELDS
     fieldsets = (
         ("اطلاعات فاکتور", {"fields": ("business", "supplier", "supplier_invoice_number", "invoice_date")}),
-        ("پرداخت", {"fields": ("payment_method", "payment_note")}),
+        ("پرداخت", {"fields": ("payment_method", "payment_note", "payment_status_display")}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
@@ -118,6 +121,16 @@ class PurchaseInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.M
         if obj is None:
             return "-"
         return format_rial(obj._total or 0)
+
+    @admin.display(description="وضعیت پرداخت")
+    def payment_status_display(self, obj):
+        # Derived from PaymentAllocation, never typed (D-025, 4.3).
+        # payment_status is a @property (not a model field), so there is
+        # no auto-generated get_payment_status_display() -- .label works
+        # because it returns the TextChoices member itself.
+        if obj is None or obj._state.adding:
+            return "-"
+        return obj.payment_status.label
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.

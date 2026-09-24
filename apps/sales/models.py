@@ -129,6 +129,26 @@ class SalesInvoice(BaseModel):
         """Subtotal minus the invoice-level discount, in Rial (R 9)."""
         return self.subtotal - self.discount_amount
 
+    class PaymentStatus(models.TextChoices):
+        UNPAID = "unpaid", "پرداخت‌نشده"
+        PARTIAL = "partial", "نیمه‌پرداخت"
+        PAID = "paid", "تسویه‌شده"
+
+    @property
+    def paid_amount(self):
+        """Sum of PaymentAllocation rows against this invoice, in Rial (4.3)."""
+        return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
+
+    @property
+    def payment_status(self):
+        """unpaid / partial / paid, derived from paid_amount vs total -- never typed (D-025)."""
+        paid = self.paid_amount
+        if paid <= 0:
+            return self.PaymentStatus.UNPAID
+        if paid < self.total:
+            return self.PaymentStatus.PARTIAL
+        return self.PaymentStatus.PAID
+
 
 class SaleItem(BaseModel):
     """One line of a sales invoice."""

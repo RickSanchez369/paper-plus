@@ -116,6 +116,26 @@ class PurchaseInvoice(BaseModel):
         """Sum of line totals, in Rial."""
         return sum(item.line_total for item in self.items.all())
 
+    class PaymentStatus(models.TextChoices):
+        UNPAID = "unpaid", "پرداخت‌نشده"
+        PARTIAL = "partial", "نیمه‌پرداخت"
+        PAID = "paid", "تسویه‌شده"
+
+    @property
+    def paid_amount(self):
+        """Sum of PaymentAllocation rows against this invoice, in Rial (4.3)."""
+        return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
+
+    @property
+    def payment_status(self):
+        """unpaid / partial / paid, derived from paid_amount vs total_amount -- never typed (D-025)."""
+        paid = self.paid_amount
+        if paid <= 0:
+            return self.PaymentStatus.UNPAID
+        if paid < self.total_amount:
+            return self.PaymentStatus.PARTIAL
+        return self.PaymentStatus.PAID
+
 
 class PurchaseItem(BaseModel):
     """One line of a purchase invoice."""

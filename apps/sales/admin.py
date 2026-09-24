@@ -98,7 +98,8 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
     form = SalesInvoiceForm
     list_display = (
         "invoice_number", "customer", "business", "invoice_date",
-        "status", "total_display", "payment_method", "confirmed_at", "created_by",
+        "status", "total_display", "payment_method", "payment_status_display",
+        "confirmed_at", "created_by",
     )
     list_filter = ("business", "status", "invoice_date")
     search_fields = ("invoice_number", "customer__name")
@@ -111,12 +112,12 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
     # never editable in the admin.
     readonly_fields = (
         "invoice_number", "status", "confirmed_at", "created_by",
-        "subtotal_display", "total_display",
+        "subtotal_display", "total_display", "payment_status_display",
     ) + SYSTEM_FIELDS
     fieldsets = (
         ("اطلاعات فاکتور", {"fields": ("business", "customer", "invoice_date")}),
         ("مبلغ", {"fields": ("discount_amount", "subtotal_display", "total_display")}),
-        ("پرداخت", {"fields": ("payment_method", "payment_note")}),
+        ("پرداخت", {"fields": ("payment_method", "payment_note", "payment_status_display")}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
@@ -139,6 +140,16 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
         if obj is None or obj._state.adding:
             return "-"
         return format_rial(obj.total)
+
+    @admin.display(description="وضعیت پرداخت")
+    def payment_status_display(self, obj):
+        # Derived from PaymentAllocation, never typed (D-025, 4.3).
+        # payment_status is a @property (not a model field), so there is
+        # no auto-generated get_payment_status_display() -- .label works
+        # because it returns the TextChoices member itself.
+        if obj is None or obj._state.adding:
+            return "-"
+        return obj.payment_status.label
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.
