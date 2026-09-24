@@ -349,11 +349,101 @@ directly and only pause to ask when there is a genuine fork or a specific
 business-logic ambiguity, same standard as the git-execution autonomy
 already granted.
 
-## 8. Where things stand right now
+## 8. Stage 3 — cross-page logic review (done independently, 2026-09-24)
+
+Traced several real end-to-end chains through the §4 page designs looking
+for contradictions, double-counting, or dead ends between modules.
+
+### Chains checked and found consistent
+- **Sale with split payment (cash + pending cheque + credit) → FIFO
+  consumption → per-line profit → PaymentAllocation → Receivables total →
+  Dashboard.** A pending cheque correctly stays outside `payment_status`
+  (ROADMAP 4.4's own rule) until `clear_cheque` runs, at which point every
+  downstream number (invoice status, customer balance, dashboard totals)
+  updates automatically from the same underlying tables — no page caches a
+  stale number.
+- **Purchase cancellation guard under FIFO.** Blocking cancellation once a
+  layer's `quantity_remaining != original quantity` correctly prevents
+  breaking a sale that already consumed part of it — verified against both
+  "fully consumed" and "partially consumed" cases.
+- **Sale cancellation reversing exact FIFO layers**, even when a *later*
+  sale has since drawn further from the same layer(s) — restoring by exact
+  `InventoryConsumption` amount (not FIFO-order-dependent) keeps the layer
+  arithmetic correct regardless of what happened in between.
+- **`InventoryLayer` vs `InventoryMovement` is not a duplicate-source-of-
+  truth problem.** `InventoryMovement` stays the immutable historical fact
+  (never mutated, per the project's append-only invariant since D-012);
+  `InventoryLayer.quantity_remaining` is a maintained *derived* running
+  balance (fully reconstructable by replaying `InventoryConsumption`
+  against the original quantity) — the same relationship `Payment` already
+  has to `PaymentAllocation`. Keeping them separate avoids ever mutating an
+  append-only ledger row.
+- **Receivables/Payables lists, Customer/Supplier statements, and Sales/
+  Purchasing list payment-status badges** all read the same underlying
+  `PaymentAllocation`-derived properties — no page stores its own copy, so
+  they cannot drift apart.
+- Sina's earlier live-testing complaint ("این تخصیص پرداخت‌ها رو نمی‌فهمم
+  چه تخصیصی، اصلا برای چیه") does not resurface in this redesign: payment
+  allocation is never its own page anymore, it is always embedded inside a
+  concrete action (recording a sale's payment split, or "ثبت پرداخت" from
+  a customer/receivables page).
+
+### Real gaps found — fixed directly in this doc (not forks, just missed detail)
+1. **Incomplete cheques (no `due_date` yet, ROADMAP 4.3b's allowed case)
+   are invisible to any "due soon" alert**, since a null due date can never
+   fall inside a 7-day window. Both the Dashboard's warning row (§4.10) and
+   the Cheques list (§4.4) must show a separate **"نیاز به تکمیل اطلاعات"**
+   bucket, with equal visual urgency to "due soon" — otherwise an
+   incomplete cheque can sit forgotten indefinitely.
+2. **"ثبت پرداخت" appears in four places** (Receivables, Payables,
+   Customer detail, Supplier detail) — this must be **one shared form/
+   component**, not four separate implementations, or they will drift
+   apart over time. Same treatment as "مشتری جدید" already reused between
+   the Customers page and the Sales new-invoice form.
+3. **Cheque entry from an invoice's payment row never mentioned letting the
+   user optionally pick the destination bank account up front**, even
+   though `Cheque.bank_account` already supports being set before
+   clearing. Add it as an optional field on that row, alongside cheque
+   number/bank/due date.
+4. **Cross-cutting rule, must hold on every page that totals money:**
+   dashboard cards, financial reports, customer/supplier statements, and
+   every list's summary cards must all exclude **cancelled** invoices,
+   cheques, and expenses from their totals. Stating it once here so no
+   single page's implementation misses it and quietly disagrees with the
+   others.
+5. **Inventory's "قیمت خرید جاری" has nothing to show once a product's
+   stock hits zero** (no active layer left). Show its last known cost
+   (from the most recent, now-exhausted layer) instead of a blank, purely
+   for reference — it does not feed any calculation.
+6. **A product created inline mid-purchase still needs a real
+   `default_selling_price`**, not the field's `0` default silently
+   accepted — the inline form should require it even though the user is
+   in a *purchase* flow, to avoid an accidental free sale later.
+7. **ROADMAP 4.7 (purchase/selling price history) has no dedicated view**
+   in the §4 page map. The underlying data already exists
+   (`HistoricalProduct` via django-simple-history) — this just needs a
+   small "تاریخچهٔ قیمت" tab added to the Inventory per-product detail
+   page (§4.3), not a new module.
+
+### Real gap found — needs Sina's decision, not decided here
+8. **Sales/Purchase returns (ROADMAP 4.6) have no home anywhere** — not in
+   the original vision document, not in any of the 11 modules designed in
+   §4. This is different from cancelling an invoice (which voids the
+   *whole* document): a return is "the invoice was correct, but the
+   customer brought back 2 of the 10 items three weeks later," and it has
+   real open design questions of its own (does returned stock become a
+   *new* `InventoryLayer` at the original cost, or something else; does it
+   need its own document type; does it retroactively touch the original
+   invoice's reported profit or book a separate return/loss entry). Needs
+   Sina's call on whether this is in scope for the current redesign round
+   or explicitly deferred — not designed here to avoid guessing at
+   business logic he hasn't specified.
+
+## 9. Where things stand right now
 
 This branch (`explore/vision-rethink`) contains **zero code changes** from
 `dev` — only this document and the 4 design-system references (§5). No
 model/service/view code for the redesign exists yet. The next session
-should start by reading this file in full, then proceed to stage 3 (cross-
-page logic review) or straight to stage 4/5 if Sina says stage 3 is
-already sufficiently covered above.
+should start by reading this file in full. Stage 3 (§8) is done; item 8
+above (returns) is the one open question before stage 4 (final per-page
+architecture) / stage 5 (Master Prompt).
