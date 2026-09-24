@@ -14,6 +14,8 @@ reference them through PROTECT foreign keys.
 """
 from django import forms
 from django.contrib import admin, messages
+from django.urls import reverse
+from django.utils.html import format_html
 from simple_history.admin import SimpleHistoryAdmin
 from apps.inventory.selectors import get_cost_map, get_stock, get_stock_map
 from apps.inventory.services import set_opening_stock
@@ -76,7 +78,7 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
     form = ProductAdminForm
     list_display = (
         "name", "sku", "business", "unit", "price_display",
-        "stock_display", "cost_display", "value_display",
+        "stock_display", "cost_display", "value_display", "history_link",
         "is_onboarded", "is_active",
     )
     list_filter = ("business", "is_active", "is_onboarded")
@@ -203,6 +205,16 @@ class ProductAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin):
         if cost is None:
             return "-"
         return format_rial(stock * cost)
+
+    @admin.display(description="تاریخچه تراکنش‌ها")
+    def history_link(self, obj):
+        # Links into InventoryMovementAdmin pre-filtered to this product
+        # (4.2) -- every movement already carries its invoice link (via
+        # invoice_display, added alongside this) and its user (created_by).
+        if obj is None or obj._state.adding:
+            return "-"
+        url = reverse("admin:inventory_inventorymovement_changelist")
+        return format_html('<a href="{}?product__id__exact={}">مشاهده</a>', url, obj.pk)
 
     def has_delete_permission(self, request, obj=None):
         # Deactivate with is_active instead (see module docstring).

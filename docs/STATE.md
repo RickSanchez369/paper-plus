@@ -1,9 +1,9 @@
 # STATE — paper-plus
 
-Updated 2026-09-24, after ROADMAP 4.1. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
+Updated 2026-09-24, after ROADMAP 4.2. Phase 1 merged to main. Database flushed of test data 2026-09-24 (backup: backups/paper_plus_2026-09-24_013908.sql); phase 3 (real data) underway; 3.4 (real SHADOW) stays open in the background per the note below.
 
 ## Next
-4.2 — Per-product transaction history with invoice link, user, price.
+4.3 — `BankAccount` model; `Payment` + `PaymentAllocation` for bank-transfer payments; derived payment status (D-025).
 
 ## Built (details: PROJECT_MAP.md, git log)
 - Django 6.1.1, Python 3.13.2, PostgreSQL 18, database `paper_plus`, venv `.venv`.
@@ -107,6 +107,14 @@ Updated 2026-09-24, after ROADMAP 4.1. Phase 1 merged to main. Database flushed 
   (sales, costs, expenses, USD tracking) is a new feature outside every
   existing roadmap id and needs its own decision (see PENDING note below),
   not built here.
+- 4.2: `InventoryMovementAdmin` gained an "فاکتور مرتبط" (invoice) column --
+  a link to the movement's source invoice via `purchase_item.invoice` /
+  `sale_item.invoice` (opening/adjustment rows show "-", they carry
+  neither FK). `ProductAdmin` gained a "تاریخچه تراکنش‌ها" link per row into
+  `InventoryMovementAdmin`'s change list pre-filtered to that product
+  (`?product__id__exact=<pk>`) -- the user (`created_by`) and price
+  (`unit_price_display`) columns already existed there since 2.9/2.11.
+  Verified 5/5, scripts/test_transaction_history.py.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
@@ -152,7 +160,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 
 ### Phase 4 — Financial modules (in parallel with SHADOW)
 - [x] 4.1 Inventory overview: stock, last purchase price, selling price, approximate value, status (negative / low / normal) [R 12, 14]
-- [ ] 4.2 Per-product transaction history with invoice link, user, price [R 13]
+- [x] 4.2 Per-product transaction history with invoice link, user, price [R 13]
 - [ ] 4.3 `BankAccount` model (name, account number, business FK); `Payment` +
       `PaymentAllocation` referencing it for bank-transfer payments; derived
       payment status (D-025) [R 10]
