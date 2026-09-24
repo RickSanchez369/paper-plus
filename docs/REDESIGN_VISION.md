@@ -425,7 +425,7 @@ for contradictions, double-counting, or dead ends between modules.
    small "تاریخچهٔ قیمت" tab added to the Inventory per-product detail
    page (§4.3), not a new module.
 
-### Real gap found — needs Sina's decision, not decided here
+### Out of scope, explicitly deferred by Sina (2026-09-24)
 8. **Sales/Purchase returns (ROADMAP 4.6) have no home anywhere** — not in
    the original vision document, not in any of the 11 modules designed in
    §4. This is different from cancelling an invoice (which voids the
@@ -434,16 +434,17 @@ for contradictions, double-counting, or dead ends between modules.
    real open design questions of its own (does returned stock become a
    *new* `InventoryLayer` at the original cost, or something else; does it
    need its own document type; does it retroactively touch the original
-   invoice's reported profit or book a separate return/loss entry). Needs
-   Sina's call on whether this is in scope for the current redesign round
-   or explicitly deferred — not designed here to avoid guessing at
-   business logic he hasn't specified.
+   invoice's reported profit or book a separate return/loss entry). Sina's
+   call: **"فعلاً از دامنه خارجش کن، برای بعد نگهش داریم"** — explicitly
+   out of scope for this redesign round. Do not design or build it without
+   a fresh conversation about it later. ROADMAP 4.6 stays open/unbuilt.
 
 ## 9. Where things stand right now
 
 This branch (`explore/vision-rethink`) contains **zero code changes** from
 `dev` — only this document and the 4 design-system references (§5). No
-model/service/view code for the redesign exists yet. The next session
-should start by reading this file in full. Stage 3 (§8) is done; item 8
-above (returns) is the one open question before stage 4 (final per-page
-architecture) / stage 5 (Master Prompt).
+model/service/view code for the redesign exists yet. **Stage 3 (§8) is
+fully closed** — no open items remain. The next session should start by
+reading this file in full, then move to stage 4 (final per-page
+architecture write-up) and/or stage 5 (the Master Prompt), per whatever
+Sina decides at the start of that session (see §7 for his 6-stage plan).
