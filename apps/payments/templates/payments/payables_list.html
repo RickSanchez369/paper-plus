@@ -1,0 +1,55 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Payables (REDESIGN_VISION 4.4): exact mirror of Receivables,
+Supplier/PurchaseInvoice side.
+{% endcomment %}
+
+{% block title %}بدهی‌ها{% endblock %}
+{% block header %}بدهی‌ها{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>بدهی به تأمین‌کنندگان</h1>
+  <p class="page-head__lede">فقط تأمین‌کنندگانی که حساب باز داریم.</p>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>تأمین‌کننده</th>
+              <th>تلفن</th>
+              <th>مانده بدهی</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a></td>
+                <td class="num">{{ row.supplier.phone|default:"—" }}</td>
+                <td class="num">{{ row.outstanding|rial_toman }}</td>
+                <td>
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">ثبت پرداخت</summary>
+                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>به هیچ تأمین‌کننده‌ای بدهی باز نداریم.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

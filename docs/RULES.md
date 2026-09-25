@@ -146,3 +146,4 @@ Read in that order; continue from STATE.md "Next".
 - D-039 Cheque gains CANCELLED, from PENDING only, with no Payment.
 - D-040 Expense lives in apps.payments, backed by a real Payment(OUT); related_person is free text.
 - D-041 Manual stock adjustment: adjustment_out draws FIFO layers via a generalized InventoryConsumption (movement FK, sale_item now nullable); adjustment_in opens a new layer; no privilege gate, mandatory reason note only.
+- D-042 Split payment allocation settles a party's oldest open invoice first (invoice_date order), one allocate_payment call per invoice inside record_payment's own transaction; new SalesInvoice.outstanding/PurchaseInvoice.outstanding properties back it.

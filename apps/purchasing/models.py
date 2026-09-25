@@ -130,6 +130,12 @@ class PurchaseInvoice(BaseModel):
             return self.PaymentStatus.PARTIAL
         return self.PaymentStatus.PAID
 
+    @property
+    def outstanding(self):
+        """How much of this invoice is still open, never below zero (an
+        overpayment does not make an invoice owe negative money, D-025)."""
+        return max(self.total_amount - self.paid_amount, 0)
+
 
 class PurchaseItem(BaseModel):
     """One line of a purchase invoice."""

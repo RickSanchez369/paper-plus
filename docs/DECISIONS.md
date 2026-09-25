@@ -685,3 +685,38 @@ Consequences: every stock-changing row — opening, purchase, sale,
 adjustment_in, adjustment_out — now resolves to the specific layer(s) it
 touched, closing the last gap in REDESIGN_VISION 4.3's "which layer each row
 touched" requirement for the per-product transaction history.
+
+## D-042 — A split payment settles the oldest open invoice first
+Date: 2026-09-25
+Status: Final
+
+Context: REDESIGN_VISION 4.4/8-item-2's "ثبت پرداخت" component lets one
+Payment be allocated across several of a party's open invoices at once
+(`RecordPaymentForm.invoices`, a multi-select), but the amount need not
+equal the sum of what is owed on the ones picked — neither the form's own
+validation (checks only that it does not *exceed* that sum) nor
+`allocate_payment` (validates one allocation at a time) decides an order.
+
+Decision: `apps.payments.views._RecordPaymentView` sorts the chosen
+invoices by `invoice_date` ascending before allocating, and draws down the
+payment amount against them oldest-first, exactly the same "take what one
+line can absorb, carry the rest to the next" shape `consume_fifo` already
+uses for stock (D-036) — one `allocate_payment` call per invoice touched,
+inside the same `transaction.atomic()` as `record_payment` itself, so a
+rejection from either service (e.g. the invoice was paid some other way a
+moment ago) rolls back the whole payment rather than leaving it half
+allocated. The sort is by the invoice's own date, not by which checkboxes
+were ticked first in the browser, so the outcome cannot depend on DOM
+order or a user re-ordering their clicks.
+
+`SalesInvoice.outstanding`/`PurchaseInvoice.outstanding` (new properties,
+`max(total - paid_amount, 0)`) are added alongside the existing
+`paid_amount`/`payment_status` (D-025) rather than computed ad hoc in the
+view or the form, so the Receivables list, the Payables list, the
+"ثبت پرداخت" component's own over-allocation check, and this ordering logic
+all read the exact same number.
+
+Any amount left over once every selected invoice is fully covered stays an
+unallocated `Payment` on that party's account (the form's own hint text
+already says as much) — not an error, and not automatically applied to
+some other, unselected invoice.

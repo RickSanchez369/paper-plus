@@ -16,37 +16,34 @@ from django.urls import path
 
 from apps.shared.views import ModulePlaceholderView
 
+from .views import (
+    ChequeActionView,
+    ChequeCompleteView,
+    ChequeDetailView,
+    ChequesListView,
+    PayablesListView,
+    ReceivablesListView,
+    RecordCustomerPaymentView,
+    RecordSupplierPaymentView,
+)
+
 receivables_patterns = ([
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="مطالبات",
-            description="مشتریانی که حساب باز دارند، با امکان ثبت پرداخت روی چند فاکتور.",
-        ),
-        name="list",
-    ),
+    path("", ReceivablesListView.as_view(), name="list"),
+    path("<uuid:pk>/record-payment/", RecordCustomerPaymentView.as_view(), name="record_payment"),
 ], "receivables")
 
 payables_patterns = ([
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="بدهی‌ها",
-            description="تأمین‌کنندگانی که به آن‌ها بدهکاریم — قرینهٔ مطالبات.",
-        ),
-        name="list",
-    ),
+    path("", PayablesListView.as_view(), name="list"),
+    path("<uuid:pk>/record-payment/", RecordSupplierPaymentView.as_view(), name="record_payment"),
 ], "payables")
 
 cheques_patterns = ([
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="چک‌ها",
-            description="چک‌های دریافتی و پرداختی، وضعیت و سررسیدشان.",
-        ),
-        name="list",
-    ),
+    path("", ChequesListView.as_view(), name="list"),
+    path("<uuid:pk>/", ChequeDetailView.as_view(), name="detail"),
+    path("<uuid:pk>/complete/", ChequeCompleteView.as_view(), name="complete"),
+    path("<uuid:pk>/clear/", ChequeActionView.as_view(action="clear"), name="clear"),
+    path("<uuid:pk>/bounce/", ChequeActionView.as_view(action="bounce"), name="bounce"),
+    path("<uuid:pk>/cancel/", ChequeActionView.as_view(action="cancel"), name="cancel"),
 ], "cheques")
 
 bank_accounts_patterns = ([

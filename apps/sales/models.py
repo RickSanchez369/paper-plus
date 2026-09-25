@@ -144,6 +144,12 @@ class SalesInvoice(BaseModel):
         return self.PaymentStatus.PAID
 
     @property
+    def outstanding(self):
+        """How much of this invoice is still open, never below zero (an
+        overpayment does not make an invoice owe negative money, D-025)."""
+        return max(self.total - self.paid_amount, 0)
+
+    @property
     def cost_of_goods(self):
         """Real FIFO cost of everything on this invoice, in Rial."""
         return sum(item.cost_of_goods for item in self.items.all())

@@ -17,7 +17,7 @@ from django import forms
 
 from apps.shared.forms import JalaliDateField
 
-from .models import BankAccount, Payment
+from .models import BankAccount, Cheque, Payment
 
 
 class RecordPaymentForm(forms.Form):
@@ -99,3 +99,49 @@ class RecordPaymentForm(forms.Form):
                     "مبلغ پرداخت از باقیماندهٔ فاکتورهای انتخاب‌شده بیشتر است.",
                 )
         return cleaned
+
+
+class ChequeFilterForm(forms.Form):
+    """Cheques list filters (REDESIGN_VISION 4.4): status, direction, and
+    a due-date range -- deliberately separate fields, not one date-range
+    picker, since a cheque's due date has nothing to do with when it was
+    entered (the shared DateRangeForm's presets don't apply here)."""
+
+    status = forms.ChoiceField(
+        required=False, label="وضعیت", choices=[("", "همه"), *Cheque.Status.choices],
+    )
+    direction = forms.ChoiceField(
+        required=False, label="جهت", choices=[("", "همه"), *Payment.Direction.choices],
+    )
+    due_start = JalaliDateField(required=False, label="سررسید از")
+    due_end = JalaliDateField(required=False, label="سررسید تا")
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get("due_start"), cleaned.get("due_end")
+        if start and end and start > end:
+            self.add_error("due_end", "تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد.")
+        return cleaned
+
+
+class ChequeCompletionForm(forms.ModelForm):
+    """"تکمیل مشخصات" for a cheque entered incomplete from an invoice's
+    payment rows (4.3b) -- the same fields `ChequeAdmin` leaves editable
+    while still PENDING, on a page of its own here."""
+
+    due_date = JalaliDateField(required=False, label="تاریخ سررسید")
+
+    class Meta:
+        model = Cheque
+        fields = ("cheque_number", "bank_name", "due_date", "bank_account")
+        widgets = {
+            "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
+            "bank_name": forms.TextInput(attrs={"class": "field__control"}),
+            "bank_account": forms.Select(attrs={"class": "field__control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
+        self.fields["bank_account"].empty_label = "— نامشخص —"
+        self.fields["bank_account"].required = False

@@ -1,0 +1,77 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Cheques (REDESIGN_VISION 4.4): both directions in one table, filtered by
+status, direction and due-date range.
+{% endcomment %}
+
+{% block title %}چک‌ها{% endblock %}
+{% block header %}چک‌ها{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>چک‌های دریافتی و پرداختی</h1>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <form method="get" class="toolbar">
+      <div class="filters">
+        {% include "shared/_field.html" with field=filter_form.status %}
+        {% include "shared/_field.html" with field=filter_form.direction %}
+        {% include "shared/_field.html" with field=filter_form.due_start %}
+        {% include "shared/_field.html" with field=filter_form.due_end %}
+        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+      </div>
+    </form>
+
+    {% if cheques %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>جهت</th>
+              <th>شماره چک</th>
+              <th>طرف حساب</th>
+              <th>بانک</th>
+              <th>سررسید</th>
+              <th>مبلغ</th>
+              <th>فاکتور</th>
+              <th>وضعیت</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cheque in cheques %}
+              <tr>
+                <td>{{ cheque.get_direction_display }}</td>
+                <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a></td>
+                <td>{{ cheque.customer|default:cheque.supplier|default:"—" }}</td>
+                <td>{{ cheque.bank_name|default:"—" }}</td>
+                <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+                <td class="num">{{ cheque.amount|rial_toman }}</td>
+                <td>
+                  {% if cheque.sales_invoice %}
+                    <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_number }}</a>
+                  {% elif cheque.purchase_invoice %}
+                    <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_number }}</a>
+                  {% else %}عمومی{% endif %}
+                </td>
+                <td>
+                  <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
+                    {{ cheque.get_status_display }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>چکی با این فیلترها پیدا نشد.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -25,16 +25,31 @@ def get_supplier_outstanding(supplier):
     """
     Accounts payable: this supplier's unpaid balance across its confirmed
     purchase invoices (REDESIGN_VISION 4.2's Suppliers sub-section, and
-    the Payables page later -- one selector, so the two can never disagree).
+    the Payables page -- one selector, so the two can never disagree).
 
-    Summed per-invoice (total minus paid, clamped at 0) rather than one
-    supplier-wide total minus total paid, so an overpayment on one invoice
-    never offsets what is still genuinely owed on another (D-025: derived,
-    never stored).
+    Summed per-invoice (`invoice.outstanding`, already clamped at 0) rather
+    than one supplier-wide total minus total paid, so an overpayment on one
+    invoice never offsets what is still genuinely owed on another
+    (D-025: derived, never stored).
     """
     from apps.purchasing.models import PurchaseInvoice
 
     invoices = PurchaseInvoice.objects.filter(
         supplier=supplier, status=PurchaseInvoice.Status.CONFIRMED,
     ).prefetch_related("payment_allocations")
-    return sum(max(invoice.total_amount - invoice.paid_amount, 0) for invoice in invoices)
+    return sum(invoice.outstanding for invoice in invoices)
+
+
+def get_customer_outstanding(customer):
+    """
+    Accounts receivable: this customer's unpaid balance across its
+    confirmed sales invoices (REDESIGN_VISION 4.4/4.7) -- the exact mirror
+    of `get_supplier_outstanding`, shared by the Receivables page and the
+    Customer-detail statement so the two can never disagree.
+    """
+    from apps.sales.models import SalesInvoice
+
+    invoices = SalesInvoice.objects.filter(
+        customer=customer, status=SalesInvoice.Status.CONFIRMED,
+    ).prefetch_related("payment_allocations")
+    return sum(invoice.outstanding for invoice in invoices)

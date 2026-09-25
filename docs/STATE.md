@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Inventory (Phase C module 3) of the rebuild (REDESIGN_VISION). Earlier: Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-25, after Receivables/Payables/Cheques (Phase C module 4) of the rebuild (REDESIGN_VISION). Earlier: Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,20 +21,19 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 4 — Receivables / Payables / Cheques** (MASTER_PROMPT 3's
-build order: Sales → Purchasing+Suppliers → Inventory → **Receivables/
-Payables/Cheques** → Bank Accounts → Expenses → Customers → Financial
-Reports → User Activity → Dashboard last). Inventory (module 3) is done —
-see Built. REDESIGN_VISION 4.4: one conceptual module, three views/URLs
-already routed as placeholders (`apps/payments/urls.py`) — Receivables
-(customers with an open balance, "record payment" splitting across several
-open invoices in one Payment, reusing the already-built
-`apps/payments/forms.RecordPaymentForm`), Payables (exact mirror, shares
-`get_supplier_outstanding` with the Suppliers sub-section so the two pages
-can never disagree), Cheques (table with filters incl. due-date range,
-per-cheque actions: complete missing fields, clear/bounce/cancel, full
-lifecycle trace on detail). Each module gets its full spec from
-REDESIGN_VISION.md §4 — not a thinner version.
+**Phase C, module 5 — Bank Accounts** (MASTER_PROMPT 3's build order: Sales
+→ Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques →
+**Bank Accounts** → Expenses → Customers → Financial Reports → User
+Activity → Dashboard last). Receivables/Payables/Cheques (module 4) is
+done — see Built. REDESIGN_VISION 4.5: list (bank name, account owner,
+account number, live balance from the already-existing
+`get_bank_account_balance`), per-account comparison cards (balance vs.
+yesterday/last week/last month — new aggregate queries over `Payment`, no
+new model), detail (full ledger: date, amount, direction, source/
+destination — invoice, expense, or cheque — creator, timestamp, all
+already derivable from `Payment`/`PaymentAllocation`/`Expense.payment`).
+No independent "cash" row in the list (§2.6). Each module gets its full
+spec from REDESIGN_VISION.md §4 — not a thinner version.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -472,6 +471,55 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   history, then torn down (the QA user itself is deactivated rather than
   deleted -- `AuditLog.actor` is `PROTECT`, D-029, so its own audit trail
   outlives it, same as any other hard-deleted record's, D-024).
+- Receivables / Payables / Cheques (REDESIGN_VISION 4.4, Phase C module 4,
+  D-042): one conceptual module, three real views replacing the
+  `ModulePlaceholderView`s in `apps/payments/urls.py`. Receivables/Payables
+  (`apps/payments/views.py`, new file): customers/suppliers with an open
+  balance only (zero-balance parties simply absent, not shown "settled"),
+  each row carrying its own `RecordPaymentForm` inline behind a `<details>`
+  disclosure -- the party is already fixed by the row, matching the
+  quick-party-disclosure pattern from Purchasing/Sales. Submitting records
+  the `Payment` and allocates it across whichever open invoices were
+  checked, oldest-invoice-first (D-042) -- `SalesInvoice.outstanding`/
+  `PurchaseInvoice.outstanding` are new properties added alongside the
+  existing `paid_amount`/`payment_status` (D-025) so this ordering logic,
+  the two list pages, and the payment form's own over-allocation check all
+  read the same number. Cheques: list with status/direction/due-date-range
+  filters (`ChequeFilterForm`); detail page with the full lifecycle trace
+  and, while still pending, three one-way actions (clear/bounce/cancel,
+  each POST-only, guarded entirely by the existing services) plus a
+  "تکمیل مشخصات" form (`ChequeCompletionForm`) for a cheque entered
+  incomplete from an invoice's payment rows (4.3b) -- a plain `form.save()`
+  on the descriptive fields only, mirroring `ChequeAdmin.save_model`'s own
+  `change` branch (status/payment stay untouchable, no service call needed
+  since nothing financial changes).
+  `scripts/test_receivables_payables.py` (new, drives the real URLs with
+  Django's test Client, same reasoning as Sales/Purchasing's own scripts --
+  the allocation order lives in a view, not a service, so only a real POST
+  exercises it) -- 31/31, covering: an over-limit split payment rejected
+  writing nothing, a valid split payment settling the older invoice first
+  *regardless of which order the invoices were submitted in*, a settled
+  party dropping off the list, cheque completion/clear/bounce/cancel
+  (including a double-clear being a no-op, not a second Payment, and a
+  non-pending cheque refusing completion), and the status filter. Full
+  browser QA (`scripts/qa_receivables_setup.py`/`_teardown.py`) walked
+  the actual Receivables disclosure end to end -- caught nothing new in
+  the server logic, but did catch that this browser tool's coordinate
+  clicks on a native `<input type="checkbox">` inside a styled `<label>`
+  land unreliably after the page reflows (the click "succeeds" with no
+  error but leaves the box unchecked); switched to resolving the checkbox
+  by its accessibility ref and setting it with `form_input` instead, which
+  is reliable -- a testing-tool lesson, not a product bug (confirmed by
+  first reproducing an unallocated payment, then the exact same submission
+  correctly allocating once the checkbox state was verified via
+  `element.checked` before submitting). The `onsubmit="return confirm(...)"`
+  cancel-style buttons (cheque clear/bounce/cancel, same pattern Sales/
+  Purchasing cancel already uses) also needed a ref-based click rather than
+  a coordinate one to fire reliably in this tool, for the same underlying
+  reason. `test_frontend_shell.py` (50/50), `test_shared_components.py`
+  (37/37), `test_jalali_dates.py` (33/33), `test_sales_invoice.py` (28/28),
+  `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15) and
+  `test_cheque_lifecycle.py` (15/15) still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase

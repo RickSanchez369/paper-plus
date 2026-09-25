@@ -1,0 +1,57 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Receivables (REDESIGN_VISION 4.4): customers with an open balance, each
+row carrying its own ready-to-open "ثبت پرداخت" disclosure -- the party is
+already fixed by the row, so no second page is needed. Rows with a zero
+balance are simply absent, not shown as "settled".
+{% endcomment %}
+
+{% block title %}مطالبات{% endblock %}
+{% block header %}مطالبات{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>مطالبات از مشتریان</h1>
+  <p class="page-head__lede">فقط مشتریانی که حساب باز دارند.</p>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>مشتری</th>
+              <th>تلفن</th>
+              <th>مانده بدهی</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.customer.name }}</td>
+                <td class="num">{{ row.customer.phone|default:"—" }}</td>
+                <td class="num">{{ row.outstanding|rial_toman }}</td>
+                <td>
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">ثبت پرداخت</summary>
+                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هیچ مشتری‌ای حساب باز ندارد.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
