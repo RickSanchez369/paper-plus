@@ -1,0 +1,212 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Customer detail (REDESIGN_VISION 4.7, the full ROADMAP 4.5): header + edit,
+lifetime cards, invoices/payments/cheques, a combined chronological
+statement (invoices = debit, payments = credit -- a cleared cheque already
+became a Payment by the time it gets here), and the shared "record payment"
+component reused as-is from Receivables.
+{% endcomment %}
+
+{% block title %}{{ customer.name }}{% endblock %}
+{% block header %}مشتری: {{ customer.name }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'customers:list' %}">مشتریان</a> / {{ customer.name }}
+</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <div>
+      <h1>{{ customer.name }}</h1>
+      <p class="page-head__lede">
+        {% if customer.phone %}تلفن: {{ customer.phone }} · {% endif %}
+        {% if not customer.is_active %}<span class="badge badge--bad">غیرفعال</span> · {% endif %}
+        مانده باز: <strong class="num">{{ outstanding|rial_toman }}</strong>
+      </p>
+    </div>
+    <details class="quick-party-disclosure">
+      <summary class="btn btn--quiet">ویرایش</summary>
+      <form method="post" action="{% url 'customers:edit' customer.pk %}" class="quick-party">
+        {% csrf_token %}
+        {% include "shared/_form_errors.html" with form=edit_form %}
+        {% for field in edit_form %}
+          {% include "shared/_field.html" with field=field %}
+        {% endfor %}
+        <button type="submit" class="btn btn--block">ذخیره</button>
+      </form>
+    </details>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">جمع خرید عمر مشتری</span>
+    <span class="stat-card__value num">{{ cards.lifetime_purchases|rial_toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">مانده باز</span>
+    <span class="stat-card__value num">{{ cards.outstanding|rial_toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">تعداد فاکتور</span>
+    <span class="stat-card__value num">{{ cards.invoice_count|fa_number }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">آخرین خرید</span>
+    <span class="stat-card__value num">{{ cards.last_purchase|jalali|default:"—" }}</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <div class="page-head__row">
+      <h2>ثبت پرداخت</h2>
+    </div>
+    <details class="quick-party-disclosure">
+      <summary class="btn btn--quiet">دریافت پرداخت جدید</summary>
+      {% include "payments/_record_payment_form.html" with form=payment_form post_url=payment_form_post_url %}
+    </details>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>فاکتورهای فروش</h2>
+    {% if invoices %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>شماره فاکتور</th>
+            <th>تاریخ</th>
+            <th>مبلغ کل</th>
+            <th>پرداخت‌شده</th>
+            <th>وضعیت پرداخت</th>
+            <th>وضعیت سند</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
+              <td class="num">{{ invoice.invoice_date|jalali }}</td>
+              <td class="num">{{ invoice.total|rial_toman }}</td>
+              <td class="num">{{ invoice.paid_amount|rial_toman }}</td>
+              <td>
+                <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
+                  {{ invoice.payment_status.label }}
+                </span>
+              </td>
+              <td>
+                <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">{{ invoice.get_status_display }}</span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">هنوز فاکتوری برای این مشتری ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>پرداخت‌ها</h2>
+    {% if payments %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>مبلغ</th>
+            <th>حساب بانکی</th>
+            <th>توضیح</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+            <tr>
+              <td class="num">{{ payment.payment_date|jalali }}</td>
+              <td class="num">{{ payment.amount|rial_toman }}</td>
+              <td>{{ payment.bank_account|default:"نقدی" }}</td>
+              <td>{{ payment.note|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">پرداختی از این مشتری ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>چک‌ها</h2>
+    {% if cheques %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>شماره چک</th>
+            <th>بانک</th>
+            <th>سررسید</th>
+            <th>مبلغ</th>
+            <th>وضعیت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cheque in cheques %}
+            <tr>
+              <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"—" }}</a></td>
+              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td class="num">{{ cheque.amount|rial_toman }}</td>
+              <td>
+                <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
+                  {{ cheque.get_status_display }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">چکی برای این مشتری ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>صورت‌حساب (بدهکار/بستانکار)</h2>
+    {% if ledger %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>شرح</th>
+            <th>بدهکار</th>
+            <th>بستانکار</th>
+            <th>مانده</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ledger %}
+            <tr>
+              <td class="num">{{ row.date|jalali }}</td>
+              <td>{% if row.url %}<a href="{{ row.url }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}</td>
+              <td class="num">{% if row.kind == 'debit' %}{{ row.amount|rial_toman }}{% else %}—{% endif %}</td>
+              <td class="num">{% if row.kind == 'credit' %}{{ row.amount|rial_toman }}{% else %}—{% endif %}</td>
+              <td class="num">{{ row.balance|rial_toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">هنوز تراکنشی برای این مشتری ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

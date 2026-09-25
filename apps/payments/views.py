@@ -34,7 +34,12 @@ from apps.shared.permissions import is_privileged
 
 from .forms import ChequeCompletionForm, ChequeFilterForm, ExpenseFilterForm, ExpenseForm, RecordPaymentForm
 from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation
-from .selectors import get_bank_account_balance, get_customer_outstanding, get_supplier_outstanding
+from .selectors import (
+    get_bank_account_balance,
+    get_customer_outstanding,
+    get_open_invoices,
+    get_supplier_outstanding,
+)
 from .services import (
     allocate_payment,
     bounce_cheque,
@@ -60,7 +65,7 @@ class ReceivablesListView(LoginRequiredMixin, TemplateView):
             outstanding = get_customer_outstanding(customer)
             if outstanding <= 0:
                 continue
-            open_invoices = _open_invoices(SalesInvoice, customer=customer)
+            open_invoices = get_open_invoices(SalesInvoice, customer=customer)
             rows.append({
                 "customer": customer,
                 "outstanding": outstanding,
@@ -86,7 +91,7 @@ class PayablesListView(LoginRequiredMixin, TemplateView):
             outstanding = get_supplier_outstanding(supplier)
             if outstanding <= 0:
                 continue
-            open_invoices = _open_invoices(PurchaseInvoice, supplier=supplier)
+            open_invoices = get_open_invoices(PurchaseInvoice, supplier=supplier)
             rows.append({
                 "supplier": supplier,
                 "outstanding": outstanding,
@@ -96,17 +101,6 @@ class PayablesListView(LoginRequiredMixin, TemplateView):
         rows.sort(key=lambda r: -r["outstanding"])
         context["rows"] = rows
         return context
-
-
-def _open_invoices(model, **party_filter):
-    """This party's confirmed invoices that still owe something, oldest
-    first -- the order a payment should settle them in by default."""
-    invoices = (
-        model.objects.filter(status=model.Status.CONFIRMED, **party_filter)
-        .prefetch_related("payment_allocations")
-        .order_by("invoice_date")
-    )
-    return [invoice for invoice in invoices if invoice.outstanding > 0]
 
 
 class _RecordPaymentView(LoginRequiredMixin, View):
@@ -128,7 +122,7 @@ class _RecordPaymentView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         party = get_object_or_404(self.party_model, pk=pk)
-        open_invoices = _open_invoices(self.invoice_model, **self.party_kwargs(party))
+        open_invoices = get_open_invoices(self.invoice_model, **self.party_kwargs(party))
         form = RecordPaymentForm(request.POST, open_invoices=open_invoices, **self.party_kwargs(party))
 
         if form.is_valid():

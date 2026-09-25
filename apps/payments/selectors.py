@@ -62,3 +62,19 @@ def get_customer_outstanding(customer):
         customer=customer, status=SalesInvoice.Status.CONFIRMED,
     ).prefetch_related("payment_allocations")
     return sum(invoice.outstanding for invoice in invoices)
+
+
+def get_open_invoices(model, **party_filter):
+    """
+    This party's confirmed invoices that still owe something, oldest
+    first -- the order a payment should settle them in by default. Shared
+    by Receivables/Payables and the Customer/Supplier detail pages so the
+    "record payment" form always offers the same invoice list, however the
+    page got there.
+    """
+    invoices = (
+        model.objects.filter(status=model.Status.CONFIRMED, **party_filter)
+        .prefetch_related("payment_allocations")
+        .order_by("invoice_date")
+    )
+    return [invoice for invoice in invoices if invoice.outstanding > 0]
