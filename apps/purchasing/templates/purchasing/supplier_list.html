@@ -1,0 +1,57 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Suppliers sub-section (REDESIGN_VISION 4.2): inside Purchasing, not its
+own nav item. total_purchased and outstanding are both derived, never
+stored (D-025) -- outstanding comes from the same
+apps.payments.selectors.get_supplier_outstanding the Payables page will
+read from later.
+{% endcomment %}
+
+{% block title %}تأمین‌کنندگان{% endblock %}
+{% block header %}تأمین‌کنندگان{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'purchasing:list' %}">خرید</a> / تأمین‌کنندگان
+</p>
+
+<div class="page-head">
+  <h1>تأمین‌کنندگان</h1>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>نام</th>
+              <th>تلفن</th>
+              <th>جمع خرید</th>
+              <th>بدهی باز</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a></td>
+                <td class="num">{{ row.supplier.phone|default:"—" }}</td>
+                <td class="num">{{ row.total_purchased|rial_toman }}</td>
+                <td class="num">{{ row.outstanding|rial_toman }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هنوز تأمین‌کننده‌ای ثبت نشده است.</p>
+        <a href="{% url 'purchasing:new' %}" class="btn">از فرم فاکتور خرید جدید اضافه کنید</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

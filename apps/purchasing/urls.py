@@ -4,26 +4,31 @@
 
 from django.urls import path
 
-from apps.shared.views import ModulePlaceholderView
+from .views import (
+    ProductSearchView,
+    PurchaseCancelView,
+    PurchaseCreateView,
+    PurchaseDetailView,
+    PurchasePrintView,
+    PurchasingListView,
+    QuickProductCreateView,
+    QuickSupplierCreateView,
+    SupplierDetailView,
+    SupplierListView,
+)
 
 app_name = "purchasing"
 
 urlpatterns = [
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="خرید",
-            description="فهرست فاکتورهای خرید و وضعیت پرداخت آن‌ها.",
-        ),
-        name="list",
-    ),
+    path("", PurchasingListView.as_view(), name="list"),
+    path("new/", PurchaseCreateView.as_view(), name="new"),
+    path("product-search/", ProductSearchView.as_view(), name="product_search"),
+    path("quick-product/", QuickProductCreateView.as_view(), name="quick_product"),
+    path("quick-supplier/", QuickSupplierCreateView.as_view(), name="quick_supplier"),
+    path("<uuid:pk>/", PurchaseDetailView.as_view(), name="detail"),
+    path("<uuid:pk>/cancel/", PurchaseCancelView.as_view(), name="cancel"),
+    path("<uuid:pk>/print/", PurchasePrintView.as_view(), name="print"),
     # A sub-section of Purchasing, not its own nav item (Sina's call, 4.2).
-    path(
-        "suppliers/",
-        ModulePlaceholderView.as_view(
-            title="تأمین‌کنندگان",
-            description="فهرست تأمین‌کنندگان با جمع خرید و بدهی باز هرکدام.",
-        ),
-        name="suppliers",
-    ),
+    path("suppliers/", SupplierListView.as_view(), name="suppliers"),
+    path("suppliers/<uuid:pk>/", SupplierDetailView.as_view(), name="supplier_detail"),
 ]

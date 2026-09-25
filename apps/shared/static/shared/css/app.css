@@ -755,6 +755,13 @@ h2 { font-size: 16px; }
   flex-wrap: wrap;
 }
 
+.page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 .placeholder__range {
   font-size: 13px;
 }

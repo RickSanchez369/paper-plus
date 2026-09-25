@@ -1,0 +1,12 @@
+{% comment %}
+Replaces the quick-product form after a successful create
+(QuickProductCreateView, REDESIGN_VISION 4.2 / vision doc §13). No
+out-of-band swap needed -- item rows are a dynamic, JS-managed list, not
+one <select>; the new product is simply findable by name in any row's
+search box from now on.
+{% endcomment %}
+<div class="quick-party quick-party--success">
+  <p class="field__hint">«{{ product.name }}» ثبت شد — حالا در جست‌وجوی هر ردیف پیدایش می‌کنید.</p>
+  <button type="button" class="btn btn--quiet btn--block"
+          onclick="this.closest('details').removeAttribute('open')">بستن</button>
+</div>

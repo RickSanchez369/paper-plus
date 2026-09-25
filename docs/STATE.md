@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Sales (Phase C's first module) of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-25, after Purchasing + Suppliers (Phase C module 2) of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,18 +21,23 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 2 — Purchasing + Suppliers** (MASTER_PROMPT 3's build
-order: Sales → **Purchasing+Suppliers** → Inventory → Receivables/
-Payables/Cheques → Bank Accounts → Expenses → Customers → Financial
-Reports → User Activity → Dashboard last). Same shape as Sales just
-closed (list, one-shot new-purchase form, detail, print) but per
-REDESIGN_VISION 4.2: no discount concept, no profit column on the detail
-page, item rows can create a brand-new product inline, cancel is blocked
-once the resulting `InventoryLayer` has been partially consumed (stricter
-than Sales), plus the Suppliers sub-section (list + detail, not top-level
-nav). Each module gets its full spec from REDESIGN_VISION.md §4 — list,
-detail, create-flow, filters, search, empty/error states, print where
-specified — not a thinner version.
+**Phase C, module 3 — Inventory** (MASTER_PROMPT 3's build order: Sales →
+Purchasing+Suppliers → **Inventory** → Receivables/Payables/Cheques →
+Bank Accounts → Expenses → Customers → Financial Reports → User Activity
+→ Dashboard last). REDESIGN_VISION 4.3: cards (total inventory value from
+active layers at their own cost, item count, negative-stock warning),
+table (stock, current purchase cost = oldest active layer's cost, last
+known cost once stock hits zero, selling price), per-product transaction
+history (already has an admin-side selector to reuse), and a "تاریخچهٔ
+قیمت" tab via the existing `HistoricalProduct` (gap #7 — no dedicated
+view needed, just a tab on the product detail page). Each module gets
+its full spec from REDESIGN_VISION.md §4 — not a thinner version.
+
+Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
+new-purchase form, detail, print, cancel, Suppliers sub-section (list +
+detail) — see Built. Sales (Phase C module 1) is done: list, one-shot
+new-sale form, detail, print, cancel. Phase B is done: shell + login +
+htmx (`2ba2149`) and the three shared components (`312163a` + `69bd923`).
 
 Sales (Phase C module 1) is done: list, one-shot new-sale form, detail,
 print, cancel — see Built. Phase B is done: shell + login + htmx
@@ -368,6 +373,50 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   blank-choice regression. `test_frontend_shell.py` (50/50),
   `test_shared_components.py` (37/37) and `test_jalali_dates.py`
   (33/33) still pass.
+- Purchasing + Suppliers (REDESIGN_VISION 4.2, Phase C module 2):
+  symmetric to Sales, with the differences the vision doc calls out --
+  no discount concept anywhere (the model never had one), no profit
+  column on the detail page (profit is sales-only), `unit_price` always
+  manually typed (a purchase price is what this purchase actually cost,
+  never a default), and cancel is stricter: `cancel_purchase` blocks
+  once any of the resulting `InventoryLayer` has been sold from, on top
+  of the same superuser + confirmed-only gate Sales has. Suppliers
+  sub-section (list: name, phone, total purchased, outstanding payable;
+  detail: purchase history, cheques issued, running balance) reads
+  outstanding payable from a new `apps.payments.selectors.
+  get_supplier_outstanding` -- one selector so the Payables page (4.4)
+  can never disagree with this one later (D-025).
+  New here: `apps/products/forms.QuickProductForm` ("+ کالای جدید",
+  vision doc §13) -- `default_selling_price` stays required even in a
+  *purchase* flow (gap #6: silently accepting the field's 0 default
+  would let the product go out the door as an accidental free sale
+  later). No single target element to out-of-band swap the way the
+  customer/supplier quick-adds do (item rows are a dynamic JS list, not
+  one `<select>`) -- picking up the new product is just typing its name
+  in any row's search box, which works immediately once it is saved.
+  Reused wholesale from Sales, no changes needed: `partners/
+  _quick_party_form.html` (generic enough for a product too), the
+  add/remove-row and remaining-amount-autofill JS pattern (new file,
+  `apps/purchasing/static/purchasing/js/purchase_form.js`, adapted only
+  to set the price field's *placeholder* from the last known cost
+  instead of auto-filling a value), the duplicate-product formset guard,
+  and every lesson already paid for once on Sales (STATE.md 6d4521a):
+  the quick-create disclosures render outside `<form id="purchase-form">`
+  from the start (this module needed *two* of them, supplier and
+  product, both outside), `method` is declared explicitly with
+  `initial=CASH` so it never gets Django's English blank choice, and
+  `amount`/`unit_price`/`quantity` are all declared with explicit
+  `min_value` since none of their model fields carry one. Because of
+  that, the real-submission testing this time turned up nothing new --
+  `scripts/test_purchase_invoice.py` (new, mirrors `test_sales_invoice.py`,
+  drives the real `/purchasing/` URLs the same way) passed 33/33 on its
+  first run, and a full browser pass (new supplier and product created
+  inline, purchase confirmed, print, cancel, Suppliers list/detail, all
+  against disposable QA fixtures cleaned up afterward with
+  `DocumentSequence(purchase)` reset to 9956001) found nothing either.
+  `test_frontend_shell.py` (50/50), `test_shared_components.py` (37/37),
+  `test_jalali_dates.py` (33/33) and `test_sales_invoice.py` (28/28)
+  still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase

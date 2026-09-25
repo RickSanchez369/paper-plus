@@ -1,0 +1,23 @@
+{% load paper %}
+{% comment %}
+Live product-search results (ProductSearchView). `data-last-cost` fills
+the price field as a placeholder hint only, never a value -- REDESIGN_VISION
+4.2: a purchase price is what this purchase actually cost, not a default.
+{% endcomment %}
+{% if rows %}
+  {% for row in rows %}
+    <button type="button" class="item-row__result" data-item-row-pick
+            data-id="{{ row.product.pk }}"
+            data-name="{{ row.product.name }}"
+            data-stock="{{ row.stock }}"
+            data-last-cost="{{ row.last_cost|default_if_none:'' }}">
+      <span>{{ row.product.name }}</span>
+      <span class="num item-row__result-stock">
+        موجودی: {{ row.stock|fa_number }}
+        {% if row.last_cost is not None %} · آخرین قیمت خرید: {{ row.last_cost|rial }}{% endif %}
+      </span>
+    </button>
+  {% endfor %}
+{% else %}
+  <div class="item-row__result item-row__result--empty">کالایی پیدا نشد؛ از «+ کالای جدید» بسازید.</div>
+{% endif %}

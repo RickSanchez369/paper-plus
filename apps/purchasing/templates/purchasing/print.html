@@ -1,0 +1,60 @@
+{% load static paper %}<!DOCTYPE html>
+{% comment %}
+A print-friendly render of the purchase invoice -- mirrors sales/print.html.
+{% endcomment %}
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>فاکتور {{ invoice.invoice_number }} | پیپر پلاس</title>
+  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+</head>
+<body class="print-page">
+  <button type="button" class="btn no-print print-page__trigger" onclick="window.print()">چاپ</button>
+
+  <div class="print-invoice">
+    <header class="print-invoice__head">
+      <h1>پیپر پلاس</h1>
+      <div>
+        <p>فاکتور خرید شمارهٔ {{ invoice.invoice_number|fa_number }}</p>
+        <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>
+      </div>
+    </header>
+
+    <section class="print-invoice__party">
+      <p><strong>تأمین‌کننده:</strong> {{ invoice.supplier.name }}</p>
+      {% if invoice.supplier.phone %}<p><strong>تلفن:</strong> {{ invoice.supplier.phone }}</p>{% endif %}
+      {% if invoice.supplier_invoice_number %}<p><strong>شماره فاکتور تأمین‌کننده:</strong> {{ invoice.supplier_invoice_number }}</p>{% endif %}
+    </section>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>کالا</th>
+          <th>مقدار</th>
+          <th>قیمت واحد (ریال)</th>
+          <th>جمع (ریال)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items.all %}
+          <tr>
+            <td>{{ item.product.name }}</td>
+            <td class="num">{{ item.quantity|fa_number }}</td>
+            <td class="num">{{ item.unit_price|rial }}</td>
+            <td class="num">{{ item.line_total|rial }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="print-invoice__totals">
+      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total_amount|rial }}</span></div>
+    </div>
+
+    <footer class="print-invoice__foot">
+      <p>ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}</p>
+      <p>وضعیت: {{ invoice.get_status_display }}</p>
+    </footer>
+  </div>
+</body>
+</html>

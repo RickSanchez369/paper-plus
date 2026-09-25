@@ -1,0 +1,34 @@
+{% comment %}
+One invoice-item row (REDESIGN_VISION 4.2). Mirrors sales/_item_row.html,
+except `unit_price` is never auto-filled -- picking a product only sets a
+*placeholder* from its last known cost (a purchase price is what this
+purchase actually cost, not a default). Used both for each bound form
+already in the formset and, wrapped in a <template> by new.html, as what
+"افزودن ردیف" clones (`form` is `item_formset.empty_form`, prefix
+__prefix__, swapped for a real index by purchase_form.js).
+{% endcomment %}
+<div class="item-row" data-item-row>
+  {{ form.product }}
+  <div class="item-row__search">
+    <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" autocomplete="off"
+           data-item-row-search
+           hx-get="{% url 'purchasing:product_search' %}"
+           hx-trigger="keyup changed delay:300ms, focus"
+           hx-target="next .item-row__results"
+           hx-swap="innerHTML"
+           name="q">
+    <div class="item-row__results search-results"></div>
+    {% for error in form.product.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="item-row__stock" data-item-row-stock></div>
+  <div class="item-row__qty">
+    {{ form.quantity }}
+    {% for error in form.quantity.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="item-row__price">
+    {{ form.unit_price }}
+    {% for error in form.unit_price.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <span class="item-row__total num" data-item-row-total>۰</span>
+  <button type="button" class="btn btn--quiet item-row__remove" data-item-row-remove>حذف</button>
+</div>
