@@ -7,9 +7,18 @@ from django.db.models import BigIntegerField, Case, F, Sum, When
 from .models import Payment
 
 
-def get_bank_account_balance(bank_account):
-    """Net money moved through this account: IN payments minus OUT payments."""
-    result = Payment.objects.filter(bank_account=bank_account).aggregate(
+def get_bank_account_balance(bank_account, as_of=None):
+    """
+    Net money moved through this account: IN payments minus OUT payments.
+
+    `as_of` (a date) restricts the ledger to payments on or before that
+    day, for the Bank Accounts comparison cards (REDESIGN_VISION 4.5) --
+    "the balance as it stood then", not a separate stored snapshot.
+    """
+    qs = Payment.objects.filter(bank_account=bank_account)
+    if as_of is not None:
+        qs = qs.filter(payment_date__lte=as_of)
+    result = qs.aggregate(
         balance=Sum(
             Case(
                 When(direction=Payment.Direction.IN, then=F("amount")),

@@ -9,6 +9,8 @@ Views never write -- money and stock go through apps/*/services.py inside
 transaction.atomic, same rule as every other module.
 """
 
+import datetime
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
@@ -17,6 +19,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, TemplateView
 
@@ -25,8 +28,8 @@ from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 
 from .forms import ChequeCompletionForm, ChequeFilterForm, RecordPaymentForm
-from .models import Cheque, Payment, PaymentAllocation
-from .selectors import get_customer_outstanding, get_supplier_outstanding
+from .models import BankAccount, Cheque, Payment, PaymentAllocation
+from .selectors import get_bank_account_balance, get_customer_outstanding, get_supplier_outstanding
 from .services import allocate_payment, bounce_cheque, cancel_cheque, clear_cheque, record_payment
 
 
@@ -261,3 +264,95 @@ class ChequeActionView(LoginRequiredMixin, View):
         else:
             messages.success(request, f"چک {self._labels[self.action]} شد.")
         return redirect("cheques:detail", pk=pk)
+
+
+class BankAccountListView(LoginRequiredMixin, TemplateView):
+    """
+    Bank Accounts (REDESIGN_VISION 4.5): one card per account -- name,
+    owner, account number, live balance, and the three comparison deltas
+    (vs. yesterday/last week/last month), all read straight off the
+    Payment ledger via `get_bank_account_balance(as_of=...)`. No
+    independent "cash" row here (REDESIGN_VISION 2.6) -- cash payments
+    (bank_account left blank) never belong to any BankAccount.
+    """
+
+    template_name = "payments/bank_accounts_list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.localdate()
+        rows = []
+        for account in BankAccount.objects.filter(is_active=True).order_by("name"):
+            balance = get_bank_account_balance(account)
+            rows.append({
+                "account": account,
+                "balance": balance,
+                "deltas": [
+                    {"label": "نسبت به دیروز", "value": balance - get_bank_account_balance(
+                        account, as_of=today - datetime.timedelta(days=1),
+                    )},
+                    {"label": "نسبت به هفتهٔ گذشته", "value": balance - get_bank_account_balance(
+                        account, as_of=today - datetime.timedelta(days=7),
+                    )},
+                    {"label": "نسبت به ماه گذشته", "value": balance - get_bank_account_balance(
+                        account, as_of=today - datetime.timedelta(days=30),
+                    )},
+                ],
+            })
+        context["rows"] = rows
+        return context
+
+
+class BankAccountDetailView(LoginRequiredMixin, DetailView):
+    """
+    Full ledger for one account (REDESIGN_VISION 4.5): every Payment
+    against it, each resolved to what it actually was -- a cheque
+    clearing, an expense (or its cancellation reversal), or money
+    allocated to one or more invoices -- all already derivable from
+    Payment/PaymentAllocation/Expense.payment, no new model needed.
+    """
+
+    model = BankAccount
+    template_name = "payments/bank_account_detail.html"
+    context_object_name = "account"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["balance"] = get_bank_account_balance(self.object)
+        payments = Payment.objects.filter(bank_account=self.object).select_related(
+            "customer", "supplier", "created_by", "cheque", "expense", "reversed_expense",
+        ).prefetch_related(
+            "allocations__sales_invoice", "allocations__purchase_invoice",
+        ).order_by("-payment_date", "-created_at")
+        context["ledger_rows"] = [_describe_payment(payment) for payment in payments]
+        return context
+
+
+def _describe_payment(payment):
+    """One bank-ledger row's source/destination text and link, if any."""
+    if hasattr(payment, "expense"):
+        source, url = f"هزینه: {payment.expense.reason}", None
+    elif hasattr(payment, "reversed_expense"):
+        source, url = f"لغو هزینه: {payment.reversed_expense.reason}", None
+    elif hasattr(payment, "cheque"):
+        source, url = f"وصول چک {payment.cheque.cheque_number or '(بدون شماره)'}", reverse("cheques:detail", args=[payment.cheque.pk])
+    else:
+        allocations = list(payment.allocations.all())
+        if allocations:
+            parts = []
+            for allocation in allocations:
+                if allocation.sales_invoice_id:
+                    parts.append((allocation.sales_invoice.invoice_number or "(تأیید نشده)", reverse("sales:detail", args=[allocation.sales_invoice_id])))
+                else:
+                    parts.append((allocation.purchase_invoice.invoice_number or "(تأیید نشده)", reverse("purchasing:detail", args=[allocation.purchase_invoice_id])))
+            source, url = "، ".join(number for number, _ in parts), parts[0][1] if len(parts) == 1 else None
+        elif payment.party:
+            source, url = str(payment.party), None
+        else:
+            source, url = "بدون تخصیص", None
+    return {
+        "payment": payment,
+        "source": source,
+        "url": url,
+        "party": payment.party,
+    }

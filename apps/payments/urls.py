@@ -17,6 +17,8 @@ from django.urls import path
 from apps.shared.views import ModulePlaceholderView
 
 from .views import (
+    BankAccountDetailView,
+    BankAccountListView,
     ChequeActionView,
     ChequeCompleteView,
     ChequeDetailView,
@@ -47,14 +49,8 @@ cheques_patterns = ([
 ], "cheques")
 
 bank_accounts_patterns = ([
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="حساب‌های بانکی",
-            description="حساب‌ها با صاحب حساب و موجودی زنده، و دفتر هر حساب.",
-        ),
-        name="list",
-    ),
+    path("", BankAccountListView.as_view(), name="list"),
+    path("<uuid:pk>/", BankAccountDetailView.as_view(), name="detail"),
 ], "bank_accounts")
 
 expenses_patterns = ([

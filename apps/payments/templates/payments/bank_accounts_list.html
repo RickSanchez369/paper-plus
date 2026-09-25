@@ -1,0 +1,42 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Bank Accounts (REDESIGN_VISION 4.5): one card per account -- name, owner,
+account number, live balance, and three comparison deltas (vs. yesterday/
+last week/last month), all read from the Payment ledger. No independent
+"cash" row here (2.6) -- cash payments have no BankAccount to belong to.
+{% endcomment %}
+
+{% block title %}حساب‌های بانکی{% endblock %}
+{% block header %}حساب‌های بانکی{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>حساب‌های بانکی</h1>
+</div>
+
+{% if rows %}
+  <div class="stats">
+    {% for row in rows %}
+      <div class="stat-card">
+        <span class="stat-card__label">{{ row.account.name }}{% if row.account.owner %} — {{ row.account.owner }}{% endif %}</span>
+        <span class="field__hint">شماره حساب: {{ row.account.account_number }}</span>
+        <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__value num">{{ row.balance|rial_toman }}</a>
+        <div class="stat-card__deltas">
+          {% for delta in row.deltas %}
+            <span class="stat-card__delta{% if delta.value > 0 %} stat-card__delta--up{% elif delta.value < 0 %} stat-card__delta--down{% endif %}">
+              {{ delta.label }}:
+              {% if delta.value > 0 %}+{% endif %}{{ delta.value|rial_toman }}
+            </span>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="placeholder">
+    <p>هنوز حساب بانکی فعالی ثبت نشده است.</p>
+  </div>
+{% endif %}
+{% endblock %}

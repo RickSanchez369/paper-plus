@@ -1,0 +1,68 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Bank account detail (REDESIGN_VISION 4.5): full ledger -- date, amount,
+direction, source/destination (invoice, expense, or cheque), creator,
+timestamp -- all already derivable from Payment/PaymentAllocation/
+Expense.payment, resolved once per row in views._describe_payment.
+{% endcomment %}
+
+{% block title %}{{ account.name }}{% endblock %}
+{% block header %}حساب بانکی: {{ account.name }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'bank_accounts:list' %}">حساب‌های بانکی</a> / {{ account.name }}</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <div>
+      <h1>{{ account.name }}{% if account.owner %} — {{ account.owner }}{% endif %}</h1>
+      <p class="page-head__lede">
+        شماره حساب: {{ account.account_number }} ·
+        موجودی: <strong class="num">{{ balance|rial_toman }}</strong>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>دفتر حساب</h2>
+    {% if ledger_rows %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>جهت</th>
+            <th>مبلغ</th>
+            <th>منشأ/مقصد</th>
+            <th>ثبت‌کننده</th>
+            <th>زمان ثبت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ledger_rows %}
+            <tr>
+              <td class="num">{{ row.payment.payment_date|jalali }}</td>
+              <td>
+                <span class="badge{% if row.payment.direction == 'in' %} badge--good{% else %} badge--bad{% endif %}">
+                  {{ row.payment.get_direction_display }}
+                </span>
+              </td>
+              <td class="num">{{ row.payment.amount|rial_toman }}</td>
+              <td>
+                {% if row.url %}<a href="{{ row.url }}">{{ row.source }}</a>{% else %}{{ row.source }}{% endif %}
+              </td>
+              <td>{{ row.payment.created_by.get_full_name|default:row.payment.created_by.phone }}</td>
+              <td class="num">{{ row.payment.created_at|jalali_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">هنوز پرداختی از این حساب ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Receivables/Payables/Cheques (Phase C module 4) of the rebuild (REDESIGN_VISION). Earlier: Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-25, after Bank Accounts (Phase C module 5) of the rebuild (REDESIGN_VISION). Earlier: Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,19 +21,12 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 5 — Bank Accounts** (MASTER_PROMPT 3's build order: Sales
-→ Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques →
-**Bank Accounts** → Expenses → Customers → Financial Reports → User
-Activity → Dashboard last). Receivables/Payables/Cheques (module 4) is
-done — see Built. REDESIGN_VISION 4.5: list (bank name, account owner,
-account number, live balance from the already-existing
-`get_bank_account_balance`), per-account comparison cards (balance vs.
-yesterday/last week/last month — new aggregate queries over `Payment`, no
-new model), detail (full ledger: date, amount, direction, source/
-destination — invoice, expense, or cheque — creator, timestamp, all
-already derivable from `Payment`/`PaymentAllocation`/`Expense.payment`).
-No independent "cash" row in the list (§2.6). Each module gets its full
-spec from REDESIGN_VISION.md §4 — not a thinner version.
+**Phase C, module 6 — Expenses** (MASTER_PROMPT 3's build order: Sales →
+Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques → Bank
+Accounts → **Expenses** → Customers → Financial Reports → User Activity →
+Dashboard last). Bank Accounts (module 5) is done — see Built. Each
+module gets its full spec from REDESIGN_VISION.md §4 — not a thinner
+version.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -520,6 +513,38 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   (37/37), `test_jalali_dates.py` (33/33), `test_sales_invoice.py` (28/28),
   `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15) and
   `test_cheque_lifecycle.py` (15/15) still pass.
+- Bank Accounts (REDESIGN_VISION 4.5, Phase C module 5): list -- one card
+  per active account (name, owner -- already existed on `BankAccount`
+  since 4.3, the vision doc's note that it was new was stale --, account
+  number, live balance from `get_bank_account_balance`), plus three
+  comparison deltas per card (vs. yesterday/last week/last month), each a
+  plain day-offset (`timezone.localdate() - timedelta(days=N)`) rather than
+  a Jalali calendar boundary -- REDESIGN_VISION doesn't pin down which, and
+  a fixed offset is simplest since this is a single moment-in-time
+  comparison, not a range. `get_bank_account_balance` gained an optional
+  `as_of` date filter (`payment_date__lte`) for this, backward compatible
+  with 4.3's existing no-argument callers. Detail: full ledger (date,
+  direction, amount, source/destination, creator, timestamp) built once
+  per row in `views._describe_payment` -- resolves to a cheque clearing
+  (linked), an expense or its cancellation reversal (by reason, no link --
+  the Expenses module isn't built yet), the invoice(s) a split payment was
+  allocated to (linked), or "بدون تخصیص" for an unallocated prepayment, all
+  read straight off `Payment`/`PaymentAllocation`/`Expense.payment` (no new
+  model). No independent "cash" row (2.6) -- cash payments have no
+  `bank_account` to belong to. No new/edit form: REDESIGN_VISION 4.5 specs
+  only list + cards + detail for this module (unlike Customers, 4.7, which
+  explicitly asks for header+edit) -- managing the account list itself
+  stays an Admin-panel task, same as before. `scripts/test_bank_accounts.py`
+  (new, drives the real `/bank-accounts/` URLs, 11/11) covers the balance
+  selector's `as_of` filter and all four ledger-row shapes end to end.
+  Full browser QA (`scripts/qa_bank_accounts_setup.py`/`_teardown.py`)
+  walked both pages logged in as the QA user -- found nothing new, all
+  four ledger rows and the three deltas rendered correctly on first try.
+  `test_frontend_shell.py` (50/50), `test_shared_components.py` (37/37),
+  `test_jalali_dates.py` (33/33), `test_sales_invoice.py` (28/28),
+  `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15),
+  `test_cheque_lifecycle.py` (15/15) and `test_receivables_payables.py`
+  (31/31) still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
