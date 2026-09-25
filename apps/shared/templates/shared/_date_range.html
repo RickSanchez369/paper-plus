@@ -26,10 +26,18 @@ the picker script never loads.
     <summary class="daterange__preset{% if form.active_preset == 'custom' %} is-active{% endif %}">بازهٔ دلخواه</summary>
     <div class="daterange__panel">
       {% include "shared/_form_errors.html" %}
-      <input type="hidden" name="preset" value="custom">
       {% include "shared/_field.html" with field=form.start %}
       {% include "shared/_field.html" with field=form.end %}
-      <button type="submit" class="btn btn--block">اعمال</button>
+      {% comment %}
+      name/value live on this button, not a bare hidden input: a hidden
+      field submits on every request regardless of which button triggered
+      it, so a fixed "preset=custom" collided with the preset buttons'
+      own "preset" value above and always won (browsers keep the querystring
+      in DOM order; Django's QueryDict.get() then returns the last one).
+      A submit button's name/value is only sent when THAT button is the
+      one clicked, which is exactly the scoping this needs.
+      {% endcomment %}
+      <button type="submit" name="preset" value="custom" class="btn btn--block">اعمال</button>
     </div>
   </details>
 </form>
