@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Purchasing + Suppliers (Phase C module 2) of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-25, after Inventory (Phase C module 3) of the rebuild (REDESIGN_VISION). Earlier: Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,17 +21,20 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 3 — Inventory** (MASTER_PROMPT 3's build order: Sales →
-Purchasing+Suppliers → **Inventory** → Receivables/Payables/Cheques →
-Bank Accounts → Expenses → Customers → Financial Reports → User Activity
-→ Dashboard last). REDESIGN_VISION 4.3: cards (total inventory value from
-active layers at their own cost, item count, negative-stock warning),
-table (stock, current purchase cost = oldest active layer's cost, last
-known cost once stock hits zero, selling price), per-product transaction
-history (already has an admin-side selector to reuse), and a "تاریخچهٔ
-قیمت" tab via the existing `HistoricalProduct` (gap #7 — no dedicated
-view needed, just a tab on the product detail page). Each module gets
-its full spec from REDESIGN_VISION.md §4 — not a thinner version.
+**Phase C, module 4 — Receivables / Payables / Cheques** (MASTER_PROMPT 3's
+build order: Sales → Purchasing+Suppliers → Inventory → **Receivables/
+Payables/Cheques** → Bank Accounts → Expenses → Customers → Financial
+Reports → User Activity → Dashboard last). Inventory (module 3) is done —
+see Built. REDESIGN_VISION 4.4: one conceptual module, three views/URLs
+already routed as placeholders (`apps/payments/urls.py`) — Receivables
+(customers with an open balance, "record payment" splitting across several
+open invoices in one Payment, reusing the already-built
+`apps/payments/forms.RecordPaymentForm`), Payables (exact mirror, shares
+`get_supplier_outstanding` with the Suppliers sub-section so the two pages
+can never disagree), Cheques (table with filters incl. due-date range,
+per-cheque actions: complete missing fields, clear/bounce/cancel, full
+lifecycle trace on detail). Each module gets its full spec from
+REDESIGN_VISION.md §4 — not a thinner version.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -49,9 +52,6 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
 (payment party, cheque cancellation, expenses).
 
 ### Carried forward, not yet built
-- **Manual stock adjustment** (REDESIGN_VISION 4.3) has no service. When it
-  gets one, `adjustment_out` must consume FIFO layers and `adjustment_in`
-  must carry a unit cost, or layer totals and movement totals diverge (D-036).
 - **3.4 real SHADOW** never closed; it now depends on Phase C pages existing
   to be worth running at all.
 - **ROADMAP 4.6 (returns)** is explicitly out of scope for this round
@@ -417,6 +417,61 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   `test_frontend_shell.py` (50/50), `test_shared_components.py` (37/37),
   `test_jalali_dates.py` (33/33) and `test_sales_invoice.py` (28/28)
   still pass.
+- Inventory (REDESIGN_VISION 4.3, Phase C module 3, D-041): list (cards --
+  total value from active layers at their own cost, item count,
+  negative-stock warning, a USD-rate placeholder card since the source is
+  explicitly undecided per the vision doc; table -- stock, current purchase
+  cost with a "آخرین قیمت شناخته‌شده" fallback once a product sells out,
+  selling price, this item's value, % share of total), three action
+  pages instead of modals (new product, opening stock, manual adjustment --
+  deliberate: these are rare actions a wrong submit can't just be edited
+  away from, so each gets a full page with a clear result rather than a
+  disclosure easy to submit by accident), and a per-product detail page
+  (active layers, the ROADMAP-4.2 movement history extended with a
+  "لایه(های) مرتبط" column and an invoice link, and a "تاریخچهٔ قیمت"
+  collapsible section reusing the existing `HistoricalProduct`, gap #7 --
+  no dedicated view needed).
+  New service `apps.inventory.services.record_adjustment` (D-041): the
+  schema work it needed -- generalizing `InventoryConsumption` beyond
+  sale-only (nullable `sale_item`, new `movement` FK, CHECK exactly one),
+  a new `InventoryLayer.Source.ADJUSTMENT`, and a nullable
+  `InventoryMovement.layer` FK (backfilled for every pre-existing OPENING
+  row via a data migration) -- is the full decision text in D-041, not
+  repeated here. `set_opening_stock` was updated in the same change to set
+  the new `layer` FK on future opening entries (order flipped: the layer is
+  now created before the movement that links to it).
+  Two things surfaced only by driving the actual pages in a browser, same
+  lesson as every prior module (`feedback-verify-admin-js-in-browser`):
+  1. A `{{ x|default:y }}` template filter still evaluates `y` even when
+     `x` needs no fallback, and Django does **not** silently swallow a
+     failed lookup inside a filter *argument* the way it does for the
+     top-level variable being rendered -- `record.history_user.phone` as
+     a `default` argument raised `VariableDoesNotExist` (a real 500) the
+     moment `history_user` was `None`, on the price-history tab. Fixed by
+     wrapping it in `{% if record.history_user %}`.
+  2. `set_opening_stock` itself was never updated to set the new `layer`
+     FK on the movements it creates (only the backfill migration covered
+     rows that already existed) -- caught by opening stock for a fresh QA
+     product and finding the transaction-history table's new layer column
+     blank where it shouldn't have been.
+  `scripts/test_inventory_adjustment.py` (new, 23/23) covers
+  `record_adjustment` directly: both directions, the FIFO draw order, the
+  weighted-average cost it fills in, rejection when the ledger can't cover
+  an out-adjustment (writes nothing), a missing reason note either
+  direction, and the audit-log row. `scripts/test_fifo_layers.py` had two
+  assertions that assumed an empty DB (`InventoryLayer.objects.get(source=
+  "opening_stock")` unfiltered by product, and an exact `get_total_
+  inventory_value()` equality) -- both latent since real onboarded
+  products (3.3) started existing, surfaced only now that the script was
+  actually re-run; fixed to scope by product and to assert a delta against
+  a captured baseline (53/53, up from 52/53 once fixed). Full browser QA:
+  QA fixtures (`scripts/qa_inventory_setup.py` / `_teardown.py`, dedicated
+  QA user + two products under SKUs `QA-INV-*`) walked through opening
+  stock, both adjustment directions including the over-the-ledger rejection
+  message, and the product detail page's layer/invoice links and price
+  history, then torn down (the QA user itself is deactivated rather than
+  deleted -- `AuditLog.actor` is `PROTECT`, D-029, so its own audit trail
+  outlives it, same as any other hard-deleted record's, D-024).
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase

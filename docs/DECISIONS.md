@@ -636,3 +636,52 @@ rather than left to each page, because every place that totals money has to
 agree (REDESIGN_VISION 8 item 4). New AuditLog event types `record_expense`
 and `cancel_expense`. `document` is an optional FileField, which is why
 MEDIA_ROOT/MEDIA_URL and the DEBUG-only media route now exist.
+
+## D-041 — Manual stock adjustment draws FIFO layers like a sale
+Date: 2026-09-25
+Status: Final
+
+Context: REDESIGN_VISION 4.3 asks for a manual adjustment (in/out, mandatory
+reason note); STATE.md had flagged since 4.1 that `adjustment_out` must
+consume FIFO layers and `adjustment_in` must carry a unit cost, "or layer
+totals and movement totals diverge" (D-036) — otherwise `InventoryMovement`
+(the stock ledger) and `InventoryLayer` (the cost basis) would silently
+disagree the first time anyone used it.
+
+Decision: `InventoryConsumption` is generalized from "what a sale item drew
+from a layer" to "what a sale item *or* an adjustment_out movement drew from
+a layer" — `sale_item` becomes nullable, a new nullable `movement` FK is
+added, and a CHECK enforces exactly one of the two is set. This is the same
+shape already used repeatedly in this schema for "one of two possible
+owners" (`Payment.customer`/`supplier`, `Cheque.sales_invoice`/
+`purchase_invoice`, `PaymentAllocation`'s invoice pair) — not a new pattern.
+`InventoryLayer.Source` gains `adjustment` (alongside `opening_stock`,
+`purchase_item`), for a layer an increase opens. `InventoryMovement` gains a
+nullable `layer` FK, set only for `opening`/`adjustment_in` (the two types
+with no invoice item to hang a layer link off of) — a backfill migration
+links every pre-existing OPENING movement to its layer, since
+`set_opening_stock` always created both together, one-to-one, before this
+field existed to record it.
+
+`record_adjustment(product, movement_type, quantity, user, note,
+unit_price=None)` (apps/inventory/services.py): `adjustment_in` opens a new
+layer at `unit_price` (required, same rule as `set_opening_stock`).
+`adjustment_out` consumes active layers oldest-first exactly like
+`consume_fifo`, records one `InventoryConsumption` per layer touched
+(`movement=`, not `sale_item=`), and is rejected outright — nothing
+written — if the ledger cannot cover the requested quantity: an adjustment
+corrects a physical count, it does not manufacture an oversell the way a
+sale is allowed to (D-016 is sale-specific, not extended here). Its
+`unit_price` is filled in afterward as the weighted-average cost of what it
+actually drew.
+
+No privilege gate: `apps/shared/permissions.py`'s docstring states exactly
+two actions are superuser-gated (oversell-confirm, cancellation); adding a
+third would contradict that explicit design call (D-034), and nothing in
+REDESIGN_VISION 4.3 asks for one. The mandatory reason note is the only
+safeguard.
+
+Consequences: every stock-changing row — opening, purchase, sale,
+adjustment_in, adjustment_out — now resolves to the specific layer(s) it
+touched, closing the last gap in REDESIGN_VISION 4.3's "which layer each row
+touched" requirement for the per-product transaction history.

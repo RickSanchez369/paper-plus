@@ -49,21 +49,22 @@ def set_opening_stock(product, quantity, user, unit_price):
 
     movement = None
     if quantity > 0:
-        movement = InventoryMovement.objects.create(
-            product=product,
-            movement_type=InventoryMovement.MovementType.OPENING,
-            quantity=quantity,
-            unit_price=unit_price,
-            note="موجودی اولیه",
-            created_by=user,
-        )
         # The first FIFO layer: counted-in stock, at the price it is valued at.
-        InventoryLayer.objects.create(
+        layer = InventoryLayer.objects.create(
             product=product,
             source=InventoryLayer.Source.OPENING,
             quantity=quantity,
             quantity_remaining=quantity,
             unit_cost=unit_price,
+            created_by=user,
+        )
+        movement = InventoryMovement.objects.create(
+            product=product,
+            movement_type=InventoryMovement.MovementType.OPENING,
+            quantity=quantity,
+            unit_price=unit_price,
+            layer=layer,
+            note="موجودی اولیه",
             created_by=user,
         )
 
@@ -169,6 +170,118 @@ def restore_consumptions(sale_item, user, note=""):
         layer.save(update_fields=["quantity_remaining", "updated_at"])
 
     return reversals
+
+
+@transaction.atomic
+def record_adjustment(product, movement_type, quantity, user, note, unit_price=None):
+    """
+    Manual stock correction, outside any invoice (REDESIGN_VISION 4.3).
+
+    A mandatory reason note is the only safeguard -- any authenticated
+    user may record one, same as confirm_sale/confirm_purchase
+    (apps/shared/permissions.py: exactly two actions are superuser-gated,
+    and this is not one of them).
+
+    `movement_type` is `InventoryMovement.MovementType.ADJUSTMENT_IN` or
+    `ADJUSTMENT_OUT`:
+    - IN opens a brand-new FIFO layer at `unit_price` (required -- an
+      increase has to enter the cost basis somewhere, same rule
+      `set_opening_stock` already follows).
+    - OUT consumes existing active layers oldest-first, exactly like a
+      sale, recording an `InventoryConsumption` per layer touched
+      (`movement=` instead of `sale_item=`) -- so it can never remove more
+      stock than the FIFO ledger says exists; an adjustment corrects a
+      count, it does not manufacture an oversell. Its `unit_price` is the
+      weighted-average cost of what it actually consumed, filled in after.
+
+    Returns the created InventoryMovement.
+    """
+    quantity = int(quantity)
+    if quantity <= 0:
+        raise ValidationError("مقدار اصلاح باید بزرگ‌تر از صفر باشد.")
+    note = (note or "").strip()
+    if not note:
+        raise ValidationError("دلیل اصلاح الزامی است.")
+    if movement_type not in (InventoryMovement.MovementType.ADJUSTMENT_IN, InventoryMovement.MovementType.ADJUSTMENT_OUT):
+        raise ValidationError("نوع اصلاح نامعتبر است.")
+
+    locked = list(Product.objects.select_for_update().filter(pk=product.pk))
+    if not locked:
+        raise ValidationError("محصول یافت نشد.")
+    product = locked[0]
+
+    if movement_type == InventoryMovement.MovementType.ADJUSTMENT_IN:
+        if unit_price is None or unit_price < 0:
+            raise ValidationError("قیمت واحد نامعتبر است.")
+        layer = InventoryLayer.objects.create(
+            product=product,
+            source=InventoryLayer.Source.ADJUSTMENT,
+            quantity=quantity,
+            quantity_remaining=quantity,
+            unit_cost=unit_price,
+            created_by=user,
+        )
+        movement = InventoryMovement.objects.create(
+            product=product,
+            movement_type=movement_type,
+            quantity=quantity,
+            unit_price=unit_price,
+            layer=layer,
+            note=note,
+            created_by=user,
+        )
+    else:
+        movement = InventoryMovement.objects.create(
+            product=product,
+            movement_type=movement_type,
+            quantity=quantity,
+            unit_price=0,  # replaced below with the real weighted cost once known
+            note=note,
+            created_by=user,
+        )
+        layers = (
+            InventoryLayer.objects
+            .select_for_update()
+            .filter(product=product, cancelled_at__isnull=True, quantity_remaining__gt=0)
+            .order_by("created_at", "id")
+        )
+        remaining_to_take = quantity
+        total_cost = 0
+        for layer in layers:
+            if remaining_to_take <= 0:
+                break
+            taken = min(layer.quantity_remaining, remaining_to_take)
+            InventoryConsumption.objects.create(
+                movement=movement,
+                layer=layer,
+                quantity=taken,
+                note=note,
+                created_by=user,
+            )
+            layer.quantity_remaining -= taken
+            layer.save(update_fields=["quantity_remaining", "updated_at"])
+            total_cost += taken * layer.unit_cost
+            remaining_to_take -= taken
+
+        if remaining_to_take > 0:
+            # Rolls back the whole atomic block -- movement and every
+            # consumption row created above are undone with it.
+            raise ValidationError(
+                f"موجودی «{product.name}» کافی نیست؛ حداکثر {quantity - remaining_to_take} "
+                f"واحد از {quantity} واحد درخواستی قابل کاهش است."
+            )
+
+        movement.unit_price = total_cost // quantity
+        movement.save(update_fields=["unit_price", "updated_at"])
+
+    log_event(
+        actor=user,
+        event_type="record_adjustment",
+        target=movement,
+        payload={"movement_type": movement_type, "quantity": quantity, "note": note},
+    )
+
+    return movement
 
 
 def cancel_layer(layer, user):

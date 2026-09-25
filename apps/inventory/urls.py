@@ -4,17 +4,20 @@
 
 from django.urls import path
 
-from apps.shared.views import ModulePlaceholderView
+from .views import (
+    AdjustmentCreateView,
+    InventoryDetailView,
+    InventoryListView,
+    OpeningStockCreateView,
+    ProductCreateView,
+)
 
 app_name = "inventory"
 
 urlpatterns = [
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="انبار",
-            description="موجودی، بهای خرید جاری و ارزش هر کالا بر پایهٔ لایه‌های FIFO.",
-        ),
-        name="list",
-    ),
+    path("", InventoryListView.as_view(), name="list"),
+    path("products/new/", ProductCreateView.as_view(), name="product_new"),
+    path("opening-stock/", OpeningStockCreateView.as_view(), name="opening_stock"),
+    path("adjustment/", AdjustmentCreateView.as_view(), name="adjustment"),
+    path("<uuid:pk>/", InventoryDetailView.as_view(), name="detail"),
 ]

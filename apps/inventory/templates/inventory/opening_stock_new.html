@@ -1,0 +1,30 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}"موجودی اولیه" (REDESIGN_VISION 4.3) -- feeds set_opening_stock,
+which itself enforces D-017 (once per product, ever); the product picker
+here is pre-filtered to not-yet-onboarded products only.{% endcomment %}
+
+{% block title %}موجودی اولیه{% endblock %}
+{% block header %}موجودی اولیه{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / موجودی اولیه</p>
+
+{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+<div class="card">
+  <div class="card__body">
+    <h1>ثبت موجودی اولیهٔ یک کالا</h1>
+    <p class="field__hint">فقط یک بار برای هر کالا ممکن است؛ کالاهایی که قبلاً موجودی اولیه گرفته‌اند در فهرست نیستند.</p>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=form %}
+      {% for field in form %}
+        {% include "shared/_field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="btn">ثبت موجودی اولیه</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

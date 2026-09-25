@@ -1,0 +1,26 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}"+ کالای جدید" as a full page (REDESIGN_VISION 4.3) -- unlike
+the inline mid-invoice version, Inventory is not mid-transaction.{% endcomment %}
+
+{% block title %}کالای جدید{% endblock %}
+{% block header %}کالای جدید{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / کالای جدید</p>
+
+<div class="card">
+  <div class="card__body">
+    <h1>ثبت کالای جدید</h1>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=form %}
+      {% for field in form %}
+        {% include "shared/_field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="btn">ثبت کالا</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

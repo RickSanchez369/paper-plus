@@ -65,6 +65,15 @@ class InventoryMovement(BaseModel):
         related_name="movements",
         verbose_name="ردیف فاکتور فروش",
     )
+    layer = models.ForeignKey(
+        "InventoryLayer",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set only for opening/adjustment_in, the two types with no invoice
+        related_name="+",  # the layer already links back via InventoryLayer.purchase_item / consumptions
+        verbose_name="لایهٔ ایجادشده",
+        help_text="فقط برای موجودی اولیه و اصلاح-افزایش؛ نوع‌های دیگر لایه را از طریق فاکتور یا مصرف پیدا می‌کنند.",
+    )
     note = models.TextField(
         blank=True,
         verbose_name="توضیح",
@@ -141,6 +150,7 @@ class InventoryLayer(BaseModel):
     class Source(models.TextChoices):
         OPENING = "opening_stock", "موجودی اولیه"
         PURCHASE = "purchase_item", "قلم فاکتور خرید"
+        ADJUSTMENT = "adjustment", "اصلاح موجودی"
 
     product = models.ForeignKey(
         Product,
@@ -208,10 +218,12 @@ class InventoryLayer(BaseModel):
             ),
             models.CheckConstraint(
                 # Each layer's source must match its item reference, mirroring
-                # InventoryMovement's own item-reference CHECK.
+                # InventoryMovement's own item-reference CHECK. opening_stock
+                # and adjustment both carry no purchase item -- neither has an
+                # invoice line to point at.
                 condition=(
                     models.Q(source="purchase_item", purchase_item__isnull=False)
-                    | models.Q(source="opening_stock", purchase_item__isnull=True)
+                    | models.Q(source__in=["opening_stock", "adjustment"], purchase_item__isnull=True)
                 ),
                 name="inventory_layer_source_matches_item",
             ),
@@ -233,7 +245,10 @@ class InventoryLayer(BaseModel):
 
 class InventoryConsumption(BaseModel):
     """
-    Exactly how much of one layer one sale item took.
+    Exactly how much of one layer one sale item -- or one manual
+    adjustment_out movement -- took (REDESIGN_VISION 4.3: a manual
+    decrease has to draw FIFO layers exactly like a sale does, or layer
+    totals and movement totals diverge, D-036).
 
     Append-only, like every other ledger here (D-012): a cancellation does
     not delete or edit these rows, it adds an opposite one with a negative
@@ -246,8 +261,18 @@ class InventoryConsumption(BaseModel):
     sale_item = models.ForeignKey(
         "sales.SaleItem",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set for a sale's draw; movement is set for an adjustment's (CHECK: exactly one)
         related_name="consumptions",
         verbose_name="ردیف فاکتور فروش",
+    )
+    movement = models.ForeignKey(
+        InventoryMovement,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consumptions",
+        verbose_name="حرکت اصلاح موجودی",
     )
     layer = models.ForeignKey(
         InventoryLayer,
@@ -275,6 +300,7 @@ class InventoryConsumption(BaseModel):
         ordering = ["created_at", "id"]
         indexes = [
             models.Index(fields=["sale_item"]),
+            models.Index(fields=["movement"]),
             models.Index(fields=["layer"]),
         ]
         constraints = [
@@ -284,10 +310,20 @@ class InventoryConsumption(BaseModel):
                 condition=~models.Q(quantity=0),
                 name="inventory_consumption_quantity_not_zero",
             ),
+            models.CheckConstraint(
+                # A draw belongs to exactly one source: a sale's line, or a
+                # manual adjustment's movement -- never both, never neither.
+                condition=(
+                    models.Q(sale_item__isnull=False, movement__isnull=True)
+                    | models.Q(sale_item__isnull=True, movement__isnull=False)
+                ),
+                name="inventory_consumption_exactly_one_source",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.sale_item} ← {self.layer} ({self.quantity})"
+        source = self.sale_item or self.movement
+        return f"{source} ← {self.layer} ({self.quantity})"
 
     @property
     def cost(self):

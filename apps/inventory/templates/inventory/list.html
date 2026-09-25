@@ -1,0 +1,87 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Inventory list (REDESIGN_VISION 4.3): cards (total value from active
+layers at their own cost, item count, negative-stock warning, USD
+placeholder), table (stock, current purchase cost = oldest active layer's
+cost, selling price, this item's value, % share of total value).
+{% endcomment %}
+
+{% block title %}انبار{% endblock %}
+{% block header %}انبار{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>موجودی کالاها</h1>
+    <div class="page-head__actions">
+      <a href="{% url 'inventory:adjustment' %}" class="btn btn--quiet">اصلاح موجودی</a>
+      <a href="{% url 'inventory:opening_stock' %}" class="btn btn--quiet">ثبت موجودی اولیه</a>
+      <a href="{% url 'inventory:product_new' %}" class="btn">+ کالای جدید</a>
+    </div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">ارزش کل موجودی</span>
+    <span class="stat-card__value num">{{ total_value|rial_toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">تعداد اقلام</span>
+    <span class="stat-card__value num">{{ item_count|fa_number }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">موجودی منفی</span>
+    <span class="stat-card__value num">{{ negative_count|fa_number }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">نرخ دلار</span>
+    <span class="stat-card__value">پیکربندی نشده</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>کالا</th>
+              <th>موجودی</th>
+              <th>قیمت خرید جاری</th>
+              <th>قیمت فروش</th>
+              <th>ارزش موجودی</th>
+              <th>سهم از کل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }} ({{ row.product.sku }})</a></td>
+                <td class="num{% if row.stock < 0 %} field__error{% endif %}">{{ row.stock|fa_number }}</td>
+                <td class="num">
+                  {% if row.current_cost is not None %}
+                    {{ row.current_cost|rial_toman }}
+                    {% if not row.has_active_cost %}<span class="field__hint">(آخرین قیمت شناخته‌شده)</span>{% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td class="num">{{ row.product.default_selling_price|rial_toman }}</td>
+                <td class="num">{{ row.value|rial_toman }}</td>
+                <td class="num">{{ row.share|fa_number }}٪</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هنوز کالایی ثبت نشده است.</p>
+        <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

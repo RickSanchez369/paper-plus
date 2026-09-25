@@ -55,6 +55,7 @@ class AuditLog(BaseModel):
         CANCEL_CHEQUE = "cancel_cheque", "لغو چک"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
+        RECORD_ADJUSTMENT = "record_adjustment", "ثبت اصلاح موجودی"
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
