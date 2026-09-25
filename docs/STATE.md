@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Phase A of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-25, after Phase B of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,11 +21,16 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase B — frontend skeleton** (MASTER_PROMPT 3): base template with the
-persistent 11-module sidebar, header and content block; login page (phone +
-password, no business picker); stub dashboard route; HTMX wired in; and the
-three shared components that must exist once and be reused — date-range
-picker, "record payment" form, inline "new customer"/"new supplier".
+**Phase C — the 11 modules** (MASTER_PROMPT 3), starting with **Sales**
+(build order: Sales → Purchasing+Suppliers → Inventory → Receivables/
+Payables/Cheques → Bank Accounts → Expenses → Customers → Financial
+Reports → User Activity → Dashboard last, since it only aggregates). Each
+module gets its full spec from REDESIGN_VISION.md §4 — list, detail,
+create-flow, filters, search, empty/error states, print where specified —
+not a thinner version.
+
+Phase B is done: shell + login + htmx (`2ba2149`, 24/24 scripts + a browser
+pass) and the three shared components (`312163a` + `69bd923`, see Built).
 
 Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
 (drop multi-tenancy and roles), `19d25b3` (FIFO cost layers), `01ec98e`
@@ -263,6 +268,24 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
 - 4.3b round 2 also surfaced (unrelated to 4.3b itself, found only because
   QA logged in as a real role account instead of superuser) the Owner
   permissions bug -- see the URGENT note at the top of this file.
+- Phase B shared components (REDESIGN_VISION §8, MASTER_PROMPT 3): date-range
+  picker (Jalali -- `apps/shared/forms.py` DateRangeForm + `dates.py` +
+  `jalali_picker.js` + `DatePickerMonthView`), "record payment" form
+  (`apps/payments/forms.py` RecordPaymentForm), inline new-customer/
+  new-supplier mini-forms (`apps/partners/forms.py`). Built in `312163a`
+  (WIP). The date-range picker is wired into Dashboard, Financial Reports
+  and User Activity and was verified by actually clicking it, not just
+  scripts -- `69bd923` fixed a real bug that only showed up there: an
+  unconditional hidden `<input name="preset" value="custom">` in
+  `_date_range.html` was submitted alongside whichever preset button's own
+  `name="preset"` the user clicked, so Django's `QueryDict.get()` always
+  resolved to "custom" and "امروز"/"این هفته"/"این ماه" silently did
+  nothing. Fixed by moving `name="preset" value="custom"` onto the
+  "اعمال" button itself, same pattern the other three buttons already
+  used. Record-payment and quick-party forms are verified at the form
+  level (`scripts/test_shared_components.py`, 37/37) but intentionally not
+  wired into any page yet -- their consumers (Receivables, Payables,
+  Customer/Supplier detail) are Phase C.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
