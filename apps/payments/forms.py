@@ -17,7 +17,7 @@ from django import forms
 
 from apps.shared.forms import JalaliDateField
 
-from .models import BankAccount, Cheque, Payment
+from .models import BankAccount, Cheque, Expense, Payment
 
 
 class RecordPaymentForm(forms.Form):
@@ -144,4 +144,64 @@ class ChequeCompletionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
         self.fields["bank_account"].empty_label = "— نامشخص —"
+        self.fields["bank_account"].required = False
+
+
+class ExpenseFilterForm(forms.Form):
+    """
+    Expenses list filters (REDESIGN_VISION 4.6): free-text search over
+    person/reason, bank account, and an amount range -- the date range
+    itself is the shared `DateRangeForm`, rendered alongside this one,
+    same split as Sales/Purchasing's own list filters.
+    """
+
+    q = forms.CharField(required=False, label="جست‌وجو")
+    bank_account = forms.ModelChoiceField(
+        required=False,
+        label="حساب بانکی",
+        queryset=BankAccount.objects.filter(is_active=True),
+        empty_label="— همهٔ حساب‌ها —",
+    )
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (ریال)", min_value=0)
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (ریال)", min_value=0)
+
+    def clean(self):
+        cleaned = super().clean()
+        lo, hi = cleaned.get("amount_min"), cleaned.get("amount_max")
+        if lo is not None and hi is not None and lo > hi:
+            self.add_error("amount_max", "حداکثر مبلغ نمی‌تواند از حداقل کمتر باشد.")
+        return cleaned
+
+
+class ExpenseForm(forms.ModelForm):
+    """
+    New-expense one-shot form (REDESIGN_VISION 4.6): date, person, reason,
+    amount, bank account or cash, optional receipt upload, note. The view
+    passes the unsaved instance to `record_expense`, which creates the
+    matching `Payment(OUT)` in the same transaction -- this form never
+    touches money itself.
+    """
+
+    expense_date = JalaliDateField(label="تاریخ")
+    amount = forms.IntegerField(
+        min_value=1,
+        label="مبلغ (ریال)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
+    )
+
+    class Meta:
+        model = Expense
+        fields = ("expense_date", "related_person", "reason", "amount", "bank_account", "document", "note")
+        widgets = {
+            "related_person": forms.TextInput(attrs={"class": "field__control"}),
+            "reason": forms.TextInput(attrs={"class": "field__control"}),
+            "bank_account": forms.Select(attrs={"class": "field__control"}),
+            "note": forms.Textarea(attrs={"class": "field__control", "rows": 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
+        self.fields["bank_account"].empty_label = "نقدی"  # blank means cash, same rule as Payment (2.6)
         self.fields["bank_account"].required = False

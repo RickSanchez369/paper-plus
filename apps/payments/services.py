@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared.audit import log_event
+from apps.shared.permissions import is_privileged
 
 from .models import Cheque, Expense, Payment, PaymentAllocation
 
@@ -345,12 +346,18 @@ def cancel_expense(expense, user):
     Expense row itself stays, flagged cancelled, and stops counting toward
     any total (`counts_toward_totals`).
 
+    Superuser-only, same risk tier as cancel_sale/cancel_purchase
+    (REDESIGN_VISION 4.6, D-023's is_superuser gate).
+
     Raises:
-        ValidationError: expense is already cancelled.
+        ValidationError: expense is already cancelled, or ``user`` is not
+            a superuser.
     """
     locked = Expense.objects.select_for_update().get(pk=expense.pk)
     if locked.is_cancelled:
         raise ValidationError("این هزینه قبلاً لغو شده است.")
+    if not is_privileged(user):
+        raise ValidationError("فقط ابرکاربر می‌تواند هزینه را لغو کند.")
 
     locked.reversal_payment = record_payment(
         Payment(

@@ -1,0 +1,30 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+New expense (REDESIGN_VISION 4.6): one-shot form -- date, person, reason,
+amount, bank account or cash, optional receipt, note -- feeds
+record_expense, which creates the matching Payment(OUT) atomically. No
+edit afterward; a mistake is corrected with cancel_expense instead.
+{% endcomment %}
+
+{% block title %}هزینهٔ جدید{% endblock %}
+{% block header %}هزینهٔ جدید{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'expenses:list' %}">هزینه‌ها</a> / هزینهٔ جدید</p>
+
+<div class="card">
+  <div class="card__body">
+    <h1>ثبت هزینهٔ جدید</h1>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=form %}
+      {% for field in form %}
+        {% include "shared/_field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="btn">ثبت هزینه</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

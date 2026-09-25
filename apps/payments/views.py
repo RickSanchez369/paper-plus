@@ -14,9 +14,11 @@ import datetime
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.core.paginator import Paginator
+from django.db import models, transaction
+from django.db.models import Q
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -26,11 +28,22 @@ from django.views.generic import DetailView, TemplateView
 from apps.partners.models import Customer, Supplier
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
+from apps.shared import dates
+from apps.shared.forms import DateRangeForm
+from apps.shared.permissions import is_privileged
 
-from .forms import ChequeCompletionForm, ChequeFilterForm, RecordPaymentForm
-from .models import BankAccount, Cheque, Payment, PaymentAllocation
+from .forms import ChequeCompletionForm, ChequeFilterForm, ExpenseFilterForm, ExpenseForm, RecordPaymentForm
+from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation
 from .selectors import get_bank_account_balance, get_customer_outstanding, get_supplier_outstanding
-from .services import allocate_payment, bounce_cheque, cancel_cheque, clear_cheque, record_payment
+from .services import (
+    allocate_payment,
+    bounce_cheque,
+    cancel_cheque,
+    cancel_expense,
+    clear_cheque,
+    record_expense,
+    record_payment,
+)
 
 
 class ReceivablesListView(LoginRequiredMixin, TemplateView):
@@ -356,3 +369,107 @@ def _describe_payment(payment):
         "url": url,
         "party": payment.party,
     }
+
+
+class ExpensesListView(LoginRequiredMixin, TemplateView):
+    """
+    Expenses (REDESIGN_VISION 4.6): newest-first, cards for today's and
+    this month's totals (cancelled expenses excluded from both --
+    `Expense.counts_toward_totals`), free-text search over person/reason,
+    plus the shared date-range picker and structured filters (bank
+    account, amount range). The table itself still lists a cancelled
+    expense, same "history, not hidden" rule as a cancelled invoice.
+    """
+
+    template_name = "payments/expenses_list.html"
+    paginate_by = 25
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        range_form = DateRangeForm(self.request.GET or None)
+        filter_form = ExpenseFilterForm(self.request.GET or None)
+        date_range = range_form.range
+
+        qs = Expense.objects.select_related("bank_account", "created_by").filter(
+            expense_date__gte=date_range[0], expense_date__lte=date_range[1],
+        )
+
+        if filter_form.is_valid():
+            data = filter_form.cleaned_data
+            if data.get("q"):
+                qs = qs.filter(Q(related_person__icontains=data["q"]) | Q(reason__icontains=data["q"]))
+            if data.get("bank_account"):
+                qs = qs.filter(bank_account=data["bank_account"])
+            if data.get("amount_min") is not None:
+                qs = qs.filter(amount__gte=data["amount_min"])
+            if data.get("amount_max") is not None:
+                qs = qs.filter(amount__lte=data["amount_max"])
+
+        expenses = qs.order_by("-expense_date", "-created_at")
+        paginator = Paginator(expenses, self.paginate_by)
+        page_obj = paginator.get_page(self.request.GET.get("page"))
+
+        context.update({
+            "range_form": range_form,
+            "date_range": date_range,
+            "filter_form": filter_form,
+            "page_obj": page_obj,
+            "expenses": page_obj.object_list,
+            "cards": self._cards(),
+            "can_cancel": is_privileged(self.request.user),
+        })
+        return context
+
+    @staticmethod
+    def _cards():
+        today = timezone.localdate()
+        jalali_today = dates.today()
+        month_start, month_end = dates.month_bounds(jalali_today.year, jalali_today.month)
+
+        not_cancelled = Q(cancelled_at__isnull=True)
+        month_total = Expense.objects.filter(
+            not_cancelled, expense_date__gte=month_start, expense_date__lte=month_end,
+        ).aggregate(total=models.Sum("amount"))["total"] or 0
+        today_total = Expense.objects.filter(not_cancelled, expense_date=today).aggregate(
+            total=models.Sum("amount"),
+        )["total"] or 0
+
+        return {"today_total": today_total, "month_total": month_total}
+
+
+class ExpenseCreateView(LoginRequiredMixin, View):
+    """New-expense one-shot form (REDESIGN_VISION 4.6): atomic create of
+    Expense + Payment(OUT), via record_expense -- no edit/delete after."""
+
+    template_name = "payments/expense_new.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": ExpenseForm()})
+
+    def post(self, request):
+        form = ExpenseForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    expense = record_expense(form.save(commit=False), request.user)
+            except ValidationError as exc:
+                form.add_error(None, "؛ ".join(exc.messages))
+            else:
+                messages.success(request, "هزینه ثبت شد.")
+                return redirect("expenses:list")
+        return render(request, self.template_name, {"form": form})
+
+
+class ExpenseCancelView(LoginRequiredMixin, View):
+    """POST-only: cancel_expense itself is the only real guard (superuser
+    + not already cancelled); this view is just the HTTP door to it."""
+
+    def post(self, request, pk):
+        expense = get_object_or_404(Expense, pk=pk)
+        try:
+            cancel_expense(expense, request.user)
+        except ValidationError as exc:
+            messages.error(request, "؛ ".join(exc.messages))
+        else:
+            messages.success(request, "هزینه لغو شد.")
+        return redirect("expenses:list")

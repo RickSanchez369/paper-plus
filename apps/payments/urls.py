@@ -14,8 +14,6 @@ exists for.
 
 from django.urls import path
 
-from apps.shared.views import ModulePlaceholderView
-
 from .views import (
     BankAccountDetailView,
     BankAccountListView,
@@ -23,6 +21,9 @@ from .views import (
     ChequeCompleteView,
     ChequeDetailView,
     ChequesListView,
+    ExpenseCancelView,
+    ExpenseCreateView,
+    ExpensesListView,
     PayablesListView,
     ReceivablesListView,
     RecordCustomerPaymentView,
@@ -54,12 +55,7 @@ bank_accounts_patterns = ([
 ], "bank_accounts")
 
 expenses_patterns = ([
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="هزینه‌ها",
-            description="هزینه‌های ثبت‌شده با طرف حساب، بابت و سند پیوست.",
-        ),
-        name="list",
-    ),
+    path("", ExpensesListView.as_view(), name="list"),
+    path("new/", ExpenseCreateView.as_view(), name="new"),
+    path("<uuid:pk>/cancel/", ExpenseCancelView.as_view(), name="cancel"),
 ], "expenses")

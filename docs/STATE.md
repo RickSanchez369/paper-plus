@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Bank Accounts (Phase C module 5) of the rebuild (REDESIGN_VISION). Earlier: Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-26, after Expenses (Phase C module 6) of the rebuild (REDESIGN_VISION). Earlier: Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,12 +21,19 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 6 — Expenses** (MASTER_PROMPT 3's build order: Sales →
+**Phase C, module 7 — Customers** (MASTER_PROMPT 3's build order: Sales →
 Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques → Bank
-Accounts → **Expenses** → Customers → Financial Reports → User Activity →
-Dashboard last). Bank Accounts (module 5) is done — see Built. Each
-module gets its full spec from REDESIGN_VISION.md §4 — not a thinner
-version.
+Accounts → Expenses → **Customers** → Financial Reports → User Activity →
+Dashboard last). Expenses (module 6) is done — see Built. REDESIGN_VISION
+4.7: list (name, phone, account status badge, open balance, invoice
+count, last purchase date; search name/phone; filter account status/
+active; "new customer" reusing Purchasing/Sales's existing inline
+component); detail is **ROADMAP 4.5**, fully specified in the vision doc
+-- header+edit, lifetime cards, invoices/payments/cheques, and a combined
+chronological statement/ledger (invoices=debit, cleared payments/
+cheques=credit) reading `get_customer_outstanding` (4.4) so the two never
+disagree. Each module gets its full spec from REDESIGN_VISION.md §4 —
+not a thinner version.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -545,6 +552,43 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15),
   `test_cheque_lifecycle.py` (15/15) and `test_receivables_payables.py`
   (31/31) still pass.
+- Expenses (REDESIGN_VISION 4.6, Phase C module 6): list -- newest-first,
+  today's/this-month's total cards (a cancelled expense's amount excluded
+  from both via `Expense.counts_toward_totals` -- the same "history, not
+  hidden" table treatment Sales/Purchasing already use for a cancelled
+  invoice), free-text search over person/reason, the shared date-range
+  picker, and structured filters (bank account, amount range) -- same
+  filter split as Sales/Purchasing (`ExpenseFilterForm` + `DateRangeForm`,
+  disjoint field names, one querystring). New-expense one-shot form
+  (`ExpenseForm`, a plain `ModelForm` -- no formset needed, unlike Sales/
+  Purchasing, since an expense is a single row) feeds `record_expense`
+  inside `transaction.atomic()`; no edit afterward, only cancel.
+  `cancel_expense` (apps/payments/services.py) was missing its superuser
+  gate entirely -- REDESIGN_VISION 4.6 calls for "same risk tier as
+  invoice cancellation" (D-023), but the service only checked
+  `is_cancelled`. Fixed in the same change, mirroring `cancel_sale`'s own
+  `is_privileged` check + Persian `ValidationError` (not `PermissionDenied`,
+  so the existing `except ValidationError` view pattern keeps working).
+  `scripts/test_expenses.py` (new, drives the real `/expenses/` URLs,
+  15/15) covers: a cash and a bank-account expense both saving correctly,
+  a blank reason writing nothing, search/filter, a non-superuser's cancel
+  attempt being rejected, and a double-cancel being a no-op (not a second
+  reversal). Full browser QA (`scripts/qa_expenses_setup.py`/`_teardown.py`)
+  walked the list, the new-expense form (including the Jalali date picker),
+  and cancel -- found nothing new in the server logic, but hit this
+  browser tool's own native-dialog limitation: `onsubmit="return
+  confirm(...)"` (the same pattern Sales/Purchasing/Cheques cancel already
+  use) always resolves `confirm()` to `false` here since native dialogs
+  are disabled in this tool, so the click alone never submits. Verified
+  the real POST/redirect/card-update instead via `form.submit()` in the
+  console (bypasses the `submit` event entirely, so `onsubmit` never
+  runs) -- confirmed correct end to end. A tool limitation, not a product
+  bug; nothing to fix in the template. `test_frontend_shell.py` (50/50),
+  `test_shared_components.py` (37/37), `test_jalali_dates.py` (33/33),
+  `test_sales_invoice.py` (28/28), `test_purchase_invoice.py` (33/33),
+  `test_payments.py` (15/15), `test_cheque_lifecycle.py` (15/15),
+  `test_receivables_payables.py` (31/31) and `test_bank_accounts.py`
+  (11/11) still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
