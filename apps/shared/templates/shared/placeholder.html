@@ -11,7 +11,11 @@ block, not its route.
 <div class="page-head">
   <div class="page-head__row">
     <h1>{{ page_title }}</h1>
-    {% if with_date_range %}{% include "shared/_date_range.html" with form=range_form %}{% endif %}
+    {% if with_date_range %}
+      <form method="get">
+        {% include "shared/_date_range.html" with form=range_form %}
+      </form>
+    {% endif %}
   </div>
   {% if page_description %}<p class="page-head__lede">{{ page_description }}</p>{% endif %}
 </div>

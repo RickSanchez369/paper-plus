@@ -1,0 +1,134 @@
+{% extends "shared/base.html" %}
+{% load static paper %}
+
+{% comment %}
+One-shot new-sale form (REDESIGN_VISION 4.1, non-negotiable #5): invoice +
+items + payment split, submitted together. sale_form.js owns everything
+client-side (product search, add/remove rows, live totals, remaining-
+amount autofill); the server only ever sees a full POST and either
+creates+confirms the whole thing or rejects it whole (see SalesCreateView).
+{% endcomment %}
+
+{% block title %}فاکتور فروش جدید{% endblock %}
+{% block header %}فاکتور فروش جدید{% endblock %}
+
+{% block head %}
+  <script src="{% static 'sales/js/sale_form.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>ثبت فاکتور فروش</h1>
+  <p class="page-head__lede">
+    فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
+  </p>
+</div>
+
+{% if error %}
+  <div class="form-error">{{ error }}</div>
+{% endif %}
+
+{% comment %}
+The customer field lives outside <form id="sale-form"> on purpose, with
+`form="sale-form"` on its own widget (see SaleInvoiceForm.Meta.widgets):
+its "+ مشتری جدید" disclosure is itself a <form> (partners/
+_quick_party_form.html, a separate htmx POST), and HTML forbids a <form>
+nested inside another -- the browser silently truncates the outer form
+right there, so every field after it stopped belonging to any form at
+all (found by actually submitting, not by review: nothing in the item or
+payment rows ever reached the server).
+{% endcomment %}
+<div class="card">
+  <div class="card__body">
+    <h2>مشتری</h2>
+    {% include "shared/_field.html" with field=invoice_form.customer %}
+    <details class="quick-party-disclosure">
+      <summary class="btn btn--quiet">+ مشتری جدید</summary>
+      {% include "partners/_quick_party_form.html" with form=quick_customer_form post_url=quick_customer_url title="مشتری جدید" %}
+    </details>
+  </div>
+</div>
+
+<form method="post" id="sale-form" novalidate>
+  {% csrf_token %}
+
+  <div class="card">
+    <div class="card__body">
+      <h2>مشخصات فاکتور</h2>
+      {% include "shared/_form_errors.html" with form=invoice_form %}
+      <div class="sale-form__header">
+        {% include "shared/_field.html" with field=invoice_form.invoice_date %}
+        {% include "shared/_field.html" with field=invoice_form.discount_amount %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__body">
+      <h2>اقلام فاکتور</h2>
+      {% if item_formset.non_form_errors %}
+        <div class="form-error">{% for e in item_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
+      {% endif %}
+      {{ item_formset.management_form }}
+
+      <div class="item-row item-row--head">
+        <span>کالا</span>
+        <span>موجودی</span>
+        <span>مقدار</span>
+        <span>قیمت واحد (ریال)</span>
+        <span>جمع (ریال)</span>
+        <span></span>
+      </div>
+
+      <div id="item-rows">
+        {% for form in item_formset %}
+          {% include "sales/_item_row.html" %}
+        {% endfor %}
+      </div>
+
+      <template id="item-row-template">
+        {% include "sales/_item_row.html" with form=item_formset.empty_form %}
+      </template>
+
+      <button type="button" class="btn btn--quiet" id="add-item-row">+ افزودن ردیف</button>
+
+      <div class="sale-form__totals">
+        <div><span>جمع جزء</span><span class="num" id="sale-subtotal">۰</span></div>
+        <div><span>تخفیف</span><span class="num" id="sale-discount">۰</span></div>
+        <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num" id="sale-total">۰</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__body">
+      <h2>تقسیم پرداخت</h2>
+      <p class="field__hint">هر مبلغی که در ردیف‌های زیر نیاید، به‌صورت نسیه روی حساب مشتری می‌ماند.</p>
+      {% if payment_formset.non_form_errors %}
+        <div class="form-error">{% for e in payment_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
+      {% endif %}
+      {{ payment_formset.management_form }}
+
+      <div id="payment-rows">
+        {% for form in payment_formset %}
+          {% include "sales/_payment_entry_row.html" %}
+        {% endfor %}
+      </div>
+
+      <template id="payment-row-template">
+        {% include "sales/_payment_entry_row.html" with form=payment_formset.empty_form %}
+      </template>
+
+      <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
+
+      <p class="sale-form__remaining">
+        باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> ریال
+      </p>
+    </div>
+  </div>
+
+  <div class="sale-form__submit">
+    <button type="submit" class="btn">ثبت و تأیید فاکتور</button>
+  </div>
+</form>
+{% endblock %}

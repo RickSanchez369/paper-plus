@@ -1,0 +1,11 @@
+{% comment %}
+Replaces the quick-customer form after a successful create. The matching
+out-of-band swap (#id_customer, see QuickCustomerCreateView) already put
+the new party into the invoice's customer field -- this is only here to
+say so and let the disclosure be closed.
+{% endcomment %}
+<div class="quick-party quick-party--success">
+  <p class="field__hint">«{{ customer.name }}» ثبت شد و در فاکتور انتخاب شد.</p>
+  <button type="button" class="btn btn--quiet btn--block"
+          onclick="this.closest('details').removeAttribute('open')">بستن</button>
+</div>

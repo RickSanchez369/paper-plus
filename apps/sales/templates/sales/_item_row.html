@@ -1,0 +1,33 @@
+{% comment %}
+One invoice-item row (REDESIGN_VISION 4.1): search box picks the product,
+quantity and price are typed, the line total is computed live by
+sale_form.js. Used both for each bound form already in the formset and,
+wrapped in a <template> by new.html, as what "افزودن ردیف" clones --
+`form` is `item_formset.empty_form` there, prefixed `form-__prefix__`,
+which sale_form.js swaps for a real index before inserting it.
+{% endcomment %}
+<div class="item-row" data-item-row>
+  {{ form.product }}
+  <div class="item-row__search">
+    <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" autocomplete="off"
+           data-item-row-search
+           hx-get="{% url 'sales:product_search' %}"
+           hx-trigger="keyup changed delay:300ms, focus"
+           hx-target="next .item-row__results"
+           hx-swap="innerHTML"
+           name="q">
+    <div class="item-row__results search-results"></div>
+    {% for error in form.product.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="item-row__stock" data-item-row-stock></div>
+  <div class="item-row__qty">
+    {{ form.quantity }}
+    {% for error in form.quantity.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="item-row__price">
+    {{ form.unit_price }}
+    {% for error in form.unit_price.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <span class="item-row__total num" data-item-row-total>۰</span>
+  <button type="button" class="btn btn--quiet item-row__remove" data-item-row-remove>حذف</button>
+</div>

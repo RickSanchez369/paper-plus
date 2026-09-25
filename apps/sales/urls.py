@@ -4,17 +4,22 @@
 
 from django.urls import path
 
-from apps.shared.views import ModulePlaceholderView
+from .views import (
+    ProductSearchView,
+    SalesCancelView,
+    SalesCreateView,
+    SalesDetailView,
+    SalesListView,
+    SalesPrintView,
+)
 
 app_name = "sales"
 
 urlpatterns = [
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="فروش",
-            description="فهرست فاکتورهای فروش با وضعیت پرداخت و سود هر فاکتور.",
-        ),
-        name="list",
-    ),
+    path("", SalesListView.as_view(), name="list"),
+    path("new/", SalesCreateView.as_view(), name="new"),
+    path("product-search/", ProductSearchView.as_view(), name="product_search"),
+    path("<uuid:pk>/", SalesDetailView.as_view(), name="detail"),
+    path("<uuid:pk>/cancel/", SalesCancelView.as_view(), name="cancel"),
+    path("<uuid:pk>/print/", SalesPrintView.as_view(), name="print"),
 ]

@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-25, after Phase B of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-25, after Sales (Phase C's first module) of the rebuild (REDESIGN_VISION). Earlier: ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,16 +21,23 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C — the 11 modules** (MASTER_PROMPT 3), starting with **Sales**
-(build order: Sales → Purchasing+Suppliers → Inventory → Receivables/
+**Phase C, module 2 — Purchasing + Suppliers** (MASTER_PROMPT 3's build
+order: Sales → **Purchasing+Suppliers** → Inventory → Receivables/
 Payables/Cheques → Bank Accounts → Expenses → Customers → Financial
-Reports → User Activity → Dashboard last, since it only aggregates). Each
-module gets its full spec from REDESIGN_VISION.md §4 — list, detail,
-create-flow, filters, search, empty/error states, print where specified —
-not a thinner version.
+Reports → User Activity → Dashboard last). Same shape as Sales just
+closed (list, one-shot new-purchase form, detail, print) but per
+REDESIGN_VISION 4.2: no discount concept, no profit column on the detail
+page, item rows can create a brand-new product inline, cancel is blocked
+once the resulting `InventoryLayer` has been partially consumed (stricter
+than Sales), plus the Suppliers sub-section (list + detail, not top-level
+nav). Each module gets its full spec from REDESIGN_VISION.md §4 — list,
+detail, create-flow, filters, search, empty/error states, print where
+specified — not a thinner version.
 
-Phase B is done: shell + login + htmx (`2ba2149`, 24/24 scripts + a browser
-pass) and the three shared components (`312163a` + `69bd923`, see Built).
+Sales (Phase C module 1) is done: list, one-shot new-sale form, detail,
+print, cancel — see Built. Phase B is done: shell + login + htmx
+(`2ba2149`, 24/24 scripts + a browser pass) and the three shared
+components (`312163a` + `69bd923`).
 
 Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
 (drop multi-tenancy and roles), `19d25b3` (FIFO cost layers), `01ec98e`
@@ -286,6 +293,81 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   level (`scripts/test_shared_components.py`, 37/37) but intentionally not
   wired into any page yet -- their consumers (Receivables, Payables,
   Customer/Supplier detail) are Phase C.
+- Sales (REDESIGN_VISION 4.1, Phase C module 1): list (cards -- today,
+  this month, open partial/credit count, month profit, all excluding
+  cancelled per vision doc gap #4 -- table, free-text search, structured
+  filters incl. the shared date-range picker, pagination-ready, print
+  link per row), one-shot new-sale form (`apps/sales/forms.py`,
+  `apps/sales/views.SalesCreateView`: invoice + item formset + payment-
+  entry formset built and saved as a draft inside one
+  `transaction.atomic()`, then `confirm_sale` in the same transaction --
+  a rejection leaves nothing saved), detail (FIFO cost + profit per line
+  and for the invoice, payment/cheque history, cancel via the existing
+  `cancel_sale`, superuser-only), print (plain browser-printable page,
+  no PDF per RULES.md scope). `apps/sales/static/sales/js/sale_form.js`
+  is written fresh for htmx + vanilla JS (REDESIGN_VISION 2 item 8), not
+  ported from admin's jQuery/select2 version: live product search with
+  stock in the label, add/remove rows, live subtotal/discount/total,
+  remaining/نسیه autofill on a new payment row. The shared "+ مشتری
+  جدید" component (Phase B) gained its first real consumer here plus a
+  `QuickCustomerCreateView` (`apps/partners/views.py`) that returns an
+  out-of-band swap of `#id_customer`.
+  Three real bugs found only by actually submitting the form, invisible
+  to `manage.py check` or a script with hand-built clean data:
+  1. `SaleInvoiceForm.discount_amount` left blank cleaned to `None`, and
+     `BigIntegerField` has no ORM-level default substitution on an
+     explicit `None` (`Model.save()` only applies `default=0` when a
+     field is never set at all) -- a raw NOT NULL DB error on the
+     single most common case (no discount). Fixed with a
+     `clean_discount_amount()` returning `0` instead of `None`.
+  2. The "+ مشتری جدید" disclosure is itself a `<form>`
+     (`partners/_quick_party_form.html`, its own htmx POST) and was
+     rendered inside `<form id="sale-form">` -- HTML forbids a nested
+     `<form>`, so the browser silently truncated the outer form right
+     there, and every field after it (every item row, every payment
+     row, the submit button) stopped belonging to any form at all;
+     submitting sent only the customer field. Same root cause as
+     `69bd923`'s date-range bug, different shape. Fixed by moving the
+     customer field and its disclosure outside `<form id="sale-form">`,
+     with `form="sale-form"` on the customer widget's attrs reattaching
+     it (HTML5's own answer to "this input belongs to a form it isn't
+     nested inside").
+  3. `SalesPaymentEntryForm.method` (required, no model-level `default`)
+     got an English "- Select an option -" blank choice Django inserts
+     automatically for any required choices-field lacking a default or
+     initial (`Field.get_choices()`) -- fixed by declaring it explicitly
+     with `initial=CASH`, same fix already applied to the `product`
+     filter on the list page for the identical reason.
+  Also found and fixed in `_form_errors.html`'s reuse: passing a
+  **formset** to it silently showed nothing, because formsets expose
+  `non_form_errors()` (a method), not `non_field_errors` (a Form
+  attribute) -- Django templates resolve a missing attribute to empty
+  rather than erroring, so a real formset-level error (e.g. this
+  module's own duplicate-product-row check) would have been invisible.
+  `new.html` renders `item_formset.non_form_errors`/
+  `payment_formset.non_form_errors` directly instead.
+  Verified end to end in an actual browser, not just scripts: created a
+  4-unit cash sale against disposable QA fixtures (product with opening
+  stock via `set_opening_stock`, customer, bank account, non-superuser
+  then superuser QA user) -- confirmed invoice number, item FIFO cost
+  and profit, payment allocation and status, list cards and table row,
+  print page, and cancel (stock restored, cards correctly drop back to
+  excluding the now-cancelled invoice, table still shows it with a
+  cancelled status). All QA fixtures deleted afterward in dependency
+  order and `DocumentSequence` (`sale`) reset to 9956001 so Sina's first
+  real invoice still starts there. `scripts/test_sales_invoice.py` added
+  after, 28/28 -- drives the real `/sales/` URLs with Django's test
+  Client (same pattern as `test_frontend_shell.py`), not the forms/
+  services directly, because all three bugs above were invisible to a
+  script built from already-clean data. Covers: blank discount, an
+  itemless submission, a duplicate-product row, payment rows over the
+  total (all rejected with the Persian message on the page, nothing
+  saved), FIFO cost/profit/payment-status on a real confirm, cancel's
+  superuser gate both ways, cards excluding a cancelled invoice while
+  the table still lists it, product search, and the `method` field's
+  blank-choice regression. `test_frontend_shell.py` (50/50),
+  `test_shared_components.py` (37/37) and `test_jalali_dates.py`
+  (33/33) still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase

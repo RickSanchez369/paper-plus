@@ -15,7 +15,9 @@ dashboard is one of the three pages that owns it.
 <div class="page-head">
   <div class="page-head__row">
     <h1>خوش آمدید</h1>
-    {% include "shared/_date_range.html" with form=range_form %}
+    <form method="get">
+      {% include "shared/_date_range.html" with form=range_form %}
+    </form>
   </div>
   <p class="page-head__lede">
     داشبورد خلاصهٔ فروش، خرید، هزینه، مطالبات، بدهی و موجودی را نشان می‌دهد.

@@ -6,6 +6,8 @@ from django.urls import path
 
 from apps.shared.views import ModulePlaceholderView
 
+from .views import QuickCustomerCreateView
+
 app_name = "customers"
 
 urlpatterns = [
@@ -17,4 +19,7 @@ urlpatterns = [
         ),
         name="list",
     ),
+    # Embedded inline wherever a `customer` field is picked (Sales' new-
+    # invoice form today; the Customers list itself later).
+    path("quick-new/", QuickCustomerCreateView.as_view(), name="quick_new"),
 ]
