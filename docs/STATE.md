@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-26, after Expenses (Phase C module 6) of the rebuild (REDESIGN_VISION). Earlier: Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-26, after Customers (Phase C module 7) of the rebuild (REDESIGN_VISION). Earlier: Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,19 +21,25 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 7 — Customers** (MASTER_PROMPT 3's build order: Sales →
-Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques → Bank
-Accounts → Expenses → **Customers** → Financial Reports → User Activity →
-Dashboard last). Expenses (module 6) is done — see Built. REDESIGN_VISION
-4.7: list (name, phone, account status badge, open balance, invoice
-count, last purchase date; search name/phone; filter account status/
-active; "new customer" reusing Purchasing/Sales's existing inline
-component); detail is **ROADMAP 4.5**, fully specified in the vision doc
--- header+edit, lifetime cards, invoices/payments/cheques, and a combined
-chronological statement/ledger (invoices=debit, cleared payments/
-cheques=credit) reading `get_customer_outstanding` (4.4) so the two never
-disagree. Each module gets its full spec from REDESIGN_VISION.md §4 —
-not a thinner version.
+**Phase C, module 8 — Financial Reports** (MASTER_PROMPT 3's build order:
+Sales → Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques →
+Bank Accounts → Expenses → Customers → **Financial Reports** → User
+Activity → Dashboard last). Customers (module 7) is done — see Built.
+REDESIGN_VISION 4.8: date-range picker (today/week/month/custom, the
+shared component); every number computed live for the chosen range, never
+stored (§2.8) -- summary cards (total sales, total purchases, expenses,
+gross profit = Σ real per-line FIFO profit, net profit = gross − expenses,
+each with % change vs. the equal-length prior period, also computed
+live); sales-by-product and purchases-by-product tables; top sellers
+(ranked by quantity, linked); inventory **as of the end of the selected
+range** (reconstructed from the movement/layer ledger up to that date,
+not "right now"); bank account balances as of range end + period in/out
+totals (`get_bank_account_balance(as_of=...)` already supports this, 4.5);
+open receivables/payables as of range end; cheque counts/amounts by
+status within the range; user activity within the range (from
+`AuditLog`, grouped by actor); USD rate placeholder only, source still
+undecided (same as 4.3/4.7). Each module gets its full spec from
+REDESIGN_VISION.md §4 — not a thinner version.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -589,6 +595,49 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   `test_payments.py` (15/15), `test_cheque_lifecycle.py` (15/15),
   `test_receivables_payables.py` (31/31) and `test_bank_accounts.py`
   (11/11) still pass.
+- Customers (REDESIGN_VISION 4.7, the full ROADMAP 4.5, Phase C module 7):
+  list -- name, phone, account status badge (بدهکار/تسویه‌شده, derived
+  from `get_customer_outstanding`, D-025), open balance, invoice count,
+  last purchase date; free-text search over name/phone; filters for
+  account status and active/inactive (defaults to active-only, same as
+  every other party list); "+ مشتری جدید" is the exact same inline
+  mini-form used mid-invoice on Sales (its `#id_customer` out-of-band
+  swap simply finds nothing to replace here, harmless). Detail: header +
+  a plain (non-htmx) edit form -- `CustomerForm`, the only place
+  `is_active` is editable, since deactivating a customer belongs on an
+  edit page, not mid-invoice; lifetime cards (purchases, open balance,
+  invoice count, last purchase); this customer's invoices/payments/
+  cheques; a combined chronological statement (invoices = debit, payments
+  = credit -- a cleared cheque is already a `Payment` by the time it
+  reaches here, a pending or bounced one never becomes one, so reading
+  `Payment` alone is enough, no separate cheque-ledger merge needed); the
+  exact same "ثبت پرداخت" component and `receivables:record_payment`
+  route Receivables already uses, reused as-is rather than duplicated.
+  Refactor alongside this: the open-invoices query that both
+  Receivables/Payables and this page need (`model.objects.filter(status=
+  CONFIRMED, ...).filter(outstanding > 0)`, oldest first) moved from a
+  private `apps.payments.views._open_invoices` helper into a real
+  selector, `apps.payments.selectors.get_open_invoices` -- it was about
+  to be imported across app boundaries by its private name otherwise.
+  `scripts/test_customers.py` (new, drives the real `/customers/` URLs,
+  23/23) covers: the account-status badge and filter, phone search, the
+  active/inactive filter, detail-page cards/ledger for both a settled and
+  an owing customer, edit (including a rejected blank name leaving the
+  name untouched). Full browser QA (`scripts/qa_customers_setup.py`/
+  `_teardown.py`) walked the list, detail, the "record payment" htmx
+  disclosure (submitted a real payment against the QA invoice --
+  confirmed the ledger and cards update correctly on reload), and the
+  edit form (submitted a real address change, confirmed the success
+  message and the saved value) -- found nothing new; every JS/event
+  lesson already paid for on Receivables/Sales (htmx swap targets, the
+  formset event shape) simply didn't apply here, since this module
+  reuses those components rather than reimplementing them.
+  `test_frontend_shell.py` (50/50), `test_shared_components.py` (37/37),
+  `test_jalali_dates.py` (33/33), `test_sales_invoice.py` (28/28),
+  `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15),
+  `test_cheque_lifecycle.py` (15/15), `test_receivables_payables.py`
+  (31/31), `test_bank_accounts.py` (11/11) and `test_expenses.py` (15/15)
+  still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - Financial report screen (date-range P&L: total sales, total purchase
@@ -639,7 +688,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
       `PaymentAllocation` referencing it for bank-transfer payments; derived
       payment status (D-025) [R 10]
 - [x] 4.4 `Cheque` lifecycle: pending / cleared / bounced, linked to a Payment [R 3, 10]
-- [ ] 4.5 Customer account: invoices, payments, cheques, running balance
+- [x] 4.5 Customer account: invoices, payments, cheques, running balance
       (credit/نسیه derived from PaymentAllocation, never a stored debt field), statement [R 3]
 - [ ] 4.6 Sales and purchase returns as separate documents with own movement types [R 13]
 - [ ] 4.7 Purchase and selling price management with history [R 14, 15]
