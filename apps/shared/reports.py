@@ -25,7 +25,7 @@ from apps.payments.selectors import (
 )
 from apps.payments.models import BankAccount, Expense
 from apps.purchasing.models import PurchaseInvoice, PurchaseItem
-from apps.sales.models import SaleItem, SalesInvoice
+from apps.sales.models import SalesInvoice
 from apps.shared.models import AuditLog
 
 
@@ -107,22 +107,23 @@ def summary_cards(start, end):
 def sales_by_product(start, end):
     """qty, amount, profit per product, across every confirmed sale in the
     range -- REDESIGN_VISION 4.8's own table, and the source "top sellers" is
-    ranked from."""
-    items = (
-        SaleItem.objects.filter(
-            invoice__status=SalesInvoice.Status.CONFIRMED,
-            invoice__invoice_date__gte=start,
-            invoice__invoice_date__lte=end,
-        )
-        .select_related("product")
-        .prefetch_related("consumptions__layer")
-    )
+    ranked from.
+
+    Amount and profit are net of each invoice's discount, shared across its
+    lines in proportion to their line totals (D-048) -- so the column totals
+    equal `sales_total` and `gross_profit` exactly. Walked invoice by
+    invoice, so every line reads its share from its own (prefetched)
+    invoice instead of one query per line."""
+    invoices = SalesInvoice.objects.filter(
+        status=SalesInvoice.Status.CONFIRMED, invoice_date__gte=start, invoice_date__lte=end,
+    ).prefetch_related("items__product", "items__consumptions__layer")
     rows = {}
-    for item in items:
-        row = rows.setdefault(item.product_id, {"product": item.product, "quantity": 0, "amount": 0, "profit": 0})
-        row["quantity"] += item.quantity
-        row["amount"] += item.line_total
-        row["profit"] += item.profit
+    for invoice in invoices:
+        for item in invoice.items.all():
+            row = rows.setdefault(item.product_id, {"product": item.product, "quantity": 0, "amount": 0, "profit": 0})
+            row["quantity"] += item.quantity
+            row["amount"] += item.net_total
+            row["profit"] += item.profit
     return sorted(rows.values(), key=lambda row: -row["quantity"])
 
 

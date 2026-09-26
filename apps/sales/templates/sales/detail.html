@@ -3,7 +3,9 @@
 
 {% comment %}
 Sales detail (REDESIGN_VISION 4.1): items with FIFO cost + profit per
-line, totals with invoice profit highlighted, every Payment/Cheque this
+line (after the line's share of the invoice discount, D-048 -- shown as
+its own column when there is a discount, so the lines visibly add up to
+the invoice profit), totals with invoice profit highlighted, every Payment/Cheque this
 invoice ever produced, and cancel (superuser-only, calls the existing
 cancel_sale -- D-023, this view never writes stock/money itself).
 {% endcomment %}
@@ -52,6 +54,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
           <th>مقدار</th>
           <th>قیمت واحد</th>
           <th>جمع</th>
+          {% if invoice.discount_amount %}<th>سهم تخفیف</th>{% endif %}
           <th>بهای تمام‌شده (FIFO)</th>
           <th>سود</th>
         </tr>
@@ -68,6 +71,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
             <td class="num">{{ item.quantity|fa_number }}</td>
             <td class="num">{{ item.unit_price|toman }}</td>
             <td class="num">{{ item.line_total|toman }}</td>
+            {% if invoice.discount_amount %}<td class="num">−{{ item.discount_share|toman }}</td>{% endif %}
             <td class="num">{{ item.cost_of_goods|toman }}</td>
             <td class="num">{{ item.profit|toman }}</td>
           </tr>

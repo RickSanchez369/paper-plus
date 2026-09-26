@@ -24,9 +24,8 @@ itself ("موجودی فعلی" + unit cost), at creation -- there is no later p
 for it -- and bank accounts/suppliers on their own module pages (D-045).
 
 ## Next
-Pre-Phase-D correction batch is done, and so are C.fix-1 (D-047) and
-C.fix-2 (see Built). C.fix-3 (per-product profit vs. invoice discount)
-still waits for Sina's decision (PENDING below).
+Pre-Phase-D correction batch is done, and so are C.fix-1 (D-047), C.fix-2
+and C.fix-3 (D-048) -- see Built. Nothing from that batch is left open.
 
 **Phase D — visual identity** (MASTER_PROMPT §3's own build order: Phase
 C's 11 modules, all now built, then Phase D). REDESIGN_VISION §5: pick
@@ -858,16 +857,32 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   over-allocated "ثبت پرداخت" and a duplicate-SKU product dialog each now
   show their error in place; a sale rejected for its missing receiving
   account comes back with the row's product name, stock and quantity.
+- C.fix-3 (D-048, Sina picked pro-rata allocation, 2026-09-26): an
+  invoice's discount is shared across its lines by line total
+  (`SalesInvoice.discount_allocation`, largest remainder, whole Toman);
+  `SaleItem.discount_share`/`net_total` expose it and `SaleItem.profit` is
+  net of it, so line profits sum to the invoice profit and Reports'
+  "فروش به تفکیک کالا" (now "مبلغ خالص" + profit, walked per invoice)
+  sums to the sales-total and gross-profit cards. Sales detail shows a
+  "سهم تخفیف" column when discounted. No schema change.
+  `scripts/test_discount_allocation.py` (new, 22/22: the 600k/400k example,
+  a 33/33/34 rounding split, awkward proportions, no discount, cancelled,
+  report == cards, both pages). `test_reports.py`/`test_dashboard.py`
+  fixed to compare against a pre-script baseline (D-031) -- they had
+  assumed no other purchase existed today and failed once a real one did.
+  724/724 across 38 scripts. Browser: the detail page and today's report
+  checked against a QA sale (600k + 400k, 100k discount) -- shares
+  60k/40k, line profits 140k + 110k = the 250k invoice profit and the
+  gross-profit card; torn down afterward. The teardown script also stopped
+  resetting `DocumentSequence` below an invoice number already in use (it
+  had set `purchase` back to 9956001 while real invoice 9956001 existed;
+  restored to 9956002 before anything could collide).
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - ~~htmx 4xx responses are never swapped~~ -- C.fix-1, done (D-047).
 - ~~Item rows lose their product name on a re-rendered invoice form~~ --
   C.fix-2, done.
-- **Per-product profit vs. invoice discount** (Reports "فروش به تفکیک
-  کالا", sales detail line profit): line profit is computed before the
-  invoice-level discount (D-032), so the per-product column does not sum to
-  the gross-profit card when a discount exists. Needs a decision on whether
-  to allocate a discount across lines. Proposed: D-048, roadmap id C.fix-3.
+- ~~Per-product profit vs. invoice discount~~ -- C.fix-3, done (D-048).
 - ~~Financial report screen~~ -- superseded by REDESIGN_VISION 4.8, now
   built as Phase C module 8 (see Built). The COGS-method question this
   note originally raised was already settled project-wide by D-036/D-037

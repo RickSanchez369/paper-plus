@@ -161,11 +161,44 @@ class SalesInvoice(BaseModel):
 
         The discount comes off the total, so it comes out of profit -- it
         is a price reduction, not a cost. Zero for a draft or cancelled
-        invoice, same rule as SaleItem.profit.
+        invoice, same rule as SaleItem.profit. Always equals the sum of
+        its lines' profit, since the lines share the discount exactly
+        (`discount_allocation`, D-048).
         """
         if self.status != self.Status.CONFIRMED:
             return 0
         return self.total - self.cost_of_goods
+
+    @property
+    def discount_allocation(self):
+        """
+        {item pk: that line's share of the invoice discount}, in whole Toman
+        (D-048).
+
+        The discount is invoice-level (D-032), but "which product earns
+        what" needs it per line: each line carries the part proportional to
+        its own line total, so a line's revenue and profit are what that
+        product really brought in. Largest remainder keeps the shares
+        summing to exactly `discount_amount` -- floor every share, then hand
+        the leftover Toman, one each, to the lines with the biggest
+        remainders (ties by pk, so the same invoice always splits the same
+        way). Derived on every read, never stored (D-025).
+        """
+        items = list(self.items.all())
+        subtotal = sum(item.line_total for item in items)
+        if not self.discount_amount or subtotal <= 0:
+            return {item.pk: 0 for item in items}
+
+        shares = {}
+        remainders = []
+        for item in items:
+            numerator = self.discount_amount * item.line_total
+            shares[item.pk] = numerator // subtotal
+            remainders.append((numerator % subtotal, str(item.pk), item.pk))
+        leftover = self.discount_amount - sum(shares.values())
+        for _, _, pk in sorted(remainders, key=lambda r: (-r[0], r[1]))[:leftover]:
+            shares[pk] += 1
+        return shares
 
     @property
     def has_uncosted_items(self):
@@ -237,6 +270,18 @@ class SaleItem(BaseModel):
         return self.quantity * self.unit_price
 
     @property
+    def discount_share(self):
+        """This line's part of the invoice discount (D-048, see
+        SalesInvoice.discount_allocation)."""
+        return self.invoice.discount_allocation.get(self.pk, 0)
+
+    @property
+    def net_total(self):
+        """What this line actually brought in: line total minus its share
+        of the invoice discount. The lines' net totals sum to invoice.total."""
+        return self.line_total - self.discount_share
+
+    @property
     def cost_of_goods(self):
         """
         What these units actually cost, in Toman, from the FIFO layers this
@@ -272,7 +317,9 @@ class SaleItem(BaseModel):
     @property
     def profit(self):
         """
-        Realised profit: line total minus its real FIFO cost, in Toman.
+        Realised profit: net total (after this line's share of the invoice
+        discount, D-048) minus its real FIFO cost, in Toman -- so the lines
+        of an invoice add up to exactly the invoice's own profit.
 
         Zero unless the invoice is confirmed. A draft has not sold anything
         yet, and a cancelled line's consumptions net back to zero cost --
@@ -282,7 +329,7 @@ class SaleItem(BaseModel):
         """
         if self.invoice.status != SalesInvoice.Status.CONFIRMED:
             return 0
-        return self.line_total - self.cost_of_goods
+        return self.net_total - self.cost_of_goods
 
 
 class SalesPaymentEntry(BaseModel):

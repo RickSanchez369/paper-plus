@@ -152,3 +152,4 @@ Read in that order; continue from STATE.md "Next".
 - D-045 Expense has no counterparty; its paying account is an explicit choice (real account, or cash chosen on purpose); Bank Accounts gets create/edit pages.
 - D-046 Sales invoice defaults to full settlement into a chosen account (`plan_full_payment`); split/cheque/credit rows are the explicit alternative mode.
 - D-047 htmx swaps a 422 response (a form re-rendered with its errors) via `htmx-config` in base.html; other 4xx/5xx stay non-swapping errors.
+- D-048 An invoice discount is shared across its lines pro rata by line total (largest remainder, whole Toman); line profit and per-product report rows are net of it and sum to the invoice/report totals. Derived, never stored.

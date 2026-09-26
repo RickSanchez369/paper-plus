@@ -84,9 +84,10 @@ this range alone.
   <div class="card__body">
     <h2>فروش به تفکیک کالا</h2>
     {% if sales_by_product %}
+      <p class="field__hint">مبلغ و سود پس از تخفیف فاکتورها است؛ تخفیف هر فاکتور به نسبت مبلغ ردیف‌ها بین کالاهای آن سرشکن شده است.</p>
       <table class="data-table">
         <thead>
-          <tr><th>کالا</th><th>مقدار</th><th>مبلغ</th><th>سود</th></tr>
+          <tr><th>کالا</th><th>مقدار</th><th>مبلغ خالص</th><th>سود</th></tr>
         </thead>
         <tbody>
           {% for row in sales_by_product %}

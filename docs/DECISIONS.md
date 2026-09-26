@@ -858,3 +858,29 @@ placed before the generic 4xx/5xx rule. 422 stays reserved for exactly this
 counts as an error and is not swapped into the page. The purchase page's
 scoped `htmx:beforeSwap` handler from the correction batch is removed as
 redundant.
+
+## D-048 — An invoice discount is shared across its lines, pro rata
+Date: 2026-09-26
+Status: Final
+
+Context: C.fix-3. The discount is invoice-level (D-032), but line profit —
+and Reports' "فروش به تفکیک کالا", built from it — ignored it: the
+per-product amount and profit columns summed to more than the sales-total
+and gross-profit cards whenever an invoice had a discount, and products
+usually sold at a discount looked more profitable than they are.
+
+Decision (Sina's pick, 2026-09-26, over a separate "discounts" row in the
+report or a footnote only): each line carries the share of its invoice's
+discount proportional to its own line total —
+`SalesInvoice.discount_allocation`, largest remainder in whole Toman so the
+shares always sum to exactly `discount_amount` (floor each share, give the
+leftover Toman one each to the biggest remainders, ties by item pk so an
+invoice always splits the same way). `SaleItem.discount_share` /
+`net_total` expose it; `SaleItem.profit` is `net_total − FIFO cost`, so an
+invoice's line profits sum to its `profit` exactly. Derived on every read,
+never stored (D-025) — no schema change. `reports.sales_by_product` walks
+invoices (lines share their prefetched invoice) and reports net amount and
+profit, so its columns equal `sales_total` and `gross_profit`. The sales
+detail page shows a "سهم تخفیف" column when there is a discount; the
+customer-facing print page is unchanged (still one invoice-level discount
+line). Stock, FIFO consumption and layer costs are untouched, as before.
