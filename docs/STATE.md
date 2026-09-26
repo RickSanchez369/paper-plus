@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-26, after Customers (Phase C module 7) of the rebuild (REDESIGN_VISION). Earlier: Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-26, after Financial Reports (Phase C module 8) of the rebuild (REDESIGN_VISION). Earlier: Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,24 +21,16 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 8 — Financial Reports** (MASTER_PROMPT 3's build order:
+**Phase C, module 9 — User Activity** (MASTER_PROMPT 3's build order:
 Sales → Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques →
-Bank Accounts → Expenses → Customers → **Financial Reports** → User
-Activity → Dashboard last). Customers (module 7) is done — see Built.
-REDESIGN_VISION 4.8: date-range picker (today/week/month/custom, the
-shared component); every number computed live for the chosen range, never
-stored (§2.8) -- summary cards (total sales, total purchases, expenses,
-gross profit = Σ real per-line FIFO profit, net profit = gross − expenses,
-each with % change vs. the equal-length prior period, also computed
-live); sales-by-product and purchases-by-product tables; top sellers
-(ranked by quantity, linked); inventory **as of the end of the selected
-range** (reconstructed from the movement/layer ledger up to that date,
-not "right now"); bank account balances as of range end + period in/out
-totals (`get_bank_account_balance(as_of=...)` already supports this, 4.5);
-open receivables/payables as of range end; cheque counts/amounts by
-status within the range; user activity within the range (from
-`AuditLog`, grouped by actor); USD rate placeholder only, source still
-undecided (same as 4.3/4.7). Each module gets its full spec from
+Bank Accounts → Expenses → Customers → Financial Reports → **User
+Activity** → Dashboard last). Financial Reports (module 8) is done — see
+Built. REDESIGN_VISION 4.9: the shared date-range picker; a full
+per-event breakdown from `AuditLog` (not just the per-actor count
+Financial Reports' own summary row shows) -- likely a filterable table
+(actor, event type, target, when) plus some per-actor/per-event-type
+aggregate view. Read REDESIGN_VISION.md §4.9 in full before starting; it
+was not fully quoted here. Each module gets its full spec from
 REDESIGN_VISION.md §4 — not a thinner version.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
@@ -638,13 +630,75 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   `test_cheque_lifecycle.py` (15/15), `test_receivables_payables.py`
   (31/31), `test_bank_accounts.py` (11/11) and `test_expenses.py` (15/15)
   still pass.
+- Financial Reports (REDESIGN_VISION 4.8, Phase C module 8): a single
+  read-only page, `apps.shared.reports` (new module, cross-app selectors --
+  placed alongside `apps/shared/views.py` rather than in any one app's own
+  `selectors.py`, since it reads sales/purchasing/inventory/payments/
+  shared together). The shared date-range picker; five summary cards
+  (sales, purchases, expenses, gross profit = Σ real per-invoice FIFO
+  profit, net profit) each with % change vs. the equal-length prior period
+  (`previous_period()`, computed live both times, never stored); sales-
+  and purchases-by-product tables; top sellers (same rows as sales-by-
+  product, capped and ranked); inventory **as of the end of the selected
+  range** via a new `apps.inventory.selectors.get_inventory_as_of` --
+  reconstructs remaining layers from the layer/consumption ledger's own
+  `created_at` up to that date (a layer/consumption after the cutoff
+  simply is not counted yet, a layer cancelled after the cutoff still
+  counts as it did back then); bank account balances as of range end +
+  this period's own in/out totals (`get_bank_account_balance`'s existing
+  `as_of`, 4.5); open receivables/payables as of range end via two new
+  selectors, `apps.payments.selectors.get_total_{receivables,payables}_
+  as_of` (a payment made after the cutoff must not retroactively shrink a
+  past report's outstanding figure -- existing `get_customer_outstanding`/
+  `get_supplier_outstanding` stay untouched, since they answer "now", not
+  "as of"); cheque counts/amounts by status, grouped by **due date** within
+  the range (not when the cheque was entered -- REDESIGN_VISION 4.8 wants
+  what's coming due, not paperwork history); user activity within the
+  range grouped by actor from `AuditLog` (a thinner summary than the full
+  per-event User Activity module, 4.9, still to come); USD rate is a
+  placeholder only, same as 4.3/4.7 (source undecided).
+  Also extracted while wiring the Customer-detail "record payment" reuse
+  (STATE.md's own Customers entry): the open-invoices query moved from a
+  private `apps.payments.views._open_invoices` helper into a real selector,
+  `apps.payments.selectors.get_open_invoices` -- unrelated to this module,
+  bundled here since both landed close together.
+  `scripts/test_reports.py` (new, 19/19) covers every selector directly
+  (a pre-range sale correctly excluded, gross profit matching hand-
+  computed FIFO math, each as-of selector) plus a page-level smoke test.
+  Full browser QA (`scripts/qa_reports_setup.py`/`_teardown.py`) drove the
+  real `/reports/` page: verified every card/table's number by hand against
+  the QA fixtures (all matched exactly, including the FIFO-costed
+  inventory-value snapshot), tested three date ranges (today-only, a
+  custom range entirely before today -- correctly zeroed every card and
+  table with no leakage, and back to "this month" -- correctly restored
+  every number with no duplication), and a hard refresh reproduced the
+  same state. One real lesson from driving the Jalali date picker in this
+  tool: typing into the custom-range fields opens the picker's calendar
+  popup, which then intercepts a click aimed at the "اعمال" button
+  underneath it -- pressing Escape to close the calendar first fixed it;
+  not a product bug, the same class of tool-specific lesson already
+  logged for checkboxes (Receivables) and `confirm()` dialogs (Expenses).
+  Before this module's own QA, an unrelated pre-existing problem was found
+  and fixed with Sina's explicit sign-off: a cash `Expense` + its cancel-
+  reversal `Payment` (reason "تست مرورگر بازدید", both with `bank_account=
+  None`) had survived an earlier module's QA teardown -- its cleanup
+  filtered by `bank_account=<account>`, which a cash row never matches,
+  the same bug class this module's own teardown script was written to
+  avoid. Verified precisely against the specific rows by primary key
+  (not a broad filter) before deleting; the matching `AuditLog` rows were
+  identified but deliberately left in place, per this project's own
+  "audit trail outlives a QA fixture" convention. `test_frontend_shell.py`
+  (50/50), `test_shared_components.py` (37/37), `test_jalali_dates.py`
+  (33/33), `test_sales_invoice.py` (28/28), `test_purchase_invoice.py`
+  (33/33), `test_payments.py` (15/15), `test_cheque_lifecycle.py` (15/15),
+  `test_receivables_payables.py` (31/31), `test_bank_accounts.py` (11/11),
+  `test_expenses.py` (15/15) and `test_customers.py` (23/23) still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
-- Financial report screen (date-range P&L: total sales, total purchase
-  cost, net profit, invoice list, expenses, USD exchange-rate tracking).
-  Described by Sina 2026-09-24. No Expense model exists; COGS method
-  (last-cost vs weighted-average vs FIFO) undecided. Needs a D-xxx entry
-  and a roadmap id (likely a new Phase 4 item) before any code.
+- ~~Financial report screen~~ -- superseded by REDESIGN_VISION 4.8, now
+  built as Phase C module 8 (see Built). The COGS-method question this
+  note originally raised was already settled project-wide by D-036/D-037
+  (FIFO, realised profit only) before the rebuild started.
 
 ## Roadmap
 Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ ]` todo. `[R n]` = section n of remake.md.
