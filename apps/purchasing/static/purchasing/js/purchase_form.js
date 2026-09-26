@@ -132,20 +132,9 @@
     return empty || addRow("item-rows", "item-row-template", "items");
   }
 
-  // QuickProductCreateView answers a rejected form (duplicate SKU, missing
-  // price) with 422 + the form and its Persian errors; htmx 2 does not swap
-  // 4xx responses by default, so without this the dialog would just sit
-  // there silently. Scoped to this dialog only.
-  document.addEventListener("htmx:beforeSwap", function (event) {
-    var dialog = document.getElementById("quick-product-dialog");
-    if (event.detail.xhr.status === 422 && dialog && dialog.contains(event.detail.target)) {
-      event.detail.shouldSwap = true;
-      event.detail.isError = false;
-    }
-  });
-
   // htmx fires htmx:load on each element it swaps in; the success partial
-  // is the one carrying data-quick-product-created.
+  // is the one carrying data-quick-product-created. (A rejected form comes
+  // back as 422 and is swapped in place by base.html's htmx-config, D-047.)
   document.addEventListener("htmx:load", function (event) {
     var created = event.target.closest && event.target.closest("[data-quick-product-created]");
     if (!created) return;

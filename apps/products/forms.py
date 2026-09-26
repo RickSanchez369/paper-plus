@@ -12,6 +12,8 @@ selling price after this moment.
 """
 
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.functional import cached_property
 
 from .models import Product
 
@@ -23,6 +25,46 @@ _WIDGETS = {
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
 }
+
+
+class SelectedProductMixin:
+    """
+    For an invoice item form whose `product` is a hidden input filled by the
+    row's JS search box (SaleItemForm, PurchaseItemForm): the product that
+    row already holds, so a form re-rendered after a validation error can
+    show its name and stock again (C.fix-2). Before this the hidden id
+    survived but the visible search box came back empty, and nothing on
+    the page said which product each row still held.
+
+    Read from cleaned_data when the row itself validated, otherwise from
+    the raw submitted id -- a row rejected for its quantity still holds a
+    product. None for an unbound form (a fresh page, the row template).
+    """
+
+    @cached_property
+    def selected_product(self):
+        if not self.is_bound:
+            return None
+        product = getattr(self, "cleaned_data", {}).get("product")
+        if product is not None:
+            return product
+        value = self["product"].value()
+        if not value:
+            return None
+        try:
+            return Product.objects.filter(pk=value).first()
+        except (ValueError, ValidationError):
+            return None  # a tampered id: nothing to show, the field error says why
+
+    @cached_property
+    def selected_stock(self):
+        """Live stock of `selected_product`, the same figure a search result shows."""
+        if self.selected_product is None:
+            return None
+        # Local import: apps.inventory.models imports Product (same reason as Product.__str__).
+        from apps.inventory.selectors import get_stock
+
+        return get_stock(self.selected_product)
 
 
 class QuickProductForm(forms.ModelForm):

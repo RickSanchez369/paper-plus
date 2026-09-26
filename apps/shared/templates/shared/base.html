@@ -8,6 +8,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
   <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+  {% comment %} D-047: every htmx form here answers a validation error with 422 + the
+     same form re-rendered with its Persian errors (quick customer/supplier/
+     product, "ثبت پرداخت"). htmx 2 swaps no 4xx by default, so those errors
+     were silently dropped; 422 is made a swapping, non-error response. The
+     list replaces htmx's default wholesale (the meta config merges shallowly),
+     so the other three entries are htmx 2.0.4's own defaults, unchanged. {% endcomment %}
+  <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "422", "swap": true}, {"code": "[45]..", "swap": false, "error": true}]}'>
   {% comment %} Vendored, not from a CDN: this is an internal tool that has to keep
      working when the office internet does not. {% endcomment %}
   <script src="{% static 'shared/js/htmx.min.js' %}" defer></script>

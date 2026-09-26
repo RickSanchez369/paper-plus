@@ -31,6 +31,7 @@ from django import forms
 from apps.partners.models import Customer
 from apps.payments.forms import PaymentSourceField
 from apps.payments.models import BankAccount
+from apps.products.forms import SelectedProductMixin
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
 
@@ -149,7 +150,7 @@ class SaleInvoiceForm(forms.ModelForm):
         return self.cleaned_data.get("payment_mode") == PAYMENT_MODE_FULL
 
 
-class SaleItemForm(forms.ModelForm):
+class SaleItemForm(SelectedProductMixin, forms.ModelForm):
     """
     One invoice line.
 

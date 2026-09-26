@@ -14,6 +14,7 @@ from django import forms
 
 from apps.partners.models import Supplier
 from apps.payments.models import BankAccount
+from apps.products.forms import SelectedProductMixin
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
 
@@ -75,7 +76,7 @@ class PurchaseInvoiceForm(forms.ModelForm):
         self.fields["supplier_invoice_number"].required = False
 
 
-class PurchaseItemForm(forms.ModelForm):
+class PurchaseItemForm(SelectedProductMixin, forms.ModelForm):
     """
     One invoice line. `product` is a hidden input filled by the same
     JS-driven search box Sales uses (apps/purchasing/static/purchasing/js/

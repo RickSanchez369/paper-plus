@@ -24,9 +24,9 @@ itself ("موجودی فعلی" + unit cost), at creation -- there is no later p
 for it -- and bank accounts/suppliers on their own module pages (D-045).
 
 ## Next
-Pre-Phase-D correction batch is done (see Built). Before starting Phase D,
-Sina decides on the three findings it surfaced (PENDING below) -- none of
-them was fixed here, per CLAUDE.md's out-of-scope rule.
+Pre-Phase-D correction batch is done, and so are C.fix-1 (D-047) and
+C.fix-2 (see Built). C.fix-3 (per-product profit vs. invoice discount)
+still waits for Sina's decision (PENDING below).
 
 **Phase D — visual identity** (MASTER_PROMPT §3's own build order: Phase
 C's 11 modules, all now built, then Phase D). REDESIGN_VISION §5: pick
@@ -842,22 +842,27 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   2 does not swap 4xx by default; scoped `htmx:beforeSwap` handler). This
   browser tool's typing does not fire `keyup`, so the product search was
   driven by dispatching the event -- a tool limitation, not a product bug.
+- C.fix-1 / C.fix-2 (Sina's go-ahead, 2026-09-26, right after the
+  correction batch). C.fix-1 (D-047): `shared/base.html` carries an
+  `htmx-config` meta making 422 a swapping response, so every htmx form's
+  Persian validation errors actually appear (quick customer/supplier/
+  product, "ثبت پرداخت"); the purchase dialog's scoped handler is gone.
+  C.fix-2: `apps.products.forms.SelectedProductMixin` (on `SaleItemForm`
+  and `PurchaseItemForm`) resolves the product a bound row holds -- from
+  cleaned_data, or the raw id when the row itself failed validation, a
+  malformed id resolving to nothing -- and both `_item_row.html` templates
+  refill the search box and the "موجودی: N" label from it. Verified by
+  `scripts/test_cfix_1_2.py` (new, 17/17) -- 702/702 across all 37 scripts
+  -- and in the browser (`scripts/qa_cfix_setup.py`, torn down with
+  `qa_pre_phase_d_teardown.py`): a duplicate quick customer, an
+  over-allocated "ثبت پرداخت" and a duplicate-SKU product dialog each now
+  show their error in place; a sale rejected for its missing receiving
+  account comes back with the row's product name, stock and quantity.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
-- **htmx 4xx responses are never swapped app-wide** (found 2026-09-26,
-  pre-Phase-D QA). htmx 2.0.4's default `responseHandling` drops 4xx
-  bodies, but every quick-create form (customer, supplier) and the shared
-  "ثبت پرداخت" form answer a validation error with 422 + the re-rendered
-  form -- so a duplicate name or an over-allocated payment just does
-  nothing visible. Only the purchase page's product dialog is fixed (scoped
-  handler). Proposed: D-047 (one global `htmx-config` meta making 422 a
-  swapping response), roadmap id C.fix-1.
-- **Item rows lose their product name on a re-rendered invoice form**
-  (Sales and Purchasing, since Phase C): after any validation error the
-  hidden `product` id survives but the visible search box comes back
-  empty, so the user cannot see which product each row holds. Proposed
-  roadmap id C.fix-2 (template-only: fill the search box from the bound
-  row's product).
+- ~~htmx 4xx responses are never swapped~~ -- C.fix-1, done (D-047).
+- ~~Item rows lose their product name on a re-rendered invoice form~~ --
+  C.fix-2, done.
 - **Per-product profit vs. invoice discount** (Reports "فروش به تفکیک
   کالا", sales detail line profit): line profit is computed before the
   invoice-level discount (D-032), so the per-product column does not sum to

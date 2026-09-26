@@ -836,3 +836,25 @@ Purchases are unchanged (not part of the request). The discount field moves
 from beside the date into the totals block (subtotal → discount → final
 total); it still only reduces the invoice total and profit — never stock,
 FIFO consumption or layer costs.
+
+## D-047 — htmx swaps a 422 form re-render
+Date: 2026-09-26
+Status: Final
+
+Context: found in the pre-Phase-D browser pass (C.fix-1). Every htmx form
+in the app — the quick customer/supplier/product forms and the shared
+"ثبت پرداخت" form — answers a validation error with HTTP 422 and the same
+form re-rendered with its Persian errors. htmx 2.0.4's default
+`responseHandling` swaps no 4xx response, so all of those errors were
+silently dropped: a duplicate name or an over-allocated payment simply did
+nothing visible.
+
+Decision: one `<meta name="htmx-config">` in `shared/base.html` makes 422 a
+swapping, non-error response. The meta config merges shallowly, so the
+whole `responseHandling` list is written out: htmx's own three defaults
+(204 no swap, 2xx/3xx swap, other 4xx/5xx error, no swap) plus `422 → swap`,
+placed before the generic 4xx/5xx rule. 422 stays reserved for exactly this
+("the form you sent, back with its errors"); any other 4xx/5xx still
+counts as an error and is not swapped into the page. The purchase page's
+scoped `htmx:beforeSwap` handler from the correction batch is removed as
+redundant.

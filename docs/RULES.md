@@ -151,3 +151,4 @@ Read in that order; continue from STATE.md "Next".
 - D-044 Stock changes through documents only: no manual adjustment; opening stock only at product creation; ADJUSTMENT_IN/OUT = cancellation reversals only.
 - D-045 Expense has no counterparty; its paying account is an explicit choice (real account, or cash chosen on purpose); Bank Accounts gets create/edit pages.
 - D-046 Sales invoice defaults to full settlement into a chosen account (`plan_full_payment`); split/cheque/credit rows are the explicit alternative mode.
+- D-047 htmx swaps a 422 response (a form re-rendered with its errors) via `htmx-config` in base.html; other 4xx/5xx stay non-swapping errors.

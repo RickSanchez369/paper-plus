@@ -15,11 +15,14 @@ which sale_form.js swaps for a real index before inserting it.
            hx-trigger="keyup changed delay:300ms, focus"
            hx-target="next .item-row__results"
            hx-swap="innerHTML"
-           name="q">
+           name="q"
+           value="{{ form.selected_product.name|default:'' }}">
     <div class="item-row__results search-results"></div>
     {% for error in form.product.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
   </div>
-  <div class="item-row__stock" data-item-row-stock></div>
+  {% comment %} Refilled from the bound row on a re-render (SelectedProductMixin, C.fix-2);
+     same text the JS writes when a search result is picked. {% endcomment %}
+  <div class="item-row__stock" data-item-row-stock>{% if form.selected_product %}موجودی: {{ form.selected_stock }}{% endif %}</div>
   <div class="item-row__qty">
     {{ form.quantity }}
     {% for error in form.quantity.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
