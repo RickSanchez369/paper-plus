@@ -2,20 +2,22 @@
 
 Continuation of an ongoing project. No "stage 0", master plan or understanding phase.
 
+This file covers how work on this repo is conducted — chat rhythm, git
+conventions, dev environment. What the running system itself must never
+violate lives in [business-rules.md](business-rules.md) instead.
+
 > **Rebuild (Phases A–C) is done, merged into `dev`/`main`, branch retired
 > (2026-09-26).** `docs/REDESIGN_VISION.md` and `docs/MASTER_PROMPT.md`
 > remain the source of truth for the decisions/rules they changed, and for
 > Phase D (visual identity, not started) which their build order and
 > autonomy authorization still cover.
-> Rules below that are already superseded are marked inline (D-033..D-048).
-> Everything unmarked still holds.
 
 ## Start of chat
 Sina runs `python tools/project_map.py` and uploads RULES.md, STATE.md, PROJECT_MAP.md.
 Read in that order; continue from STATE.md "Next".
 - Never guess a field, related name, choice value or signature. Check PROJECT_MAP.md; else ask for the file.
-- Full decision text lives in `docs/DECISIONS.md` (append-only archive, not uploaded). Ask for it only when the index below is not enough.
-- New decision: append the full entry to DECISIONS.md and one index line here, same commit.
+- Full decision text lives in `docs/DECISIONS.md` (append-only archive, not uploaded). Ask for it only when `business-rules.md`'s index is not enough.
+- New decision: append the full entry to DECISIONS.md and one index line in `business-rules.md`, same commit.
 - Start a new chat after each completed ROADMAP task or ~15 messages.
 
 ## Language
@@ -33,9 +35,8 @@ Read in that order; continue from STATE.md "Next".
 - "ok" = output matched exactly; move on. Anything else: Sina pastes the output.
 - Read-only/verify commands may be chained in one message (e.g. `git status` + `git log`).
   State-changing steps (migrate, git commit, anything touching the DB) are never chained.
-- "ok" = output matched exactly; move on. Anything else: Sina pastes the output.
 - git: output is always pasted. Verify with `git --no-pager show --stat HEAD`.
-- Branch: normally `dev`. The rebuild lives on `explore/vision-rethink`, and merging it into `dev` needs Sina's explicit review first (MASTER_PROMPT 2).
+- Branch: normally `dev`. Merging any long-lived work branch into `dev` needs Sina's explicit review first.
 - Push after every completed task: `git push`.
 - End of a phase: `git switch main; git pull; git merge --no-ff dev -m "merge: phase N"; git push; git switch dev`.
 - Commit: `git commit -m "type(scope): message (ROADMAP x.y)"`, one line, nothing before it. The ROADMAP `[x]` goes in the same commit.
@@ -44,28 +45,19 @@ Read in that order; continue from STATE.md "Next".
 - Exception: after an "ok", two steps may go in one message only if the second is a
   pure read/verification command with no schema, service, or data write (e.g. `sqlmigrate`
   after `makemigrations`). Never batch: `migrate` itself, model/service edits, or anything
-  touching D-014/D-017/D-023/D-024.
+  touching a rule in `business-rules.md`'s core invariants.
 
 ## Division of labour
 - Claude writes everything: models, serializers, admin, services — complete file contents or exact find -> replace edits.
-- Sina reads each block before running it, especially anything touching D-014/D-017/D-023/D-024.
+- Sina reads each block before running it, especially anything touching `business-rules.md`'s core invariants.
 - Every file: English comments explaining WHY; docstrings on every class and public function.
 
-## Non-negotiable
+## Working conventions
 - Windows / PowerShell only. No WSL, bash, Docker.
-- ~~Every business-data model has a `business` FK~~ — single business now, no `business` FK anywhere (D-033).
-- Writes that touch stock or money go through a service inside `transaction.atomic`. Admin calls the service; it never writes movements or money.
-- Stock is derived from `InventoryMovement`; no stock field. The ledger is append-only; it changes only through documents (opening stock at product creation, purchase, sale); a wrong document is cancelled, and the cancellation writes the reversing adjustment rows. No manual adjustment (D-044).
-- Money: BigIntegerField, whole Toman (D-043; ~~whole Rial~~, D-013 superseded). Formatting only in `apps/shared/utils.py` (`format_toman`) and the `toman` template filter.
-- User FKs use `settings.AUTH_USER_MODEL`.
-- Read every migration and run `sqlmigrate` before `migrate`. Once real data exists, run `.\tools\backup.ps1` first.
-- Django connects as `paper_app`, never `postgres`.
 - Secrets never in chat: use a placeholder (PPPP) or `Read-Host`. If one is pasted, rotating it is the next task.
-- DECISIONS.md wins over SPEC.md. Ask before changing a Final decision.
 - Scope = the roadmap in STATE.md (D-020). Anything else: say "out of scope" and move on. Excluded: Docker, CI, PDF, OpenAPI, Vue.
-- HARD GATE: every schema change of phases 1-2 is done before the first real record (phase 3).
-- HARD GATE: SHADOW (paper ledger in parallel) until 3 consecutive days of 0 discrepancies. Every discrepancy is a bug: log it, never fix data by hand.
-- Integrity rules nothing bypasses: D-014, D-017, D-023, D-024. The Owner gate in D-021/D-023 is now `is_superuser` (D-034).
+- DECISIONS.md wins over SPEC.md. Ask before changing a Final decision.
+- Read every migration and run `sqlmigrate` before `migrate`. Once real data exists, run `.\tools\backup.ps1` first.
 
 ## Testing
 - Before writing a new verification script that calls confirm_sale/confirm_purchase/
@@ -104,53 +96,3 @@ Read in that order; continue from STATE.md "Next".
 - Admin: `has_delete_permission(obj=None)` returning False removes bulk delete. Inline permission methods receive the PARENT object. `autocomplete_fields` needs `search_fields` on the target admin (E039).
 - Inline `get_queryset` returns `.none()` without a Django view/change permission; ModelAdmin does not.
 - An exception in `save_model` is a 500, but the request transaction rolls back the save.
-
-## Decision index (full text: docs/DECISIONS.md)
-- D-001 Settings package `core/`; apps in `apps/`; shared app is `apps/shared`.
-- D-002 Config and secrets from `.env` (django-environ); `.env.example` in git.
-- D-003 UUID pk via BaseModel. Human document numbers are separate.
-- D-004 Store UTC. Timezone and Jalali are presentation.
-- D-005 Persian user-facing strings; English identifiers.
-- D-006 Optional text fields: `blank=True`, never `null=True`.
-- D-007 Login by phone (`^09\d{9}$`); custom `users.User`.
-- ~~D-008~~ superseded by D-033 (no Business at all).
-- ~~D-009~~ superseded by D-034 (no roles).
-- D-010 Customer and Supplier are separate models.
-- D-011 Quantity is a whole number (PositiveInteger).
-- D-012 Direction comes from movement_type; quantity > 0 (CHECK).
-- ~~D-013~~ superseded by D-043 (money is whole Toman).
-- D-014 A confirmed invoice is immutable.
-- D-015 `confirm_sale` locks Product rows as a mutex.
-- D-016 A sale may drive stock negative; shortages are returned as a warning.
-- D-017 Opening stock once, before any movement; 0 = onboarded with no row. Entered only at product creation (D-044).
-- D-018 The app DB role `paper_app` owns the database, schema and tables.
-- D-019 DEBUG and ALLOWED_HOSTS from env, safe defaults.
-- D-020 Scope = full remake request; order in the STATE.md roadmap.
-- D-021 Shortage on sale: rejected unless the caller is a superuser (gate narrowed by D-034).
-- D-022 Invoice number assigned at confirmation from a locked DocumentSequence; configurable start; purchase also gets `supplier_invoice_number`.
-- D-023 A confirmed invoice is cancelled (status + reversing movements), never edited. Superuser only (D-034).
-- D-024 Hard delete only for unreferenced records. Movements and confirmed/cancelled invoices are never deleted, by anyone.
-- D-025 Payment status is derived from PaymentAllocation, never typed. One sanctioned exception: `InventoryLayer.quantity_remaining` (D-036).
-- ~~D-026~~ superseded by D-035 (`/admin/` is superuser-only; the frontend is the user surface).
-- ~~D-027~~ superseded by D-034 (no roles).
-- ~~D-028~~ superseded by D-034 (no memberships).
-- D-029 AuditLog target reference is target_type + target_id, not GenericForeignKey.
-- D-030 Chat rhythm: read-only commands may chain; state-changing steps never chain; task or ~15 msgs.
-- D-031 Verification scripts: random unique identifiers, never fixed; assert on a service's returned object or after refresh_from_db(), never a stale local reference.
-- D-032 Invoice discount: fixed amount (Toman since D-043, not %), invoice-level only, sales invoices only for now; validated against subtotal in confirm_sale, not clean().
-- D-033 Single business: Business/BusinessMembership and every `business` FK deleted; unique constraints global; DocumentSequence singleton per doc_type.
-- D-034 No roles: `is_superuser` is the only distinction; it gates oversell and cancellation only.
-- D-035 `/admin/` is superuser-only (PaperPlusAdminSite); the frontend is the user surface.
-- D-036 FIFO cost layers: InventoryLayer + signed InventoryConsumption; purchase cancel blocked once any of its stock was sold.
-- D-037 Profit is realised profit — zero unless confirmed; oversold units are surfaced as uncosted, never priced.
-- D-038 Payment gains customer/supplier (at most one, matching direction), so unallocated money is still traceable.
-- D-039 Cheque gains CANCELLED, from PENDING only, with no Payment.
-- D-040 Expense lives in apps.payments, backed by a real Payment(OUT). (related_person removed by D-045.)
-- ~~D-041~~ superseded by D-044 (manual adjustment removed, its schema reverted).
-- D-042 Split payment allocation settles a party's oldest open invoice first (invoice_date order), one allocate_payment call per invoice inside record_payment's own transaction; new SalesInvoice.outstanding/PurchaseInvoice.outstanding properties back it.
-- D-043 Money is whole Toman everywhere (storage, input, display, reports); one `toman` filter; no Rial in the UI.
-- D-044 Stock changes through documents only: no manual adjustment; opening stock only at product creation; ADJUSTMENT_IN/OUT = cancellation reversals only.
-- D-045 Expense has no counterparty; its paying account is an explicit choice (real account, or cash chosen on purpose); Bank Accounts gets create/edit pages.
-- D-046 Sales invoice defaults to full settlement into a chosen account (`plan_full_payment`); split/cheque/credit rows are the explicit alternative mode.
-- D-047 htmx swaps a 422 response (a form re-rendered with its errors) via `htmx-config` in base.html; other 4xx/5xx stay non-swapping errors.
-- D-048 An invoice discount is shared across its lines pro rata by line total (largest remainder, whole Toman); line profit and per-product report rows are net of it and sum to the invoice/report totals. Derived, never stored.

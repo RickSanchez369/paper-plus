@@ -31,7 +31,7 @@ identifiers and comments are English.
 | `apps.payments` | `BankAccount`, `Payment`/`PaymentAllocation`, `Cheque`, `Expense` |
 | `apps.shared` | Cross-app selectors (`reports.py`, `dashboard.py`, `user_activity.py`), `AuditLog`, `DocumentSequence`, base templates/JS, admin site |
 
-## 3. Core principles (non-negotiable — see RULES.md)
+## 3. Core principles (full enumerated list: business-rules.md)
 
 - **Service layer only.** Views/Admin never write stock or money directly;
   every write goes through `apps/*/services.py` inside `transaction.atomic()`.
@@ -117,8 +117,9 @@ the user-facing surface — that is the 11 module pages listed in
 `docs/REDESIGN_VISION.md` §4.
 
 ## Related documentation
+- Full invariant checklist: [business-rules.md](business-rules.md)
 - Decisions and full rationale: [DECISIONS.md](DECISIONS.md)
-- Process rules and non-negotiables: [RULES.md](RULES.md)
+- Process/chat/git conventions: [RULES.md](RULES.md)
 - Current state, what's built, roadmap: [STATE.md](STATE.md)
 - Exact live schema: `PROJECT_MAP.md` (regenerate, not committed)
 - Rebuild history (Phases A-C, now merged): [REDESIGN_VISION.md](REDESIGN_VISION.md), [MASTER_PROMPT.md](MASTER_PROMPT.md)
