@@ -13,6 +13,11 @@ superuser) rolls back everything, not just the confirm step. That is
 what "one-shot" means here: never a saved, unconfirmed invoice left
 behind by a failed submission.
 
+Payment has two modes (D-046). "تسویه کامل", the default: the customer
+paid the whole total, and the only question is which account received it
+-- no payment rows at all. "تفکیکی / نسیه": the existing rows (cash, card,
+transfer, cheque), with whatever they leave unpaid staying as credit.
+
 Field-level validation stays exactly what SaleItem/SalesPaymentEntry
 already validate as ModelForms (unit_price falls back to the product's
 default via SaleItem.clean_fields, cheque fields stay optional -- same
@@ -24,13 +29,15 @@ job already; duplicating them here would be a second source of truth.
 from django import forms
 
 from apps.partners.models import Customer
+from apps.payments.forms import PaymentSourceField
 from apps.payments.models import BankAccount
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 
-TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
+PAYMENT_MODE_FULL = "full"
+PAYMENT_MODE_SPLIT = "split"
 
 
 class SalesFilterForm(forms.Form):
@@ -54,8 +61,8 @@ class SalesFilterForm(forms.Form):
         queryset=Product.objects.filter(is_active=True).order_by("name"),
         empty_label="— همهٔ کالاها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (ریال)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (ریال)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
 
     def clean(self):
         cleaned = super().clean()
@@ -66,7 +73,12 @@ class SalesFilterForm(forms.Form):
 
 
 class SaleInvoiceForm(forms.ModelForm):
-    """Header fields: who, when, how much discount."""
+    """
+    Invoice-level fields: who, when, how much discount, and how it was
+    settled. `payment_mode`/`received_into` are not model fields -- they
+    decide which payment-entry rows the view plans before confirm_sale
+    (D-046); the invoice itself stores no payment state (D-025).
+    """
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
     # BigIntegerField has no built-in non-negativity; only the DB
@@ -76,10 +88,20 @@ class SaleInvoiceForm(forms.ModelForm):
     discount_amount = forms.IntegerField(
         required=False,
         min_value=0,
-        label="تخفیف (ریال)",
+        label="تخفیف (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "تخفیف نمی‌تواند منفی باشد."},
     )
+    payment_mode = forms.ChoiceField(
+        label="نحوهٔ تسویه",
+        choices=(
+            (PAYMENT_MODE_FULL, "تسویهٔ کامل (کل مبلغ پرداخت شد)"),
+            (PAYMENT_MODE_SPLIT, "تفکیکی / چک / نسیه"),
+        ),
+        initial=PAYMENT_MODE_FULL,
+        widget=forms.RadioSelect,
+    )
+    received_into = PaymentSourceField(label="حساب دریافت‌کننده", required=False)
 
     class Meta:
         model = SalesInvoice
@@ -96,7 +118,6 @@ class SaleInvoiceForm(forms.ModelForm):
             # to #sale-form despite living outside its DOM subtree.
             "customer": forms.Select(attrs={"class": "field__control", "form": "sale-form"}),
         }
-        help_texts = {"discount_amount": TOMAN_HINT}
         error_messages = {
             "customer": {"required": "انتخاب مشتری الزامی است."},
         }
@@ -114,6 +135,18 @@ class SaleInvoiceForm(forms.ModelForm):
         # discount", 0, not "no value" (caught by actually submitting the
         # form with the field left blank, the normal case for most sales).
         return self.cleaned_data.get("discount_amount") or 0
+
+    def clean(self):
+        cleaned = super().clean()
+        # Full settlement books real money, so it needs a real answer to
+        # "into which account" -- never cash by omission (D-045/D-046).
+        if cleaned.get("payment_mode") == PAYMENT_MODE_FULL and cleaned.get("received_into") == "":
+            self.add_error("received_into", "حساب دریافت‌کننده (یا «نقدی») را انتخاب کنید.")
+        return cleaned
+
+    @property
+    def is_full_payment(self):
+        return self.cleaned_data.get("payment_mode") == PAYMENT_MODE_FULL
 
 
 class SaleItemForm(forms.ModelForm):
@@ -141,7 +174,7 @@ class SaleItemForm(forms.ModelForm):
     unit_price = forms.IntegerField(
         required=False,
         min_value=0,
-        label="قیمت واحد (ریال)",
+        label="قیمت واحد (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
     )
@@ -208,7 +241,7 @@ class SalesPaymentEntryForm(forms.ModelForm):
     )
     amount = forms.IntegerField(
         min_value=1,
-        label="مبلغ (ریال)",
+        label="مبلغ (تومان)",
         widget=forms.NumberInput(
             attrs={"class": "field__control payment-row__amount", "dir": "ltr", "inputmode": "numeric"}
         ),
@@ -223,7 +256,6 @@ class SalesPaymentEntryForm(forms.ModelForm):
             "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
         }
-        help_texts = {"amount": TOMAN_HINT}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

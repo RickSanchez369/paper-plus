@@ -720,3 +720,119 @@ Any amount left over once every selected invoice is fully covered stays an
 unallocated `Payment` on that party's account (the form's own hint text
 already says as much) — not an error, and not automatically applied to
 some other, unselected invoice.
+
+## D-043 — Money is whole Toman everywhere (supersedes D-013)
+Date: 2026-09-26
+Status: Final
+
+Context: Sina's pre-Phase-D correction batch: "the entire application must
+use Toman as the monetary unit" — not Rial with a Toman hint beside it. D-013
+had stored whole Rial and treated Toman as display only (2.11 then showed
+both side by side, acceptance scenario 14).
+
+Decision: every money `BigIntegerField` (prices, costs, amounts, discount)
+now holds **whole Toman** — the same columns, reinterpreted, no decimals.
+Input, display, calculations, reports and the admin all speak Toman; the
+word "ریال" appears nowhere in the UI. One presentation helper,
+`apps.shared.utils.format_toman`, and one template filter, `toman`, replace
+`format_rial`/`rial_to_toman`/`RIAL_PER_TOMAN` and the `rial`/`rial_toman`
+filters; the "به ریال وارد شود" hint under every money input is gone.
+D-032's "fixed Rial amount" discount is a fixed Toman amount.
+
+Chosen over "keep Rial in the database, convert ×10 at every form and ÷10 at
+every display" (Sina's call, 2026-09-26): one unit end to end means no
+conversion point that can be forgotten, and every sum stays exact.
+
+Migration safety: on 2026-09-26 every money-carrying table (products,
+invoices, items, payment entries, payments, allocations, cheques, expenses,
+layers, movements) held zero rows — the real data is still to be re-entered
+after the 2026-09-25 flush — so nothing needed converting; the migrations are
+label-only (`verbose_name`, no SQL). Leftover QA history rows
+(`Historical*`, AuditLog payloads) keep the Rial numbers they were written
+with; they describe deleted QA records and feed no calculation.
+
+## D-044 — Stock changes through documents only (supersedes D-041; narrows D-017)
+Date: 2026-09-26
+Status: Final
+
+Context: Sina: inventory should change through real business transactions —
+a confirmed purchase adds, a confirmed sale removes — not through a manual
+"اصلاح موجودی" or a separate "ثبت موجودی اولیه" page. Investigated before
+removing: `cancel_sale`/`cancel_purchase` write `ADJUSTMENT_IN/OUT` movements
+for their reversals (so those movement types must stay); `record_adjustment`
+was the only writer of `InventoryConsumption.movement` and
+`InventoryLayer.Source.ADJUSTMENT`; and the one legitimate non-invoice need
+left is onboarding stock already on the shelf (6 real products still to be
+re-entered) — without it that stock could only enter as a fake purchase,
+inflating purchases and payables.
+
+Decision (Sina's pick of the options offered, 2026-09-26):
+- Manual adjustment is removed entirely: `record_adjustment`, its form, view,
+  URL, template and button. The schema D-041 added only for it goes too —
+  `InventoryConsumption.movement` (+ index + "exactly one source" CHECK;
+  `sale_item` is NOT NULL again) and `InventoryLayer.Source.ADJUSTMENT` (the
+  source CHECK is back to `opening_stock`/`purchase_item`). Tables were empty,
+  so the NOT NULL could not fail; had an adjustment draw existed the ALTER
+  would have failed and rolled back instead of dropping it.
+- Opening stock survives only **at product creation**: optional "موجودی فعلی"
+  quantity + unit purchase cost on the Inventory new-product page (and the
+  admin *add* form), saved with the product in one transaction via the
+  unchanged `set_opening_stock`. The separate opening-stock page is gone;
+  once a product exists, only invoices move its stock. D-017's own rule
+  (once, before any movement) is untouched — it just has no later entry
+  point any more.
+- `ADJUSTMENT_IN/OUT` are relabelled "برگشت لغو فاکتور - افزایش/کاهش": they
+  are now only ever a cancellation's reversal. `AuditLog.EventType.
+  RECORD_ADJUSTMENT` stays as a label for the rows logged before this.
+
+Consequence, accepted: a physical loss, breakage or miscount has no entry
+path any more; correcting one needs a new decision (e.g. a write-off
+document), not a return of free-form adjustment.
+
+## D-045 — Expense: no counterparty; the paying account is chosen explicitly
+Date: 2026-09-26
+Status: Final
+
+Context: Sina: remove the Counterparty ("طرف حساب") field from the new-expense
+form, and make the account selector show the real bank accounts so every
+expense answers "which account paid this" — not a generic "نقدی" that an
+untouched select silently falls back to. Bank accounts could until now only
+be created in /admin/, so on a fresh install the selector offered nothing
+but cash.
+
+Decision: `Expense.related_person` is dropped (D-040's free-text
+counterparty; zero rows existed). The expense form's `bank_account` is a new
+`apps.payments.forms.PaymentSourceField`: a required choice of every active
+BankAccount plus "نقدی (صندوق)" as an explicit last option, starting at
+"— انتخاب حساب —" — cash stays possible (Sina's call: keep it, never as the
+default) and still means `bank_account = null`, exactly as on Payment
+(REDESIGN_VISION 2.6). The Bank Accounts module gains create/edit pages
+(`BankAccountForm`: name, owner, account number; deactivation stays an admin
+task), so accounts are managed where they are listed. Expense search runs
+over reason/note.
+
+## D-046 — A sales invoice defaults to full settlement into a chosen account
+Date: 2026-09-26
+Status: Final
+
+Context: Sina: an ordinary sale is paid in full; the user should only say
+which account received it, not build a payment row by hand. Cheques, credit
+and split payments must stay possible. Before this, no payment rows meant
+the whole invoice stayed on credit (4.3b).
+
+Decision (Sina's pick, 2026-09-26): the new-sale form has an explicit
+payment mode, `payment_mode` on `SaleInvoiceForm`:
+- "تسویهٔ کامل" (default): one required `received_into`
+  (`PaymentSourceField` — a real account, or cash chosen explicitly). The
+  view ignores any payment rows and calls
+  `apps.sales.services.plan_full_payment(invoice, account)`, which adds one
+  `SalesPaymentEntry` for the server-computed `invoice.total` before
+  `confirm_sale` — so the money is booked by the same path as any typed row
+  (a Payment allocated to the invoice), never a second one.
+- "تفکیکی / چک / نسیه": the existing rows, unchanged — whatever they leave
+  unpaid stays credit, zero rows means fully on credit. Clicking
+  "+ افزودن ردیف پرداخت" switches to this mode by itself.
+Purchases are unchanged (not part of the request). The discount field moves
+from beside the date into the totals block (subtotal → discount → final
+total); it still only reduces the invoice total and profit — never stock,
+FIFO consumption or layer costs.

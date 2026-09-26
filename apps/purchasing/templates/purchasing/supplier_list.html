@@ -18,7 +18,10 @@ read from later.
 </p>
 
 <div class="page-head">
-  <h1>تأمین‌کنندگان</h1>
+  <div class="page-head__row">
+    <h1>تأمین‌کنندگان</h1>
+    <a href="{% url 'purchasing:supplier_new' %}" class="btn">+ تأمین‌کنندهٔ جدید</a>
+  </div>
 </div>
 
 <div class="card">
@@ -39,8 +42,8 @@ read from later.
               <tr>
                 <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a></td>
                 <td class="num">{{ row.supplier.phone|default:"—" }}</td>
-                <td class="num">{{ row.total_purchased|rial_toman }}</td>
-                <td class="num">{{ row.outstanding|rial_toman }}</td>
+                <td class="num">{{ row.total_purchased|toman }}</td>
+                <td class="num">{{ row.outstanding|toman }}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -49,7 +52,7 @@ read from later.
     {% else %}
       <div class="placeholder">
         <p>هنوز تأمین‌کننده‌ای ثبت نشده است.</p>
-        <a href="{% url 'purchasing:new' %}" class="btn">از فرم فاکتور خرید جدید اضافه کنید</a>
+        <a href="{% url 'purchasing:supplier_new' %}" class="btn">ثبت اولین تأمین‌کننده</a>
       </div>
     {% endif %}
   </div>

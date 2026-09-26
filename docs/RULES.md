@@ -54,8 +54,8 @@ Read in that order; continue from STATE.md "Next".
 - Windows / PowerShell only. No WSL, bash, Docker.
 - ~~Every business-data model has a `business` FK~~ — single business now, no `business` FK anywhere (D-033).
 - Writes that touch stock or money go through a service inside `transaction.atomic`. Admin calls the service; it never writes movements or money.
-- Stock is derived from `InventoryMovement`; no stock field. The ledger is append-only; corrections are adjustment rows.
-- Money: BigIntegerField, whole Rial. Formatting only in `apps/shared/utils.py`.
+- Stock is derived from `InventoryMovement`; no stock field. The ledger is append-only; it changes only through documents (opening stock at product creation, purchase, sale); a wrong document is cancelled, and the cancellation writes the reversing adjustment rows. No manual adjustment (D-044).
+- Money: BigIntegerField, whole Toman (D-043; ~~whole Rial~~, D-013 superseded). Formatting only in `apps/shared/utils.py` (`format_toman`) and the `toman` template filter.
 - User FKs use `settings.AUTH_USER_MODEL`.
 - Read every migration and run `sqlmigrate` before `migrate`. Once real data exists, run `.\tools\backup.ps1` first.
 - Django connects as `paper_app`, never `postgres`.
@@ -117,11 +117,11 @@ Read in that order; continue from STATE.md "Next".
 - D-010 Customer and Supplier are separate models.
 - D-011 Quantity is a whole number (PositiveInteger).
 - D-012 Direction comes from movement_type; quantity > 0 (CHECK).
-- D-013 Money is BigInteger whole Rial; Toman is display only.
+- ~~D-013~~ superseded by D-043 (money is whole Toman).
 - D-014 A confirmed invoice is immutable.
 - D-015 `confirm_sale` locks Product rows as a mutex.
 - D-016 A sale may drive stock negative; shortages are returned as a warning.
-- D-017 Opening stock once, before any movement; 0 = onboarded with no row.
+- D-017 Opening stock once, before any movement; 0 = onboarded with no row. Entered only at product creation (D-044).
 - D-018 The app DB role `paper_app` owns the database, schema and tables.
 - D-019 DEBUG and ALLOWED_HOSTS from env, safe defaults.
 - D-020 Scope = full remake request; order in the STATE.md roadmap.
@@ -136,7 +136,7 @@ Read in that order; continue from STATE.md "Next".
 - D-029 AuditLog target reference is target_type + target_id, not GenericForeignKey.
 - D-030 Chat rhythm: read-only commands may chain; state-changing steps never chain; task or ~15 msgs.
 - D-031 Verification scripts: random unique identifiers, never fixed; assert on a service's returned object or after refresh_from_db(), never a stale local reference.
-- D-032 Invoice discount: fixed Rial amount (not %), invoice-level only, sales invoices only for now; validated against subtotal in confirm_sale, not clean().
+- D-032 Invoice discount: fixed amount (Toman since D-043, not %), invoice-level only, sales invoices only for now; validated against subtotal in confirm_sale, not clean().
 - D-033 Single business: Business/BusinessMembership and every `business` FK deleted; unique constraints global; DocumentSequence singleton per doc_type.
 - D-034 No roles: `is_superuser` is the only distinction; it gates oversell and cancellation only.
 - D-035 `/admin/` is superuser-only (PaperPlusAdminSite); the frontend is the user surface.
@@ -144,6 +144,10 @@ Read in that order; continue from STATE.md "Next".
 - D-037 Profit is realised profit — zero unless confirmed; oversold units are surfaced as uncosted, never priced.
 - D-038 Payment gains customer/supplier (at most one, matching direction), so unallocated money is still traceable.
 - D-039 Cheque gains CANCELLED, from PENDING only, with no Payment.
-- D-040 Expense lives in apps.payments, backed by a real Payment(OUT); related_person is free text.
-- D-041 Manual stock adjustment: adjustment_out draws FIFO layers via a generalized InventoryConsumption (movement FK, sale_item now nullable); adjustment_in opens a new layer; no privilege gate, mandatory reason note only.
+- D-040 Expense lives in apps.payments, backed by a real Payment(OUT). (related_person removed by D-045.)
+- ~~D-041~~ superseded by D-044 (manual adjustment removed, its schema reverted).
 - D-042 Split payment allocation settles a party's oldest open invoice first (invoice_date order), one allocate_payment call per invoice inside record_payment's own transaction; new SalesInvoice.outstanding/PurchaseInvoice.outstanding properties back it.
+- D-043 Money is whole Toman everywhere (storage, input, display, reports); one `toman` filter; no Rial in the UI.
+- D-044 Stock changes through documents only: no manual adjustment; opening stock only at product creation; ADJUSTMENT_IN/OUT = cancellation reversals only.
+- D-045 Expense has no counterparty; its paying account is an explicit choice (real account, or cash chosen on purpose); Bank Accounts gets create/edit pages.
+- D-046 Sales invoice defaults to full settlement into a chosen account (`plan_full_payment`); split/cheque/credit rows are the explicit alternative mode.

@@ -1050,6 +1050,55 @@ h2 { font-size: 16px; }
   padding-top: 0;
 }
 
+.sale-form__totals-discount {
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sale-form__totals-discount .field__control {
+  max-width: 160px;
+}
+
+/* Full settlement vs. split/credit (D-046): a plain radio pair. */
+.payment-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.payment-mode__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Mid-invoice quick-create that cannot nest inside the invoice <form>. */
+.quick-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.quick-dialog::backdrop {
+  background: rgb(15 23 32 / 40%);
+}
+
+.quick-dialog__title {
+  margin-bottom: var(--space-4);
+}
+
 .sale-form__remaining {
   margin-top: var(--space-3);
   font-size: 13.5px;

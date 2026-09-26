@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-26, after Dashboard (Phase C module 10) of the rebuild (REDESIGN_VISION) -- **Phase C is now complete, all 11 modules built.** Earlier: User Activity (module 9), Financial Reports (module 8), Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-26, after the **pre-Phase-D correction batch** (D-043..D-046: Toman everywhere, bank-account/supplier management pages, expense paying account, stock through documents only, selling-price updates, new product mid-purchase, sales discount placement + full-settlement default). Before that: Dashboard (Phase C module 10) of the rebuild (REDESIGN_VISION) -- **Phase C is complete, all 11 modules built.** Earlier: User Activity (module 9), Financial Reports (module 8), Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -19,8 +19,15 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 `manage.py flush` could not do it — see `tools/flush_all.py`. Real data
 (6 products + opening stock, 2 customers, 2 suppliers, 1 bank account) has
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
+Since D-044 the opening stock is entered on the Inventory new-product page
+itself ("موجودی فعلی" + unit cost), at creation -- there is no later page
+for it -- and bank accounts/suppliers on their own module pages (D-045).
 
 ## Next
+Pre-Phase-D correction batch is done (see Built). Before starting Phase D,
+Sina decides on the three findings it surfaced (PENDING below) -- none of
+them was fixed here, per CLAUDE.md's out-of-scope rule.
+
 **Phase D — visual identity** (MASTER_PROMPT §3's own build order: Phase
 C's 11 modules, all now built, then Phase D). REDESIGN_VISION §5: pick
 (or blend) from the 4 candidate systems in `docs/design/` (Stripe,
@@ -787,7 +794,75 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   `test_user_activity.py` (21/21) still pass -- 425/425 across the whole
   suite.
 
+- Pre-Phase-D correction batch (Sina's master prompt, 2026-09-26; one
+  commit; decisions D-043..D-046, options picked by Sina before building):
+  **Toman** (D-043): every money column reinterpreted as whole Toman (tables
+  were empty, label-only migrations); `format_toman` + a single `toman`
+  filter replace the Rial helpers/filters/hints everywhere (templates,
+  forms, admin, JS). **Bank Accounts**: create/edit pages
+  (`BankAccountForm`, Persian unique-number error). **Expenses** (D-045):
+  `related_person` dropped; `PaymentSourceField` (real accounts + explicit
+  "نقدی (صندوق)", no default) is the paying-account field. **Inventory**
+  (D-044): `record_adjustment` + its page/form/URL removed and its D-041
+  schema reverted (`InventoryConsumption.movement`, `Source.ADJUSTMENT`);
+  the separate opening-stock page removed -- opening stock only via the
+  new-product page (`InventoryProductForm`) or the admin add form; the list
+  shows FIFO cost, last purchase cost, current selling price and value at
+  cost; per-product "تغییر قیمت فروش" (`products.services.
+  update_selling_price` -- touches only `default_selling_price`, audited as
+  the new `change_selling_price` event, history attributed to the user).
+  **Suppliers**: create page + edit disclosure (`SupplierForm`).
+  **Purchase**: "+ کالای جدید" is a `<dialog>` (outside the invoice
+  `<form>`) opened from the items card or a "not found" search result; the
+  new product drops straight into the row that asked for it.
+  `QuickProductForm`'s selling price now starts empty (gap #6: an untouched
+  `0` used to pass "required"). **Sales** (D-046): discount moved into the
+  totals block; `payment_mode` full/split, full = `received_into` +
+  `sales.services.plan_full_payment`, split = the old rows.
+  Verification: `scripts/test_pre_phase_d.py` (new, 92/92: every item
+  above incl. FIFO costs across an opening + a purchase layer, discount
+  never touching stock/costs, the three payment modes, reports/dashboard
+  agreement, no "ریال" on any page); `test_expenses.py`, `test_sales_
+  invoice.py`, `test_expense_and_party.py`, `test_admin_form_errors.py` and
+  the four scripts that imported `rial_toman` updated for the approved
+  behaviour; `test_inventory_adjustment.py` deleted (its subject no longer
+  exists; `test_pre_phase_d.py` asserts the removal instead) -- 685/685
+  across all 36 scripts. Browser QA (`scripts/qa_pre_phase_d_setup.py`/
+  `_teardown.py`, QA user 09000000012) walked bank account create +
+  validation, supplier create/edit, new product with opening stock, a
+  purchase with an existing product plus two products created from the
+  dialog (one via "not found", one hitting a duplicate-SKU error first),
+  selling-price change, a full-settlement sale into the new account with a
+  discount, a split sale (cheque + cash + credit), an expense from the
+  account, then the bank ledger, Dashboard and Reports -- every number
+  matched hand calculation. Found and fixed during that pass: the dialog's
+  labels pointed at the supplier form's inputs (both rendered `id_name`,
+  fixed with `auto_id`), closing the dialog stole focus from the new row,
+  and the 422 validation response was never shown inside the dialog (htmx
+  2 does not swap 4xx by default; scoped `htmx:beforeSwap` handler). This
+  browser tool's typing does not fire `keyup`, so the product search was
+  driven by dispatching the event -- a tool limitation, not a product bug.
+
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
+- **htmx 4xx responses are never swapped app-wide** (found 2026-09-26,
+  pre-Phase-D QA). htmx 2.0.4's default `responseHandling` drops 4xx
+  bodies, but every quick-create form (customer, supplier) and the shared
+  "ثبت پرداخت" form answer a validation error with 422 + the re-rendered
+  form -- so a duplicate name or an over-allocated payment just does
+  nothing visible. Only the purchase page's product dialog is fixed (scoped
+  handler). Proposed: D-047 (one global `htmx-config` meta making 422 a
+  swapping response), roadmap id C.fix-1.
+- **Item rows lose their product name on a re-rendered invoice form**
+  (Sales and Purchasing, since Phase C): after any validation error the
+  hidden `product` id survives but the visible search box comes back
+  empty, so the user cannot see which product each row holds. Proposed
+  roadmap id C.fix-2 (template-only: fill the search box from the bound
+  row's product).
+- **Per-product profit vs. invoice discount** (Reports "فروش به تفکیک
+  کالا", sales detail line profit): line profit is computed before the
+  invoice-level discount (D-032), so the per-product column does not sum to
+  the gross-profit card when a discount exists. Needs a decision on whether
+  to allocate a discount across lines. Proposed: D-048, roadmap id C.fix-3.
 - ~~Financial report screen~~ -- superseded by REDESIGN_VISION 4.8, now
   built as Phase C module 8 (see Built). The COGS-method question this
   note originally raised was already settled project-wide by D-036/D-037
@@ -820,7 +895,7 @@ Ids are permanent: never renumber, only mark. `[x]` done, `[~]` in progress, `[ 
 - [x] 2.8 `payment_method` on invoices (status comes in 4.3) [R 10]
 - [x] 2.9 InventoryMovement gets a reference to its invoice item and a `unit_price` [R 13]
 - [x] 2.10 `cancel_sale` / `cancel_purchase`: cancelled + reversing movements; Owner and superuser only (D-023) [R 11]
-- [x] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8]
+- [x] 2.11 Rial and Toman side by side everywhere; Toman hint under every price input [R 8] (superseded by D-043: Toman only)
 
 ### Phase 3 — Real data and SHADOW start
 - [x] 3.1 Backup, then `flush` test data
@@ -866,7 +941,7 @@ D-025). Deferred deliberately, not forgotten (Sina, 2026-09-23).
 11. Stock correct after purchase and sale
 12. Per-product transaction history visible
 13. Purchase and selling price manageable
-14. Every amount shown as `X,XXX,XXX ریال | XXX,XXX تومان`
+14. ~~Every amount shown as `X,XXX,XXX ریال | XXX,XXX تومان`~~ Every amount shown as `XXX,XXX تومان` (D-043)
 15. Concurrent sales: no uncontrolled overselling (D-015, D-021)
 
 ## Tracking

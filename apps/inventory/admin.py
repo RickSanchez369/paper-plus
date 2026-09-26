@@ -2,8 +2,9 @@
 Admin for InventoryMovement: a read-only view of the stock ledger.
 
 The ledger is append-only. Rows are created only by services
-(confirm_purchase, confirm_sale, set_opening_stock); corrections are new
-adjustment_in / adjustment_out rows, never edits or deletes. Add, change
+(confirm_purchase, confirm_sale, set_opening_stock, and the cancel_*
+reversals that write adjustment_in / adjustment_out rows); never edits or
+deletes, and no manual adjustment path (D-044). Add, change
 and delete are therefore closed to everyone, superusers included.
 This page exists to trace discrepancies against the paper ledger.
 """
@@ -11,7 +12,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from apps.shared.utils import format_rial
+from apps.shared.utils import format_toman
 
 from .models import InventoryConsumption, InventoryLayer, InventoryMovement
 
@@ -47,7 +48,7 @@ class InventoryMovementAdmin(admin.ModelAdmin):
         # unit_price is nullable at the DB level (2.9); guard anyway.
         if obj is None or obj.unit_price is None:
             return "-"
-        return format_rial(obj.unit_price)
+        return format_toman(obj.unit_price)
 
     @admin.display(description="فاکتور مرتبط")
     def invoice_display(self, obj):
@@ -68,7 +69,7 @@ class InventoryMovementAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
-        # History is never edited; corrections are new adjustment rows.
+        # History is never edited; a wrong document is cancelled, not rewritten.
         return False
 
     def has_delete_permission(self, request, obj=None):
@@ -101,13 +102,13 @@ class InventoryLayerAdmin(admin.ModelAdmin):
     def unit_cost_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.unit_cost)
+        return format_toman(obj.unit_cost)
 
     @admin.display(description="ارزش مانده")
     def remaining_value_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.remaining_value)
+        return format_toman(obj.remaining_value)
 
     @admin.display(description="فاکتور خرید")
     def invoice_display(self, obj):
@@ -151,7 +152,7 @@ class InventoryConsumptionAdmin(admin.ModelAdmin):
     def cost_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.cost)
+        return format_toman(obj.cost)
 
     @admin.display(description="فاکتور فروش")
     def invoice_display(self, obj):

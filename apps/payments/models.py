@@ -105,7 +105,7 @@ class Payment(BaseModel):
         verbose_name="جهت",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
+        verbose_name="مبلغ (تومان)",
     )
     payment_date = models.DateField(
         verbose_name="تاریخ پرداخت",
@@ -150,7 +150,7 @@ class Payment(BaseModel):
 
     @property
     def allocated_amount(self):
-        """Sum of this payment's allocations so far, in Rial."""
+        """Sum of this payment's allocations so far, in Toman."""
         return self.allocations.aggregate(total=models.Sum("amount"))["total"] or 0
 
     @property
@@ -197,7 +197,7 @@ class PaymentAllocation(BaseModel):
         verbose_name="فاکتور خرید",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ تخصیص‌یافته (ریال)",
+        verbose_name="مبلغ تخصیص‌یافته (تومان)",
     )
 
     class Meta:
@@ -290,7 +290,7 @@ class Cheque(BaseModel):
         verbose_name="تاریخ سررسید",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
+        verbose_name="مبلغ (تومان)",
     )
     status = models.CharField(
         max_length=20,
@@ -369,11 +369,12 @@ class Expense(BaseModel):
     bank account (or out of the till, when `bank_account` is blank) exactly
     like any other payment, so bank balances, cash flow and the reports
     built on `Payment` all pick it up for free. The Expense row adds only
-    what a payment cannot say: who it was for and what it was for.
+    what a payment cannot say: what it was for.
 
-    `related_person` is free text on purpose -- a landlord or a mechanic is
-    not a Supplier, and forcing one into the partner list would pollute the
-    payables side with people the business never buys goods from.
+    No counterparty field (D-045): the question every report asks of an
+    expense is "which account paid it", and that is `bank_account` --
+    picked explicitly on the form, with cash an explicit choice rather
+    than what an untouched field falls back to.
 
     Never edited or deleted after recording, like everything else financial
     here (REDESIGN_VISION 2.7). A mistake is corrected by `cancel_expense`,
@@ -384,12 +385,7 @@ class Expense(BaseModel):
         verbose_name="تاریخ",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
-    )
-    related_person = models.CharField(
-        max_length=200,
-        blank=True,  # not every expense has a person attached to it
-        verbose_name="طرف حساب",
+        verbose_name="مبلغ (تومان)",
     )
     reason = models.CharField(
         max_length=255,
@@ -399,9 +395,9 @@ class Expense(BaseModel):
         BankAccount,
         on_delete=models.PROTECT,
         null=True,
-        blank=True,  # blank = cash, same meaning as on Payment
+        blank=True,  # blank = cash, same meaning as on Payment; the form makes it an explicit choice (D-045)
         related_name="expenses",
-        verbose_name="حساب بانکی",
+        verbose_name="پرداخت از حساب",
     )
     document = models.FileField(
         upload_to="expenses/%Y/%m/",

@@ -107,7 +107,7 @@ class PurchaseInvoice(BaseModel):
 
     @property
     def total_amount(self):
-        """Sum of line totals, in Rial."""
+        """Sum of line totals, in Toman."""
         return sum(item.line_total for item in self.items.all())
 
     class PaymentStatus(models.TextChoices):
@@ -117,7 +117,7 @@ class PurchaseInvoice(BaseModel):
 
     @property
     def paid_amount(self):
-        """Sum of PaymentAllocation rows against this invoice, in Rial (4.3)."""
+        """Sum of PaymentAllocation rows against this invoice, in Toman (4.3)."""
         return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
 
     @property
@@ -156,7 +156,7 @@ class PurchaseItem(BaseModel):
         verbose_name="مقدار",
     )
     unit_price = models.BigIntegerField(
-        verbose_name="قیمت واحد (ریال)",  # whole Rial (D-013)
+        verbose_name="قیمت واحد (تومان)",  # whole Toman (D-043)
     )
 
     class Meta:
@@ -216,7 +216,7 @@ class PurchasePaymentEntry(BaseModel):
         verbose_name="روش",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
+        verbose_name="مبلغ (تومان)",
     )
     bank_account = models.ForeignKey(
         "payments.BankAccount",

@@ -33,8 +33,8 @@ nothing that would print alongside the invoice.
         <tr>
           <th>کالا</th>
           <th>مقدار</th>
-          <th>قیمت واحد (ریال)</th>
-          <th>جمع (ریال)</th>
+          <th>قیمت واحد (تومان)</th>
+          <th>جمع (تومان)</th>
         </tr>
       </thead>
       <tbody>
@@ -42,17 +42,17 @@ nothing that would print alongside the invoice.
           <tr>
             <td>{{ item.product.name }}</td>
             <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|rial }}</td>
-            <td class="num">{{ item.line_total|rial }}</td>
+            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item.line_total|toman }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
     <div class="print-invoice__totals">
-      <div><span>جمع جزء</span><span class="num">{{ invoice.subtotal|rial }}</span></div>
-      <div><span>تخفیف</span><span class="num">{{ invoice.discount_amount|rial }}</span></div>
-      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total|rial }}</span></div>
+      <div><span>جمع جزء</span><span class="num">{{ invoice.subtotal|toman }}</span></div>
+      <div><span>تخفیف</span><span class="num">{{ invoice.discount_amount|toman }}</span></div>
+      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total|toman }}</span></div>
     </div>
 
     <footer class="print-invoice__foot">

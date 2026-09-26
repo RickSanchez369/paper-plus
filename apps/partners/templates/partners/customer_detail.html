@@ -24,7 +24,7 @@ component reused as-is from Receivables.
       <p class="page-head__lede">
         {% if customer.phone %}تلفن: {{ customer.phone }} · {% endif %}
         {% if not customer.is_active %}<span class="badge badge--bad">غیرفعال</span> · {% endif %}
-        مانده باز: <strong class="num">{{ outstanding|rial_toman }}</strong>
+        مانده باز: <strong class="num">{{ outstanding|toman }}</strong>
       </p>
     </div>
     <details class="quick-party-disclosure">
@@ -44,11 +44,11 @@ component reused as-is from Receivables.
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">جمع خرید عمر مشتری</span>
-    <span class="stat-card__value num">{{ cards.lifetime_purchases|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.lifetime_purchases|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">مانده باز</span>
-    <span class="stat-card__value num">{{ cards.outstanding|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.outstanding|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">تعداد فاکتور</span>
@@ -92,8 +92,8 @@ component reused as-is from Receivables.
             <tr>
               <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
               <td class="num">{{ invoice.invoice_date|jalali }}</td>
-              <td class="num">{{ invoice.total|rial_toman }}</td>
-              <td class="num">{{ invoice.paid_amount|rial_toman }}</td>
+              <td class="num">{{ invoice.total|toman }}</td>
+              <td class="num">{{ invoice.paid_amount|toman }}</td>
               <td>
                 <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
                   {{ invoice.payment_status.label }}
@@ -129,7 +129,7 @@ component reused as-is from Receivables.
           {% for payment in payments %}
             <tr>
               <td class="num">{{ payment.payment_date|jalali }}</td>
-              <td class="num">{{ payment.amount|rial_toman }}</td>
+              <td class="num">{{ payment.amount|toman }}</td>
               <td>{{ payment.bank_account|default:"نقدی" }}</td>
               <td>{{ payment.note|default:"—" }}</td>
             </tr>
@@ -162,7 +162,7 @@ component reused as-is from Receivables.
               <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"—" }}</a></td>
               <td>{{ cheque.bank_name|default:"—" }}</td>
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
-              <td class="num">{{ cheque.amount|rial_toman }}</td>
+              <td class="num">{{ cheque.amount|toman }}</td>
               <td>
                 <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
                   {{ cheque.get_status_display }}
@@ -197,9 +197,9 @@ component reused as-is from Receivables.
             <tr>
               <td class="num">{{ row.date|jalali }}</td>
               <td>{% if row.url %}<a href="{{ row.url }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}</td>
-              <td class="num">{% if row.kind == 'debit' %}{{ row.amount|rial_toman }}{% else %}—{% endif %}</td>
-              <td class="num">{% if row.kind == 'credit' %}{{ row.amount|rial_toman }}{% else %}—{% endif %}</td>
-              <td class="num">{{ row.balance|rial_toman }}</td>
+              <td class="num">{% if row.kind == 'debit' %}{{ row.amount|toman }}{% else %}—{% endif %}</td>
+              <td class="num">{% if row.kind == 'credit' %}{{ row.amount|toman }}{% else %}—{% endif %}</td>
+              <td class="num">{{ row.balance|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>

@@ -33,7 +33,7 @@ Supplier/PurchaseInvoice side.
               <tr>
                 <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a></td>
                 <td class="num">{{ row.supplier.phone|default:"—" }}</td>
-                <td class="num">{{ row.outstanding|rial_toman }}</td>
+                <td class="num">{{ row.outstanding|toman }}</td>
                 <td>
                   <details class="quick-party-disclosure">
                     <summary class="btn btn--quiet">ثبت پرداخت</summary>

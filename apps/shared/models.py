@@ -55,7 +55,10 @@ class AuditLog(BaseModel):
         CANCEL_CHEQUE = "cancel_cheque", "لغو چک"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
+        # No longer written (manual adjustment removed, D-044); kept so
+        # rows logged before that still show a label instead of a raw key.
         RECORD_ADJUSTMENT = "record_adjustment", "ثبت اصلاح موجودی"
+        CHANGE_SELLING_PRICE = "change_selling_price", "تغییر قیمت فروش"
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

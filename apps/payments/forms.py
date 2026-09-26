@@ -20,6 +20,78 @@ from apps.shared.forms import JalaliDateField
 from .models import BankAccount, Cheque, Expense, Payment
 
 
+class PaymentSourceField(forms.ChoiceField):
+    """
+    Which account money moved through: one real, active bank account, or
+    cash picked on purpose (D-045).
+
+    The blank choice is a prompt, not a value -- cash is never what an
+    untouched select silently means, so "which account paid this?" always
+    has an answer somebody actually chose. Cleans to a `BankAccount`, to
+    `None` for cash (the same meaning `bank_account = null` already has on
+    Payment/Expense), or to "" when nothing was picked on a non-required
+    field.
+    """
+
+    CASH = "cash"
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("label", "حساب بانکی")
+        kwargs.setdefault("widget", forms.Select(attrs={"class": "field__control"}))
+        error_messages = {
+            "required": "حساب بانکی (یا «نقدی») را انتخاب کنید.",
+            "invalid_choice": "این حساب بانکی معتبر یا فعال نیست.",
+            **kwargs.pop("error_messages", {}),
+        }
+        # A callable, so a bank account added a minute ago shows up without
+        # restarting anything -- Django re-evaluates it per form instance.
+        super().__init__(choices=self._current_choices, error_messages=error_messages, **kwargs)
+
+    @classmethod
+    def _current_choices(cls):
+        accounts = [(str(a.pk), str(a)) for a in BankAccount.objects.filter(is_active=True)]
+        return [("", "— انتخاب حساب —"), *accounts, (cls.CASH, "نقدی (صندوق)")]
+
+    def clean(self, value):
+        value = super().clean(value)
+        if value == self.CASH:
+            return None
+        if not value:
+            return ""
+        return BankAccount.objects.get(pk=value)
+
+
+class BankAccountForm(forms.ModelForm):
+    """
+    Add or edit an account from the Bank Accounts page itself -- before
+    this, an account could only be created in /admin/, so every expense
+    or payment form offered nothing but cash on a fresh install.
+    Deactivation stays an admin task: an account with a ledger behind it
+    is never something to switch off by accident from a list page.
+    """
+
+    class Meta:
+        model = BankAccount
+        fields = ("name", "owner", "account_number")
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
+            "owner": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
+            "account_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
+        }
+        error_messages = {
+            "name": {"required": "نام حساب الزامی است."},
+            "account_number": {
+                "required": "شماره حساب الزامی است.",
+                "unique": "حساب دیگری با همین شماره ثبت شده است.",
+            },
+        }
+
+    def clean_account_number(self):
+        # Stray spaces would let the same number slip past the unique
+        # constraint as a "different" account.
+        return (self.cleaned_data.get("account_number") or "").strip()
+
+
 class RecordPaymentForm(forms.Form):
     """
     Money received from a customer, or paid to a supplier.
@@ -37,7 +109,7 @@ class RecordPaymentForm(forms.Form):
 
     amount = forms.IntegerField(
         min_value=1,
-        label="مبلغ (ریال)",
+        label="مبلغ (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
@@ -150,7 +222,7 @@ class ChequeCompletionForm(forms.ModelForm):
 class ExpenseFilterForm(forms.Form):
     """
     Expenses list filters (REDESIGN_VISION 4.6): free-text search over
-    person/reason, bank account, and an amount range -- the date range
+    reason/note, bank account, and an amount range -- the date range
     itself is the shared `DateRangeForm`, rendered alongside this one,
     same split as Sales/Purchasing's own list filters.
     """
@@ -162,8 +234,8 @@ class ExpenseFilterForm(forms.Form):
         queryset=BankAccount.objects.filter(is_active=True),
         empty_label="— همهٔ حساب‌ها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (ریال)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (ریال)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
 
     def clean(self):
         cleaned = super().clean()
@@ -175,33 +247,28 @@ class ExpenseFilterForm(forms.Form):
 
 class ExpenseForm(forms.ModelForm):
     """
-    New-expense one-shot form (REDESIGN_VISION 4.6): date, person, reason,
-    amount, bank account or cash, optional receipt upload, note. The view
-    passes the unsaved instance to `record_expense`, which creates the
-    matching `Payment(OUT)` in the same transaction -- this form never
-    touches money itself.
+    New-expense one-shot form (REDESIGN_VISION 4.6, D-045): date, reason,
+    amount, the account it was paid from (or cash, chosen explicitly),
+    optional receipt upload, note. The view passes the unsaved instance to
+    `record_expense`, which creates the matching `Payment(OUT)` in the
+    same transaction -- this form never touches money itself.
     """
 
     expense_date = JalaliDateField(label="تاریخ")
     amount = forms.IntegerField(
         min_value=1,
-        label="مبلغ (ریال)",
+        label="مبلغ (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
+    # Same name as the model field, so ModelForm assigns the cleaned
+    # BankAccount (or None for cash) straight onto the instance.
+    bank_account = PaymentSourceField(label="پرداخت از حساب")
 
     class Meta:
         model = Expense
-        fields = ("expense_date", "related_person", "reason", "amount", "bank_account", "document", "note")
+        fields = ("expense_date", "reason", "amount", "bank_account", "document", "note")
         widgets = {
-            "related_person": forms.TextInput(attrs={"class": "field__control"}),
             "reason": forms.TextInput(attrs={"class": "field__control"}),
-            "bank_account": forms.Select(attrs={"class": "field__control"}),
             "note": forms.Textarea(attrs={"class": "field__control", "rows": 2}),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
-        self.fields["bank_account"].empty_label = "نقدی"  # blank means cash, same rule as Payment (2.6)
-        self.fields["bank_account"].required = False

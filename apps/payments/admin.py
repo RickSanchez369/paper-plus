@@ -15,7 +15,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from apps.shared.utils import format_rial
+from apps.shared.utils import format_toman
 
 from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation
 from .selectors import get_bank_account_balance
@@ -41,7 +41,7 @@ class BankAccountAdmin(admin.ModelAdmin):
     def balance_display(self, obj):
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(get_bank_account_balance(obj))
+        return format_toman(get_bank_account_balance(obj))
 
 
 class PaymentForm(forms.ModelForm):
@@ -100,7 +100,7 @@ class PaymentAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.amount)
+        return format_toman(obj.amount)
 
     @admin.display(description="طرف حساب")
     def party_display(self, obj):
@@ -113,7 +113,7 @@ class PaymentAdmin(admin.ModelAdmin):
     def allocation_display(self, obj):
         if obj is None or obj._state.adding:
             return "-"
-        return f"{format_rial(obj.allocated_amount)} / {format_rial(obj.unallocated_amount)}"
+        return f"{format_toman(obj.allocated_amount)} / {format_toman(obj.unallocated_amount)}"
 
     def save_model(self, request, obj, form, change):
         record_payment(obj, request.user)
@@ -161,7 +161,7 @@ class PaymentAllocationAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.amount)
+        return format_toman(obj.amount)
 
     def save_model(self, request, obj, form, change):
         allocate_payment(obj, request.user)
@@ -266,7 +266,7 @@ class ChequeAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.amount)
+        return format_toman(obj.amount)
 
     def save_model(self, request, obj, form, change):
         if change:
@@ -348,7 +348,7 @@ class ExpenseForm(forms.ModelForm):
     class Meta:
         model = Expense
         fields = (
-            "expense_date", "amount", "related_person", "reason",
+            "expense_date", "amount", "reason",
             "bank_account", "document", "note",
         )
 
@@ -370,11 +370,11 @@ class ExpenseAdmin(admin.ModelAdmin):
 
     form = ExpenseForm
     list_display = (
-        "expense_date", "reason", "related_person", "amount_display",
+        "expense_date", "reason", "amount_display",
         "bank_account_display", "document_display", "status_display", "created_by",
     )
     list_filter = ("expense_date", "bank_account")
-    search_fields = ("reason", "related_person", "note")
+    search_fields = ("reason", "note")
     list_select_related = ("bank_account", "created_by")
     autocomplete_fields = ("bank_account",)
     date_hierarchy = "expense_date"
@@ -386,7 +386,7 @@ class ExpenseAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj.amount)
+        return format_toman(obj.amount)
 
     @admin.display(description="حساب پرداخت")
     def bank_account_display(self, obj):

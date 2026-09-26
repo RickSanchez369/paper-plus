@@ -20,7 +20,7 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
       <p class="page-head__lede">
         جهت: {{ cheque.get_direction_display }} ·
         طرف حساب: {{ cheque.customer|default:cheque.supplier|default:"—" }} ·
-        مبلغ: <span class="num">{{ cheque.amount|rial_toman }}</span> ·
+        مبلغ: <span class="num">{{ cheque.amount|toman }}</span> ·
         سررسید: {{ cheque.due_date|jalali|default:"—" }}
       </p>
     </div>
@@ -92,7 +92,7 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
           <th>پرداخت وصول‌شده</th>
           <td>
             {% if cheque.payment %}
-              {{ cheque.payment.amount|rial_toman }} — {{ cheque.payment.payment_date|jalali }}
+              {{ cheque.payment.amount|toman }} — {{ cheque.payment.payment_date|jalali }}
               ({{ cheque.payment.bank_account|default:"نقدی" }})
             {% else %}هنوز وصول نشده{% endif %}
           </td>

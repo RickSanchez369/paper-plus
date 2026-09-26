@@ -28,7 +28,7 @@ from django.views import View
 from django.views.generic import DetailView, TemplateView
 
 from apps.inventory.selectors import get_last_known_cost_map, get_stock_map
-from apps.partners.forms import QuickSupplierForm
+from apps.partners.forms import QuickSupplierForm, SupplierForm
 from apps.partners.models import Supplier
 from apps.payments.selectors import get_supplier_outstanding
 from apps.products.forms import QuickProductForm
@@ -147,6 +147,12 @@ class ProductSearchView(LoginRequiredMixin, View):
         return render(request, "purchasing/_product_search_results.html", {"rows": rows})
 
 
+# The purchase page also renders the supplier quick form, whose fields share
+# names (and so default ids, "id_name") with this one; distinct ids keep
+# each <label for> pointing at its own input.
+QUICK_PRODUCT_AUTO_ID = "quick_product_%s"
+
+
 class QuickProductCreateView(LoginRequiredMixin, View):
     """
     Creates a Product from the inline "+ کالای جدید" mini-form
@@ -154,14 +160,15 @@ class QuickProductCreateView(LoginRequiredMixin, View):
     _quick_party_form.html -- that partial is generic (form/post_url/
     title passed in), nothing about it is customer-specific.
 
-    Unlike the customer quick-add, there is no single target element to
-    swap: the item rows are a dynamic, JS-managed list, not one <select>.
-    The new product simply exists once saved -- typing its name into any
-    row's search box finds it immediately.
+    Unlike the customer quick-add, there is no single <select> to
+    out-of-band swap: the item rows are a dynamic, JS-managed list. The
+    success partial carries the new product's id/name instead, and
+    purchase_form.js drops it into the row that asked for it -- existing
+    product or new one, the user never leaves the invoice.
     """
 
     def post(self, request):
-        form = QuickProductForm(request.POST)
+        form = QuickProductForm(request.POST, auto_id=QUICK_PRODUCT_AUTO_ID)
         if not form.is_valid():
             html = render_to_string(
                 "partners/_quick_party_form.html",
@@ -184,7 +191,7 @@ def _empty_forms():
         "payment_formset": PurchasePaymentEntryFormSet(prefix="payments"),
         "quick_supplier_form": QuickSupplierForm(),
         "quick_supplier_url": reverse("purchasing:quick_supplier"),
-        "quick_product_form": QuickProductForm(),
+        "quick_product_form": QuickProductForm(auto_id=QUICK_PRODUCT_AUTO_ID),
         "quick_product_url": reverse("purchasing:quick_product"),
     }
 
@@ -244,7 +251,7 @@ class PurchaseCreateView(LoginRequiredMixin, View):
             "error": error,
             "quick_supplier_form": QuickSupplierForm(),
             "quick_supplier_url": reverse("purchasing:quick_supplier"),
-            "quick_product_form": QuickProductForm(),
+            "quick_product_form": QuickProductForm(auto_id=QUICK_PRODUCT_AUTO_ID),
             "quick_product_url": reverse("purchasing:quick_product"),
         }
         return render(request, self.template_name, context)
@@ -354,6 +361,41 @@ class SupplierListView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class SupplierCreateView(LoginRequiredMixin, View):
+    """"+ تأمین‌کنندهٔ جدید" on the Suppliers list itself -- the same
+    Supplier model the purchase form's inline quick-add writes to, just
+    a full page, since nothing mid-transaction needs keeping alive here.
+    A supplier is descriptive data (no money/stock), so a plain save."""
+
+    template_name = "purchasing/supplier_form.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": SupplierForm()})
+
+    def post(self, request):
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            supplier = form.save()
+            messages.success(request, f"تأمین‌کنندهٔ «{supplier.name}» ثبت شد.")
+            return redirect("purchasing:supplier_detail", pk=supplier.pk)
+        return render(request, self.template_name, {"form": form})
+
+
+class SupplierUpdateView(LoginRequiredMixin, View):
+    """POST-only save for the detail page's edit disclosure -- mirrors
+    partners.views.CustomerUpdateView."""
+
+    def post(self, request, pk):
+        supplier = get_object_or_404(Supplier, pk=pk)
+        form = SupplierForm(request.POST, instance=supplier)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "اطلاعات تأمین‌کننده بروزرسانی شد.")
+        else:
+            messages.error(request, "؛ ".join(error for errors in form.errors.values() for error in errors))
+        return redirect("purchasing:supplier_detail", pk=pk)
+
+
 class SupplierDetailView(LoginRequiredMixin, DetailView):
     """Purchase history, payments made, cheques issued, running balance
     (REDESIGN_VISION 4.2) -- the same get_supplier_outstanding the
@@ -377,4 +419,5 @@ class SupplierDetailView(LoginRequiredMixin, DetailView):
         )
         context["cheques"] = supplier.cheques.order_by("-created_at")
         context["outstanding"] = get_supplier_outstanding(supplier)
+        context["edit_form"] = SupplierForm(instance=supplier)
         return context

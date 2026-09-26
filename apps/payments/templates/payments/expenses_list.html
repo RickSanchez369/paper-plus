@@ -23,11 +23,11 @@ module here.
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">هزینهٔ امروز</span>
-    <span class="stat-card__value num">{{ cards.today_total|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">هزینهٔ این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_total|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
   </div>
 </div>
 
@@ -50,7 +50,6 @@ module here.
           <thead>
             <tr>
               <th>تاریخ</th>
-              <th>طرف حساب</th>
               <th>بابت</th>
               <th>مبلغ</th>
               <th>حساب پرداخت‌کننده</th>
@@ -64,9 +63,8 @@ module here.
             {% for expense in expenses %}
               <tr>
                 <td class="num">{{ expense.expense_date|jalali }}</td>
-                <td>{{ expense.related_person|default:"—" }}</td>
                 <td>{{ expense.reason }}</td>
-                <td class="num">{{ expense.amount|rial_toman }}</td>
+                <td class="num">{{ expense.amount|toman }}</td>
                 <td>{{ expense.bank_account|default:"نقدی" }}</td>
                 <td>{{ expense.created_by.get_full_name|default:expense.created_by.phone }}</td>
                 <td>{% if expense.document %}📎{% else %}—{% endif %}</td>

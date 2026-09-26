@@ -3,10 +3,17 @@
 
 {% comment %}
 One-shot new-sale form (REDESIGN_VISION 4.1, non-negotiable #5): invoice +
-items + payment split, submitted together. sale_form.js owns everything
-client-side (product search, add/remove rows, live totals, remaining-
-amount autofill); the server only ever sees a full POST and either
-creates+confirms the whole thing or rejects it whole (see SalesCreateView).
+items + payment, submitted together. sale_form.js owns everything
+client-side (product search, add/remove rows, live totals, the payment-
+mode switch, remaining-amount autofill); the server only ever sees a full
+POST and either creates+confirms the whole thing or rejects it whole (see
+SalesCreateView).
+
+The discount sits with the money it changes -- under the subtotal, above
+the final total -- not beside the date (it is a price reduction, never a
+cost: FIFO costs and stock are untouched by it). Payment defaults to
+"تسویهٔ کامل" + receiving account (D-046); the split/cheque/credit rows
+appear only when chosen.
 {% endcomment %}
 
 {% block title %}فاکتور فروش جدید{% endblock %}
@@ -58,7 +65,6 @@ payment rows ever reached the server).
       {% include "shared/_form_errors.html" with form=invoice_form %}
       <div class="sale-form__header">
         {% include "shared/_field.html" with field=invoice_form.invoice_date %}
-        {% include "shared/_field.html" with field=invoice_form.discount_amount %}
       </div>
     </div>
   </div>
@@ -75,8 +81,8 @@ payment rows ever reached the server).
         <span>کالا</span>
         <span>موجودی</span>
         <span>مقدار</span>
-        <span>قیمت واحد (ریال)</span>
-        <span>جمع (ریال)</span>
+        <span>قیمت واحد (تومان)</span>
+        <span>جمع (تومان)</span>
         <span></span>
       </div>
 
@@ -93,37 +99,61 @@ payment rows ever reached the server).
       <button type="button" class="btn btn--quiet" id="add-item-row">+ افزودن ردیف</button>
 
       <div class="sale-form__totals">
-        <div><span>جمع جزء</span><span class="num" id="sale-subtotal">۰</span></div>
-        <div><span>تخفیف</span><span class="num" id="sale-discount">۰</span></div>
-        <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num" id="sale-total">۰</span></div>
+        <div><span>جمع اقلام</span><span class="num" id="sale-subtotal">۰</span></div>
+        <div class="sale-form__totals-discount">
+          <label for="{{ invoice_form.discount_amount.id_for_label }}">تخفیف (تومان) −</label>
+          {{ invoice_form.discount_amount }}
+        </div>
+        {% for error in invoice_form.discount_amount.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+        <div class="sale-form__totals-final"><span>مبلغ نهایی فاکتور</span><span class="num" id="sale-total">۰</span></div>
       </div>
     </div>
   </div>
 
   <div class="card">
     <div class="card__body">
-      <h2>تقسیم پرداخت</h2>
-      <p class="field__hint">هر مبلغی که در ردیف‌های زیر نیاید، به‌صورت نسیه روی حساب مشتری می‌ماند.</p>
-      {% if payment_formset.non_form_errors %}
-        <div class="form-error">{% for e in payment_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
-      {% endif %}
-      {{ payment_formset.management_form }}
-
-      <div id="payment-rows">
-        {% for form in payment_formset %}
-          {% include "sales/_payment_entry_row.html" %}
+      <h2>پرداخت</h2>
+      <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.payment_mode.label }}">
+        {% for radio in invoice_form.payment_mode %}
+          <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
         {% endfor %}
       </div>
+      {% for error in invoice_form.payment_mode.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
 
-      <template id="payment-row-template">
-        {% include "sales/_payment_entry_row.html" with form=payment_formset.empty_form %}
-      </template>
+      <div data-payment-panel="full"{% if invoice_form.payment_mode.value == "split" %} hidden{% endif %}>
+        <p class="field__hint">
+          مشتری کل مبلغ فاکتور (<span class="num" id="sale-full-amount">۰</span> تومان) را پرداخت کرده است؛
+          فقط حساب دریافت‌کننده را انتخاب کنید.
+        </p>
+        {% include "shared/_field.html" with field=invoice_form.received_into %}
+      </div>
 
-      <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
+      <div data-payment-panel="split"{% if invoice_form.payment_mode.value != "split" %} hidden{% endif %}>
+        <p class="field__hint">
+          برای چک، نسیه یا چند روش پرداخت: ردیف‌ها را وارد کنید. هر مبلغی که در ردیف‌ها نیاید
+          به‌صورت نسیه روی حساب مشتری می‌ماند (بدون هیچ ردیف = کاملاً نسیه).
+        </p>
+        {% if payment_formset.non_form_errors %}
+          <div class="form-error">{% for e in payment_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
+        {% endif %}
+        {{ payment_formset.management_form }}
 
-      <p class="sale-form__remaining">
-        باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> ریال
-      </p>
+        <div id="payment-rows">
+          {% for form in payment_formset %}
+            {% include "sales/_payment_entry_row.html" %}
+          {% endfor %}
+        </div>
+
+        <template id="payment-row-template">
+          {% include "sales/_payment_entry_row.html" with form=payment_formset.empty_form %}
+        </template>
+
+        <p class="sale-form__remaining">
+          باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> تومان
+        </p>
+      </div>
+
+      <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت (چک / نسیه / تفکیکی)</button>
     </div>
   </div>
 

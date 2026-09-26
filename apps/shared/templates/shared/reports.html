@@ -30,7 +30,7 @@ this range alone.
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">جمع فروش</span>
-    <span class="stat-card__value num">{{ cards.sales.value|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.sales.value|toman }}</span>
     {% if cards.sales.change is not None %}
       <span class="stat-card__delta{% if cards.sales.change > 0 %} stat-card__delta--up{% elif cards.sales.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_number }}٪ نسبت به بازهٔ قبل
@@ -39,7 +39,7 @@ this range alone.
   </div>
   <div class="stat-card">
     <span class="stat-card__label">جمع خرید</span>
-    <span class="stat-card__value num">{{ cards.purchases.value|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.purchases.value|toman }}</span>
     {% if cards.purchases.change is not None %}
       <span class="stat-card__delta{% if cards.purchases.change > 0 %} stat-card__delta--up{% elif cards.purchases.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_number }}٪ نسبت به بازهٔ قبل
@@ -48,7 +48,7 @@ this range alone.
   </div>
   <div class="stat-card">
     <span class="stat-card__label">هزینه‌ها</span>
-    <span class="stat-card__value num">{{ cards.expenses.value|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.expenses.value|toman }}</span>
     {% if cards.expenses.change is not None %}
       <span class="stat-card__delta{% if cards.expenses.change > 0 %} stat-card__delta--up{% elif cards.expenses.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_number }}٪ نسبت به بازهٔ قبل
@@ -57,7 +57,7 @@ this range alone.
   </div>
   <div class="stat-card">
     <span class="stat-card__label">سود ناخالص</span>
-    <span class="stat-card__value num">{{ cards.gross_profit.value|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.gross_profit.value|toman }}</span>
     {% if cards.gross_profit.change is not None %}
       <span class="stat-card__delta{% if cards.gross_profit.change > 0 %} stat-card__delta--up{% elif cards.gross_profit.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_number }}٪ نسبت به بازهٔ قبل
@@ -66,7 +66,7 @@ this range alone.
   </div>
   <div class="stat-card">
     <span class="stat-card__label">سود خالص</span>
-    <span class="stat-card__value num">{{ cards.net_profit.value|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.net_profit.value|toman }}</span>
     {% if cards.net_profit.change is not None %}
       <span class="stat-card__delta{% if cards.net_profit.change > 0 %} stat-card__delta--up{% elif cards.net_profit.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_number }}٪ نسبت به بازهٔ قبل
@@ -93,8 +93,8 @@ this range alone.
             <tr>
               <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
               <td class="num">{{ row.quantity|fa_number }}</td>
-              <td class="num">{{ row.amount|rial_toman }}</td>
-              <td class="num">{{ row.profit|rial_toman }}</td>
+              <td class="num">{{ row.amount|toman }}</td>
+              <td class="num">{{ row.profit|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -118,7 +118,7 @@ this range alone.
             <tr>
               <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
               <td class="num">{{ row.quantity|fa_number }}</td>
-              <td class="num">{{ row.amount|rial_toman }}</td>
+              <td class="num">{{ row.amount|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -156,16 +156,16 @@ this range alone.
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">ارزش موجودی (پایان بازه)</span>
-    <span class="stat-card__value num">{{ inventory.total_value|rial_toman }}</span>
+    <span class="stat-card__value num">{{ inventory.total_value|toman }}</span>
     <span class="field__hint">{{ inventory.product_count|fa_number }} کالا با موجودی</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">مطالبات باز (پایان بازه)</span>
-    <span class="stat-card__value num">{{ receivables_payables.receivables|rial_toman }}</span>
+    <span class="stat-card__value num">{{ receivables_payables.receivables|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">بدهی باز (پایان بازه)</span>
-    <span class="stat-card__value num">{{ receivables_payables.payables|rial_toman }}</span>
+    <span class="stat-card__value num">{{ receivables_payables.payables|toman }}</span>
   </div>
 </div>
 
@@ -181,9 +181,9 @@ this range alone.
           {% for row in bank_accounts %}
             <tr>
               <td><a href="{% url 'bank_accounts:detail' row.account.pk %}">{{ row.account.name }}</a></td>
-              <td class="num">{{ row.balance|rial_toman }}</td>
-              <td class="num">{{ row.period_in|rial_toman }}</td>
-              <td class="num">{{ row.period_out|rial_toman }}</td>
+              <td class="num">{{ row.balance|toman }}</td>
+              <td class="num">{{ row.period_in|toman }}</td>
+              <td class="num">{{ row.period_out|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -207,7 +207,7 @@ this range alone.
             <tr>
               <td>{{ row.label }}</td>
               <td class="num">{{ row.count|fa_number }}</td>
-              <td class="num">{{ row.amount|rial_toman }}</td>
+              <td class="num">{{ row.amount|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>

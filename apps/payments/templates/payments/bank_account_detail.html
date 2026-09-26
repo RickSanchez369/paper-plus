@@ -20,9 +20,10 @@ Expense.payment, resolved once per row in views._describe_payment.
       <h1>{{ account.name }}{% if account.owner %} — {{ account.owner }}{% endif %}</h1>
       <p class="page-head__lede">
         شماره حساب: {{ account.account_number }} ·
-        موجودی: <strong class="num">{{ balance|rial_toman }}</strong>
+        موجودی: <strong class="num">{{ balance|toman }}</strong>
       </p>
     </div>
+    <a href="{% url 'bank_accounts:edit' account.pk %}" class="btn btn--quiet">ویرایش مشخصات</a>
   </div>
 </div>
 
@@ -50,7 +51,7 @@ Expense.payment, resolved once per row in views._describe_payment.
                   {{ row.payment.get_direction_display }}
                 </span>
               </td>
-              <td class="num">{{ row.payment.amount|rial_toman }}</td>
+              <td class="num">{{ row.payment.amount|toman }}</td>
               <td>
                 {% if row.url %}<a href="{{ row.url }}">{{ row.source }}</a>{% else %}{{ row.source }}{% endif %}
               </td>

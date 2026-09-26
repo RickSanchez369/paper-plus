@@ -296,7 +296,8 @@ def record_expense(expense, user):
 
     Args:
         expense: an unsaved Expense with expense_date, amount, reason and
-            optionally related_person/bank_account/document/note set.
+            optionally bank_account/document/note set (bank_account left
+            blank = cash).
             `payment` must NOT be set -- this creates it.
         user: the user performing the action; recorded on both rows.
 

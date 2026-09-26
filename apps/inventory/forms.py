@@ -1,95 +1,55 @@
 # path: apps/inventory/forms.py
 
 """
-The three Inventory list-page actions (REDESIGN_VISION 4.3): new product
-(reuses apps.products.forms.QuickProductForm as-is), opening stock entry,
-manual adjustment. Each is a small dedicated page, not a modal -- these are
-rare, deliberate actions (a wrong opening stock or adjustment is corrected
-only by another entry, never edited), so a full page with a clear result
-beats a disclosure that is easy to submit by accident.
+The Inventory module's one stock-creating form: a new product, with its
+opening stock entered right there or never (D-044).
+
+Stock otherwise changes only through documents -- a confirmed purchase
+adds, a confirmed sale removes, a cancellation reverses exactly what its
+document did. There is no manual adjustment or later "opening stock"
+page: a product that already has stock in the warehouse on the day it is
+added gets it once, here, at its own cost (D-017's rule, unchanged).
 """
 
 from django import forms
 
-from apps.products.models import Product
+from apps.products.forms import QuickProductForm
 
-from .models import InventoryMovement
-
-TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
+_NUMBER = {"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
 
 
-class OpeningStockForm(forms.Form):
-    """Feeds apps.inventory.services.set_opening_stock. Only a
-    not-yet-onboarded product may be picked -- the service itself also
-    refuses, this just keeps the picker from offering a doomed choice."""
+class InventoryProductForm(QuickProductForm):
+    """
+    QuickProductForm plus an optional one-time opening stock. Blank
+    quantity: the product starts at zero and its first stock arrives by
+    purchase invoice. A quantity needs its purchase cost too -- that cost
+    becomes the product's first FIFO layer, so inventory value stays
+    cost-based from the very first unit (never the selling price).
+    """
 
-    product = forms.ModelChoiceField(
-        label="کالا",
-        queryset=Product.objects.filter(is_active=True, is_onboarded=False).order_by("name"),
-        empty_label="— انتخاب کالا —",
-        widget=forms.Select(attrs={"class": "field__control"}),
-        error_messages={"required": "انتخاب کالا الزامی است."},
-    )
-    quantity = forms.IntegerField(
-        min_value=0,
-        label="مقدار",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        error_messages={"required": "مقدار الزامی است.", "min_value": "مقدار نمی‌تواند منفی باشد."},
-    )
-    unit_price = forms.IntegerField(
-        min_value=0,
-        label="قیمت واحد (ریال)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        help_text=TOMAN_HINT,
-        error_messages={"required": "قیمت واحد الزامی است.", "min_value": "قیمت نمی‌تواند منفی باشد."},
-    )
-
-
-class AdjustmentForm(forms.Form):
-    """Feeds apps.inventory.services.record_adjustment. `unit_price` is
-    required only for an increase -- a decrease draws its cost from the
-    layers it consumes, it does not invent one."""
-
-    product = forms.ModelChoiceField(
-        label="کالا",
-        queryset=Product.objects.filter(is_active=True).order_by("name"),
-        empty_label="— انتخاب کالا —",
-        widget=forms.Select(attrs={"class": "field__control"}),
-        error_messages={"required": "انتخاب کالا الزامی است."},
-    )
-    direction = forms.ChoiceField(
-        label="نوع اصلاح",
-        choices=(
-            (InventoryMovement.MovementType.ADJUSTMENT_IN, "افزایش موجودی"),
-            (InventoryMovement.MovementType.ADJUSTMENT_OUT, "کاهش موجودی"),
-        ),
-        initial=InventoryMovement.MovementType.ADJUSTMENT_IN,
-        widget=forms.Select(attrs={"class": "field__control"}),
-    )
-    quantity = forms.IntegerField(
+    opening_quantity = forms.IntegerField(
+        required=False,
         min_value=1,
-        label="مقدار",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        error_messages={"required": "مقدار الزامی است.", "min_value": "مقدار باید بزرگ‌تر از صفر باشد."},
+        label="موجودی فعلی انبار (اختیاری)",
+        help_text="فقط برای کالایی که همین حالا در انبار موجود است؛ بعداً فقط با فاکتور خرید/فروش تغییر می‌کند.",
+        widget=forms.NumberInput(attrs=_NUMBER),
+        error_messages={"min_value": "مقدار باید بزرگ‌تر از صفر باشد."},
     )
-    unit_price = forms.IntegerField(
+    opening_unit_cost = forms.IntegerField(
         required=False,
         min_value=0,
-        label="قیمت واحد (ریال) — فقط برای افزایش",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        help_text=TOMAN_HINT,
-        error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
-    )
-    note = forms.CharField(
-        label="دلیل اصلاح",
-        widget=forms.Textarea(attrs={"class": "field__control", "rows": 2}),
-        error_messages={"required": "دلیل اصلاح الزامی است."},
+        label="بهای خرید هر واحد (تومان)",
+        help_text="بهای تمام‌شدهٔ همین موجودی؛ مبنای ارزش انبار است، نه قیمت فروش.",
+        widget=forms.NumberInput(attrs=_NUMBER),
+        error_messages={"min_value": "بها نمی‌تواند منفی باشد."},
     )
 
     def clean(self):
         cleaned = super().clean()
-        direction = cleaned.get("direction")
-        unit_price = cleaned.get("unit_price")
-        if direction == InventoryMovement.MovementType.ADJUSTMENT_IN and unit_price is None:
-            self.add_error("unit_price", "برای افزایش موجودی، قیمت واحد الزامی است.")
+        quantity = cleaned.get("opening_quantity")
+        cost = cleaned.get("opening_unit_cost")
+        if quantity and cost is None:
+            self.add_error("opening_unit_cost", "همراه موجودی فعلی، بهای خرید هر واحد هم لازم است.")
+        if cost is not None and not quantity:
+            self.add_error("opening_quantity", "بها بدون مقدار معنایی ندارد؛ مقدار را وارد کنید یا بها را خالی بگذارید.")
         return cleaned

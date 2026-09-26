@@ -3,23 +3,25 @@
 """
 Inventory module views (REDESIGN_VISION 4.3, MASTER_PROMPT Phase C).
 
-Nothing here writes stock directly -- set_opening_stock and
-record_adjustment own that, same non-negotiable as every other module
-(views never write).
+Nothing here writes stock directly -- set_opening_stock (at product
+creation only, D-044) and the invoice services own that; the selling
+price goes through products.services.update_selling_price. Same
+non-negotiable as every other module: views never write.
 """
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.views import View
 from django.views.generic import DetailView, TemplateView
 
-from apps.products.forms import QuickProductForm
+from apps.products.forms import SellingPriceForm
 from apps.products.models import Product
+from apps.products.services import update_selling_price
 
-from .forms import AdjustmentForm, OpeningStockForm
+from .forms import InventoryProductForm
 from .models import InventoryMovement
 from .selectors import (
     get_active_layers,
@@ -29,14 +31,16 @@ from .selectors import (
     get_stock_map,
     get_total_inventory_value,
 )
-from .services import record_adjustment, set_opening_stock
+from .services import set_opening_stock
 
 
 class InventoryListView(LoginRequiredMixin, TemplateView):
     """
     List (REDESIGN_VISION 4.3): cards (total value, item count,
     negative-stock warning, a USD placeholder), table (stock, current
-    purchase cost, selling price, value, % share of total value).
+    FIFO cost, last purchase cost, selling price, value, % share of total
+    value). Every value figure is cost-based -- Σ active layers × their
+    own cost; the selling price is shown beside it, never multiplied in.
     """
 
     template_name = "inventory/list.html"
@@ -63,10 +67,11 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
                 "product": product,
                 "stock": stock,
                 # the oldest active layer's cost -- what the next sale
-                # consumes; falls back to the last known cost once stock
-                # hits zero, display-only (4.1's already-established rule)
-                "current_cost": current_cost_map.get(product.pk, last_cost_map.get(product.pk)),
-                "has_active_cost": product.pk in current_cost_map,
+                # consumes (absent once stock hits zero: no layer left)
+                "current_cost": current_cost_map.get(product.pk),
+                # the most recent layer's cost, exhausted or not -- "what
+                # did we last buy it at", display-only (REDESIGN_VISION 8.5)
+                "last_cost": last_cost_map.get(product.pk),
                 "value": value,
                 "share": (value * 100 // total_value) if total_value else 0,
             })
@@ -81,92 +86,59 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
 
 
 class ProductCreateView(LoginRequiredMixin, View):
-    """"+ کالای جدید" (REDESIGN_VISION 4.3). A full page here, unlike the
-    inline mid-invoice version reused from Purchasing/Sales -- Inventory is
-    not mid-transaction, so there is no invoice to keep alive around it."""
+    """"+ کالای جدید" (REDESIGN_VISION 4.3), with an optional one-time
+    opening stock (D-044) -- the only place stock can enter the ledger
+    without an invoice. Product and opening layer are saved in one
+    transaction: a rejected opening stock leaves no half-created product."""
 
     template_name = "inventory/product_new.html"
 
     def get(self, request):
-        return render(request, self.template_name, {"form": QuickProductForm()})
+        return render(request, self.template_name, {"form": InventoryProductForm()})
 
     def post(self, request):
-        form = QuickProductForm(request.POST)
+        form = InventoryProductForm(request.POST)
         if form.is_valid():
-            product = form.save()
-            messages.success(request, f"کالای «{product.name}» ثبت شد. اکنون می‌توانید موجودی اولیه‌اش را وارد کنید.")
-            return redirect("inventory:opening_stock")
+            quantity = form.cleaned_data.get("opening_quantity")
+            try:
+                with transaction.atomic():
+                    product = form.save()
+                    if quantity:
+                        set_opening_stock(product, quantity, request.user, form.cleaned_data["opening_unit_cost"])
+            except ValidationError as exc:
+                form.add_error(None, "؛ ".join(exc.messages))
+            else:
+                messages.success(request, f"کالای «{product.name}» ثبت شد.")
+                return redirect("inventory:detail", pk=product.pk)
         return render(request, self.template_name, {"form": form})
 
 
-class OpeningStockCreateView(LoginRequiredMixin, View):
-    """"موجودی اولیه" button (REDESIGN_VISION 4.3) -- feeds
-    set_opening_stock (D-017: once per product, ever)."""
+class SellingPriceUpdateView(LoginRequiredMixin, View):
+    """POST-only: the per-product "قیمت فروش" form. update_selling_price
+    changes that one field only -- no invoice, layer or cost is touched."""
 
-    template_name = "inventory/opening_stock_new.html"
-
-    def get(self, request):
-        return render(request, self.template_name, {"form": OpeningStockForm()})
-
-    def post(self, request):
-        form = OpeningStockForm(request.POST)
-        error = None
+    def post(self, request, pk):
+        product = get_object_or_404(Product, pk=pk)
+        form = SellingPriceForm(request.POST)
         if form.is_valid():
             try:
-                set_opening_stock(
-                    form.cleaned_data["product"],
-                    form.cleaned_data["quantity"],
-                    request.user,
-                    form.cleaned_data["unit_price"],
-                )
+                update_selling_price(product, form.cleaned_data["default_selling_price"], request.user)
             except ValidationError as exc:
-                error = "؛ ".join(exc.messages)
+                messages.error(request, "؛ ".join(exc.messages))
             else:
-                messages.success(request, "موجودی اولیه ثبت شد.")
-                return redirect("inventory:list")
-        return render(request, self.template_name, {"form": form, "error": error})
-
-
-class AdjustmentCreateView(LoginRequiredMixin, View):
-    """"اصلاح موجودی" button (REDESIGN_VISION 4.3) -- feeds
-    record_adjustment. Any authenticated user may record one; the
-    mandatory reason note is the only safeguard (apps/shared/permissions.py:
-    only oversell-confirm and cancellation are superuser-gated)."""
-
-    template_name = "inventory/adjustment_new.html"
-
-    def get(self, request):
-        return render(request, self.template_name, {"form": AdjustmentForm()})
-
-    def post(self, request):
-        form = AdjustmentForm(request.POST)
-        error = None
-        if form.is_valid():
-            data = form.cleaned_data
-            try:
-                record_adjustment(
-                    data["product"],
-                    data["direction"],
-                    data["quantity"],
-                    request.user,
-                    data["note"],
-                    unit_price=data.get("unit_price"),
-                )
-            except ValidationError as exc:
-                error = "؛ ".join(exc.messages)
-            else:
-                messages.success(request, "اصلاح موجودی ثبت شد.")
-                return redirect("inventory:list")
-        return render(request, self.template_name, {"form": form, "error": error})
+                messages.success(request, "قیمت فروش بروزرسانی شد.")
+        else:
+            messages.error(request, "؛ ".join(error for errors in form.errors.values() for error in errors))
+        return redirect("inventory:detail", pk=pk)
 
 
 class InventoryDetailView(LoginRequiredMixin, DetailView):
     """
-    Per-product detail (REDESIGN_VISION 4.3): active layers, the existing
-    chronological movement history (ROADMAP 4.2) extended to show which
-    layer each row touched and a link back to its source invoice, and a
-    "تاریخچهٔ قیمت" tab reusing the existing HistoricalProduct (gap #7 --
-    no dedicated view needed).
+    Per-product detail (REDESIGN_VISION 4.3): cost vs. selling price side
+    by side (with the selling-price form), active layers, the chronological
+    movement history (ROADMAP 4.2) extended to show which layer each row
+    touched and a link back to its source invoice, and a "تاریخچهٔ قیمت"
+    section reusing the existing HistoricalProduct (gap #7).
     """
 
     model = Product
@@ -183,11 +155,16 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         context["active_layers"] = get_active_layers(product)
         context["stock"] = get_stock_map([product.pk]).get(product.pk, 0)
         context["value"] = get_inventory_value_map([product.pk]).get(product.pk, 0)
+        context["current_cost"] = get_current_cost_map([product.pk]).get(product.pk)
+        context["last_cost"] = get_last_known_cost_map([product.pk]).get(product.pk)
+        context["price_form"] = SellingPriceForm(
+            initial={"default_selling_price": product.default_selling_price},
+        )
 
         movements = (
             product.movements
             .select_related("purchase_item__invoice", "sale_item__invoice", "layer")
-            .prefetch_related("consumptions__layer", "sale_item__consumptions__layer")
+            .prefetch_related("sale_item__consumptions__layer")
             .order_by("-created_at")
         )
         context["movement_rows"] = [self._movement_row(m) for m in movements]
@@ -198,13 +175,12 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
     def _movement_row(movement):
         """Which layer(s) this row touched, and which invoice (if any) it
         traces back to -- one lookup shape per movement type, since each
-        type resolves its layer through a different relation."""
+        type resolves its layer through a different relation. ADJUSTMENT
+        rows are only ever a cancellation's reversal now (D-044); their
+        note names the cancelled invoice, and they carry no layer link."""
         layers = []
         invoice = None
-        if movement.movement_type in (
-            InventoryMovement.MovementType.OPENING,
-            InventoryMovement.MovementType.ADJUSTMENT_IN,
-        ):
+        if movement.movement_type == InventoryMovement.MovementType.OPENING:
             if movement.layer_id:
                 layers = [movement.layer]
         elif movement.movement_type == InventoryMovement.MovementType.PURCHASE:
@@ -214,6 +190,4 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         elif movement.movement_type == InventoryMovement.MovementType.SALE:
             layers = [c.layer for c in movement.sale_item.consumptions.all()]
             invoice = movement.sale_item.invoice
-        elif movement.movement_type == InventoryMovement.MovementType.ADJUSTMENT_OUT:
-            layers = [c.layer for c in movement.consumptions.all()]
         return {"movement": movement, "layers": layers, "invoice": invoice}

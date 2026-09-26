@@ -18,7 +18,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from simple_history.admin import SimpleHistoryAdmin
 
-from apps.shared.utils import format_rial
+from apps.shared.utils import format_toman
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 from .services import cancel_sale, confirm_sale
@@ -29,21 +29,9 @@ DRAFT_STATUS = "draft"
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
-# Shown under every Rial input; conversion is fixed (D-013), not live.
-TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
-
 def is_locked(invoice):
     """True when an invoice exists and is no longer a draft (D-014)."""
     return invoice is not None and invoice.status != DRAFT_STATUS
-
-
-class SaleItemForm(forms.ModelForm):
-    """Adds the Toman hint under the Rial price field (R 8)."""
-
-    class Meta:
-        model = SaleItem
-        fields = "__all__"
-        help_texts = {"unit_price": TOMAN_HINT}
 
 
 class SaleItemInline(admin.TabularInline):
@@ -55,7 +43,6 @@ class SaleItemInline(admin.TabularInline):
     """
 
     model = SaleItem
-    form = SaleItemForm
     extra = 1
     fields = ("product", "quantity", "unit_price", "line_total")
     readonly_fields = ("line_total",)
@@ -66,12 +53,12 @@ class SaleItemInline(admin.TabularInline):
         # Autofill unit_price from the product's default on selection (4.3b UX).
         js = ("sales/js/sale_item_autoprice.js",)
 
-    @admin.display(description="جمع ردیف (ریال)")
+    @admin.display(description="جمع ردیف (تومان)")
     def line_total(self, obj):
         # Unsaved row: quantity and price may still be empty.
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.quantity * obj.unit_price)
+        return format_toman(obj.quantity * obj.unit_price)
 
     def has_add_permission(self, request, obj=None):
         return not is_locked(obj) and super().has_add_permission(request, obj)
@@ -94,7 +81,6 @@ class SalesPaymentEntryForm(forms.ModelForm):
     class Meta:
         model = SalesPaymentEntry
         fields = "__all__"
-        help_texts = {"amount": TOMAN_HINT}
 
 
 class SalesPaymentEntryInline(admin.TabularInline):
@@ -123,20 +109,10 @@ class SalesPaymentEntryInline(admin.TabularInline):
         return not is_locked(obj) and super().has_delete_permission(request, obj)
 
 
-class SalesInvoiceForm(forms.ModelForm):
-    """Adds the Toman hint under the discount field (R 8)."""
-
-    class Meta:
-        model = SalesInvoice
-        fields = "__all__"
-        help_texts = {"discount_amount": TOMAN_HINT}
-
-
 @admin.register(SalesInvoice)
 class SalesInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
     """Sales invoices: draft entry in admin, confirmation via the service."""
 
-    form = SalesInvoiceForm
     list_display = (
         "invoice_number", "customer", "invoice_date",
         "status", "total_display", "payment_status_display",
@@ -173,17 +149,17 @@ class SalesInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
         # instead of one query per row.
         return super().get_queryset(request).prefetch_related("items")
 
-    @admin.display(description="جمع جزء (ریال)")
+    @admin.display(description="جمع جزء (تومان)")
     def subtotal_display(self, obj):
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.subtotal)
+        return format_toman(obj.subtotal)
 
-    @admin.display(description="جمع نهایی (ریال)")
+    @admin.display(description="جمع نهایی (تومان)")
     def total_display(self, obj):
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.total)
+        return format_toman(obj.total)
 
     @admin.display(description="وضعیت پرداخت")
     def payment_status_display(self, obj):

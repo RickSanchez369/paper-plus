@@ -2,10 +2,11 @@
 {% load paper %}
 
 {% comment %}
-New expense (REDESIGN_VISION 4.6): one-shot form -- date, person, reason,
-amount, bank account or cash, optional receipt, note -- feeds
-record_expense, which creates the matching Payment(OUT) atomically. No
-edit afterward; a mistake is corrected with cancel_expense instead.
+New expense (REDESIGN_VISION 4.6, D-045): one-shot form -- date, reason,
+amount, the account it was paid from (cash only as an explicit choice),
+optional receipt, note -- feeds record_expense, which creates the matching
+Payment(OUT) atomically. No edit afterward; a mistake is corrected with
+cancel_expense instead.
 {% endcomment %}
 
 {% block title %}هزینهٔ جدید{% endblock %}
@@ -23,6 +24,10 @@ edit afterward; a mistake is corrected with cancel_expense instead.
       {% for field in form %}
         {% include "shared/_field.html" with field=field %}
       {% endfor %}
+      <p class="field__hint">
+        حساب مورد نظر در فهرست نیست؟
+        <a href="{% url 'bank_accounts:new' %}">ثبت حساب بانکی جدید</a>
+      </p>
       <button type="submit" class="btn">ثبت هزینه</button>
     </form>
   </div>

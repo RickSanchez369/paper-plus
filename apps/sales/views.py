@@ -30,7 +30,7 @@ from apps.shared.permissions import is_privileged
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
 from .models import SalesInvoice
-from .services import cancel_sale, confirm_sale
+from .services import cancel_sale, confirm_sale, plan_full_payment
 
 
 class SalesListView(LoginRequiredMixin, TemplateView):
@@ -161,11 +161,16 @@ def _empty_forms():
 class SalesCreateView(LoginRequiredMixin, View):
     """
     The one-shot new-sale page (REDESIGN_VISION 4.1, non-negotiable #5):
-    invoice + items + payment split, submitted together, created and
-    confirmed in one transaction. A rejection at any point -- no items,
-    discount over subtotal, payment rows over the total, an oversell by a
+    invoice + items + payment, submitted together, created and confirmed
+    in one transaction. A rejection at any point -- no items, discount
+    over subtotal, payment rows over the total, an oversell by a
     non-superuser -- leaves nothing saved; the same page re-renders with
     the Persian error `confirm_sale` already raises.
+
+    Payment (D-046): in the default full-settlement mode the payment rows
+    are ignored entirely (hidden on the page, never validated) and one
+    row for the whole total is planned by `plan_full_payment`; in split
+    mode the typed rows are used as before, the rest staying credit.
     """
 
     template_name = "sales/new.html"
@@ -178,9 +183,10 @@ class SalesCreateView(LoginRequiredMixin, View):
         item_formset = SaleItemFormSet(request.POST, prefix="items")
         payment_formset = SalesPaymentEntryFormSet(request.POST, prefix="payments")
 
-        forms_valid = (
-            invoice_form.is_valid() and item_formset.is_valid() and payment_formset.is_valid()
-        )
+        forms_valid = invoice_form.is_valid() and item_formset.is_valid()
+        full_payment = forms_valid and invoice_form.is_full_payment
+        if forms_valid and not full_payment:
+            forms_valid = payment_formset.is_valid()
         error = None
         if forms_valid:
             try:
@@ -196,12 +202,15 @@ class SalesCreateView(LoginRequiredMixin, View):
                         item.invoice = invoice
                         item.save()
 
-                    for form in payment_formset:
-                        if not form.cleaned_data:
-                            continue
-                        entry = form.save(commit=False)
-                        entry.invoice = invoice
-                        entry.save()
+                    if full_payment:
+                        plan_full_payment(invoice, invoice_form.cleaned_data["received_into"])
+                    else:
+                        for form in payment_formset:
+                            if not form.cleaned_data:
+                                continue
+                            entry = form.save(commit=False)
+                            entry.invoice = invoice
+                            entry.save()
 
                     invoice, shortages = confirm_sale(invoice, request.user)
             except ValidationError as exc:

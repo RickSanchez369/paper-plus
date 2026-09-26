@@ -1,14 +1,16 @@
 /*
  * The new-purchase form's client side (REDESIGN_VISION 4.2). Mirrors
- * apps/sales/static/sales/js/sale_form.js almost exactly; the one real
- * difference is `pickProduct`: it sets the price field's *placeholder*
- * from the last known cost, never its value -- a purchase price is what
- * this purchase actually cost, not a default to accept silently.
+ * apps/sales/static/sales/js/sale_form.js almost exactly; the real
+ * differences are `pickProduct`, which sets the price field's
+ * *placeholder* from the last known cost, never its value -- a purchase
+ * price is what this purchase actually cost, not a default to accept
+ * silently -- and the "+ کالای جدید" dialog, whose success response puts
+ * the new product into the row that asked for it.
  */
 (function () {
   "use strict";
 
-  function formatRial(value) {
+  function formatToman(value) {
     var n = Math.max(0, Math.round(value || 0));
     var withCommas = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return withCommas.replace(/[0-9]/g, function (digit) {
@@ -48,11 +50,11 @@
       var price = intVal(row.querySelector('input[name$="-unit_price"]'));
       var lineTotal = qty * price;
       var totalCell = row.querySelector("[data-item-row-total]");
-      if (totalCell) totalCell.textContent = formatRial(lineTotal);
+      if (totalCell) totalCell.textContent = formatToman(lineTotal);
       total += lineTotal;
     });
 
-    setText("sale-total", formatRial(total));
+    setText("sale-total", formatToman(total));
     recomputeRemaining(total);
   }
 
@@ -61,7 +63,7 @@
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(function (row) {
       paid += intVal(row.querySelector('input[name$="-amount"]'));
     });
-    setText("sale-remaining", formatRial(Math.max(total - paid, 0)));
+    setText("sale-remaining", formatToman(Math.max(total - paid, 0)));
   }
 
   function currentTotal() {
@@ -78,21 +80,18 @@
     if (el) el.textContent = text;
   }
 
-  function pickProduct(button) {
-    var row = button.closest("[data-item-row]");
-    if (!row) return;
-
-    row.querySelector('input[name$="-product"]').value = button.dataset.id;
+  // `source` is a search-result button or the quick-product success
+  // element -- both carry the same data-id/name/stock(/last-cost) shape.
+  function fillRow(row, source) {
+    row.querySelector('input[name$="-product"]').value = source.dataset.id;
     var search = row.querySelector("[data-item-row-search]");
-    if (search) search.value = button.dataset.name;
+    if (search) search.value = source.dataset.name;
 
     var priceInput = row.querySelector('input[name$="-unit_price"]');
-    if (priceInput && button.dataset.lastCost) {
-      priceInput.placeholder = button.dataset.lastCost;
-    }
+    if (priceInput) priceInput.placeholder = source.dataset.lastCost || "";
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
-    if (stockLabel) stockLabel.textContent = "موجودی: " + button.dataset.stock;
+    if (stockLabel) stockLabel.textContent = "موجودی: " + source.dataset.stock;
 
     var results = row.querySelector(".item-row__results");
     if (results) results.innerHTML = "";
@@ -100,10 +99,85 @@
     recomputeInvoice();
   }
 
+  function pickProduct(button) {
+    var row = button.closest("[data-item-row]");
+    if (row) fillRow(row, button);
+  }
+
+  // ---- "+ کالای جدید" dialog -------------------------------------------
+  // The row that opened the dialog (from its "not found" result), if any;
+  // otherwise the new product goes into the first empty row, or a new one.
+  var quickProductRow = null;
+
+  function openQuickProduct(trigger) {
+    var dialog = document.getElementById("quick-product-dialog");
+    var template = document.getElementById("quick-product-form-template");
+    if (!dialog || !template) return;
+    quickProductRow = trigger.closest("[data-item-row]");
+    var body = dialog.querySelector("[data-quick-product-body]");
+    // A fresh form every time, so a previous success/error never lingers.
+    body.innerHTML = template.innerHTML;
+    if (window.htmx) window.htmx.process(body);
+    dialog.showModal();
+    var first = body.querySelector("input:not([type=hidden])");
+    if (first) first.focus();
+  }
+
+  function targetRowForNewProduct() {
+    if (quickProductRow && document.body.contains(quickProductRow)) return quickProductRow;
+    var empty = null;
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
+      if (!empty && !row.querySelector('input[name$="-product"]').value) empty = row;
+    });
+    return empty || addRow("item-rows", "item-row-template", "items");
+  }
+
+  // QuickProductCreateView answers a rejected form (duplicate SKU, missing
+  // price) with 422 + the form and its Persian errors; htmx 2 does not swap
+  // 4xx responses by default, so without this the dialog would just sit
+  // there silently. Scoped to this dialog only.
+  document.addEventListener("htmx:beforeSwap", function (event) {
+    var dialog = document.getElementById("quick-product-dialog");
+    if (event.detail.xhr.status === 422 && dialog && dialog.contains(event.detail.target)) {
+      event.detail.shouldSwap = true;
+      event.detail.isError = false;
+    }
+  });
+
+  // htmx fires htmx:load on each element it swaps in; the success partial
+  // is the one carrying data-quick-product-created.
+  document.addEventListener("htmx:load", function (event) {
+    var created = event.target.closest && event.target.closest("[data-quick-product-created]");
+    if (!created) return;
+    var row = targetRowForNewProduct();
+    quickProductRow = null;
+    // Close first: closing a modal dialog hands focus back to whatever
+    // opened it, which would steal it from the quantity box below.
+    var dialog = document.getElementById("quick-product-dialog");
+    if (dialog && dialog.open) dialog.close();
+    if (row) {
+      fillRow(row, created);
+      var qty = row.querySelector('input[name$="-quantity"]');
+      if (qty) qty.focus();
+    }
+  });
+
   document.addEventListener("click", function (event) {
     var pick = event.target.closest("[data-item-row-pick]");
     if (pick) {
       pickProduct(pick);
+      return;
+    }
+
+    var openQuick = event.target.closest("[data-open-quick-product]");
+    if (openQuick) {
+      openQuickProduct(openQuick);
+      return;
+    }
+
+    if (event.target.closest("[data-close-quick-product]")) {
+      var dialog = document.getElementById("quick-product-dialog");
+      if (dialog) dialog.close();
       return;
     }
 

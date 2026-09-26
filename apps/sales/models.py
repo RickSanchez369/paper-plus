@@ -63,7 +63,7 @@ class SalesInvoice(BaseModel):
     )
     discount_amount = models.BigIntegerField(
         default=0,
-        verbose_name="تخفیف (ریال)",  # invoice-level only for now; line-level discount is a later step (R 9)
+        verbose_name="تخفیف (تومان)",  # invoice-level only for now; line-level discount is a later step (R 9)
     )
     payment_method = models.CharField(
         max_length=20,
@@ -110,7 +110,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def subtotal(self):
-        """Sum of line totals, before discount, in Rial (R 9)."""
+        """Sum of line totals, before discount, in Toman (R 9)."""
         return sum(item.line_total for item in self.items.all())
 
     @property
@@ -120,7 +120,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def total(self):
-        """Subtotal minus the invoice-level discount, in Rial (R 9)."""
+        """Subtotal minus the invoice-level discount, in Toman (R 9)."""
         return self.subtotal - self.discount_amount
 
     class PaymentStatus(models.TextChoices):
@@ -130,7 +130,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def paid_amount(self):
-        """Sum of PaymentAllocation rows against this invoice, in Rial (4.3)."""
+        """Sum of PaymentAllocation rows against this invoice, in Toman (4.3)."""
         return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
 
     @property
@@ -151,13 +151,13 @@ class SalesInvoice(BaseModel):
 
     @property
     def cost_of_goods(self):
-        """Real FIFO cost of everything on this invoice, in Rial."""
+        """Real FIFO cost of everything on this invoice, in Toman."""
         return sum(item.cost_of_goods for item in self.items.all())
 
     @property
     def profit(self):
         """
-        Realised profit: invoice total minus real cost of goods, in Rial.
+        Realised profit: invoice total minus real cost of goods, in Toman.
 
         The discount comes off the total, so it comes out of profit -- it
         is a price reduction, not a cost. Zero for a draft or cancelled
@@ -193,7 +193,7 @@ class SaleItem(BaseModel):
     )
     unit_price = models.BigIntegerField(
         blank=True,  # admin may leave it empty; filled from the product default (R 7, 17C)
-        verbose_name="قیمت واحد (ریال)",  # whole Rial (D-013)
+        verbose_name="قیمت واحد (تومان)",  # whole Toman (D-043)
     )
 
     class Meta:
@@ -239,7 +239,7 @@ class SaleItem(BaseModel):
     @property
     def cost_of_goods(self):
         """
-        What these units actually cost, in Rial, from the FIFO layers this
+        What these units actually cost, in Toman, from the FIFO layers this
         line drew from (REDESIGN_VISION 3). Derived, never stored (D-025):
         it is the sum over this line's InventoryConsumption rows of
         quantity x that layer's own unit_cost, so a cancelled line -- whose
@@ -272,7 +272,7 @@ class SaleItem(BaseModel):
     @property
     def profit(self):
         """
-        Realised profit: line total minus its real FIFO cost, in Rial.
+        Realised profit: line total minus its real FIFO cost, in Toman.
 
         Zero unless the invoice is confirmed. A draft has not sold anything
         yet, and a cancelled line's consumptions net back to zero cost --
@@ -316,7 +316,7 @@ class SalesPaymentEntry(BaseModel):
         verbose_name="روش",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
+        verbose_name="مبلغ (تومان)",
     )
     bank_account = models.ForeignKey(
         "payments.BankAccount",

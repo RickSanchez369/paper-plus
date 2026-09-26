@@ -11,8 +11,11 @@ class InventoryMovement(BaseModel):
     """
     Append-only ledger of stock changes. The single source of truth for stock.
 
-    Rows are never updated or deleted. A mistake is corrected by adding a
-    compensating ADJUSTMENT movement, so the history stays auditable.
+    Rows are never updated or deleted. Stock changes through documents
+    only (D-044): opening stock once, at product creation; a confirmed
+    purchase or sale; and the ADJUSTMENT rows that cancel_purchase /
+    cancel_sale write to reverse one. There is no manual adjustment path --
+    ADJUSTMENT_IN/OUT exist solely for those system reversals.
     quantity is always > 0; direction comes from movement_type (D-012).
     """
 
@@ -20,8 +23,8 @@ class InventoryMovement(BaseModel):
         OPENING = "opening", "موجودی اولیه"
         PURCHASE = "purchase", "خرید"
         SALE = "sale", "فروش"
-        ADJUSTMENT_IN = "adjustment_in", "اصلاح - افزایش"
-        ADJUSTMENT_OUT = "adjustment_out", "اصلاح - کاهش"
+        ADJUSTMENT_IN = "adjustment_in", "برگشت لغو فاکتور - افزایش"  # cancel_sale only (D-044)
+        ADJUSTMENT_OUT = "adjustment_out", "برگشت لغو فاکتور - کاهش"  # cancel_purchase only (D-044)
 
     # movement types that increase stock; everything else decreases it
     INFLOW_TYPES = (
@@ -47,7 +50,7 @@ class InventoryMovement(BaseModel):
     unit_price = models.BigIntegerField(
         null=True,
         blank=True,  # required in practice for every type (2.9); nullable here only
-        verbose_name="قیمت واحد (ریال)",  # because a CHECK cannot express "required per type"
+        verbose_name="قیمت واحد (تومان)",  # because a CHECK cannot express "required per type"
     )
     purchase_item = models.ForeignKey(
         "purchasing.PurchaseItem",
@@ -69,10 +72,10 @@ class InventoryMovement(BaseModel):
         "InventoryLayer",
         on_delete=models.PROTECT,
         null=True,
-        blank=True,  # set only for opening/adjustment_in, the two types with no invoice
+        blank=True,  # set only for opening, the one layer-creating type with no invoice
         related_name="+",  # the layer already links back via InventoryLayer.purchase_item / consumptions
         verbose_name="لایهٔ ایجادشده",
-        help_text="فقط برای موجودی اولیه و اصلاح-افزایش؛ نوع‌های دیگر لایه را از طریق فاکتور یا مصرف پیدا می‌کنند.",
+        help_text="فقط برای موجودی اولیه؛ نوع‌های دیگر لایه را از طریق فاکتور یا مصرف پیدا می‌کنند.",
     )
     note = models.TextField(
         blank=True,
@@ -150,7 +153,6 @@ class InventoryLayer(BaseModel):
     class Source(models.TextChoices):
         OPENING = "opening_stock", "موجودی اولیه"
         PURCHASE = "purchase_item", "قلم فاکتور خرید"
-        ADJUSTMENT = "adjustment", "اصلاح موجودی"
 
     product = models.ForeignKey(
         Product,
@@ -178,7 +180,7 @@ class InventoryLayer(BaseModel):
         verbose_name="مانده",
     )
     unit_cost = models.BigIntegerField(
-        verbose_name="بهای واحد (ریال)",
+        verbose_name="بهای واحد (تومان)",
     )
     cancelled_at = models.DateTimeField(
         null=True,
@@ -218,12 +220,11 @@ class InventoryLayer(BaseModel):
             ),
             models.CheckConstraint(
                 # Each layer's source must match its item reference, mirroring
-                # InventoryMovement's own item-reference CHECK. opening_stock
-                # and adjustment both carry no purchase item -- neither has an
-                # invoice line to point at.
+                # InventoryMovement's own item-reference CHECK. An opening-stock
+                # layer has no invoice line to point at.
                 condition=(
                     models.Q(source="purchase_item", purchase_item__isnull=False)
-                    | models.Q(source__in=["opening_stock", "adjustment"], purchase_item__isnull=True)
+                    | models.Q(source="opening_stock", purchase_item__isnull=True)
                 ),
                 name="inventory_layer_source_matches_item",
             ),
@@ -239,16 +240,15 @@ class InventoryLayer(BaseModel):
 
     @property
     def remaining_value(self):
-        """Rial still sitting in this layer."""
+        """Toman still sitting in this layer."""
         return self.quantity_remaining * self.unit_cost
 
 
 class InventoryConsumption(BaseModel):
     """
-    Exactly how much of one layer one sale item -- or one manual
-    adjustment_out movement -- took (REDESIGN_VISION 4.3: a manual
-    decrease has to draw FIFO layers exactly like a sale does, or layer
-    totals and movement totals diverge, D-036).
+    Exactly how much of one layer one sale item took (D-036). A sale is the
+    only thing that draws FIFO layers down -- the manual adjustment_out
+    that once did too is gone (D-044).
 
     Append-only, like every other ledger here (D-012): a cancellation does
     not delete or edit these rows, it adds an opposite one with a negative
@@ -261,18 +261,8 @@ class InventoryConsumption(BaseModel):
     sale_item = models.ForeignKey(
         "sales.SaleItem",
         on_delete=models.PROTECT,
-        null=True,
-        blank=True,  # set for a sale's draw; movement is set for an adjustment's (CHECK: exactly one)
         related_name="consumptions",
         verbose_name="ردیف فاکتور فروش",
-    )
-    movement = models.ForeignKey(
-        InventoryMovement,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="consumptions",
-        verbose_name="حرکت اصلاح موجودی",
     )
     layer = models.ForeignKey(
         InventoryLayer,
@@ -300,7 +290,6 @@ class InventoryConsumption(BaseModel):
         ordering = ["created_at", "id"]
         indexes = [
             models.Index(fields=["sale_item"]),
-            models.Index(fields=["movement"]),
             models.Index(fields=["layer"]),
         ]
         constraints = [
@@ -310,22 +299,12 @@ class InventoryConsumption(BaseModel):
                 condition=~models.Q(quantity=0),
                 name="inventory_consumption_quantity_not_zero",
             ),
-            models.CheckConstraint(
-                # A draw belongs to exactly one source: a sale's line, or a
-                # manual adjustment's movement -- never both, never neither.
-                condition=(
-                    models.Q(sale_item__isnull=False, movement__isnull=True)
-                    | models.Q(sale_item__isnull=True, movement__isnull=False)
-                ),
-                name="inventory_consumption_exactly_one_source",
-            ),
         ]
 
     def __str__(self):
-        source = self.sale_item or self.movement
-        return f"{source} ← {self.layer} ({self.quantity})"
+        return f"{self.sale_item} ← {self.layer} ({self.quantity})"
 
     @property
     def cost(self):
-        """Rial this row accounts for, at the layer's own cost."""
+        """Toman this row accounts for, at the layer's own cost."""
         return self.quantity * self.layer.unit_cost

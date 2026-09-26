@@ -193,6 +193,32 @@ def confirm_sale(invoice, user):
     return locked_invoice, shortages
 
 
+def plan_full_payment(invoice, bank_account):
+    """
+    The default settlement (D-046): the customer paid the whole invoice,
+    into `bank_account` (None = cash, chosen explicitly on the form).
+
+    Adds the one payment-entry row that says so, on a draft invoice whose
+    items are already saved -- confirm_sale then books it exactly like
+    any row typed by hand (a real Payment, allocated to this invoice), so
+    there is no second way money gets recorded. The amount is the
+    server's own `invoice.total`, never a figure from the browser.
+    Nothing is planned when the total is not positive; confirm_sale
+    rejects a discount above the subtotal on its own.
+
+    Must be called inside the caller's transaction, before confirm_sale.
+    """
+    total = invoice.total
+    if total <= 0:
+        return None
+    return SalesPaymentEntry.objects.create(
+        invoice=invoice,
+        method=SalesPaymentEntry.Method.CASH if bank_account is None else SalesPaymentEntry.Method.BANK_TRANSFER,
+        amount=total,
+        bank_account=bank_account,
+    )
+
+
 @transaction.atomic
 def cancel_sale(invoice, user):
     """

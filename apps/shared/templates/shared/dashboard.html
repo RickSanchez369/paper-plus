@@ -20,42 +20,42 @@ the latest global feed (row 4).
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">فروش</span>
-    <span class="stat-card__value num">{{ kpi.today.sales|rial_toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.sales|rial_toman }}</span>
+    <span class="stat-card__value num">{{ kpi.today.sales|toman }}</span>
+    <span class="field__hint">امروز · این ماه: {{ kpi.month.sales|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">خرید</span>
-    <span class="stat-card__value num">{{ kpi.today.purchases|rial_toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.purchases|rial_toman }}</span>
+    <span class="stat-card__value num">{{ kpi.today.purchases|toman }}</span>
+    <span class="field__hint">امروز · این ماه: {{ kpi.month.purchases|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">هزینه‌ها</span>
-    <span class="stat-card__value num">{{ kpi.today.expenses|rial_toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.expenses|rial_toman }}</span>
+    <span class="stat-card__value num">{{ kpi.today.expenses|toman }}</span>
+    <span class="field__hint">امروز · این ماه: {{ kpi.month.expenses|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">سود خالص</span>
-    <span class="stat-card__value num">{{ kpi.today.net_profit|rial_toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.net_profit|rial_toman }}</span>
+    <span class="stat-card__value num">{{ kpi.today.net_profit|toman }}</span>
+    <span class="field__hint">امروز · این ماه: {{ kpi.month.net_profit|toman }}</span>
   </div>
 </div>
 
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">مطالبات باز</span>
-    <a href="{{ totals.receivables.url }}" class="stat-card__value num">{{ totals.receivables.value|rial_toman }}</a>
+    <a href="{{ totals.receivables.url }}" class="stat-card__value num">{{ totals.receivables.value|toman }}</a>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">بدهی باز</span>
-    <a href="{{ totals.payables.url }}" class="stat-card__value num">{{ totals.payables.value|rial_toman }}</a>
+    <a href="{{ totals.payables.url }}" class="stat-card__value num">{{ totals.payables.value|toman }}</a>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">جمع مانده حساب‌های بانکی</span>
-    <a href="{{ totals.bank_balance.url }}" class="stat-card__value num">{{ totals.bank_balance.value|rial_toman }}</a>
+    <a href="{{ totals.bank_balance.url }}" class="stat-card__value num">{{ totals.bank_balance.value|toman }}</a>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">ارزش موجودی انبار</span>
-    <a href="{{ totals.inventory_value.url }}" class="stat-card__value num">{{ totals.inventory_value.value|rial_toman }}</a>
+    <a href="{{ totals.inventory_value.url }}" class="stat-card__value num">{{ totals.inventory_value.value|toman }}</a>
   </div>
 </div>
 
@@ -72,7 +72,7 @@ the latest global feed (row 4).
             <tr>
               <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.customer|default:cheque.supplier }}</a></td>
               <td class="num">{{ cheque.due_date|jalali }}</td>
-              <td class="num">{{ cheque.amount|rial_toman }}</td>
+              <td class="num">{{ cheque.amount|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -103,7 +103,7 @@ the latest global feed (row 4).
               <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
               <td>{{ invoice.customer.name }}</td>
               <td class="num">{{ invoice.invoice_date|jalali }}</td>
-              <td class="num">{{ invoice.outstanding|rial_toman }}</td>
+              <td class="num">{{ invoice.outstanding|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>

@@ -15,8 +15,10 @@ exists for.
 from django.urls import path
 
 from .views import (
+    BankAccountCreateView,
     BankAccountDetailView,
     BankAccountListView,
+    BankAccountUpdateView,
     ChequeActionView,
     ChequeCompleteView,
     ChequeDetailView,
@@ -51,7 +53,9 @@ cheques_patterns = ([
 
 bank_accounts_patterns = ([
     path("", BankAccountListView.as_view(), name="list"),
+    path("new/", BankAccountCreateView.as_view(), name="new"),
     path("<uuid:pk>/", BankAccountDetailView.as_view(), name="detail"),
+    path("<uuid:pk>/edit/", BankAccountUpdateView.as_view(), name="edit"),
 ], "bank_accounts")
 
 expenses_patterns = ([

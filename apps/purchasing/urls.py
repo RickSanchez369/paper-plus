@@ -13,8 +13,10 @@ from .views import (
     PurchasingListView,
     QuickProductCreateView,
     QuickSupplierCreateView,
+    SupplierCreateView,
     SupplierDetailView,
     SupplierListView,
+    SupplierUpdateView,
 )
 
 app_name = "purchasing"
@@ -30,5 +32,7 @@ urlpatterns = [
     path("<uuid:pk>/print/", PurchasePrintView.as_view(), name="print"),
     # A sub-section of Purchasing, not its own nav item (Sina's call, 4.2).
     path("suppliers/", SupplierListView.as_view(), name="suppliers"),
+    path("suppliers/new/", SupplierCreateView.as_view(), name="supplier_new"),
     path("suppliers/<uuid:pk>/", SupplierDetailView.as_view(), name="supplier_detail"),
+    path("suppliers/<uuid:pk>/edit/", SupplierUpdateView.as_view(), name="supplier_edit"),
 ]

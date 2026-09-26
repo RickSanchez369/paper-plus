@@ -66,21 +66,21 @@ cancel_sale -- D-023, this view never writes stock/money itself).
               {% endif %}
             </td>
             <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|rial_toman }}</td>
-            <td class="num">{{ item.line_total|rial_toman }}</td>
-            <td class="num">{{ item.cost_of_goods|rial_toman }}</td>
-            <td class="num">{{ item.profit|rial_toman }}</td>
+            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item.line_total|toman }}</td>
+            <td class="num">{{ item.cost_of_goods|toman }}</td>
+            <td class="num">{{ item.profit|toman }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
     <div class="sale-form__totals">
-      <div><span>جمع جزء</span><span class="num">{{ invoice.subtotal|rial_toman }}</span></div>
-      <div><span>تخفیف</span><span class="num">{{ invoice.discount_amount|rial_toman }}</span></div>
-      <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total|rial_toman }}</span></div>
+      <div><span>جمع جزء</span><span class="num">{{ invoice.subtotal|toman }}</span></div>
+      <div><span>تخفیف</span><span class="num">{{ invoice.discount_amount|toman }}</span></div>
+      <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total|toman }}</span></div>
       <div class="sale-form__totals-final sale-form__totals-profit">
-        <span>سود فاکتور</span><span class="num">{{ invoice.profit|rial_toman }}</span>
+        <span>سود فاکتور</span><span class="num">{{ invoice.profit|toman }}</span>
       </div>
     </div>
   </div>
@@ -93,7 +93,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
       <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
         {{ invoice.payment_status.label }}
       </span>
-      — پرداخت‌شده: <span class="num">{{ invoice.paid_amount|rial_toman }}</span>
+      — پرداخت‌شده: <span class="num">{{ invoice.paid_amount|toman }}</span>
     </p>
 
     {% if invoice.payment_allocations.all %}
@@ -109,7 +109,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
           {% for allocation in invoice.payment_allocations.all %}
             <tr>
               <td class="num">{{ allocation.payment.payment_date|jalali }}</td>
-              <td class="num">{{ allocation.amount|rial_toman }}</td>
+              <td class="num">{{ allocation.amount|toman }}</td>
               <td>
                 {% if allocation.payment.cheque %}چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}
                 {% elif allocation.payment.bank_account %}{{ allocation.payment.bank_account.name }}
@@ -141,7 +141,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
               <td>{{ cheque.cheque_number|default:"—" }}</td>
               <td>{{ cheque.bank_name|default:"—" }}</td>
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
-              <td class="num">{{ cheque.amount|rial_toman }}</td>
+              <td class="num">{{ cheque.amount|toman }}</td>
               <td>
                 <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
                   {{ cheque.get_status_display }}

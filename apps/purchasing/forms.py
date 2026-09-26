@@ -19,8 +19,6 @@ from apps.shared.forms import JalaliDateField
 
 from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
 
-TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
-
 
 class PurchasingFilterForm(forms.Form):
     """Mirrors sales.forms.SalesFilterForm; see there for why the date
@@ -38,8 +36,8 @@ class PurchasingFilterForm(forms.Form):
         queryset=Product.objects.filter(is_active=True).order_by("name"),
         empty_label="— همهٔ کالاها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (ریال)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (ریال)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
 
     def clean(self):
         cleaned = super().clean()
@@ -95,7 +93,7 @@ class PurchaseItemForm(forms.ModelForm):
     )
     unit_price = forms.IntegerField(
         min_value=0,
-        label="قیمت واحد (ریال)",
+        label="قیمت واحد (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"required": "قیمت واحد الزامی است.", "min_value": "قیمت نمی‌تواند منفی باشد."},
     )
@@ -152,7 +150,7 @@ class PurchasePaymentEntryForm(forms.ModelForm):
     )
     amount = forms.IntegerField(
         min_value=1,
-        label="مبلغ (ریال)",
+        label="مبلغ (تومان)",
         widget=forms.NumberInput(
             attrs={"class": "field__control payment-row__amount", "dir": "ltr", "inputmode": "numeric"}
         ),
@@ -167,7 +165,6 @@ class PurchasePaymentEntryForm(forms.ModelForm):
             "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
         }
-        help_texts = {"amount": TOMAN_HINT}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -32,7 +32,14 @@ from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.permissions import is_privileged
 
-from .forms import ChequeCompletionForm, ChequeFilterForm, ExpenseFilterForm, ExpenseForm, RecordPaymentForm
+from .forms import (
+    BankAccountForm,
+    ChequeCompletionForm,
+    ChequeFilterForm,
+    ExpenseFilterForm,
+    ExpenseForm,
+    RecordPaymentForm,
+)
 from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation
 from .selectors import (
     get_bank_account_balance,
@@ -310,6 +317,46 @@ class BankAccountListView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class BankAccountCreateView(LoginRequiredMixin, View):
+    """"+ حساب بانکی جدید" -- a full page, like Inventory's new product:
+    not mid-transaction, so nothing to keep alive around it. An account
+    is descriptive data, not money, so a plain save is enough; its
+    balance only ever comes from the Payment ledger."""
+
+    template_name = "payments/bank_account_form.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": BankAccountForm()})
+
+    def post(self, request):
+        form = BankAccountForm(request.POST)
+        if form.is_valid():
+            account = form.save()
+            messages.success(request, f"حساب «{account.name}» ثبت شد.")
+            return redirect("bank_accounts:list")
+        return render(request, self.template_name, {"form": form})
+
+
+class BankAccountUpdateView(LoginRequiredMixin, View):
+    """Fix a name/owner/number typo. Same form as create; the ledger is
+    untouched -- every Payment keeps pointing at the same row."""
+
+    template_name = "payments/bank_account_form.html"
+
+    def get(self, request, pk):
+        account = get_object_or_404(BankAccount, pk=pk)
+        return render(request, self.template_name, {"form": BankAccountForm(instance=account), "account": account})
+
+    def post(self, request, pk):
+        account = get_object_or_404(BankAccount, pk=pk)
+        form = BankAccountForm(request.POST, instance=account)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "مشخصات حساب بروزرسانی شد.")
+            return redirect("bank_accounts:detail", pk=pk)
+        return render(request, self.template_name, {"form": form, "account": account})
+
+
 class BankAccountDetailView(LoginRequiredMixin, DetailView):
     """
     Full ledger for one account (REDESIGN_VISION 4.5): every Payment
@@ -369,7 +416,7 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
     """
     Expenses (REDESIGN_VISION 4.6): newest-first, cards for today's and
     this month's totals (cancelled expenses excluded from both --
-    `Expense.counts_toward_totals`), free-text search over person/reason,
+    `Expense.counts_toward_totals`), free-text search over reason/note,
     plus the shared date-range picker and structured filters (bank
     account, amount range). The table itself still lists a cancelled
     expense, same "history, not hidden" rule as a cancelled invoice.
@@ -391,7 +438,7 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
         if filter_form.is_valid():
             data = filter_form.cleaned_data
             if data.get("q"):
-                qs = qs.filter(Q(related_person__icontains=data["q"]) | Q(reason__icontains=data["q"]))
+                qs = qs.filter(Q(reason__icontains=data["q"]) | Q(note__icontains=data["q"]))
             if data.get("bank_account"):
                 qs = qs.filter(bank_account=data["bank_account"])
             if data.get("amount_min") is not None:

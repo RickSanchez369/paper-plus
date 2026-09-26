@@ -49,7 +49,7 @@ status, direction and due-date range.
                 <td>{{ cheque.customer|default:cheque.supplier|default:"—" }}</td>
                 <td>{{ cheque.bank_name|default:"—" }}</td>
                 <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
-                <td class="num">{{ cheque.amount|rial_toman }}</td>
+                <td class="num">{{ cheque.amount|toman }}</td>
                 <td>
                   {% if cheque.sales_invoice %}
                     <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_number }}</a>

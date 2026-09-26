@@ -79,6 +79,34 @@ class CustomerForm(forms.ModelForm):
         }
 
 
+class SupplierForm(forms.ModelForm):
+    """Full create/edit form for the Suppliers sub-section -- the supplier
+    counterpart of CustomerForm, so a supplier can be added from its own
+    list page instead of only mid-purchase. Same fields as the quick form
+    plus is_active, which only makes sense once the supplier exists (the
+    create view leaves it out)."""
+
+    class Meta:
+        model = Supplier
+        fields = ("name", "phone", "address", "note", "is_active")
+        widgets = {
+            **_WIDGETS,
+            "is_active": forms.CheckboxInput(),
+        }
+        error_messages = {
+            "name": {
+                "unique": "تأمین‌کنندهٔ دیگری با همین نام ثبت شده است.",
+                "required": "نام تأمین‌کننده الزامی است.",
+            },
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance._state.adding:
+            # A new supplier is active by definition; deactivating is an edit.
+            del self.fields["is_active"]
+
+
 class CustomerFilterForm(forms.Form):
     """Customers list filters (REDESIGN_VISION 4.7): free-text search over
     name/phone, account status (owes/settled, derived from

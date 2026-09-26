@@ -23,11 +23,11 @@ profit card -- profit is sales-only.
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">خرید امروز</span>
-    <span class="stat-card__value num">{{ cards.today_total|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">خرید این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_total|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">فاکتورهای باز (نیمه/نسیه)</span>
@@ -69,7 +69,7 @@ profit card -- profit is sales-only.
                 <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
                 <td class="num">{{ invoice.invoice_date|jalali }}</td>
                 <td>{{ invoice.supplier.name }}</td>
-                <td class="num">{{ invoice.total_amount|rial_toman }}</td>
+                <td class="num">{{ invoice.total_amount|toman }}</td>
                 <td>
                   <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
                     {{ invoice.payment_status.label }}

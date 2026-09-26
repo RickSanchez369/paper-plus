@@ -1,0 +1,32 @@
+{% extends "shared/base.html" %}
+
+{% comment %}
+"+ تأمین‌کنندهٔ جدید" as a full page on the Suppliers sub-section
+(SupplierCreateView) -- the same Supplier model and validation the
+purchase form's inline quick-add uses, not a parallel path.
+{% endcomment %}
+
+{% block title %}تأمین‌کنندهٔ جدید{% endblock %}
+{% block header %}تأمین‌کنندهٔ جدید{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'purchasing:list' %}">خرید</a> /
+  <a href="{% url 'purchasing:suppliers' %}">تأمین‌کنندگان</a> /
+  تأمین‌کنندهٔ جدید
+</p>
+
+<div class="card">
+  <div class="card__body">
+    <h1>ثبت تأمین‌کنندهٔ جدید</h1>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=form %}
+      {% for field in form %}
+        {% include "shared/_field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="btn">ثبت تأمین‌کننده</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

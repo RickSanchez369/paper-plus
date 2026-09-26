@@ -2,9 +2,11 @@
 {% load paper %}
 
 {% comment %}
-Per-product detail (REDESIGN_VISION 4.3): active FIFO layers, the
-chronological movement history (ROADMAP 4.2) extended to show which
-layer each row touched and a link back to its source invoice, and a
+Per-product detail (REDESIGN_VISION 4.3): purchase cost vs. current
+selling price side by side, with the selling-price form (only the price
+changes -- no past invoice, layer or cost does); active FIFO layers; the
+chronological movement history (ROADMAP 4.2) extended to show which layer
+each row touched and a link back to its source invoice; and a
 "تاریخچهٔ قیمت" section reusing the existing HistoricalProduct (gap #7).
 {% endcomment %}
 
@@ -20,11 +22,43 @@ layer each row touched and a link back to its source invoice, and a
       <h1>{{ product.name }} ({{ product.sku }})</h1>
       <p class="page-head__lede">
         واحد: {{ product.unit }} ·
-        موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|fa_number }}</strong> ·
-        ارزش موجودی: <strong class="num">{{ value|rial_toman }}</strong> ·
-        قیمت فروش پیش‌فرض: <span class="num">{{ product.default_selling_price|rial_toman }}</span>
+        موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|fa_number }}</strong>
       </p>
     </div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">بهای خرید جاری (FIFO)</span>
+    <span class="stat-card__value num">{% if current_cost is not None %}{{ current_cost|toman }}{% else %}—{% endif %}</span>
+    <span class="field__hint">بهای قدیمی‌ترین لایهٔ فعال؛ فروش بعدی از همین مصرف می‌کند.</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">آخرین قیمت خرید</span>
+    <span class="stat-card__value num">{% if last_cost is not None %}{{ last_cost|toman }}{% else %}—{% endif %}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">قیمت فروش فعلی</span>
+    <span class="stat-card__value num">{{ product.default_selling_price|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">ارزش موجودی (به بهای خرید)</span>
+    <span class="stat-card__value num">{{ value|toman }}</span>
+  </div>
+</div>
+
+<div class="card" id="selling-price">
+  <div class="card__body">
+    <h2>تغییر قیمت فروش</h2>
+    <p class="field__hint">
+      فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
+    </p>
+    <form method="post" action="{% url 'inventory:selling_price' product.pk %}" novalidate>
+      {% csrf_token %}
+      {% include "shared/_field.html" with field=price_form.default_selling_price %}
+      <button type="submit" class="btn">ذخیرهٔ قیمت فروش</button>
+    </form>
   </div>
 </div>
 
@@ -47,9 +81,9 @@ layer each row touched and a link back to its source invoice, and a
             <tr>
               <td>{{ layer.get_source_display }}</td>
               <td class="num">{{ layer.created_at|jalali }}</td>
-              <td class="num">{{ layer.unit_cost|rial_toman }}</td>
+              <td class="num">{{ layer.unit_cost|toman }}</td>
               <td class="num">{{ layer.quantity_remaining|fa_number }}</td>
-              <td class="num">{{ layer.remaining_value|rial_toman }}</td>
+              <td class="num">{{ layer.remaining_value|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -83,10 +117,10 @@ layer each row touched and a link back to its source invoice, and a
               <td class="num">{{ row.movement.created_at|jalali_at }}</td>
               <td>{{ row.movement.get_movement_type_display }}</td>
               <td class="num">{{ row.movement.signed_quantity|fa_number }}</td>
-              <td class="num">{{ row.movement.unit_price|rial_toman|default:"—" }}</td>
+              <td class="num">{{ row.movement.unit_price|toman|default:"—" }}</td>
               <td class="num">
                 {% if row.layers %}
-                  {% for layer in row.layers %}{{ layer.unit_cost|rial_toman }}{% if not forloop.last %}، {% endif %}{% endfor %}
+                  {% for layer in row.layers %}{{ layer.unit_cost|toman }}{% if not forloop.last %}، {% endif %}{% endfor %}
                 {% else %}—{% endif %}
               </td>
               <td>
@@ -128,7 +162,7 @@ layer each row touched and a link back to its source invoice, and a
             {% for record in price_history %}
               <tr>
                 <td class="num">{{ record.history_date|jalali_at }}</td>
-                <td class="num">{{ record.default_selling_price|rial_toman }}</td>
+                <td class="num">{{ record.default_selling_price|toman }}</td>
                 <td>{{ record.get_history_type_display }}</td>
                 <td>
                   {% if record.history_user %}{{ record.history_user.get_full_name|default:record.history_user.phone }}{% else %}—{% endif %}

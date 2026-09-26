@@ -35,7 +35,7 @@ balance are simply absent, not shown as "settled".
               <tr>
                 <td>{{ row.customer.name }}</td>
                 <td class="num">{{ row.customer.phone|default:"—" }}</td>
-                <td class="num">{{ row.outstanding|rial_toman }}</td>
+                <td class="num">{{ row.outstanding|toman }}</td>
                 <td>
                   <details class="quick-party-disclosure">
                     <summary class="btn btn--quiet">ثبت پرداخت</summary>

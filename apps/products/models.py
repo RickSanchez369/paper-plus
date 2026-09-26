@@ -41,7 +41,7 @@ class Product(BaseModel):
     )
     default_selling_price = models.BigIntegerField(
         default=0,
-        verbose_name="قیمت فروش پیش‌فرض (ریال)",
+        verbose_name="قیمت فروش پیش‌فرض (تومان)",
         help_text="برای پر کردن خودکار قیمت در فاکتور فروش؛ تغییر آن قیمت فاکتورهای قبلی را عوض نمی‌کند.",
     )
 

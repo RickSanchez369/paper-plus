@@ -52,7 +52,7 @@ AuditLog feed (UserActivityDetailView).
                   <td class="num">
                     {{ row.counts|dict_get:bucket|fa_number }}
                     {% with amount=row.amounts|dict_get:bucket %}
-                      {% if amount %}<br><span class="field__hint">{{ amount|rial_toman }}</span>{% endif %}
+                      {% if amount %}<br><span class="field__hint">{{ amount|toman }}</span>{% endif %}
                     {% endwith %}
                   </td>
                 {% endfor %}

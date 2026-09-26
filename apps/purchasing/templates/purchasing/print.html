@@ -31,8 +31,8 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
         <tr>
           <th>کالا</th>
           <th>مقدار</th>
-          <th>قیمت واحد (ریال)</th>
-          <th>جمع (ریال)</th>
+          <th>قیمت واحد (تومان)</th>
+          <th>جمع (تومان)</th>
         </tr>
       </thead>
       <tbody>
@@ -40,15 +40,15 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
           <tr>
             <td>{{ item.product.name }}</td>
             <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|rial }}</td>
-            <td class="num">{{ item.line_total|rial }}</td>
+            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item.line_total|toman }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
     <div class="print-invoice__totals">
-      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total_amount|rial }}</span></div>
+      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total_amount|toman }}</span></div>
     </div>
 
     <footer class="print-invoice__foot">

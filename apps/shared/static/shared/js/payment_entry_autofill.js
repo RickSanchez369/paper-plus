@@ -30,7 +30,7 @@
     document.addEventListener("formset:added", function (event) {
         var formsetName = event.detail && event.detail.formsetName;
         var row = event.target;
-        var invoiceTotal = window.__invoicePaymentEntryTotalRial;
+        var invoiceTotal = window.__invoicePaymentEntryTotal;
         if (!formsetName || !row || typeof invoiceTotal !== "number") {
             return;
         }

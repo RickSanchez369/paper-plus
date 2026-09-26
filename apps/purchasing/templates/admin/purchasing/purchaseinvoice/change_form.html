@@ -2,6 +2,6 @@
 {% block extrahead %}
 {{ block.super }}
 {% if original %}
-<script>window.__invoicePaymentEntryTotalRial = {{ original.total_amount }};</script>
+<script>window.__invoicePaymentEntryTotal = {{ original.total_amount }};</script>
 {% endif %}
 {% endblock %}

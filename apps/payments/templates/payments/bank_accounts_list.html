@@ -13,7 +13,10 @@ last week/last month), all read from the Payment ledger. No independent
 
 {% block content %}
 <div class="page-head">
-  <h1>حساب‌های بانکی</h1>
+  <div class="page-head__row">
+    <h1>حساب‌های بانکی</h1>
+    <a href="{% url 'bank_accounts:new' %}" class="btn">+ حساب بانکی جدید</a>
+  </div>
 </div>
 
 {% if rows %}
@@ -22,12 +25,12 @@ last week/last month), all read from the Payment ledger. No independent
       <div class="stat-card">
         <span class="stat-card__label">{{ row.account.name }}{% if row.account.owner %} — {{ row.account.owner }}{% endif %}</span>
         <span class="field__hint">شماره حساب: {{ row.account.account_number }}</span>
-        <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__value num">{{ row.balance|rial_toman }}</a>
+        <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__value num">{{ row.balance|toman }}</a>
         <div class="stat-card__deltas">
           {% for delta in row.deltas %}
             <span class="stat-card__delta{% if delta.value > 0 %} stat-card__delta--up{% elif delta.value < 0 %} stat-card__delta--down{% endif %}">
               {{ delta.label }}:
-              {% if delta.value > 0 %}+{% endif %}{{ delta.value|rial_toman }}
+              {% if delta.value > 0 %}+{% endif %}{{ delta.value|toman }}
             </span>
           {% endfor %}
         </div>
@@ -37,6 +40,7 @@ last week/last month), all read from the Payment ledger. No independent
 {% else %}
   <div class="placeholder">
     <p>هنوز حساب بانکی فعالی ثبت نشده است.</p>
+    <a href="{% url 'bank_accounts:new' %}" class="btn">ثبت اولین حساب بانکی</a>
   </div>
 {% endif %}
 {% endblock %}

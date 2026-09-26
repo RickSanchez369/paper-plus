@@ -22,11 +22,11 @@ answer "how are we doing right now."
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">فروش امروز</span>
-    <span class="stat-card__value num">{{ cards.today_total|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">فروش این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_total|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">فاکتورهای باز (نیمه/نسیه)</span>
@@ -34,7 +34,7 @@ answer "how are we doing right now."
   </div>
   <div class="stat-card">
     <span class="stat-card__label">سود این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_profit|rial_toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_profit|toman }}</span>
   </div>
 </div>
 
@@ -73,13 +73,13 @@ answer "how are we doing right now."
                 <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
                 <td class="num">{{ invoice.invoice_date|jalali }}</td>
                 <td>{{ invoice.customer.name }}</td>
-                <td class="num">{{ invoice.total|rial_toman }}</td>
+                <td class="num">{{ invoice.total|toman }}</td>
                 <td>
                   <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
                     {{ invoice.payment_status.label }}
                   </span>
                 </td>
-                <td class="num">{{ invoice.profit|rial_toman }}</td>
+                <td class="num">{{ invoice.profit|toman }}</td>
                 <td>
                   <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">
                     {{ invoice.get_status_display }}

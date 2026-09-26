@@ -1,7 +1,8 @@
 /*
  * The new-sale form's client side (REDESIGN_VISION 4.1): product search
  * results, add/remove item and payment rows, live subtotal/discount/total,
- * and the remaining/نسیه amount. Written fresh for this page rather than
+ * the payment-mode switch (full settlement vs. split/credit, D-046), and
+ * the remaining/نسیه amount. Written fresh for this page rather than
  * ported from apps/sales/admin.py's inline JS -- that version leans on
  * Django admin's select2 and django.jQuery, neither of which exists here
  * (REDESIGN_VISION 2 item 8: plain JS, no jQuery, no build tooling).
@@ -13,7 +14,7 @@
 (function () {
   "use strict";
 
-  function formatRial(value) {
+  function formatToman(value) {
     var n = Math.max(0, Math.round(value || 0));
     var withCommas = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return withCommas.replace(/[0-9]/g, function (digit) {
@@ -55,7 +56,7 @@
       var price = intVal(row.querySelector('input[name$="-unit_price"]'));
       var lineTotal = qty * price;
       var totalCell = row.querySelector("[data-item-row-total]");
-      if (totalCell) totalCell.textContent = formatRial(lineTotal);
+      if (totalCell) totalCell.textContent = formatToman(lineTotal);
       subtotal += lineTotal;
     });
 
@@ -63,9 +64,9 @@
     var discount = intVal(discountInput);
     var total = Math.max(subtotal - discount, 0);
 
-    setText("sale-subtotal", formatRial(subtotal));
-    setText("sale-discount", formatRial(discount));
-    setText("sale-total", formatRial(total));
+    setText("sale-subtotal", formatToman(subtotal));
+    setText("sale-total", formatToman(total));
+    setText("sale-full-amount", formatToman(total));
 
     recomputeRemaining(total);
   }
@@ -75,7 +76,7 @@
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(function (row) {
       paid += intVal(row.querySelector('input[name$="-amount"]'));
     });
-    setText("sale-remaining", formatRial(Math.max(total - paid, 0)));
+    setText("sale-remaining", formatToman(Math.max(total - paid, 0)));
   }
 
   function currentTotal() {
@@ -145,6 +146,8 @@
     }
 
     if (event.target.id === "add-payment-row") {
+      // A payment row means the customer did not simply pay in full.
+      if (currentPaymentMode() !== "split") setPaymentMode("split");
       var newRow = addRow("payment-rows", "payment-row-template", "payments");
       if (newRow) {
         var amountInput = newRow.querySelector('input[name$="-amount"]');
@@ -154,6 +157,32 @@
         }
       }
       recomputeInvoice();
+    }
+  });
+
+  // "تسویهٔ کامل" shows only the receiving-account select; the split
+  // panel (rows + remaining credit) only in split mode. The server reads
+  // the radio, not what is visible, so this is presentation only.
+  function currentPaymentMode() {
+    var checked = document.querySelector('input[name="payment_mode"]:checked');
+    return checked ? checked.value : "full";
+  }
+
+  function showPaymentPanel(mode) {
+    document.querySelectorAll("[data-payment-panel]").forEach(function (panel) {
+      panel.hidden = panel.dataset.paymentPanel !== mode;
+    });
+  }
+
+  function setPaymentMode(mode) {
+    var radio = document.querySelector('input[name="payment_mode"][value="' + mode + '"]');
+    if (radio) radio.checked = true;
+    showPaymentPanel(mode);
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target.matches('input[name="payment_mode"]')) {
+      showPaymentPanel(currentPaymentMode());
     }
   });
 

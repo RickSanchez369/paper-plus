@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import F, Sum
 from simple_history.admin import SimpleHistoryAdmin
 
-from apps.shared.utils import format_rial
+from apps.shared.utils import format_toman
 
 from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
 from .services import cancel_purchase, confirm_purchase
@@ -26,22 +26,10 @@ DRAFT_STATUS = "draft"
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
-# Shown under every Rial input; conversion is fixed (D-013), not live.
-TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
-
 
 def is_locked(invoice):
     """True when an invoice exists and is no longer a draft (D-014)."""
     return invoice is not None and invoice.status != DRAFT_STATUS
-
-
-class PurchaseItemForm(forms.ModelForm):
-    """Adds the Toman hint under the Rial price field (R 8)."""
-
-    class Meta:
-        model = PurchaseItem
-        fields = "__all__"
-        help_texts = {"unit_price": TOMAN_HINT}
 
 
 class PurchaseItemInline(admin.TabularInline):
@@ -53,19 +41,18 @@ class PurchaseItemInline(admin.TabularInline):
     """
 
     model = PurchaseItem
-    form = PurchaseItemForm
     extra = 1
     fields = ("product", "quantity", "unit_price", "line_total")
     readonly_fields = ("line_total",)
     # Search box instead of a dropdown of every product.
     autocomplete_fields = ("product",)
 
-    @admin.display(description="جمع ردیف (ریال)")
+    @admin.display(description="جمع ردیف (تومان)")
     def line_total(self, obj):
         # Unsaved row: quantity and price may still be empty.
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.quantity * obj.unit_price)
+        return format_toman(obj.quantity * obj.unit_price)
 
     def has_add_permission(self, request, obj=None):
         return not is_locked(obj) and super().has_add_permission(request, obj)
@@ -87,7 +74,6 @@ class PurchasePaymentEntryForm(forms.ModelForm):
     class Meta:
         model = PurchasePaymentEntry
         fields = "__all__"
-        help_texts = {"amount": TOMAN_HINT}
 
 
 class PurchasePaymentEntryInline(admin.TabularInline):
@@ -156,11 +142,11 @@ class PurchaseInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
         queryset = super().get_queryset(request)
         return queryset.annotate(_total=Sum(F("items__quantity") * F("items__unit_price")))
 
-    @admin.display(description="جمع کل (ریال)")
+    @admin.display(description="جمع کل (تومان)")
     def total_display(self, obj):
         if obj is None:
             return "-"
-        return format_rial(obj._total or 0)
+        return format_toman(obj._total or 0)
 
     @admin.display(description="وضعیت پرداخت")
     def payment_status_display(self, obj):

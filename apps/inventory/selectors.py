@@ -83,7 +83,7 @@ def get_active_layers(product):
 
 def get_current_cost_map(product_ids):
     """
-    Cost the *next* sale of each product will consume: {product_id: Rial}.
+    Cost the *next* sale of each product will consume: {product_id: Toman}.
 
     That is the oldest active layer's own cost, which is what FIFO will
     draw from next -- not an average and not the latest purchase price
@@ -125,7 +125,7 @@ def get_last_known_cost_map(product_ids):
 
 def get_inventory_value_map(product_ids):
     """
-    Rial value of each product's stock: {product_id: value}.
+    Toman value of each product's stock: {product_id: value}.
 
     Sum of every active layer's own remaining quantity times its own cost
     -- layers carry different costs, so a single "stock x latest cost"
@@ -141,7 +141,7 @@ def get_inventory_value_map(product_ids):
 
 
 def get_total_inventory_value():
-    """Rial value of all stock on hand, across every product."""
+    """Toman value of all stock on hand, across every product."""
     result = InventoryLayer.objects.filter(cancelled_at__isnull=True).aggregate(
         value=Sum(F("quantity_remaining") * F("unit_cost"))
     )

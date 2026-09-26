@@ -76,7 +76,7 @@ def get_activity_summary(start, end, event_type=None):
     Deliberately per-bucket, not one blended total: `record_expense` and
     `cancel_expense` (and the cheque lifecycle) book their own money
     through `record_payment` internally, which logs *its own* separate
-    AuditLog row -- so the same Rial amount legitimately appears once
+    AuditLog row -- so the same Toman amount legitimately appears once
     under "expenses" and once under "payments". Both statements are true
     on their own ("this much was recorded as an expense", "this much
     moved through a payment"); summing them into one number would silently

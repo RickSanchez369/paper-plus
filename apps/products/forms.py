@@ -44,6 +44,10 @@ class QuickProductForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # The model's `default=0` would otherwise pre-fill the box with 0,
+        # and an untouched 0 passes "required" -- exactly the accidental
+        # free sale gap #6 is about. Starting empty makes someone type it.
+        self.fields["default_selling_price"].initial = None
         # Already required (the model field has no blank=True); only the
         # message changes, since Django's generic one gives no hint why a
         # *purchase* flow is asking for a *selling* price.
@@ -51,3 +55,20 @@ class QuickProductForm(forms.ModelForm):
             "قیمت فروش را وارد کنید — حتی برای کالایی که تازه خریداری می‌شود، "
             "تا بعداً به‌صورت رایگان فروخته نشود."
         )
+
+
+class SellingPriceForm(forms.Form):
+    """The one price a user sets by hand after creation: what the product
+    sells for from now on (feeds products.services.update_selling_price).
+    Purchase cost is never typed here -- it comes only from purchase
+    invoices, and inventory value only ever reads that cost."""
+
+    default_selling_price = forms.IntegerField(
+        min_value=0,
+        label="قیمت فروش جدید (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={
+            "required": "قیمت فروش را وارد کنید.",
+            "min_value": "قیمت فروش نمی‌تواند منفی باشد.",
+        },
+    )

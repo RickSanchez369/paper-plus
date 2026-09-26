@@ -58,7 +58,7 @@ this page, which is harmless).
                     {% if row.owes %}بدهکار{% else %}تسویه‌شده{% endif %}
                   </span>
                 </td>
-                <td class="num">{{ row.outstanding|rial_toman }}</td>
+                <td class="num">{{ row.outstanding|toman }}</td>
                 <td class="num">{{ row.invoice_count|fa_number }}</td>
                 <td class="num">{{ row.last_purchase|jalali|default:"—" }}</td>
               </tr>

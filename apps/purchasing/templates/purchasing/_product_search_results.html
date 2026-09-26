@@ -14,10 +14,13 @@ the price field as a placeholder hint only, never a value -- REDESIGN_VISION
       <span>{{ row.product.name }}</span>
       <span class="num item-row__result-stock">
         موجودی: {{ row.stock|fa_number }}
-        {% if row.last_cost is not None %} · آخرین قیمت خرید: {{ row.last_cost|rial }}{% endif %}
+        {% if row.last_cost is not None %} · آخرین قیمت خرید: {{ row.last_cost|toman }}{% endif %}
       </span>
     </button>
   {% endfor %}
 {% else %}
-  <div class="item-row__result item-row__result--empty">کالایی پیدا نشد؛ از «+ کالای جدید» بسازید.</div>
+  <div class="item-row__result item-row__result--empty">
+    کالایی پیدا نشد.
+    <button type="button" class="btn btn--quiet" data-open-quick-product>+ ساخت کالای جدید</button>
+  </div>
 {% endif %}

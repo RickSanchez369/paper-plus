@@ -10,7 +10,7 @@ wrap apps/shared/dates.py so no template ever converts a calendar itself.
 from django import template
 
 from apps.shared import dates
-from apps.shared.utils import format_number, format_rial
+from apps.shared.utils import format_number, format_toman
 
 register = template.Library()
 
@@ -33,20 +33,12 @@ def jalali_at(value):
     return dates.format_datetime(value)
 
 
-@register.filter(name="rial")
-def rial(value):
-    """"۲٬۵۰۰٬۰۰۰ ریال" with Persian digits, for a Persian page."""
+@register.filter(name="toman")
+def toman(value):
+    """"۲۵۰٬۰۰۰ تومان" with Persian digits -- the one money filter (D-043)."""
     if value is None:
         return ""
-    return dates.to_persian_digits(f"{format_number(value)} ریال").replace(",", "٬")
-
-
-@register.filter(name="rial_toman")
-def rial_toman(value):
-    """Rial with the Toman equivalent beside it (D-013), Persian digits."""
-    if value is None:
-        return ""
-    return dates.to_persian_digits(format_rial(value)).replace(",", "٬")
+    return dates.to_persian_digits(format_toman(value)).replace(",", "٬")
 
 
 @register.filter(name="fa_number")

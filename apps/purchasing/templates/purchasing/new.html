@@ -29,11 +29,11 @@ and STATE.md (commit 6d4521a).
 {% endif %}
 
 {% comment %}
-Both quick-create disclosures live outside <form id="purchase-form">
-on purpose -- each is itself a <form> (its own htmx POST), and HTML
-forbids a <form> nested inside another (found once already for Sales'
-customer field, same root cause here for both supplier and product; see
-STATE.md commit 6d4521a).
+The supplier quick-create disclosure lives outside <form id="purchase-form">
+on purpose -- it is itself a <form> (its own htmx POST), and HTML forbids a
+<form> nested inside another (found once already for Sales' customer
+field; see STATE.md commit 6d4521a). The new-product form lives in a
+<dialog> after the main form for the same reason.
 {% endcomment %}
 <div class="card">
   <div class="card__body">
@@ -42,10 +42,6 @@ STATE.md commit 6d4521a).
     <details class="quick-party-disclosure">
       <summary class="btn btn--quiet">+ تأمین‌کنندهٔ جدید</summary>
       {% include "partners/_quick_party_form.html" with form=quick_supplier_form post_url=quick_supplier_url title="تأمین‌کنندهٔ جدید" %}
-    </details>
-    <details class="quick-party-disclosure">
-      <summary class="btn btn--quiet">+ کالای جدید</summary>
-      {% include "partners/_quick_party_form.html" with form=quick_product_form post_url=quick_product_url title="کالای جدید" %}
     </details>
   </div>
 </div>
@@ -76,8 +72,8 @@ STATE.md commit 6d4521a).
         <span>کالا</span>
         <span>موجودی</span>
         <span>مقدار</span>
-        <span>قیمت واحد (ریال)</span>
-        <span>جمع (ریال)</span>
+        <span>قیمت خرید واحد (تومان)</span>
+        <span>جمع (تومان)</span>
         <span></span>
       </div>
 
@@ -91,7 +87,10 @@ STATE.md commit 6d4521a).
         {% include "purchasing/_item_row.html" with form=item_formset.empty_form %}
       </template>
 
-      <button type="button" class="btn btn--quiet" id="add-item-row">+ افزودن ردیف</button>
+      <div class="form-actions">
+        <button type="button" class="btn btn--quiet" id="add-item-row">+ افزودن ردیف</button>
+        <button type="button" class="btn btn--quiet" data-open-quick-product>+ کالای جدید (ثبت و افزودن به فاکتور)</button>
+      </div>
 
       <div class="sale-form__totals">
         <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num" id="sale-total">۰</span></div>
@@ -121,7 +120,7 @@ STATE.md commit 6d4521a).
       <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
 
       <p class="sale-form__remaining">
-        باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> ریال
+        باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> تومان
       </p>
     </div>
   </div>
@@ -130,4 +129,20 @@ STATE.md commit 6d4521a).
     <button type="submit" class="btn">ثبت و تأیید فاکتور</button>
   </div>
 </form>
+
+{% comment %}
+"+ کالای جدید" mid-purchase (REDESIGN_VISION 4.2, vision doc §13): the
+same Product model and QuickProductForm validation as everywhere else.
+purchase_form.js fills the dialog from the <template> on each open, and
+on success puts the new product straight into the row that asked for it
+(or the first empty row, or a new one) -- no leaving the invoice.
+{% endcomment %}
+<dialog class="quick-dialog" id="quick-product-dialog" aria-labelledby="quick-product-title">
+  <h2 class="quick-dialog__title" id="quick-product-title">کالای جدید</h2>
+  <div data-quick-product-body></div>
+  <button type="button" class="btn btn--quiet btn--block" data-close-quick-product>بستن</button>
+</dialog>
+<template id="quick-product-form-template">
+  {% include "partners/_quick_party_form.html" with form=quick_product_form post_url=quick_product_url title="مشخصات کالا" %}
+</template>
 {% endblock %}
