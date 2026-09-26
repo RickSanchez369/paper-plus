@@ -16,6 +16,7 @@ Start here. Read only what the task in front of you needs.
 | [REDESIGN_VISION.md](REDESIGN_VISION.md) | The 2026-09-24 full-rebuild design spec: architecture decisions, per-module page design, cross-page consistency review | Phases A–C: historical (built, merged into `dev`/`main` 2026-09-26). §5–6 (visual design pick, USD-rate source): still open, relevant to the upcoming Phase D |
 | [MASTER_PROMPT.md](MASTER_PROMPT.md) | The build plan/order and standing autonomy authorization used to execute the rebuild | Historical for Phases A–C (executed); its Phase D instructions still apply when that phase starts |
 | `design/{stripe,linear,ibm,posthog}/DESIGN.md` | Four external reference design systems, downloaded verbatim, for the Phase D visual-identity pick | Reference material, unmodified, not yet chosen from |
+| [deployment.md](deployment.md) | How to take the repo from clone to a running production server (VPS, nginx, gunicorn, systemd, backups) | Current — not part of the build roadmap |
 
 ## Task-oriented — where to look
 - **Modifying sales/purchasing/inventory logic:** [architecture.md](architecture.md) §4–5 (domain model, sale-confirmation flow), then the relevant service in `apps/sales|purchasing|inventory/services.py`, then [business-rules.md](business-rules.md)'s core invariants and its `D-0xx` entries in [DECISIONS.md](DECISIONS.md) (D-014, D-016, D-017, D-023, D-024, D-036, D-037, D-044).

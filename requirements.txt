@@ -8,3 +8,6 @@ psycopg==3.3.6
 psycopg-binary==3.3.6
 sqlparse==0.6.0
 tzdata==2026.4
+
+# Production WSGI server (docs/deployment.md). Not used by `manage.py runserver`.
+gunicorn==23.0.0
