@@ -2,11 +2,12 @@
 
 Continuation of an ongoing project. No "stage 0", master plan or understanding phase.
 
-> **Rebuild in progress (branch `explore/vision-rethink`).**
-> `docs/REDESIGN_VISION.md` and `docs/MASTER_PROMPT.md` are the source of
-> truth for that work and override anything here they contradict — including
-> the one-task-per-message rhythm, which Sina suspended for the rebuild.
-> Rules below that are already superseded are marked inline (D-033..D-040).
+> **Rebuild (Phases A–C) is done, merged into `dev`/`main`, branch retired
+> (2026-09-26).** `docs/REDESIGN_VISION.md` and `docs/MASTER_PROMPT.md`
+> remain the source of truth for the decisions/rules they changed, and for
+> Phase D (visual identity, not started) which their build order and
+> autonomy authorization still cover.
+> Rules below that are already superseded are marked inline (D-033..D-048).
 > Everything unmarked still holds.
 
 ## Start of chat

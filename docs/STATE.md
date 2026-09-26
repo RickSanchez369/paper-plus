@@ -2,11 +2,14 @@
 
 Updated 2026-09-26, after the **pre-Phase-D correction batch** (D-043..D-046: Toman everywhere, bank-account/supplier management pages, expense paying account, stock through documents only, selling-price updates, new product mid-purchase, sales discount placement + full-settlement default). Before that: Dashboard (Phase C module 10) of the rebuild (REDESIGN_VISION) -- **Phase C is complete, all 11 modules built.** Earlier: User Activity (module 9), Financial Reports (module 8), Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
-## Rebuild in progress — branch `explore/vision-rethink`
+## Rebuild — Phases A–C done, merged, branch retired
 
-`docs/REDESIGN_VISION.md` + `docs/MASTER_PROMPT.md` drive this work and
-override the roadmap below wherever they disagree. The ROADMAP entries that
-survive are being rebuilt as pages, not as Admin screens.
+Built on `explore/vision-rethink`; merged into `dev` then `main` and the
+branch retired 2026-09-26 (verified identical trees, no unique commits left
+behind). `docs/REDESIGN_VISION.md` + `docs/MASTER_PROMPT.md` drove this work
+and still override the ROADMAP below wherever they disagree — Phase D
+(visual identity) is next and remains under their build order. The ROADMAP
+entries that survived were rebuilt as pages, not as Admin screens.
 
 **The old URGENT item (the real Owner account having no admin permissions
 after the 3.1 flush) is closed, not fixed:** roles are gone entirely

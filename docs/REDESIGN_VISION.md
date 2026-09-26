@@ -1,5 +1,10 @@
 # REDESIGN_VISION — paper-plus full rebuild (branch `explore/vision-rethink`)
 
+> **Status (2026-09-26): §1–4 and §7–9 are historical** — Phases A–C they
+> describe are built, verified, merged into `dev`/`main`, and the branch is
+> retired. **§5–6 are still current** — the Phase D visual-identity pick and
+> the USD-rate source remain open, unresolved, and unbuilt.
+
 Written 2026-09-24 at the end of a design-only session with Sina (no code
 changed on this branch except this doc + the 4 downloaded design systems).
 Purpose: let a fresh chat pick up the build with full context — this

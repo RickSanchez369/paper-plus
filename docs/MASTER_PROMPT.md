@@ -1,5 +1,10 @@
 # MASTER PROMPT — paper-plus rebuild (branch `explore/vision-rethink`)
 
+> **Status (2026-09-26): Phases A–C executed exactly as planned here,**
+> merged into `dev`/`main`, branch retired. Kept as the historical build
+> plan and as the still-active plan/authorization for Phase D (§3), which
+> has not started. Do not re-run Phases A–C.
+
 Written 2026-09-24, stage 5 of Sina's own 6-stage process (see
 `docs/REDESIGN_VISION.md` §7). This is the text meant to be pasted as the
 opening message of a **new chat**, on this same branch, to actually start
