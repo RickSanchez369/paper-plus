@@ -55,3 +55,12 @@ def fa_number(value):
     if value is None:
         return ""
     return dates.to_persian_digits(format_number(value)).replace(",", "٬")
+
+
+@register.filter(name="dict_get")
+def dict_get(mapping, key):
+    """`{{ mapping|dict_get:key }}` -- a template's `.` lookup only reads a
+    literal attribute name, never a loop variable's value; User Activity's
+    per-bucket columns are built from one shared `bucket_order` loop, so
+    this is the one place that needs it."""
+    return mapping.get(key)

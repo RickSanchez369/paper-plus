@@ -1,0 +1,71 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+User Activity (REDESIGN_VISION 4.9): one row per user, counts per
+category + a total amount, within the chosen range and filters. Not a
+user-management page (2.3) -- creating/deactivating logins stays an
+Admin-panel-only task. Clicking a user's name drills into their raw
+AuditLog feed (UserActivityDetailView).
+{% endcomment %}
+
+{% block title %}فعالیت کاربران{% endblock %}
+{% block header %}فعالیت کاربران{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>فعالیت کاربران</h1>
+    <form method="get">
+      {% include "shared/_date_range.html" with form=range_form %}
+    </form>
+  </div>
+  <p class="page-head__lede">
+    بازهٔ انتخابی: <span class="num">{{ date_range.0|jalali }}</span> تا <span class="num">{{ date_range.1|jalali }}</span>
+  </p>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <form method="get" class="toolbar">
+      <div class="filters">
+        {% include "shared/_field.html" with field=filter_form.user %}
+        {% include "shared/_field.html" with field=filter_form.event_type %}
+        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+      </div>
+    </form>
+
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>کاربر</th>
+              {% for bucket in bucket_order %}<th>{{ bucket_labels|dict_get:bucket }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><a href="{% url 'user_activity:detail' row.actor.pk %}">{{ row.actor }}</a></td>
+                {% for bucket in bucket_order %}
+                  <td class="num">
+                    {{ row.counts|dict_get:bucket|fa_number }}
+                    {% with amount=row.amounts|dict_get:bucket %}
+                      {% if amount %}<br><span class="field__hint">{{ amount|rial_toman }}</span>{% endif %}
+                    {% endwith %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>در این بازه رویدادی ثبت نشده است.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

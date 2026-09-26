@@ -11,11 +11,13 @@ everywhere else.
 """
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
 from apps.shared import dates
+from apps.shared.models import AuditLog
 
 
 class JalaliDateInput(forms.TextInput):
@@ -169,3 +171,27 @@ class DateRangeForm(forms.Form):
         if self.is_bound:
             return self.data.get("preset") or self.Preset.MONTH
         return self.Preset.MONTH
+
+
+class UserActivityFilterForm(forms.Form):
+    """
+    User Activity's own filters (REDESIGN_VISION 4.9), alongside the
+    shared date range: which user, which event type. Used on both the
+    aggregate list (narrows which rows/events are counted) and the
+    per-user drill-down (narrows the raw feed) -- `user` is simply left
+    off the drill-down template, since the page's own URL already fixes it.
+    """
+
+    user = forms.ModelChoiceField(
+        required=False,
+        label="کاربر",
+        queryset=get_user_model().objects.none(),
+        empty_label="— همهٔ کاربران —",
+    )
+    event_type = forms.ChoiceField(
+        required=False, label="نوع رویداد", choices=[("", "همهٔ رویدادها"), *AuditLog.EventType.choices],
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["user"].queryset = get_user_model().objects.order_by("phone")

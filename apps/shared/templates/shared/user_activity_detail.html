@@ -1,0 +1,66 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+One user's raw AuditLog feed (REDESIGN_VISION 4.9): event type, linked
+target (via user_activity.resolve_target_url's small routing table --
+some event types, e.g. a bare Payment, have no page of their own and
+simply show no link), timestamp -- newest first.
+{% endcomment %}
+
+{% block title %}فعالیت {{ actor }}{% endblock %}
+{% block header %}فعالیت کاربر: {{ actor }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'user_activity:index' %}">فعالیت کاربران</a> / {{ actor }}
+</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>{{ actor }}</h1>
+    <form method="get">
+      {% include "shared/_date_range.html" with form=range_form %}
+    </form>
+  </div>
+  <p class="page-head__lede">
+    بازهٔ انتخابی: <span class="num">{{ date_range.0|jalali }}</span> تا <span class="num">{{ date_range.1|jalali }}</span>
+  </p>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <form method="get" class="toolbar">
+      <div class="filters">
+        {% include "shared/_field.html" with field=filter_form.event_type %}
+        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+      </div>
+    </form>
+
+    {% if feed %}
+      <table class="data-table">
+        <thead>
+          <tr><th>زمان</th><th>رویداد</th><th>هدف</th></tr>
+        </thead>
+        <tbody>
+          {% for row in feed %}
+            <tr>
+              <td class="num">{{ row.entry.created_at|jalali_at }}</td>
+              <td>{{ row.entry.get_event_type_display }}</td>
+              <td>
+                {% if row.target_url %}
+                  <a href="{{ row.target_url }}">{{ row.entry.target_type }}</a>
+                {% else %}
+                  {{ row.entry.target_type }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">در این بازه رویدادی برای این کاربر ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

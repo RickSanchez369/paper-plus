@@ -1,18 +1,21 @@
 # path: apps/shared/views.py
 
 """
-The frontend shell: the dashboard and the placeholder every module route
-renders until Phase C builds it.
+The frontend shell's own views: the dashboard, the Jalali date-picker
+fragment, and the two cross-cutting report modules (Financial Reports,
+User Activity) that read across every app rather than owning one.
 
 Views never write (the rule that used to say "Admin never writes" — money
 and stock still go through `apps/*/services.py` inside `transaction.atomic`).
 """
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
 
-from . import dates, reports
-from .forms import DateRangeForm
+from . import dates, reports, user_activity
+from .forms import DateRangeForm, UserActivityFilterForm
 
 
 class DateRangeMixin:
@@ -30,38 +33,6 @@ class DateRangeMixin:
         form = DateRangeForm(self.request.GET or None)
         context["range_form"] = form
         context["date_range"] = form.range
-        return context
-
-
-class ModulePlaceholderView(LoginRequiredMixin, TemplateView):
-    """
-    A route that exists so the sidebar works, saying plainly that its page
-    is not built yet.
-
-    Phase B's job is the shell — navigation, login, layout — and every
-    module needs a resolvable URL for the sidebar to link to. Rendering an
-    honest placeholder is better than a nav full of dead links or a page
-    pretending to be empty when it is simply unbuilt.
-    """
-
-    template_name = "shared/placeholder.html"
-
-    # Set per route in each app's urls.py.
-    title = ""
-    description = ""
-    # Modules that filter by date show the shared picker from day one, so
-    # the component has real consumers rather than a demo page.
-    with_date_range = False
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = self.title
-        context["page_description"] = self.description
-        context["with_date_range"] = self.with_date_range
-        if self.with_date_range:
-            form = DateRangeForm(self.request.GET or None)
-            context["range_form"] = form
-            context["date_range"] = form.range
         return context
 
 
@@ -104,6 +75,62 @@ class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
             "receivables_payables": reports.receivables_payables_as_of(end),
             "cheques": reports.cheques_by_status(start, end),
             "user_activity": reports.user_activity(start, end),
+        })
+        return context
+
+
+class UserActivityView(DateRangeMixin, LoginRequiredMixin, TemplateView):
+    """
+    User Activity's aggregate table (REDESIGN_VISION 4.9): one row per
+    user, counts per category + a total amount, within the chosen range
+    and filters. Drilling into a user is a separate page (`UserActivity
+    DetailView`), not a link fragment of this one.
+    """
+
+    template_name = "shared/user_activity.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        start, end = context["date_range"]
+        filter_form = UserActivityFilterForm(self.request.GET or None)
+        event_type = filter_form.data.get("event_type") if filter_form.is_bound else None
+
+        rows = user_activity.get_activity_summary(start, end, event_type=event_type)
+        if filter_form.is_valid() and filter_form.cleaned_data.get("user"):
+            selected = filter_form.cleaned_data["user"]
+            rows = [row for row in rows if row["actor"].pk == selected.pk]
+
+        context.update({
+            "filter_form": filter_form,
+            "rows": rows,
+            "bucket_order": user_activity.BUCKET_ORDER,
+            "bucket_labels": user_activity.BUCKET_LABELS,
+        })
+        return context
+
+
+class UserActivityDetailView(LoginRequiredMixin, TemplateView):
+    """One user's raw AuditLog feed (REDESIGN_VISION 4.9): event type,
+    linked target, timestamp -- newest first, within the chosen range and
+    event-type filter (the user itself is fixed by the URL, not a filter)."""
+
+    template_name = "shared/user_activity_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        actor = get_object_or_404(get_user_model(), pk=self.kwargs["pk"])
+        range_form = DateRangeForm(self.request.GET or None)
+        filter_form = UserActivityFilterForm(self.request.GET or None)
+        date_range = range_form.range
+        start, end = date_range
+        event_type = filter_form.data.get("event_type") if filter_form.is_bound else None
+
+        context.update({
+            "actor": actor,
+            "range_form": range_form,
+            "date_range": date_range,
+            "filter_form": filter_form,
+            "feed": user_activity.get_activity_feed(start, end, actor=actor, event_type=event_type),
         })
         return context
 
