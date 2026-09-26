@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-26, after Financial Reports (Phase C module 8) of the rebuild (REDESIGN_VISION). Earlier: Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-26, after User Activity (Phase C module 9) of the rebuild (REDESIGN_VISION). Earlier: Financial Reports (module 8), Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,17 +21,34 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 9 — User Activity** (MASTER_PROMPT 3's build order:
-Sales → Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques →
-Bank Accounts → Expenses → Customers → Financial Reports → **User
-Activity** → Dashboard last). Financial Reports (module 8) is done — see
-Built. REDESIGN_VISION 4.9: the shared date-range picker; a full
-per-event breakdown from `AuditLog` (not just the per-actor count
-Financial Reports' own summary row shows) -- likely a filterable table
-(actor, event type, target, when) plus some per-actor/per-event-type
-aggregate view. Read REDESIGN_VISION.md §4.9 in full before starting; it
-was not fully quoted here. Each module gets its full spec from
-REDESIGN_VISION.md §4 — not a thinner version.
+**Phase C, module 10 — Dashboard** (MASTER_PROMPT 3's build order: Sales →
+Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques → Bank
+Accounts → Expenses → Customers → Financial Reports → User Activity →
+**Dashboard** last, since it only aggregates the other modules). User
+Activity (module 9) is done — see Built. REDESIGN_VISION 4.10: row 1,
+sales/purchases/expenses/net-profit KPI cards each showing today + this
+month (reuse `apps.shared.reports`'s own selectors, called with today's
+and this month's bounds); row 2, open receivables/open payables/total
+bank balance (all accounts summed)/total inventory value, each linking to
+its module (the "now" versions of the same selectors Reports' as-of
+variants already wrap: `get_customer_outstanding`/`get_supplier_
+outstanding` totals, `get_bank_account_balance` summed with no `as_of`,
+`get_total_inventory_value`); row 3 (attention-needed), cheques due
+within 7 days (3-5 shown + "see all" into Cheques), old unpaid credit
+invoices (default 30-day threshold, a query parameter not a new field),
+negative-stock warning (defensive only -- D-016 already allows it,
+this is just surfacing it); row 4, a recent global activity feed (latest
+N from `AuditLog`, all users, reusing `apps.shared.user_activity.
+get_activity_feed` with no actor filter) + "see all" into User Activity.
+`DashboardView`/`shared/dashboard.html` already exist as a deliberate
+stub (REDESIGN_VISION 4.10's own note: "inventing numbers here would be
+worse than showing none") -- this is filling that stub in, not a new
+route. Each module gets its full spec from REDESIGN_VISION.md §4 — not a
+thinner version.
+
+Once Dashboard lands, Phase C is complete (all 11 modules built) and
+Phase D (visual identity, REDESIGN_VISION §5) is next per MASTER_PROMPT's
+own build order.
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -693,6 +710,49 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   (33/33), `test_payments.py` (15/15), `test_cheque_lifecycle.py` (15/15),
   `test_receivables_payables.py` (31/31), `test_bank_accounts.py` (11/11),
   `test_expenses.py` (15/15) and `test_customers.py` (23/23) still pass.
+- User Activity (REDESIGN_VISION 4.9, Phase C module 9): a new
+  `apps.shared.user_activity` selector module (same placement reasoning
+  as `apps.shared.reports` -- reads AuditLog across every app). Aggregate
+  list (`/user-activity/`): one row per user, counts per bucket (sales/
+  purchases/expenses/payments/cheques recorded + cancellations, the
+  bucket an event type belongs to fixed once in `_BUCKETS`) plus each
+  bucket's own amount total, filterable by user/event type alongside the
+  shared date range. Drill-down (`/user-activity/<pk>/`): that one user's
+  raw `AuditLog` feed, newest first, event type, timestamp, and a linked
+  target resolved through a small `target_type -> URL` table
+  (`resolve_target_url`) -- some targets (a bare `Payment`, `Expense`,
+  `PaymentAllocation`) have no page of their own and are left unresolved
+  on purpose, not a bug.
+  Deliberate design call, not a literal reading of REDESIGN_VISION 4.9's
+  "total amounts": the aggregate table shows an amount *per bucket*,
+  never blended into one number. `record_expense`/`cancel_expense` (and
+  the cheque lifecycle) book their own money through `record_payment`
+  internally, which logs *its own* separate `AuditLog` row -- so the same
+  Rial amount legitimately appears once under "expenses"/"cancellations"
+  and once under "payments". Both are independently true facts; summing
+  them would silently double-count. Not something to "fix" by suppressing
+  the payment's own audit row either -- that row is its own real,
+  independently useful fact (traceability, REDESIGN_VISION 2).
+  `scripts/test_user_activity.py` (new, 21/21) covers the bucket/amount
+  split directly (including asserting the expense-then-payment double
+  representation is intentional, not accidental), the event-type filter,
+  target-link resolution (a confirmed sale resolves, a bare payment does
+  not), and both pages end to end.
+  Full browser QA (`scripts/qa_user_activity_setup.py`/`_teardown.py`,
+  two distinct QA actors performing distinct actions) found nothing new:
+  every count and amount matched hand-calculation exactly, each user's
+  drill-down showed only their own events (no cross-user leakage), and
+  a spot-checked target link (a confirmed sale) navigated to the exact
+  right invoice. Also removed in this change: `ModulePlaceholderView` and
+  `shared/placeholder.html` -- this route was the mechanism's last caller
+  (Financial Reports took the other one the commit before), so both were
+  now fully dead code, not a separate cleanup task.
+  `test_frontend_shell.py` (50/50), `test_shared_components.py` (37/37),
+  `test_jalali_dates.py` (33/33), `test_sales_invoice.py` (28/28),
+  `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15),
+  `test_cheque_lifecycle.py` (15/15), `test_receivables_payables.py`
+  (31/31), `test_bank_accounts.py` (11/11), `test_expenses.py` (15/15),
+  `test_customers.py` (23/23) and `test_reports.py` (19/19) still pass.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - ~~Financial report screen~~ -- superseded by REDESIGN_VISION 4.8, now
