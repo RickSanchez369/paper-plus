@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-26, after User Activity (Phase C module 9) of the rebuild (REDESIGN_VISION). Earlier: Financial Reports (module 8), Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
+Updated 2026-09-26, after Dashboard (Phase C module 10) of the rebuild (REDESIGN_VISION) -- **Phase C is now complete, all 11 modules built.** Earlier: User Activity (module 9), Financial Reports (module 8), Customers (module 7), Expenses (module 6), Bank Accounts (module 5), Receivables/Payables/Cheques (module 4), Inventory (module 3), Purchasing + Suppliers (module 2), ROADMAP 4.4 + the 4.3b invoice-side payment-entry extension. Phase 1 merged to main. Current database state is described under "Rebuild in progress" below.
 
 ## Rebuild in progress — branch `explore/vision-rethink`
 
@@ -21,34 +21,21 @@ column would otherwise have merged the QA tenant's rows into the real ones.
 to be re-entered; the two `DocumentSequence` rows were recreated at 9956001.
 
 ## Next
-**Phase C, module 10 — Dashboard** (MASTER_PROMPT 3's build order: Sales →
-Purchasing+Suppliers → Inventory → Receivables/Payables/Cheques → Bank
-Accounts → Expenses → Customers → Financial Reports → User Activity →
-**Dashboard** last, since it only aggregates the other modules). User
-Activity (module 9) is done — see Built. REDESIGN_VISION 4.10: row 1,
-sales/purchases/expenses/net-profit KPI cards each showing today + this
-month (reuse `apps.shared.reports`'s own selectors, called with today's
-and this month's bounds); row 2, open receivables/open payables/total
-bank balance (all accounts summed)/total inventory value, each linking to
-its module (the "now" versions of the same selectors Reports' as-of
-variants already wrap: `get_customer_outstanding`/`get_supplier_
-outstanding` totals, `get_bank_account_balance` summed with no `as_of`,
-`get_total_inventory_value`); row 3 (attention-needed), cheques due
-within 7 days (3-5 shown + "see all" into Cheques), old unpaid credit
-invoices (default 30-day threshold, a query parameter not a new field),
-negative-stock warning (defensive only -- D-016 already allows it,
-this is just surfacing it); row 4, a recent global activity feed (latest
-N from `AuditLog`, all users, reusing `apps.shared.user_activity.
-get_activity_feed` with no actor filter) + "see all" into User Activity.
-`DashboardView`/`shared/dashboard.html` already exist as a deliberate
-stub (REDESIGN_VISION 4.10's own note: "inventing numbers here would be
-worse than showing none") -- this is filling that stub in, not a new
-route. Each module gets its full spec from REDESIGN_VISION.md §4 — not a
-thinner version.
+**Phase D — visual identity** (MASTER_PROMPT §3's own build order: Phase
+C's 11 modules, all now built, then Phase D). REDESIGN_VISION §5: pick
+(or blend) from the 4 candidate systems in `docs/design/` (Stripe,
+Linear, IBM, PostHog) or ask Sina to pick if it's not obvious now that
+real pages exist to compare against. Use the `design-taste-frontend`
+skill while building/restyling pages, and `redesign-existing-projects`
+for pages already built in Phase C. Apply consistently app-wide, not a
+different feel per module (MASTER_PROMPT's own warning).
 
-Once Dashboard lands, Phase C is complete (all 11 modules built) and
-Phase D (visual identity, REDESIGN_VISION §5) is next per MASTER_PROMPT's
-own build order.
+Not yet built, carried forward from Phase C's own scope notes (raise
+these with Sina before touching, per RULES.md, since they weren't part
+of any module's confirmed spec):
+- 3.4's real SHADOW run (still open, see its own note above) -- now that
+  every module exists, this is worth revisiting with Sina.
+- ROADMAP 4.6 (returns) stays explicitly out of scope (Sina, 2026-09-24).
 
 Purchasing + Suppliers (Phase C module 2) is done: list, one-shot
 new-purchase form, detail, print, cancel, Suppliers sub-section (list +
@@ -753,6 +740,52 @@ Phase A is done and verified: 22 scripts, 256 checks. Commits `9d985e5`
   `test_cheque_lifecycle.py` (15/15), `test_receivables_payables.py`
   (31/31), `test_bank_accounts.py` (11/11), `test_expenses.py` (15/15),
   `test_customers.py` (23/23) and `test_reports.py` (19/19) still pass.
+- Dashboard (REDESIGN_VISION 4.10, Phase C module 10 -- **the last of the
+  11**, Phase C now complete): a new `apps.shared.dashboard` selector
+  module fills in the deliberate stub `DashboardView`/`shared/
+  dashboard.html` already had since Phase B. Row 1: sales/purchases/
+  expenses/net-profit, each today + this month, reusing Financial
+  Reports' own `sales_total`/`purchases_total`/`expenses_total`/
+  `gross_profit` so this card can never disagree with that page. Row 2:
+  open receivables/open payables (both "now", i.e. `get_total_
+  {receivables,payables}_as_of(today)` -- reusing Reports' own as-of
+  selectors rather than adding a third pair just for "now"), total bank
+  balance (every active account's `get_bank_account_balance` summed, no
+  `as_of`), total inventory value (`get_total_inventory_value`, already
+  existed) -- each linking to its own module. Row 3 (attention-needed):
+  cheques due within 7 days (new `cheques_due_soon`, 3-5 shown + a real
+  "see all" count), old unpaid credit invoices (new `overdue_credit_
+  invoices`, default 30-day threshold, `?overdue_days=N` query parameter
+  as REDESIGN_VISION specified -- sales side only, since this widget is
+  about collection risk and the payables mirror already lives on the
+  Payables page), a negative-stock warning (new `apps.inventory.
+  selectors.get_negative_stock_products`, defensive only -- D-016 already
+  permits an oversell, this just surfaces it). Row 4: the latest global
+  activity feed (new `apps.shared.user_activity.get_recent_activity`,
+  no date range or actor filter, unlike User Activity's own scoped feed)
+  + "see all" into User Activity.
+  `scripts/test_dashboard.py` (new, 18/18) covers every selector directly
+  (today vs. month KPI bounds, the 30-day vs. 50-day overdue threshold,
+  cheques due soon, negative stock) plus a page-level smoke test
+  including the `?overdue_days=` query parameter. Full browser QA
+  (`scripts/qa_dashboard_setup.py`/`_teardown.py`, including a
+  deliberately oversold product to exercise the negative-stock row) found
+  nothing new: every card/table number matched hand-calculation exactly
+  -- notably the net-profit figure correctly included the oversold line's
+  revenue-with-no-cost-deducted per D-016/D-037, and the inventory-value
+  figure correctly accounted for a sale item on the *old* invoice also
+  drawing from the same product's layers, easy to under-count by hand if
+  you forget it. The `overdue_days` filter and a spot-checked
+  negative-stock product link (navigated to the exact right product) both
+  verified live in the browser, not just via the test Client.
+  `test_frontend_shell.py` (50/50), `test_shared_components.py` (37/37),
+  `test_jalali_dates.py` (33/33), `test_sales_invoice.py` (28/28),
+  `test_purchase_invoice.py` (33/33), `test_payments.py` (15/15),
+  `test_cheque_lifecycle.py` (15/15), `test_receivables_payables.py`
+  (31/31), `test_bank_accounts.py` (11/11), `test_expenses.py` (15/15),
+  `test_customers.py` (23/23), `test_reports.py` (19/19) and
+  `test_user_activity.py` (21/21) still pass -- 425/425 across the whole
+  suite.
 
 ## PENDING (raised, not decided -- do not build without Sina's go-ahead)
 - ~~Financial report screen~~ -- superseded by REDESIGN_VISION 4.8, now
