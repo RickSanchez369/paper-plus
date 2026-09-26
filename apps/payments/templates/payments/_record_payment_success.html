@@ -1,0 +1,10 @@
+{% comment %}
+Replaces the record-payment form after a successful submit (REDESIGN_VISION
+8 item 2). The row's own outstanding figure is now stale -- rather than
+patch it in place, point at a reload, which also re-sorts the row out of
+the list once its balance reaches zero.
+{% endcomment %}
+<div class="payment-form payment-form--success">
+  <p class="field__hint">پرداخت برای «{{ party }}» ثبت شد.</p>
+  <a href="." class="btn btn--quiet btn--block">بروزرسانی فهرست</a>
+</div>

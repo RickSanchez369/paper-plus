@@ -13,11 +13,12 @@ from django.utils import timezone
 
 from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
+from apps.inventory.services import consume_fifo, restore_consumptions
 from apps.payments.models import Cheque, Payment, PaymentAllocation
 from apps.payments.services import allocate_payment, record_cheque, record_payment
 from apps.products.models import Product
 from apps.shared.audit import log_event
-from apps.shared.permissions import is_owner
+from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
 
 from .models import SalesInvoice, SalesPaymentEntry
@@ -38,13 +39,14 @@ def confirm_sale(invoice, user):
 
     Returns:
         (invoice, shortages) where shortages is a list of dicts:
-        {"product": Product, "available": int, "requested": int, "resulting": int}
+        {"product": Product, "available": int, "requested": int,
+         "resulting": int, and "uncosted": int when some sold units found
+         no FIFO layer at all}
 
     Raises:
-        ValidationError: invoice is not a draft, has no items, references a
-        product or customer belonging to another business, or has a discount
-        exceeding its subtotal; or the sale would drive stock negative and
-        ``user`` is not an Owner/superuser (D-021).
+        ValidationError: invoice is not a draft, has no items, or has a
+        discount exceeding its subtotal; or the sale would drive stock
+        negative and ``user`` is not a superuser (D-021, §2.3).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -61,18 +63,8 @@ def confirm_sale(invoice, user):
             "تخفیف نمی‌تواند از جمع اقلام فاکتور بیشتر باشد."
         )
 
-    foreign = [i for i in items if i.product.business_id != locked_invoice.business_id]
-    if foreign:
-        names = "، ".join(i.product.name for i in foreign)
-        raise ValidationError(f"این کالاها متعلق به کسب‌وکار دیگری هستند: {names}")
-
-    if locked_invoice.customer.business_id != locked_invoice.business_id:
-        raise ValidationError("مشتری متعلق به کسب‌وکار دیگری است.")
-
     # Number assigned only now, at confirmation (D-022) — never while draft.
-    locked_invoice.invoice_number = get_next_document_number(
-        locked_invoice.business, "sale"
-    )
+    locked_invoice.invoice_number = get_next_document_number("sale")
 
     # Lock the product rows before reading stock.
     # they act as a mutex so a second concurrent sale of the same products
@@ -102,7 +94,6 @@ def confirm_sale(invoice, user):
 
         movements.append(
             InventoryMovement(
-                business=locked_invoice.business,
                 product=item.product,
                 movement_type=InventoryMovement.MovementType.SALE,
                 quantity=item.quantity,
@@ -113,16 +104,37 @@ def confirm_sale(invoice, user):
             )
         )
 
-    if shortages and not is_owner(user, locked_invoice.business):
-        # D-021: a Seller may not confirm a sale that goes negative; an
-        # Owner or superuser may, and gets it back as a warning (D-016).
+    if shortages and not is_privileged(user):
+        # D-021, now §2.3: an ordinary user may not confirm a sale that
+        # goes negative; a superuser may, and gets it back as a warning (D-016).
         names = "، ".join(s["product"].name for s in shortages)
         raise ValidationError(
-            f"این فروش موجودی این کالاها را منفی می‌کند؛ فقط مالک یا ابرکاربر "
+            f"این فروش موجودی این کالاها را منفی می‌کند؛ فقط ابرکاربر "
             f"می‌تواند آن را تأیید کند: {names}"
         )
 
     InventoryMovement.objects.bulk_create(movements)
+
+    # FIFO: each line takes from the oldest layers still holding stock, and
+    # what it took is recorded per layer, so the line's real cost is known
+    # and a later cancellation can put back exactly those amounts
+    # (REDESIGN_VISION 3). The product rows are already locked above, which
+    # is what keeps two concurrent sales from draining the same layer twice.
+    for item in items:
+        _, uncosted = consume_fifo(
+            item,
+            item.quantity,
+            user,
+            note=f"فاکتور فروش {locked_invoice.invoice_number}",
+        )
+        if uncosted:
+            # Only reachable on an oversell, which a superuser has just been
+            # allowed to make. Those units have no layer and therefore no
+            # cost basis; SaleItem.uncosted_quantity surfaces them instead of
+            # inventing a price for them.
+            for shortage in shortages:
+                if shortage["product"].pk == item.product_id:
+                    shortage["uncosted"] = uncosted
 
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
@@ -143,7 +155,6 @@ def confirm_sale(invoice, user):
         if entry.method == SalesPaymentEntry.Method.CHEQUE:
             record_cheque(
                 Cheque(
-                    business=locked_invoice.business,
                     direction=Payment.Direction.IN,
                     customer=locked_invoice.customer,
                     bank_account=entry.bank_account,
@@ -158,9 +169,9 @@ def confirm_sale(invoice, user):
         else:
             new_payment = record_payment(
                 Payment(
-                    business=locked_invoice.business,
                     bank_account=entry.bank_account,
                     direction=Payment.Direction.IN,
+                    customer=locked_invoice.customer,  # whose money this is (REDESIGN_VISION 3)
                     amount=entry.amount,
                     payment_date=locked_invoice.invoice_date,
                     note=f"فاکتور فروش {locked_invoice.invoice_number}",
@@ -173,7 +184,6 @@ def confirm_sale(invoice, user):
             )
 
     log_event(
-        business=locked_invoice.business,
         actor=user,
         event_type="confirm_sale",
         target=locked_invoice,
@@ -183,12 +193,38 @@ def confirm_sale(invoice, user):
     return locked_invoice, shortages
 
 
+def plan_full_payment(invoice, bank_account):
+    """
+    The default settlement (D-046): the customer paid the whole invoice,
+    into `bank_account` (None = cash, chosen explicitly on the form).
+
+    Adds the one payment-entry row that says so, on a draft invoice whose
+    items are already saved -- confirm_sale then books it exactly like
+    any row typed by hand (a real Payment, allocated to this invoice), so
+    there is no second way money gets recorded. The amount is the
+    server's own `invoice.total`, never a figure from the browser.
+    Nothing is planned when the total is not positive; confirm_sale
+    rejects a discount above the subtotal on its own.
+
+    Must be called inside the caller's transaction, before confirm_sale.
+    """
+    total = invoice.total
+    if total <= 0:
+        return None
+    return SalesPaymentEntry.objects.create(
+        invoice=invoice,
+        method=SalesPaymentEntry.Method.CASH if bank_account is None else SalesPaymentEntry.Method.BANK_TRANSFER,
+        amount=total,
+        bank_account=bank_account,
+    )
+
+
 @transaction.atomic
 def cancel_sale(invoice, user):
     """
     Cancel a confirmed sales invoice: reverse its stock, freeze it (D-023).
 
-    The invoice is never edited or reopened -- only Owner/superuser may
+    The invoice is never edited or reopened -- only a superuser may
     cancel, and a mistaken sale is corrected by a brand new invoice, never
     by editing this one (D-014 extended to cancelled invoices).
 
@@ -198,28 +234,37 @@ def cancel_sale(invoice, user):
 
     Args:
         invoice: the SalesInvoice to cancel.
-        user: the user performing the action; must be an Owner or superuser.
+        user: the user performing the action; must be a superuser.
 
     Returns:
         The cancelled SalesInvoice.
 
     Raises:
         ValidationError: invoice is not confirmed (draft or already
-        cancelled), or ``user`` is not an Owner/superuser (D-023).
+        cancelled), or ``user`` is not a superuser (D-023, §2.3).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
     if locked_invoice.status != SalesInvoice.Status.CONFIRMED:
         raise ValidationError("فقط فاکتور تأییدشده قابل لغو است.")
 
-    if not is_owner(user, locked_invoice.business):
-        raise ValidationError("فقط مالک یا ابرکاربر می‌تواند فاکتور را لغو کند.")
+    if not is_privileged(user):
+        raise ValidationError("فقط ابرکاربر می‌تواند فاکتور را لغو کند.")
 
     items = list(locked_invoice.items.select_related("product").all())
 
+    # Undo the FIFO draw first: every unit goes back to the exact layer it
+    # came from, by recorded amount rather than by FIFO order, so a layer a
+    # later sale has since drawn from still adds up (REDESIGN_VISION 8).
+    for item in items:
+        restore_consumptions(
+            item,
+            user,
+            note=f"لغو فاکتور فروش {locked_invoice.invoice_number}",
+        )
+
     reversals = [
         InventoryMovement(
-            business=locked_invoice.business,
             product=item.product,
             movement_type=InventoryMovement.MovementType.ADJUSTMENT_IN,
             quantity=item.quantity,
@@ -235,7 +280,6 @@ def cancel_sale(invoice, user):
     locked_invoice.save(update_fields=["status", "updated_at"])
 
     log_event(
-        business=locked_invoice.business,
         actor=user,
         event_type="cancel_sale",
         target=locked_invoice,

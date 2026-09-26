@@ -1,0 +1,116 @@
+# path: apps/products/forms.py
+
+"""
+"کالای جدید", inline mid-purchase (REDESIGN_VISION 4.2, vision doc §13).
+
+Unlike the quick customer/supplier forms, `default_selling_price` is
+required here even though the user is in a *purchase* flow: the vision
+doc's own real-gaps review (gap #6) called out that silently accepting
+the field's `0` default would let a product go out the door as an
+accidental free sale later, since nothing else ever prompts for a
+selling price after this moment.
+"""
+
+from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.functional import cached_property
+
+from .models import Product
+
+_WIDGETS = {
+    "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
+    "sku": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
+    "unit": forms.TextInput(attrs={"class": "field__control"}),
+    "default_selling_price": forms.NumberInput(
+        attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
+    ),
+}
+
+
+class SelectedProductMixin:
+    """
+    For an invoice item form whose `product` is a hidden input filled by the
+    row's JS search box (SaleItemForm, PurchaseItemForm): the product that
+    row already holds, so a form re-rendered after a validation error can
+    show its name and stock again (C.fix-2). Before this the hidden id
+    survived but the visible search box came back empty, and nothing on
+    the page said which product each row still held.
+
+    Read from cleaned_data when the row itself validated, otherwise from
+    the raw submitted id -- a row rejected for its quantity still holds a
+    product. None for an unbound form (a fresh page, the row template).
+    """
+
+    @cached_property
+    def selected_product(self):
+        if not self.is_bound:
+            return None
+        product = getattr(self, "cleaned_data", {}).get("product")
+        if product is not None:
+            return product
+        value = self["product"].value()
+        if not value:
+            return None
+        try:
+            return Product.objects.filter(pk=value).first()
+        except (ValueError, ValidationError):
+            return None  # a tampered id: nothing to show, the field error says why
+
+    @cached_property
+    def selected_stock(self):
+        """Live stock of `selected_product`, the same figure a search result shows."""
+        if self.selected_product is None:
+            return None
+        # Local import: apps.inventory.models imports Product (same reason as Product.__str__).
+        from apps.inventory.selectors import get_stock
+
+        return get_stock(self.selected_product)
+
+
+class QuickProductForm(forms.ModelForm):
+    """New product, inline. Reused wherever a purchase or (later) the
+    Inventory module needs to create one without leaving the page."""
+
+    class Meta:
+        model = Product
+        fields = ("name", "sku", "unit", "default_selling_price")
+        widgets = _WIDGETS
+        error_messages = {
+            "name": {"required": "نام کالا الزامی است."},
+            "sku": {
+                "required": "کد کالا الزامی است.",
+                "unique": "کالای دیگری با همین کد ثبت شده است.",
+            },
+            "unit": {"required": "واحد کالا الزامی است."},
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The model's `default=0` would otherwise pre-fill the box with 0,
+        # and an untouched 0 passes "required" -- exactly the accidental
+        # free sale gap #6 is about. Starting empty makes someone type it.
+        self.fields["default_selling_price"].initial = None
+        # Already required (the model field has no blank=True); only the
+        # message changes, since Django's generic one gives no hint why a
+        # *purchase* flow is asking for a *selling* price.
+        self.fields["default_selling_price"].error_messages["required"] = (
+            "قیمت فروش را وارد کنید — حتی برای کالایی که تازه خریداری می‌شود، "
+            "تا بعداً به‌صورت رایگان فروخته نشود."
+        )
+
+
+class SellingPriceForm(forms.Form):
+    """The one price a user sets by hand after creation: what the product
+    sells for from now on (feeds products.services.update_selling_price).
+    Purchase cost is never typed here -- it comes only from purchase
+    invoices, and inventory value only ever reads that cost."""
+
+    default_selling_price = forms.IntegerField(
+        min_value=0,
+        label="قیمت فروش جدید (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={
+            "required": "قیمت فروش را وارد کنید.",
+            "min_value": "قیمت فروش نمی‌تواند منفی باشد.",
+        },
+    )

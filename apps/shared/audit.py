@@ -5,7 +5,7 @@
 from apps.shared.models import AuditLog
 
 
-def log_event(*, business, actor, event_type, target, payload=None):
+def log_event(*, actor, event_type, target, payload=None):
     """
     Record one AuditLog row for a service-level event.
 
@@ -14,7 +14,6 @@ def log_event(*, business, actor, event_type, target, payload=None):
     log stays a plain FK-free reference (D-029).
     """
     AuditLog.objects.create(
-        business=business,
         actor=actor,
         event_type=event_type,
         target_type=target._meta.label_lower,

@@ -1,0 +1,64 @@
+{% load static paper %}<!DOCTYPE html>
+{% comment %}
+A print-friendly render of the invoice, not a generated file (RULES.md
+excludes PDF from scope) -- the browser's own print dialog is the whole
+mechanism. Deliberately outside shared/base.html: no sidebar, no header,
+nothing that would print alongside the invoice.
+{% endcomment %}
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>فاکتور {{ invoice.invoice_number }} | پیپر پلاس</title>
+  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+</head>
+<body class="print-page">
+  <button type="button" class="btn no-print print-page__trigger" onclick="window.print()">چاپ</button>
+
+  <div class="print-invoice">
+    <header class="print-invoice__head">
+      <h1>پیپر پلاس</h1>
+      <div>
+        <p>فاکتور فروش شمارهٔ {{ invoice.invoice_number|fa_number }}</p>
+        <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>
+      </div>
+    </header>
+
+    <section class="print-invoice__party">
+      <p><strong>مشتری:</strong> {{ invoice.customer.name }}</p>
+      {% if invoice.customer.phone %}<p><strong>تلفن:</strong> {{ invoice.customer.phone }}</p>{% endif %}
+    </section>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>کالا</th>
+          <th>مقدار</th>
+          <th>قیمت واحد (تومان)</th>
+          <th>جمع (تومان)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items.all %}
+          <tr>
+            <td>{{ item.product.name }}</td>
+            <td class="num">{{ item.quantity|fa_number }}</td>
+            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item.line_total|toman }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="print-invoice__totals">
+      <div><span>جمع جزء</span><span class="num">{{ invoice.subtotal|toman }}</span></div>
+      <div><span>تخفیف</span><span class="num">{{ invoice.discount_amount|toman }}</span></div>
+      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total|toman }}</span></div>
+    </div>
+
+    <footer class="print-invoice__foot">
+      <p>ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}</p>
+      <p>وضعیت: {{ invoice.get_status_display }}</p>
+    </footer>
+  </div>
+</body>
+</html>

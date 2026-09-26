@@ -6,7 +6,7 @@ from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Supplier
 from apps.products.models import Product
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 
 
 class PurchaseInvoice(BaseModel):
@@ -31,12 +31,6 @@ class PurchaseInvoice(BaseModel):
         CHEQUE = "cheque", "چک"
         CREDIT = "credit", "نسیه"
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="purchase_invoices",
-        verbose_name="کسب‌وکار",
-    )
     supplier = models.ForeignKey(
         Supplier,
         on_delete=models.PROTECT,
@@ -97,9 +91,9 @@ class PurchaseInvoice(BaseModel):
         ordering = ["-invoice_date", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "invoice_number"],
+                fields=["invoice_number"],
                 condition=~models.Q(invoice_number=""),
-                name="unique_purchase_invoice_number_per_business",
+                name="unique_purchase_invoice_number",
             ),
         ]
 
@@ -113,7 +107,7 @@ class PurchaseInvoice(BaseModel):
 
     @property
     def total_amount(self):
-        """Sum of line totals, in Rial."""
+        """Sum of line totals, in Toman."""
         return sum(item.line_total for item in self.items.all())
 
     class PaymentStatus(models.TextChoices):
@@ -123,7 +117,7 @@ class PurchaseInvoice(BaseModel):
 
     @property
     def paid_amount(self):
-        """Sum of PaymentAllocation rows against this invoice, in Rial (4.3)."""
+        """Sum of PaymentAllocation rows against this invoice, in Toman (4.3)."""
         return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
 
     @property
@@ -135,6 +129,12 @@ class PurchaseInvoice(BaseModel):
         if paid < self.total_amount:
             return self.PaymentStatus.PARTIAL
         return self.PaymentStatus.PAID
+
+    @property
+    def outstanding(self):
+        """How much of this invoice is still open, never below zero (an
+        overpayment does not make an invoice owe negative money, D-025)."""
+        return max(self.total_amount - self.paid_amount, 0)
 
 
 class PurchaseItem(BaseModel):
@@ -156,7 +156,7 @@ class PurchaseItem(BaseModel):
         verbose_name="مقدار",
     )
     unit_price = models.BigIntegerField(
-        verbose_name="قیمت واحد (ریال)",  # whole Rial (D-013)
+        verbose_name="قیمت واحد (تومان)",  # whole Toman (D-043)
     )
 
     class Meta:
@@ -216,7 +216,7 @@ class PurchasePaymentEntry(BaseModel):
         verbose_name="روش",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
+        verbose_name="مبلغ (تومان)",
     )
     bank_account = models.ForeignKey(
         "payments.BankAccount",

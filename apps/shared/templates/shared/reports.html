@@ -1,0 +1,244 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Financial Reports (REDESIGN_VISION 4.8, Phase C module 8). Every number on
+this page is computed live for the chosen range (apps/shared/reports.py),
+never stored -- a report for last month must show last month's true
+numbers, not today's. The five summary cards compare against the
+equal-length prior period; everything else (by-product tables, top
+sellers, inventory/bank/receivables snapshots, cheques, user activity) is
+this range alone.
+{% endcomment %}
+
+{% block title %}گزارش‌های مالی{% endblock %}
+{% block header %}گزارش‌های مالی{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>گزارش‌های مالی</h1>
+    <form method="get">
+      {% include "shared/_date_range.html" with form=range_form %}
+    </form>
+  </div>
+  <p class="page-head__lede">
+    بازهٔ انتخابی: <span class="num">{{ date_range.0|jalali }}</span> تا <span class="num">{{ date_range.1|jalali }}</span>
+  </p>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">جمع فروش</span>
+    <span class="stat-card__value num">{{ cards.sales.value|toman }}</span>
+    {% if cards.sales.change is not None %}
+      <span class="stat-card__delta{% if cards.sales.change > 0 %} stat-card__delta--up{% elif cards.sales.change < 0 %} stat-card__delta--down{% endif %}">
+        {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_number }}٪ نسبت به بازهٔ قبل
+      </span>
+    {% endif %}
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">جمع خرید</span>
+    <span class="stat-card__value num">{{ cards.purchases.value|toman }}</span>
+    {% if cards.purchases.change is not None %}
+      <span class="stat-card__delta{% if cards.purchases.change > 0 %} stat-card__delta--up{% elif cards.purchases.change < 0 %} stat-card__delta--down{% endif %}">
+        {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_number }}٪ نسبت به بازهٔ قبل
+      </span>
+    {% endif %}
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">هزینه‌ها</span>
+    <span class="stat-card__value num">{{ cards.expenses.value|toman }}</span>
+    {% if cards.expenses.change is not None %}
+      <span class="stat-card__delta{% if cards.expenses.change > 0 %} stat-card__delta--up{% elif cards.expenses.change < 0 %} stat-card__delta--down{% endif %}">
+        {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_number }}٪ نسبت به بازهٔ قبل
+      </span>
+    {% endif %}
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">سود ناخالص</span>
+    <span class="stat-card__value num">{{ cards.gross_profit.value|toman }}</span>
+    {% if cards.gross_profit.change is not None %}
+      <span class="stat-card__delta{% if cards.gross_profit.change > 0 %} stat-card__delta--up{% elif cards.gross_profit.change < 0 %} stat-card__delta--down{% endif %}">
+        {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_number }}٪ نسبت به بازهٔ قبل
+      </span>
+    {% endif %}
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">سود خالص</span>
+    <span class="stat-card__value num">{{ cards.net_profit.value|toman }}</span>
+    {% if cards.net_profit.change is not None %}
+      <span class="stat-card__delta{% if cards.net_profit.change > 0 %} stat-card__delta--up{% elif cards.net_profit.change < 0 %} stat-card__delta--down{% endif %}">
+        {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_number }}٪ نسبت به بازهٔ قبل
+      </span>
+    {% endif %}
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">نرخ دلار</span>
+    <span class="stat-card__value">نامشخص</span>
+    <span class="field__hint">منبع نرخ هنوز مشخص نشده است.</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>فروش به تفکیک کالا</h2>
+    {% if sales_by_product %}
+      <p class="field__hint">مبلغ و سود پس از تخفیف فاکتورها است؛ تخفیف هر فاکتور به نسبت مبلغ ردیف‌ها بین کالاهای آن سرشکن شده است.</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>کالا</th><th>مقدار</th><th>مبلغ خالص</th><th>سود</th></tr>
+        </thead>
+        <tbody>
+          {% for row in sales_by_product %}
+            <tr>
+              <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
+              <td class="num">{{ row.quantity|fa_number }}</td>
+              <td class="num">{{ row.amount|toman }}</td>
+              <td class="num">{{ row.profit|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">در این بازه فروشی ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>خرید به تفکیک کالا</h2>
+    {% if purchases_by_product %}
+      <table class="data-table">
+        <thead>
+          <tr><th>کالا</th><th>مقدار</th><th>مبلغ</th></tr>
+        </thead>
+        <tbody>
+          {% for row in purchases_by_product %}
+            <tr>
+              <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
+              <td class="num">{{ row.quantity|fa_number }}</td>
+              <td class="num">{{ row.amount|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">در این بازه خریدی ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>پرفروش‌ترین کالاها</h2>
+    {% if top_sellers %}
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>کالا</th><th>مقدار فروش</th></tr>
+        </thead>
+        <tbody>
+          {% for row in top_sellers %}
+            <tr>
+              <td class="num">{{ forloop.counter|fa_number }}</td>
+              <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
+              <td class="num">{{ row.quantity|fa_number }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">در این بازه فروشی ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">ارزش موجودی (پایان بازه)</span>
+    <span class="stat-card__value num">{{ inventory.total_value|toman }}</span>
+    <span class="field__hint">{{ inventory.product_count|fa_number }} کالا با موجودی</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">مطالبات باز (پایان بازه)</span>
+    <span class="stat-card__value num">{{ receivables_payables.receivables|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">بدهی باز (پایان بازه)</span>
+    <span class="stat-card__value num">{{ receivables_payables.payables|toman }}</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>حساب‌های بانکی (پایان بازه)</h2>
+    {% if bank_accounts %}
+      <table class="data-table">
+        <thead>
+          <tr><th>حساب</th><th>مانده (پایان بازه)</th><th>واریز این بازه</th><th>برداشت این بازه</th></tr>
+        </thead>
+        <tbody>
+          {% for row in bank_accounts %}
+            <tr>
+              <td><a href="{% url 'bank_accounts:detail' row.account.pk %}">{{ row.account.name }}</a></td>
+              <td class="num">{{ row.balance|toman }}</td>
+              <td class="num">{{ row.period_in|toman }}</td>
+              <td class="num">{{ row.period_out|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">حساب بانکی فعالی ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>چک‌ها (سررسید در این بازه)</h2>
+    {% if cheques %}
+      <table class="data-table">
+        <thead>
+          <tr><th>وضعیت</th><th>تعداد</th><th>مبلغ</th></tr>
+        </thead>
+        <tbody>
+          {% for row in cheques %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td class="num">{{ row.count|fa_number }}</td>
+              <td class="num">{{ row.amount|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">چکی با سررسید در این بازه ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>فعالیت کاربران (در این بازه)</h2>
+    {% if user_activity %}
+      <table class="data-table">
+        <thead>
+          <tr><th>کاربر</th><th>تعداد رویداد</th></tr>
+        </thead>
+        <tbody>
+          {% for row in user_activity %}
+            <tr>
+              <td>{{ row.actor }}</td>
+              <td class="num">{{ row.count|fa_number }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">در این بازه رویدادی ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

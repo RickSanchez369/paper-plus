@@ -6,7 +6,7 @@ from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Customer
 from apps.products.models import Product
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 
 
 class SalesInvoice(BaseModel):
@@ -31,12 +31,6 @@ class SalesInvoice(BaseModel):
         CHEQUE = "cheque", "چک"
         CREDIT = "credit", "نسیه"
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,
-        related_name="sales_invoices",
-        verbose_name="کسب‌وکار",
-    )
     customer = models.ForeignKey(
         Customer,
         on_delete=models.PROTECT,
@@ -69,7 +63,7 @@ class SalesInvoice(BaseModel):
     )
     discount_amount = models.BigIntegerField(
         default=0,
-        verbose_name="تخفیف (ریال)",  # invoice-level only for now; line-level discount is a later step (R 9)
+        verbose_name="تخفیف (تومان)",  # invoice-level only for now; line-level discount is a later step (R 9)
     )
     payment_method = models.CharField(
         max_length=20,
@@ -96,9 +90,9 @@ class SalesInvoice(BaseModel):
         ordering = ["-invoice_date", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "invoice_number"],
+                fields=["invoice_number"],
                 condition=~models.Q(invoice_number=""),
-                name="unique_sales_invoice_number_per_business",
+                name="unique_sales_invoice_number",
             ),
             models.CheckConstraint(
                 condition=models.Q(discount_amount__gte=0),
@@ -116,7 +110,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def subtotal(self):
-        """Sum of line totals, before discount, in Rial (R 9)."""
+        """Sum of line totals, before discount, in Toman (R 9)."""
         return sum(item.line_total for item in self.items.all())
 
     @property
@@ -126,7 +120,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def total(self):
-        """Subtotal minus the invoice-level discount, in Rial (R 9)."""
+        """Subtotal minus the invoice-level discount, in Toman (R 9)."""
         return self.subtotal - self.discount_amount
 
     class PaymentStatus(models.TextChoices):
@@ -136,7 +130,7 @@ class SalesInvoice(BaseModel):
 
     @property
     def paid_amount(self):
-        """Sum of PaymentAllocation rows against this invoice, in Rial (4.3)."""
+        """Sum of PaymentAllocation rows against this invoice, in Toman (4.3)."""
         return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
 
     @property
@@ -148,6 +142,68 @@ class SalesInvoice(BaseModel):
         if paid < self.total:
             return self.PaymentStatus.PARTIAL
         return self.PaymentStatus.PAID
+
+    @property
+    def outstanding(self):
+        """How much of this invoice is still open, never below zero (an
+        overpayment does not make an invoice owe negative money, D-025)."""
+        return max(self.total - self.paid_amount, 0)
+
+    @property
+    def cost_of_goods(self):
+        """Real FIFO cost of everything on this invoice, in Toman."""
+        return sum(item.cost_of_goods for item in self.items.all())
+
+    @property
+    def profit(self):
+        """
+        Realised profit: invoice total minus real cost of goods, in Toman.
+
+        The discount comes off the total, so it comes out of profit -- it
+        is a price reduction, not a cost. Zero for a draft or cancelled
+        invoice, same rule as SaleItem.profit. Always equals the sum of
+        its lines' profit, since the lines share the discount exactly
+        (`discount_allocation`, D-048).
+        """
+        if self.status != self.Status.CONFIRMED:
+            return 0
+        return self.total - self.cost_of_goods
+
+    @property
+    def discount_allocation(self):
+        """
+        {item pk: that line's share of the invoice discount}, in whole Toman
+        (D-048).
+
+        The discount is invoice-level (D-032), but "which product earns
+        what" needs it per line: each line carries the part proportional to
+        its own line total, so a line's revenue and profit are what that
+        product really brought in. Largest remainder keeps the shares
+        summing to exactly `discount_amount` -- floor every share, then hand
+        the leftover Toman, one each, to the lines with the biggest
+        remainders (ties by pk, so the same invoice always splits the same
+        way). Derived on every read, never stored (D-025).
+        """
+        items = list(self.items.all())
+        subtotal = sum(item.line_total for item in items)
+        if not self.discount_amount or subtotal <= 0:
+            return {item.pk: 0 for item in items}
+
+        shares = {}
+        remainders = []
+        for item in items:
+            numerator = self.discount_amount * item.line_total
+            shares[item.pk] = numerator // subtotal
+            remainders.append((numerator % subtotal, str(item.pk), item.pk))
+        leftover = self.discount_amount - sum(shares.values())
+        for _, _, pk in sorted(remainders, key=lambda r: (-r[0], r[1]))[:leftover]:
+            shares[pk] += 1
+        return shares
+
+    @property
+    def has_uncosted_items(self):
+        """True when any line was sold without a cost basis (see SaleItem)."""
+        return any(item.uncosted_quantity for item in self.items.all())
 
 
 class SaleItem(BaseModel):
@@ -170,7 +226,7 @@ class SaleItem(BaseModel):
     )
     unit_price = models.BigIntegerField(
         blank=True,  # admin may leave it empty; filled from the product default (R 7, 17C)
-        verbose_name="قیمت واحد (ریال)",  # whole Rial (D-013)
+        verbose_name="قیمت واحد (تومان)",  # whole Toman (D-043)
     )
 
     class Meta:
@@ -213,6 +269,68 @@ class SaleItem(BaseModel):
     def line_total(self):
         return self.quantity * self.unit_price
 
+    @property
+    def discount_share(self):
+        """This line's part of the invoice discount (D-048, see
+        SalesInvoice.discount_allocation)."""
+        return self.invoice.discount_allocation.get(self.pk, 0)
+
+    @property
+    def net_total(self):
+        """What this line actually brought in: line total minus its share
+        of the invoice discount. The lines' net totals sum to invoice.total."""
+        return self.line_total - self.discount_share
+
+    @property
+    def cost_of_goods(self):
+        """
+        What these units actually cost, in Toman, from the FIFO layers this
+        line drew from (REDESIGN_VISION 3). Derived, never stored (D-025):
+        it is the sum over this line's InventoryConsumption rows of
+        quantity x that layer's own unit_cost, so a cancelled line -- whose
+        consumptions net to zero -- correctly costs nothing.
+        """
+        return sum(
+            consumption.quantity * consumption.layer.unit_cost
+            for consumption in self.consumptions.select_related("layer")
+        )
+
+    @property
+    def costed_quantity(self):
+        """How many of these units FIFO could actually find a layer for."""
+        return sum(consumption.quantity for consumption in self.consumptions.all())
+
+    @property
+    def uncosted_quantity(self):
+        """
+        Units sold with no layer behind them, so no cost basis at all.
+
+        Non-zero only after an oversell, which is superuser-only (D-016).
+        Surfaced rather than hidden: profit on those units is overstated by
+        exactly whatever they really cost, and a page showing profit has to
+        be able to say so.
+        """
+        if self.invoice.status != SalesInvoice.Status.CONFIRMED:
+            return 0
+        return self.quantity - self.costed_quantity
+
+    @property
+    def profit(self):
+        """
+        Realised profit: net total (after this line's share of the invoice
+        discount, D-048) minus its real FIFO cost, in Toman -- so the lines
+        of an invoice add up to exactly the invoice's own profit.
+
+        Zero unless the invoice is confirmed. A draft has not sold anything
+        yet, and a cancelled line's consumptions net back to zero cost --
+        without this guard both would report their whole revenue as profit,
+        and every total built on this property would count cancelled
+        invoices (REDESIGN_VISION 8, item 4).
+        """
+        if self.invoice.status != SalesInvoice.Status.CONFIRMED:
+            return 0
+        return self.net_total - self.cost_of_goods
+
 
 class SalesPaymentEntry(BaseModel):
     """
@@ -245,7 +363,7 @@ class SalesPaymentEntry(BaseModel):
         verbose_name="روش",
     )
     amount = models.BigIntegerField(
-        verbose_name="مبلغ (ریال)",
+        verbose_name="مبلغ (تومان)",
     )
     bank_account = models.ForeignKey(
         "payments.BankAccount",

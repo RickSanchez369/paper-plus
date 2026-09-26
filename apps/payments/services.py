@@ -9,8 +9,9 @@ from django.utils import timezone
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared.audit import log_event
+from apps.shared.permissions import is_privileged
 
-from .models import Cheque, Payment, PaymentAllocation
+from .models import Cheque, Expense, Payment, PaymentAllocation
 
 
 @transaction.atomic
@@ -21,13 +22,12 @@ def record_payment(payment, user):
     `allocate_payment` for that.
 
     Args:
-        payment: an unsaved Payment with business, direction, amount,
+        payment: an unsaved Payment with direction, amount,
             payment_date, and optionally bank_account/note already set.
         user: the user performing the action; recorded as `created_by`.
 
     Raises:
-        ValidationError: payment already exists, amount is not positive,
-            or bank_account belongs to a different business.
+        ValidationError: payment already exists, or amount is not positive.
     """
     if not payment._state.adding:
         # pk is never None here (BaseModel.id defaults to uuid4() on
@@ -35,13 +35,17 @@ def record_payment(payment, user):
         raise ValidationError("پرداخت قابل ویرایش نیست.")
     if payment.amount is None or payment.amount <= 0:
         raise ValidationError("مبلغ پرداخت باید بزرگ‌تر از صفر باشد.")
-    if payment.bank_account_id is not None and payment.bank_account.business_id != payment.business_id:
-        raise ValidationError("حساب بانکی متعلق به کسب‌وکار دیگری است.")
-
+    # A friendly message before payment_party_matches_direction would
+    # otherwise surface as a raw IntegrityError.
+    if payment.customer_id and payment.supplier_id:
+        raise ValidationError("یک پرداخت نمی‌تواند هم‌زمان مشتری و تأمین‌کننده داشته باشد.")
+    if payment.customer_id and payment.direction != Payment.Direction.IN:
+        raise ValidationError("فقط دریافتی می‌تواند به مشتری نسبت داده شود.")
+    if payment.supplier_id and payment.direction != Payment.Direction.OUT:
+        raise ValidationError("فقط پرداختی می‌تواند به تأمین‌کننده نسبت داده شود.")
     payment.created_by = user
     payment.save()
     log_event(
-        business=payment.business,
         actor=user,
         event_type="record_payment",
         target=payment,
@@ -69,9 +73,8 @@ def allocate_payment(allocation, user):
 
     Raises:
         ValidationError: allocation already exists; not exactly one
-            invoice side is set; the invoice is not confirmed; invoice and
-            payment belong to different businesses; the payment's
-            direction does not match the invoice side (IN -> sales,
+            invoice side is set; the invoice is not confirmed; the
+            payment's direction does not match the invoice side (IN -> sales,
             OUT -> purchase); amount exceeds the payment's or the
             invoice's remaining balance.
     """
@@ -99,9 +102,6 @@ def allocate_payment(allocation, user):
         invoice = PurchaseInvoice.objects.select_for_update().get(pk=allocation.purchase_invoice_id)
         remaining_on_invoice = invoice.total_amount - invoice.paid_amount
 
-    if invoice.business_id != payment.business_id:
-        raise ValidationError("فاکتور و پرداخت متعلق به یک کسب‌وکار نیستند.")
-
     if invoice.status != invoice.Status.CONFIRMED:
         raise ValidationError("فقط فاکتور تأییدشده قابل تخصیص پرداخت است.")
 
@@ -113,7 +113,6 @@ def allocate_payment(allocation, user):
 
     allocation.save()
     log_event(
-        business=payment.business,
         actor=user,
         event_type="allocate_payment",
         target=allocation,
@@ -132,14 +131,14 @@ def record_cheque(cheque, user):
     a pending cheque is closed out.
 
     Args:
-        cheque: an unsaved Cheque with business, direction, exactly one of
+        cheque: an unsaved Cheque with direction, exactly one of
             customer/supplier, cheque_number, due_date, amount, and
             optionally bank_account/bank_name/note already set.
         user: the user performing the action.
 
     Raises:
-        ValidationError: cheque already exists; amount is not positive;
-            customer/supplier or bank_account belongs to another business.
+        ValidationError: cheque already exists; amount is not positive; or
+            the direction/party pair is invalid.
     """
     if not cheque._state.adding:
         raise ValidationError("چک قابل ویرایش نیست.")
@@ -155,17 +154,9 @@ def record_cheque(cheque, user):
             raise ValidationError("چک پرداختی باید دقیقاً یک تأمین‌کننده داشته باشد، بدون مشتری.")
     else:
         raise ValidationError("جهت چک نامعتبر است.")
-    if cheque.customer_id is not None and cheque.customer.business_id != cheque.business_id:
-        raise ValidationError("مشتری متعلق به کسب‌وکار دیگری است.")
-    if cheque.supplier_id is not None and cheque.supplier.business_id != cheque.business_id:
-        raise ValidationError("تأمین‌کننده متعلق به کسب‌وکار دیگری است.")
-    if cheque.bank_account_id is not None and cheque.bank_account.business_id != cheque.business_id:
-        raise ValidationError("حساب بانکی متعلق به کسب‌وکار دیگری است.")
-
     cheque.status = Cheque.Status.PENDING
     cheque.save()
     log_event(
-        business=cheque.business,
         actor=user,
         event_type="record_cheque",
         target=cheque,
@@ -198,11 +189,14 @@ def clear_cheque(cheque, user, bank_account=None):
 
     payment = record_payment(
         Payment(
-            business=locked.business,
             bank_account=bank_account or locked.bank_account,
             direction=locked.direction,
+            # Carry the cheque's own party across, so the money this cheque
+            # became is still traceable to a person (REDESIGN_VISION 3).
+            customer=locked.customer,
+            supplier=locked.supplier,
             amount=locked.amount,
-            payment_date=timezone.now().date(),
+            payment_date=timezone.localdate(),
             note=f"وصول چک {locked.cheque_number}",
         ),
         user,
@@ -228,7 +222,6 @@ def clear_cheque(cheque, user, bank_account=None):
         )
 
     log_event(
-        business=locked.business,
         actor=user,
         event_type="clear_cheque",
         target=locked,
@@ -253,9 +246,137 @@ def bounce_cheque(cheque, user):
     locked.status = Cheque.Status.BOUNCED
     locked.save(update_fields=["status", "updated_at"])
     log_event(
-        business=locked.business,
         actor=user,
         event_type="bounce_cheque",
+        target=locked,
+        payload={"amount": locked.amount},
+    )
+    return locked
+
+@transaction.atomic
+def cancel_cheque(cheque, user):
+    """
+    Withdraw a cheque that should never have been entered.
+
+    Reachable only from PENDING, one-way, and financially a no-op: a
+    pending cheque was never counted toward any invoice's payment_status
+    (ROADMAP 4.4), so there is nothing to reverse and no Payment is
+    involved either way. Mirrors `bounce_cheque`'s shape; the row survives
+    as history rather than being deleted (REDESIGN_VISION 2.7).
+
+    Raises:
+        ValidationError: cheque is not pending.
+    """
+    locked = Cheque.objects.select_for_update().get(pk=cheque.pk)
+    if locked.status != Cheque.Status.PENDING:
+        raise ValidationError("فقط چک در انتظار وصول قابل لغو است.")
+
+    locked.status = Cheque.Status.CANCELLED
+    locked.save(update_fields=["status", "updated_at"])
+    log_event(
+        actor=user,
+        event_type="cancel_cheque",
+        target=locked,
+        payload={"amount": locked.amount},
+    )
+    return locked
+
+
+@transaction.atomic
+def record_expense(expense, user):
+    """
+    Record a business expense and the money that left with it, together.
+
+    Creates the Payment (direction OUT, no allocations -- an expense
+    settles no invoice) and links it to the Expense in one transaction, so
+    the two can never exist apart. Reusing the Payment ledger is the whole
+    point: bank balances and every cash-flow figure already read from it,
+    so an expense needs no parallel accounting path
+    (REDESIGN_VISION 3, vision doc 27).
+
+    Args:
+        expense: an unsaved Expense with expense_date, amount, reason and
+            optionally bank_account/document/note set (bank_account left
+            blank = cash).
+            `payment` must NOT be set -- this creates it.
+        user: the user performing the action; recorded on both rows.
+
+    Raises:
+        ValidationError: expense already exists, amount is not positive,
+            reason is blank, or a payment was pre-attached.
+    """
+    if not expense._state.adding:
+        raise ValidationError("هزینه قابل ویرایش نیست.")
+    if expense.amount is None or expense.amount <= 0:
+        raise ValidationError("مبلغ هزینه باید بزرگ‌تر از صفر باشد.")
+    if not (expense.reason or "").strip():
+        raise ValidationError("ثبت «بابت» برای هزینه الزامی است.")
+    if expense.payment_id is not None:
+        raise ValidationError("پرداخت هزینه را خود سرویس می‌سازد.")
+
+    expense.payment = record_payment(
+        Payment(
+            bank_account=expense.bank_account,
+            direction=Payment.Direction.OUT,
+            amount=expense.amount,
+            payment_date=expense.expense_date,
+            note=f"هزینه: {expense.reason}",
+        ),
+        user,
+    )
+    expense.created_by = user
+    expense.save()
+
+    log_event(
+        actor=user,
+        event_type="record_expense",
+        target=expense,
+        payload={"amount": expense.amount, "reason": expense.reason},
+    )
+    return expense
+
+
+@transaction.atomic
+def cancel_expense(expense, user):
+    """
+    Undo an expense with an opposite entry, never by deleting it.
+
+    Books a Payment of the same amount in the opposite direction against
+    the same account, so the bank balance returns to where it was and the
+    ledger keeps both halves of the story (REDESIGN_VISION 2.7). The
+    Expense row itself stays, flagged cancelled, and stops counting toward
+    any total (`counts_toward_totals`).
+
+    Superuser-only, same risk tier as cancel_sale/cancel_purchase
+    (REDESIGN_VISION 4.6, D-023's is_superuser gate).
+
+    Raises:
+        ValidationError: expense is already cancelled, or ``user`` is not
+            a superuser.
+    """
+    locked = Expense.objects.select_for_update().get(pk=expense.pk)
+    if locked.is_cancelled:
+        raise ValidationError("این هزینه قبلاً لغو شده است.")
+    if not is_privileged(user):
+        raise ValidationError("فقط ابرکاربر می‌تواند هزینه را لغو کند.")
+
+    locked.reversal_payment = record_payment(
+        Payment(
+            bank_account=locked.bank_account,
+            direction=Payment.Direction.IN,
+            amount=locked.amount,
+            payment_date=timezone.localdate(),
+            note=f"لغو هزینه: {locked.reason}",
+        ),
+        user,
+    )
+    locked.cancelled_at = timezone.now()
+    locked.cancelled_by = user
+    locked.save(update_fields=["reversal_payment", "cancelled_at", "cancelled_by", "updated_at"])
+
+    log_event(
+        actor=user,
+        event_type="cancel_expense",
         target=locked,
         payload={"amount": locked.amount},
     )

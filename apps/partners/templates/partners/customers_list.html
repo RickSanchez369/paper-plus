@@ -1,0 +1,76 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Customers list (REDESIGN_VISION 4.7): name, phone, account status badge
+(owes/settled), open balance, invoice count, last purchase date. Search
+name/phone, filter account status + active/inactive. "New customer" is the
+same inline mini-form used mid-invoice on Sales/Purchasing, just standalone
+here (its #id_customer out-of-band swap simply finds nothing to replace on
+this page, which is harmless).
+{% endcomment %}
+
+{% block title %}مشتریان{% endblock %}
+{% block header %}مشتریان{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>مشتریان</h1>
+    <details class="quick-party-disclosure">
+      <summary class="btn">+ مشتری جدید</summary>
+      {% include "partners/_quick_party_form.html" with form=quick_customer_form post_url=quick_customer_url title="مشتری جدید" %}
+    </details>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <form method="get" class="toolbar">
+      <div class="filters">
+        {% include "shared/_field.html" with field=filter_form.q %}
+        {% include "shared/_field.html" with field=filter_form.account_status %}
+        {% include "shared/_field.html" with field=filter_form.is_active %}
+        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+      </div>
+    </form>
+
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>نام</th>
+              <th>تلفن</th>
+              <th>وضعیت حساب</th>
+              <th>مانده باز</th>
+              <th>تعداد فاکتور</th>
+              <th>آخرین خرید</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><a href="{% url 'customers:detail' row.customer.pk %}">{{ row.customer.name }}</a></td>
+                <td class="num">{{ row.customer.phone|default:"—" }}</td>
+                <td>
+                  <span class="badge badge--{% if row.owes %}bad{% else %}good{% endif %}">
+                    {% if row.owes %}بدهکار{% else %}تسویه‌شده{% endif %}
+                  </span>
+                </td>
+                <td class="num">{{ row.outstanding|toman }}</td>
+                <td class="num">{{ row.invoice_count|fa_number }}</td>
+                <td class="num">{{ row.last_purchase|jalali|default:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>مشتری‌ای با این فیلترها پیدا نشد.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

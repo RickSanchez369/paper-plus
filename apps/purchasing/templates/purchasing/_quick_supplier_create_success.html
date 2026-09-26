@@ -1,0 +1,11 @@
+{% comment %}
+Mirrors partners/_quick_party_create_success.html for the supplier side
+(QuickSupplierCreateView). The matching out-of-band swap
+(#id_supplier, see _supplier_select_oob.html) already put the new party
+into the invoice's supplier field.
+{% endcomment %}
+<div class="quick-party quick-party--success">
+  <p class="field__hint">«{{ supplier.name }}» ثبت شد و در فاکتور انتخاب شد.</p>
+  <button type="button" class="btn btn--quiet btn--block"
+          onclick="this.closest('details').removeAttribute('open')">بستن</button>
+</div>

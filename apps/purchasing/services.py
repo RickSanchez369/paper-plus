@@ -10,11 +10,12 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.inventory.models import InventoryMovement
+from apps.inventory.models import InventoryLayer, InventoryMovement
+from apps.inventory.services import cancel_layer
 from apps.payments.models import Cheque, Payment, PaymentAllocation
 from apps.payments.services import allocate_payment, record_cheque, record_payment
 from apps.shared.audit import log_event
-from apps.shared.permissions import is_owner
+from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
 
 from .models import PurchaseInvoice, PurchasePaymentEntry
@@ -52,29 +53,15 @@ def confirm_purchase(invoice, user):
     items = list(locked_invoice.items.select_related("product").all())
     if not items:
         raise ValidationError("فاکتور بدون قلم قابل تأیید نیست.")
-    # A line may only reference a product of the same business. Nothing in the
-    # database prevents this (a CHECK cannot look at another table), so the
-    # service is the gate.
-    foreign = [i for i in items if i.product.business_id != locked_invoice.business_id]
-    if foreign:
-        names = "، ".join(i.product.name for i in foreign)
-        raise ValidationError(f"این کالاها متعلق به کسب‌وکار دیگری هستند: {names}")
-
-    # Same rule for the supplier.
-    if locked_invoice.supplier.business_id != locked_invoice.business_id:
-        raise ValidationError("تأمین‌کننده متعلق به کسب‌وکار دیگری است.")
 
     # Number assigned only now, at confirmation (D-022) — never while draft.
-    locked_invoice.invoice_number = get_next_document_number(
-        locked_invoice.business, "purchase"
-    )
+    locked_invoice.invoice_number = get_next_document_number("purchase")
 
     # One ledger row per line. quantity stays positive; the type carries
     # the direction (D-012).
     
     movements = [
         InventoryMovement(
-            business=locked_invoice.business,
             product=item.product,
             movement_type=InventoryMovement.MovementType.PURCHASE,
             quantity=item.quantity,
@@ -86,6 +73,21 @@ def confirm_purchase(invoice, user):
         for item in items
     ]
     InventoryMovement.objects.bulk_create(movements)
+
+    # One FIFO cost layer per line: this is the stock a later sale will
+    # consume, at the price it was actually bought for (REDESIGN_VISION 3).
+    InventoryLayer.objects.bulk_create([
+        InventoryLayer(
+            product=item.product,
+            source=InventoryLayer.Source.PURCHASE,
+            purchase_item=item,
+            quantity=item.quantity,
+            quantity_remaining=item.quantity,
+            unit_cost=item.unit_price,
+            created_by=user,
+        )
+        for item in items
+    ])
 
     locked_invoice.status = PurchaseInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
@@ -105,7 +107,6 @@ def confirm_purchase(invoice, user):
         if entry.method == PurchasePaymentEntry.Method.CHEQUE:
             record_cheque(
                 Cheque(
-                    business=locked_invoice.business,
                     direction=Payment.Direction.OUT,
                     supplier=locked_invoice.supplier,
                     bank_account=entry.bank_account,
@@ -120,9 +121,9 @@ def confirm_purchase(invoice, user):
         else:
             new_payment = record_payment(
                 Payment(
-                    business=locked_invoice.business,
                     bank_account=entry.bank_account,
                     direction=Payment.Direction.OUT,
+                    supplier=locked_invoice.supplier,  # who got this money (REDESIGN_VISION 3)
                     amount=entry.amount,
                     payment_date=locked_invoice.invoice_date,
                     note=f"فاکتور خرید {locked_invoice.invoice_number}",
@@ -135,7 +136,6 @@ def confirm_purchase(invoice, user):
             )
 
     log_event(
-        business=locked_invoice.business,
         actor=user,
         event_type="confirm_purchase",
         target=locked_invoice,
@@ -150,7 +150,7 @@ def cancel_purchase(invoice, user):
     """
     Cancel a confirmed purchase invoice: reverse its stock, freeze it (D-023).
 
-    The invoice is never edited or reopened -- only Owner/superuser may
+    The invoice is never edited or reopened -- only a superuser may
     cancel, and a mistaken purchase is corrected by a brand new invoice,
     never by editing this one (D-014 extended to cancelled invoices).
 
@@ -160,14 +160,16 @@ def cancel_purchase(invoice, user):
 
     Args:
         invoice: the PurchaseInvoice to cancel.
-        user: the user performing the action; must be an Owner or superuser.
+        user: the user performing the action; must be a superuser.
 
     Returns:
         The cancelled PurchaseInvoice.
 
     Raises:
         ValidationError: invoice is not confirmed (draft or already
-        cancelled), or ``user`` is not an Owner/superuser (D-023).
+        cancelled); ``user`` is not a superuser (D-023, now
+        REDESIGN_VISION §2.3); or any of the stock this purchase brought
+        in has already been sold (REDESIGN_VISION §3).
     """
     locked_invoice = (
         PurchaseInvoice.objects.select_for_update().get(pk=invoice.pk)
@@ -176,14 +178,22 @@ def cancel_purchase(invoice, user):
     if locked_invoice.status != PurchaseInvoice.Status.CONFIRMED:
         raise ValidationError("فقط فاکتور تأییدشده قابل لغو است.")
 
-    if not is_owner(user, locked_invoice.business):
-        raise ValidationError("فقط مالک یا ابرکاربر می‌تواند فاکتور را لغو کند.")
+    if not is_privileged(user):
+        raise ValidationError("فقط ابرکاربر می‌تواند فاکتور را لغو کند.")
 
     items = list(locked_invoice.items.select_related("product").all())
 
+    # FIFO integrity guard, stricter than a sale's cancel rule: this stock
+    # may only be withdrawn while none of it has been sold. Checked for
+    # every line before anything is written, so a rejected cancellation
+    # leaves the invoice exactly as it was (REDESIGN_VISION 3).
+    for layer in InventoryLayer.objects.select_related("product").filter(
+        purchase_item__in=items
+    ):
+        cancel_layer(layer, user)
+
     reversals = [
         InventoryMovement(
-            business=locked_invoice.business,
             product=item.product,
             movement_type=InventoryMovement.MovementType.ADJUSTMENT_OUT,
             quantity=item.quantity,
@@ -199,7 +209,6 @@ def cancel_purchase(invoice, user):
     locked_invoice.save(update_fields=["status", "updated_at"])
 
     log_event(
-        business=locked_invoice.business,
         actor=user,
         event_type="cancel_purchase",
         target=locked_invoice,

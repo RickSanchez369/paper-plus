@@ -1,0 +1,12 @@
+{% comment %}
+Out-of-band replacement for a `customer` field's <select>, id="id_customer"
+by Django's own default naming -- so this only matches a page whose form
+field is literally named `customer` (SaleInvoiceForm). Sent alongside
+_quick_party_create_success.html by QuickCustomerCreateView.
+{% endcomment %}
+<select id="id_customer" name="customer" class="field__control" hx-swap-oob="true">
+  <option value="">— انتخاب مشتری —</option>
+  {% for c in customers %}
+    <option value="{{ c.pk }}"{% if c.pk == selected.pk %} selected{% endif %}>{{ c.name }}</option>
+  {% endfor %}
+</select>

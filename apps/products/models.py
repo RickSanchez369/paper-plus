@@ -3,23 +3,17 @@
 from django.db import models
 from simple_history.models import HistoricalRecords
 
-from apps.shared.models import BaseModel, Business
+from apps.shared.models import BaseModel
 from apps.shared.utils import format_number
 
 
 class Product(BaseModel):
     """
-    A product sold or purchased by a business.
+    A product the business sells or purchases.
 
     Stock is never stored here; it is derived from InventoryMovement.
     """
 
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.PROTECT,  # never lose products by deleting a business
-        related_name="products",
-        verbose_name="کسب‌وکار",
-    )
     name = models.CharField(
         max_length=200,
         verbose_name="نام کالا",
@@ -47,7 +41,7 @@ class Product(BaseModel):
     )
     default_selling_price = models.BigIntegerField(
         default=0,
-        verbose_name="قیمت فروش پیش‌فرض (ریال)",
+        verbose_name="قیمت فروش پیش‌فرض (تومان)",
         help_text="برای پر کردن خودکار قیمت در فاکتور فروش؛ تغییر آن قیمت فاکتورهای قبلی را عوض نمی‌کند.",
     )
 
@@ -59,8 +53,8 @@ class Product(BaseModel):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["business", "sku"],
-                name="unique_sku_per_business",
+                fields=["sku"],
+                name="unique_product_sku",
             ),
             models.CheckConstraint(
                 condition=models.Q(default_selling_price__gte=0),

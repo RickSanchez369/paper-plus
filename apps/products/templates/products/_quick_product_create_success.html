@@ -1,0 +1,14 @@
+{% comment %}
+Replaces the quick-product form after a successful create
+(QuickProductCreateView, REDESIGN_VISION 4.2 / vision doc §13). The
+data-* attributes carry what purchase_form.js needs to put the new
+product straight into an item row -- the same shape a search result
+button carries, so both paths fill a row identically.
+{% endcomment %}
+<div class="quick-party quick-party--success"
+     data-quick-product-created
+     data-id="{{ product.pk }}"
+     data-name="{{ product.name }}"
+     data-stock="0">
+  <p class="field__hint">«{{ product.name }}» ثبت شد و به فاکتور اضافه شد.</p>
+</div>
