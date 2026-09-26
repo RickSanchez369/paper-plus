@@ -44,6 +44,28 @@ def get_stock_map(product_ids):
     return {row["product_id"]: row["stock"] or 0 for row in rows}
 
 
+def get_negative_stock_products():
+    """
+    Every product whose current stock has gone negative (D-016: a sale is
+    allowed to oversell, superuser-only). Defensive only, for the
+    Dashboard's attention-needed row (REDESIGN_VISION 4.10) -- this should
+    normally be empty; if it isn't, someone oversold and it is worth
+    surfacing, not because the app treats it as an error.
+    """
+    rows = (
+        InventoryMovement.objects
+        .values("product_id")
+        .annotate(stock=Sum(_signed_quantity_expression()))
+        .filter(stock__lt=0)
+    )
+    from apps.products.models import Product
+
+    product_ids = [row["product_id"] for row in rows]
+    stock_map = {row["product_id"]: row["stock"] for row in rows}
+    products = Product.objects.filter(pk__in=product_ids)
+    return [{"product": product, "stock": stock_map[product.pk]} for product in products]
+
+
 def get_active_layers(product):
     """
     This product's still-sellable layers, oldest first (FIFO order).

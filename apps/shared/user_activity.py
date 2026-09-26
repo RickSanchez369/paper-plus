@@ -141,6 +141,17 @@ def resolve_target_url(target_type, target_id):
     return builder(target_id) if builder else None
 
 
+def get_recent_activity(limit=10):
+    """The latest N events, any actor, no date range -- the Dashboard's
+    own global activity feed (REDESIGN_VISION 4.10, row 4), not scoped to
+    a reporting period the way User Activity's own feed is."""
+    entries = AuditLog.objects.select_related("actor").order_by("-created_at")[:limit]
+    return [
+        {"entry": entry, "target_url": resolve_target_url(entry.target_type, entry.target_id)}
+        for entry in entries
+    ]
+
+
 def get_activity_feed(start, end, actor=None, event_type=None):
     """The raw AuditLog feed for the drill-down page (REDESIGN_VISION
     4.9): event type, linked target, timestamp -- newest first."""

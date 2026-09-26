@@ -14,7 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
 
-from . import dates, reports, user_activity
+from . import dashboard, dates, reports, user_activity
 from .forms import DateRangeForm, UserActivityFilterForm
 
 
@@ -38,14 +38,36 @@ class DateRangeMixin:
 
 class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
     """
-    The landing page after login (REDESIGN_VISION 4.10).
+    The landing page after login (REDESIGN_VISION 4.10, Phase C module
+    10, the last of the 11 -- built last since it only aggregates the
+    other modules, once there was something true to aggregate).
 
-    A stub until Phase C: the dashboard only aggregates the other modules,
-    so it is built last, once there is something true to aggregate. Showing
-    invented numbers here would be worse than showing none.
+    `apps.shared.dashboard` does the reading; the date-range picker here
+    is carried over from the stub for bookmarkability, but nothing on
+    this page is actually range-scoped except the KPI cards, which read
+    their own today/month bounds directly (REDESIGN_VISION 4.10 fixes
+    those two periods, not an arbitrary chosen range).
     """
 
     template_name = "shared/dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            overdue_days = int(self.request.GET.get("overdue_days", 30))
+        except (TypeError, ValueError):
+            overdue_days = 30
+
+        context.update({
+            "kpi": dashboard.kpi_cards(),
+            "totals": dashboard.totals_now(),
+            "cheques_due_soon": dashboard.cheques_due_soon(),
+            "overdue_days": overdue_days,
+            "overdue_invoices": dashboard.overdue_credit_invoices(threshold_days=overdue_days),
+            "negative_stock": dashboard.negative_stock(),
+            "recent_activity": dashboard.recent_activity(),
+        })
+        return context
 
 
 class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
