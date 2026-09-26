@@ -1,0 +1,13 @@
+{% comment %}
+One payment-entry row -- identical shape to sales/_payment_entry_row.html,
+for money paid OUT to a supplier instead of IN from a customer.
+{% endcomment %}
+<div class="payment-row" data-payment-row>
+  {% include "shared/_field.html" with field=form.method %}
+  {% include "shared/_field.html" with field=form.amount %}
+  {% include "shared/_field.html" with field=form.bank_account %}
+  {% include "shared/_field.html" with field=form.cheque_number %}
+  {% include "shared/_field.html" with field=form.bank_name %}
+  {% include "shared/_field.html" with field=form.due_date %}
+  <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+</div>

@@ -36,7 +36,9 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # Superuser-only admin site (REDESIGN_VISION 2.1), in place of
+    # 'django.contrib.admin'.
+    'apps.shared.admin_site.PaperPlusAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -50,6 +52,7 @@ INSTALLED_APPS = [
     'apps.inventory',
     'apps.purchasing',
     'apps.sales',
+    'apps.payments',
 ]
 
 MIDDLEWARE = [
@@ -74,6 +77,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.shared.context_processors.navigation',
             ],
         },
     },
@@ -114,17 +118,23 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "fa"
 USE_I18N = True
 
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
+# Stored in UTC (D-004); Tehran is the presentation timezone, so a sale
+# entered at 1am local does not land on the previous day in every list.
+TIME_ZONE = "Asia/Tehran"
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
+# Collected here by `collectstatic` for a real web server to serve.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Uploaded files (today: expense receipts). Kept out of the repo by
+# .gitignore -- they are business documents, not source.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 
 # Email
@@ -138,3 +148,9 @@ MAILERS = {
 
 # The custom user model. Changing this after migrations exist is extremely costly.
 AUTH_USER_MODEL = "users.User"
+
+# Authentication flow for the frontend (REDESIGN_VISION 4.10: the dashboard
+# is the landing page after login). `/admin/` keeps its own login page.
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "dashboard"
+LOGOUT_REDIRECT_URL = "login"

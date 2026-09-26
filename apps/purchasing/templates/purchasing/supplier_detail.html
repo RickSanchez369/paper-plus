@@ -1,0 +1,120 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Supplier detail (REDESIGN_VISION 4.2): purchase history, cheques issued,
+running balance. Payments made are the payment_allocations on each of
+this supplier's own invoices -- shown per-invoice below rather than
+flattened, so it stays clear which payment settled which purchase.
+{% endcomment %}
+
+{% block title %}{{ supplier.name }}{% endblock %}
+{% block header %}تأمین‌کننده: {{ supplier.name }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'purchasing:list' %}">خرید</a> /
+  <a href="{% url 'purchasing:suppliers' %}">تأمین‌کنندگان</a> /
+  {{ supplier.name }}
+</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <div>
+      <h1>{{ supplier.name }}</h1>
+      <p class="page-head__lede">
+        {% if supplier.phone %}تلفن: {{ supplier.phone }} · {% endif %}
+        {% if not supplier.is_active %}<span class="badge badge--bad">غیرفعال</span> · {% endif %}
+        بدهی باز: <strong class="num">{{ outstanding|toman }}</strong>
+      </p>
+    </div>
+    <details class="quick-party-disclosure">
+      <summary class="btn btn--quiet">ویرایش</summary>
+      <form method="post" action="{% url 'purchasing:supplier_edit' supplier.pk %}" class="quick-party">
+        {% csrf_token %}
+        {% include "shared/_form_errors.html" with form=edit_form %}
+        {% for field in edit_form %}
+          {% include "shared/_field.html" with field=field %}
+        {% endfor %}
+        <button type="submit" class="btn btn--block">ذخیره</button>
+      </form>
+    </details>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>تاریخچهٔ خرید</h2>
+    {% if invoices %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>شماره فاکتور</th>
+            <th>تاریخ</th>
+            <th>مبلغ کل</th>
+            <th>پرداخت‌شده</th>
+            <th>وضعیت پرداخت</th>
+            <th>وضعیت سند</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
+              <td class="num">{{ invoice.invoice_date|jalali }}</td>
+              <td class="num">{{ invoice.total_amount|toman }}</td>
+              <td class="num">{{ invoice.paid_amount|toman }}</td>
+              <td>
+                <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
+                  {{ invoice.payment_status.label }}
+                </span>
+              </td>
+              <td>
+                <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">{{ invoice.get_status_display }}</span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">هنوز فاکتور خریدی از این تأمین‌کننده ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>چک‌های صادرشده</h2>
+    {% if cheques %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>شماره چک</th>
+            <th>بانک</th>
+            <th>سررسید</th>
+            <th>مبلغ</th>
+            <th>وضعیت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cheque in cheques %}
+            <tr>
+              <td>{{ cheque.cheque_number|default:"—" }}</td>
+              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td class="num">{{ cheque.amount|toman }}</td>
+              <td>
+                <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
+                  {{ cheque.get_status_display }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">چکی برای این تأمین‌کننده ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

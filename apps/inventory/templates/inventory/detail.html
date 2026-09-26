@@ -1,0 +1,180 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Per-product detail (REDESIGN_VISION 4.3): purchase cost vs. current
+selling price side by side, with the selling-price form (only the price
+changes -- no past invoice, layer or cost does); active FIFO layers; the
+chronological movement history (ROADMAP 4.2) extended to show which layer
+each row touched and a link back to its source invoice; and a
+"تاریخچهٔ قیمت" section reusing the existing HistoricalProduct (gap #7).
+{% endcomment %}
+
+{% block title %}{{ product.name }}{% endblock %}
+{% block header %}کالا: {{ product.name }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / {{ product.name }}</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <div>
+      <h1>{{ product.name }} ({{ product.sku }})</h1>
+      <p class="page-head__lede">
+        واحد: {{ product.unit }} ·
+        موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|fa_number }}</strong>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">بهای خرید جاری (FIFO)</span>
+    <span class="stat-card__value num">{% if current_cost is not None %}{{ current_cost|toman }}{% else %}—{% endif %}</span>
+    <span class="field__hint">بهای قدیمی‌ترین لایهٔ فعال؛ فروش بعدی از همین مصرف می‌کند.</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">آخرین قیمت خرید</span>
+    <span class="stat-card__value num">{% if last_cost is not None %}{{ last_cost|toman }}{% else %}—{% endif %}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">قیمت فروش فعلی</span>
+    <span class="stat-card__value num">{{ product.default_selling_price|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">ارزش موجودی (به بهای خرید)</span>
+    <span class="stat-card__value num">{{ value|toman }}</span>
+  </div>
+</div>
+
+<div class="card" id="selling-price">
+  <div class="card__body">
+    <h2>تغییر قیمت فروش</h2>
+    <p class="field__hint">
+      فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
+    </p>
+    <form method="post" action="{% url 'inventory:selling_price' product.pk %}" novalidate>
+      {% csrf_token %}
+      {% include "shared/_field.html" with field=price_form.default_selling_price %}
+      <button type="submit" class="btn">ذخیرهٔ قیمت فروش</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>لایه‌های فعال</h2>
+    {% if active_layers %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>منشأ</th>
+            <th>تاریخ</th>
+            <th>بهای واحد</th>
+            <th>مانده</th>
+            <th>ارزش مانده</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for layer in active_layers %}
+            <tr>
+              <td>{{ layer.get_source_display }}</td>
+              <td class="num">{{ layer.created_at|jalali }}</td>
+              <td class="num">{{ layer.unit_cost|toman }}</td>
+              <td class="num">{{ layer.quantity_remaining|fa_number }}</td>
+              <td class="num">{{ layer.remaining_value|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">این کالا لایهٔ فعالی ندارد (موجودی صفر یا منفی است).</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>تاریخچهٔ تراکنش‌ها</h2>
+    {% if movement_rows %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>نوع</th>
+            <th>مقدار</th>
+            <th>قیمت واحد</th>
+            <th>لایه(های) مرتبط</th>
+            <th>فاکتور</th>
+            <th>ثبت‌کننده</th>
+            <th>توضیح</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in movement_rows %}
+            <tr>
+              <td class="num">{{ row.movement.created_at|jalali_at }}</td>
+              <td>{{ row.movement.get_movement_type_display }}</td>
+              <td class="num">{{ row.movement.signed_quantity|fa_number }}</td>
+              <td class="num">{{ row.movement.unit_price|toman|default:"—" }}</td>
+              <td class="num">
+                {% if row.layers %}
+                  {% for layer in row.layers %}{{ layer.unit_cost|toman }}{% if not forloop.last %}، {% endif %}{% endfor %}
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if row.invoice %}
+                  {% if row.movement.movement_type == 'purchase' %}
+                    <a href="{% url 'purchasing:detail' row.invoice.pk %}">{{ row.invoice.invoice_number|fa_number|default:"(تأیید نشده)" }}</a>
+                  {% else %}
+                    <a href="{% url 'sales:detail' row.invoice.pk %}">{{ row.invoice.invoice_number|fa_number|default:"(تأیید نشده)" }}</a>
+                  {% endif %}
+                {% else %}—{% endif %}
+              </td>
+              <td>{{ row.movement.created_by.get_full_name|default:row.movement.created_by.phone }}</td>
+              <td>{{ row.movement.note|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">هنوز حرکتی برای این کالا ثبت نشده است.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <details>
+      <summary class="btn btn--quiet">تاریخچهٔ قیمت</summary>
+      {% if price_history %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>تاریخ</th>
+              <th>قیمت فروش پیش‌فرض</th>
+              <th>نوع تغییر</th>
+              <th>کاربر</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in price_history %}
+              <tr>
+                <td class="num">{{ record.history_date|jalali_at }}</td>
+                <td class="num">{{ record.default_selling_price|toman }}</td>
+                <td>{{ record.get_history_type_display }}</td>
+                <td>
+                  {% if record.history_user %}{{ record.history_user.get_full_name|default:record.history_user.phone }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="field__hint">تاریخچه‌ای ثبت نشده است.</p>
+      {% endif %}
+    </details>
+  </div>
+</div>
+{% endblock %}

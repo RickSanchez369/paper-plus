@@ -8,7 +8,7 @@ Selectors never write. Anything that writes belongs in a service.
 
 from django.db.models import Case, F, IntegerField, Sum, When
 
-from .models import InventoryMovement
+from .models import InventoryConsumption, InventoryLayer, InventoryMovement
 
 
 def _signed_quantity_expression():
@@ -42,3 +42,155 @@ def get_stock_map(product_ids):
         .annotate(stock=Sum(_signed_quantity_expression()))
     )
     return {row["product_id"]: row["stock"] or 0 for row in rows}
+
+
+def get_negative_stock_products():
+    """
+    Every product whose current stock has gone negative (D-016: a sale is
+    allowed to oversell, superuser-only). Defensive only, for the
+    Dashboard's attention-needed row (REDESIGN_VISION 4.10) -- this should
+    normally be empty; if it isn't, someone oversold and it is worth
+    surfacing, not because the app treats it as an error.
+    """
+    rows = (
+        InventoryMovement.objects
+        .values("product_id")
+        .annotate(stock=Sum(_signed_quantity_expression()))
+        .filter(stock__lt=0)
+    )
+    from apps.products.models import Product
+
+    product_ids = [row["product_id"] for row in rows]
+    stock_map = {row["product_id"]: row["stock"] for row in rows}
+    products = Product.objects.filter(pk__in=product_ids)
+    return [{"product": product, "stock": stock_map[product.pk]} for product in products]
+
+
+def get_active_layers(product):
+    """
+    This product's still-sellable layers, oldest first (FIFO order).
+
+    Excludes cancelled layers (a cancelled purchase's stock is gone) and
+    exhausted ones. `select_for_update()` belongs in the service that
+    consumes them, not here -- a selector never locks.
+    """
+    return (
+        InventoryLayer.objects
+        .filter(product=product, cancelled_at__isnull=True, quantity_remaining__gt=0)
+        .order_by("created_at", "id")
+    )
+
+
+def get_current_cost_map(product_ids):
+    """
+    Cost the *next* sale of each product will consume: {product_id: Toman}.
+
+    That is the oldest active layer's own cost, which is what FIFO will
+    draw from next -- not an average and not the latest purchase price
+    (the old `get_cost_map`, which was never FIFO). Products with no
+    active layer are absent; callers that need a display fallback use
+    `get_last_known_cost_map`.
+    """
+    rows = (
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True, quantity_remaining__gt=0)
+        .order_by("product_id", "created_at", "id")
+        .values("product_id", "unit_cost")
+    )
+    cost_map = {}
+    for row in rows:
+        cost_map.setdefault(row["product_id"], row["unit_cost"])
+    return cost_map
+
+
+def get_last_known_cost_map(product_ids):
+    """
+    Most recent known cost per product, including exhausted layers.
+
+    Display-only fallback for a product whose stock has hit zero, so its
+    "قیمت خرید جاری" column shows the last cost it was bought at instead
+    of a blank (REDESIGN_VISION 8, item 5). Never feeds a calculation.
+    """
+    rows = (
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True)
+        .order_by("product_id", "-created_at", "-id")
+        .values("product_id", "unit_cost")
+    )
+    cost_map = {}
+    for row in rows:
+        cost_map.setdefault(row["product_id"], row["unit_cost"])
+    return cost_map
+
+
+def get_inventory_value_map(product_ids):
+    """
+    Toman value of each product's stock: {product_id: value}.
+
+    Sum of every active layer's own remaining quantity times its own cost
+    -- layers carry different costs, so a single "stock x latest cost"
+    figure would be wrong (REDESIGN_VISION 4.3).
+    """
+    rows = (
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True)
+        .values("product_id")
+        .annotate(value=Sum(F("quantity_remaining") * F("unit_cost")))
+    )
+    return {row["product_id"]: row["value"] or 0 for row in rows}
+
+
+def get_total_inventory_value():
+    """Toman value of all stock on hand, across every product."""
+    result = InventoryLayer.objects.filter(cancelled_at__isnull=True).aggregate(
+        value=Sum(F("quantity_remaining") * F("unit_cost"))
+    )
+    return result["value"] or 0
+
+
+def get_inventory_as_of(as_of):
+    """
+    {product_id: {"stock": n, "value": v}} reconstructed from the layer/
+    consumption ledger up to and including `as_of` (REDESIGN_VISION 4.8's
+    "inventory as of the end of the selected range", not "right now").
+
+    A layer counts only if it already existed by `as_of` and had not yet
+    been cancelled by then; a consumption counts only if it happened by
+    `as_of` -- both compared on `created_at`, the ledger's own timestamp,
+    same as every other point-in-time selector in this app
+    (`get_bank_account_balance`'s `as_of`).
+    """
+    layers = [
+        layer for layer in InventoryLayer.objects.filter(created_at__date__lte=as_of)
+        if not (layer.cancelled_at and layer.cancelled_at.date() <= as_of)
+    ]
+    consumed_map = dict(
+        InventoryConsumption.objects
+        .filter(layer_id__in=[layer.pk for layer in layers], created_at__date__lte=as_of)
+        .values("layer_id")
+        .annotate(total=Sum("quantity"))
+        .values_list("layer_id", "total")
+    )
+    result = {}
+    for layer in layers:
+        remaining = layer.quantity - consumed_map.get(layer.pk, 0)
+        if remaining <= 0:
+            continue
+        row = result.setdefault(layer.product_id, {"stock": 0, "value": 0})
+        row["stock"] += remaining
+        row["value"] += remaining * layer.unit_cost
+    return result
+
+
+def get_layer_balance(layer):
+    """
+    A layer's remaining quantity rebuilt from its consumption rows.
+
+    `InventoryLayer.quantity_remaining` is a maintained running balance;
+    this recomputes it from scratch so a verification script (or a future
+    reconciliation page) can prove the two never drifted apart.
+    """
+    consumed = InventoryConsumption.objects.filter(layer=layer).aggregate(
+        total=Sum("quantity")
+    )["total"] or 0
+    return layer.quantity - consumed

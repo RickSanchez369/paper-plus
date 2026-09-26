@@ -6,14 +6,14 @@ one base class. Partners are deactivated, never deleted: sales and
 purchase invoices reference them through PROTECT foreign keys.
 """
 from django.contrib import admin
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
+
 from .models import Customer, Supplier
 
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
 
-class PartnerAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
+class PartnerAdmin(admin.ModelAdmin):
     """
     Shared configuration for Customer and Supplier.
 
@@ -21,16 +21,12 @@ class PartnerAdmin(BusinessScopedAdminMixin, admin.ModelAdmin):
     search_fields that invoice admins need for autocomplete (admin.E039).
     """
 
-    list_display = ("name", "business", "phone", "is_active", "created_at")
-    list_filter = ("business", "is_active")
+    list_display = ("name", "phone", "is_active", "created_at")
+    list_filter = ("is_active",)
     search_fields = ("name", "phone")
-    # One JOIN for the business column instead of one query per row.
-    list_select_related = ("business",)
-    # Search box instead of a dropdown; BusinessAdmin has search_fields.
-    autocomplete_fields = ("business",)
     readonly_fields = SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات اصلی", {"fields": ("business", "name")}),
+        ("اطلاعات اصلی", {"fields": ("name",)}),
         ("اطلاعات تماس", {"fields": ("phone", "address")}),
         ("توضیحات و وضعیت", {"fields": ("note", "is_active")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),

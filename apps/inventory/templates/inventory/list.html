@@ -1,0 +1,89 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Inventory list (REDESIGN_VISION 4.3): cards (total value from active
+layers at their own cost, item count, negative-stock warning, USD
+placeholder), table (stock, current FIFO cost = oldest active layer's
+cost, last purchase cost, selling price, this item's value at cost, %
+share of total value). No adjustment / opening-stock buttons: stock
+changes through purchase and sales invoices only (D-044).
+{% endcomment %}
+
+{% block title %}انبار{% endblock %}
+{% block header %}انبار{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>موجودی کالاها</h1>
+    <div class="page-head__actions">
+      <a href="{% url 'inventory:product_new' %}" class="btn">+ کالای جدید</a>
+    </div>
+  </div>
+  <p class="page-head__lede">
+    موجودی فقط با فاکتور خرید (افزایش) و فاکتور فروش (کاهش) تغییر می‌کند. ارزش موجودی بر پایهٔ بهای خرید (FIFO) است، نه قیمت فروش.
+  </p>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">ارزش کل موجودی (به بهای خرید)</span>
+    <span class="stat-card__value num">{{ total_value|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">تعداد اقلام</span>
+    <span class="stat-card__value num">{{ item_count|fa_number }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">موجودی منفی</span>
+    <span class="stat-card__value num">{{ negative_count|fa_number }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">نرخ دلار</span>
+    <span class="stat-card__value">پیکربندی نشده</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>کالا</th>
+              <th>موجودی</th>
+              <th>بهای خرید جاری (FIFO)</th>
+              <th>آخرین قیمت خرید</th>
+              <th>قیمت فروش فعلی</th>
+              <th>ارزش موجودی (به بهای خرید)</th>
+              <th>سهم از کل</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }} ({{ row.product.sku }})</a></td>
+                <td class="num{% if row.stock < 0 %} field__error{% endif %}">{{ row.stock|fa_number }}</td>
+                <td class="num">{% if row.current_cost is not None %}{{ row.current_cost|toman }}{% else %}—{% endif %}</td>
+                <td class="num">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
+                <td class="num">{{ row.product.default_selling_price|toman }}</td>
+                <td class="num">{{ row.value|toman }}</td>
+                <td class="num">{{ row.share|fa_number }}٪</td>
+                <td><a href="{% url 'inventory:detail' row.product.pk %}#selling-price" class="btn btn--quiet">تغییر قیمت فروش</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هنوز کالایی ثبت نشده است.</p>
+        <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

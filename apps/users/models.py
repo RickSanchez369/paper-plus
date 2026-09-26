@@ -51,8 +51,9 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     """
     Custom user, identified by mobile phone number.
 
-    Not tied to a Business: one user may belong to several businesses
-    through BusinessMembership.
+    Carries no role: any authenticated user may use every page
+    (REDESIGN_VISION §2.3). `is_superuser` is the only distinction
+    left, and it gates exactly two actions (oversell, cancellation).
     """
 
     phone = models.CharField(
@@ -93,5 +94,19 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         ordering = ["phone"]
 
     def __str__(self):
-        full_name = f"{self.first_name} {self.last_name}".strip()
-        return f"{full_name} ({self.phone})" if full_name else self.phone
+        return f"{self.get_full_name()} ({self.phone})" if self.get_full_name() else self.phone
+
+    def get_full_name(self):
+        """
+        First + last name, or "" when neither is set.
+
+        AbstractBaseUser does not provide this (only AbstractUser does), but
+        Django's admin and any template writing `user.get_full_name` expect
+        it -- without it a template silently falls back instead of failing,
+        which hides the mistake rather than fixing it.
+        """
+        return f"{self.first_name} {self.last_name}".strip()
+
+    def get_short_name(self):
+        """First name if known, otherwise the phone number."""
+        return self.first_name or self.phone

@@ -1,0 +1,23 @@
+{% comment %}
+"مشتری جدید" / "تأمین‌کننده جدید", inline (REDESIGN_VISION 4.1, 4.2, 4.7).
+
+One partial for both, because the two forms have identical shapes; the
+caller passes `form`, `post_url` and `title`. Used standalone on the
+Customers page and embedded inside the sale/purchase forms, where creating
+a party must not throw away the invoice being written — hence htmx rather
+than a link to another page.
+{% endcomment %}
+<form class="quick-party"
+      hx-post="{{ post_url }}"
+      hx-target="closest .quick-party"
+      hx-swap="outerHTML">
+  {% csrf_token %}
+  <div class="quick-party__head">{{ title }}</div>
+
+  {% include "shared/_form_errors.html" %}
+  {% for field in form %}
+    {% include "shared/_field.html" with field=field %}
+  {% endfor %}
+
+  <button type="submit" class="btn btn--block">ثبت</button>
+</form>

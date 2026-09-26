@@ -18,10 +18,9 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from simple_history.admin import SimpleHistoryAdmin
 
-from apps.shared.admin_mixins import BusinessScopedAdminMixin
-from apps.shared.utils import format_rial
+from apps.shared.utils import format_toman
 
-from .models import SaleItem, SalesInvoice
+from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 from .services import cancel_sale, confirm_sale
 
 # Only a draft invoice may be edited or deleted.
@@ -30,24 +29,12 @@ DRAFT_STATUS = "draft"
 # Inherited from BaseModel; visible for debugging, never editable.
 SYSTEM_FIELDS = ("id", "created_at", "updated_at")
 
-# Shown under every Rial input; conversion is fixed (D-013), not live.
-TOMAN_HINT = "به ریال وارد شود. (۱ تومان = ۱۰ ریال)"
-
 def is_locked(invoice):
     """True when an invoice exists and is no longer a draft (D-014)."""
     return invoice is not None and invoice.status != DRAFT_STATUS
 
 
-class SaleItemForm(forms.ModelForm):
-    """Adds the Toman hint under the Rial price field (R 8)."""
-
-    class Meta:
-        model = SaleItem
-        fields = "__all__"
-        help_texts = {"unit_price": TOMAN_HINT}
-
-
-class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
+class SaleItemInline(admin.TabularInline):
     """
     Invoice lines, edited inside the invoice page.
 
@@ -56,21 +43,22 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
     """
 
     model = SaleItem
-    form = SaleItemForm
-    # Items have no business FK; they reach it through their invoice.
-    business_lookup = "invoice__business"
     extra = 1
     fields = ("product", "quantity", "unit_price", "line_total")
     readonly_fields = ("line_total",)
     # Search box instead of a dropdown of every product.
     autocomplete_fields = ("product",)
 
-    @admin.display(description="جمع ردیف (ریال)")
+    class Media:
+        # Autofill unit_price from the product's default on selection (4.3b UX).
+        js = ("sales/js/sale_item_autoprice.js",)
+
+    @admin.display(description="جمع ردیف (تومان)")
     def line_total(self, obj):
         # Unsaved row: quantity and price may still be empty.
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.quantity * obj.unit_price)
+        return format_toman(obj.quantity * obj.unit_price)
 
     def has_add_permission(self, request, obj=None):
         return not is_locked(obj) and super().has_add_permission(request, obj)
@@ -82,45 +70,78 @@ class SaleItemInline(BusinessScopedAdminMixin, admin.TabularInline):
         return not is_locked(obj) and super().has_delete_permission(request, obj)
 
 
-class SalesInvoiceForm(forms.ModelForm):
-    """Adds the Toman hint under the discount field (R 8)."""
+class SalesPaymentEntryForm(forms.ModelForm):
+    """
+    The cheque fields (number/bank/due date) are optional here on purpose
+    (Sina, 2026-09-24): a cheque row can be left incomplete at invoice time
+    and finished later on the Cheques page, since a PENDING Cheque stays
+    editable (see apps/payments/admin.ChequeAdmin.has_change_permission).
+    """
 
     class Meta:
-        model = SalesInvoice
+        model = SalesPaymentEntry
         fields = "__all__"
-        help_texts = {"discount_amount": TOMAN_HINT}
+
+
+class SalesPaymentEntryInline(admin.TabularInline):
+    """
+    Planned payment lines, edited inside the invoice page while it is a
+    draft; confirm_sale turns each row into a real Payment or Cheque (4.3b).
+    """
+
+    model = SalesPaymentEntry
+    form = SalesPaymentEntryForm
+    extra = 0
+    fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
+    autocomplete_fields = ("bank_account",)
+
+    class Media:
+        # Pre-fills a new row's amount with the invoice's remaining total (4.3b UX).
+        js = ("shared/js/payment_entry_autofill.js",)
+
+    def has_add_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_add_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return not is_locked(obj) and super().has_delete_permission(request, obj)
 
 
 @admin.register(SalesInvoice)
-class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.ModelAdmin):
+class SalesInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
     """Sales invoices: draft entry in admin, confirmation via the service."""
 
-    form = SalesInvoiceForm
     list_display = (
-        "invoice_number", "customer", "business", "invoice_date",
-        "status", "total_display", "payment_method", "confirmed_at", "created_by",
+        "invoice_number", "customer", "invoice_date",
+        "status", "total_display", "payment_status_display",
+        "confirmed_at", "created_by",
     )
-    list_filter = ("business", "status", "invoice_date")
+    list_filter = ("status", "invoice_date")
     search_fields = ("invoice_number", "customer__name")
     # One JOIN per related column instead of one query per row.
-    list_select_related = ("customer", "business", "created_by")
-    autocomplete_fields = ("business", "customer")
+    list_select_related = ("customer", "created_by")
+    autocomplete_fields = ("customer",)
     date_hierarchy = "invoice_date"
     # status/confirmed_at belong to the service; created_by to save_model.
     # invoice_number is assigned by confirm_sale at confirmation (D-022);
     # never editable in the admin.
     readonly_fields = (
         "invoice_number", "status", "confirmed_at", "created_by",
-        "subtotal_display", "total_display",
+        "subtotal_display", "total_display", "payment_status_display",
     ) + SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات فاکتور", {"fields": ("business", "customer", "invoice_date")}),
+        ("اطلاعات فاکتور", {"fields": ("customer", "invoice_date")}),
         ("مبلغ", {"fields": ("discount_amount", "subtotal_display", "total_display")}),
-        ("پرداخت", {"fields": ("payment_method", "payment_note")}),
+        # payment_method/payment_note (2.8) are superseded by the payment-entry
+        # rows below (4.3b): one place to pick method + amount, not two (Sina,
+        # 2026-09-24). The fields stay on the model, just unused from here on.
+        ("پرداخت", {"fields": ("payment_status_display",)}),
         ("وضعیت", {"fields": ("invoice_number", "status", "confirmed_at", "created_by")}),
         ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
     )
-    inlines = (SaleItemInline,)
+    inlines = (SaleItemInline, SalesPaymentEntryInline)
     actions = ("confirm_selected", "cancel_selected")
 
     def get_queryset(self, request):
@@ -128,17 +149,27 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
         # instead of one query per row.
         return super().get_queryset(request).prefetch_related("items")
 
-    @admin.display(description="جمع جزء (ریال)")
+    @admin.display(description="جمع جزء (تومان)")
     def subtotal_display(self, obj):
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.subtotal)
+        return format_toman(obj.subtotal)
 
-    @admin.display(description="جمع نهایی (ریال)")
+    @admin.display(description="جمع نهایی (تومان)")
     def total_display(self, obj):
         if obj is None or obj._state.adding:
             return "-"
-        return format_rial(obj.total)
+        return format_toman(obj.total)
+
+    @admin.display(description="وضعیت پرداخت")
+    def payment_status_display(self, obj):
+        # Derived from PaymentAllocation, never typed (D-025, 4.3).
+        # payment_status is a @property (not a model field), so there is
+        # no auto-generated get_payment_status_display() -- .label works
+        # because it returns the TextChoices member itself.
+        if obj is None or obj._state.adding:
+            return "-"
+        return obj.payment_status.label
 
     def save_model(self, request, obj, form, change):
         # Record who entered the invoice; set once, on creation only.
@@ -198,8 +229,8 @@ class SalesInvoiceAdmin(BusinessScopedAdminMixin, SimpleHistoryAdmin, admin.Mode
         Cancel each selected invoice through cancel_sale (D-023).
 
         One service call per invoice: each runs in its own transaction, so
-        a rejected cancellation (wrong status, or user is not Owner) does
-        not roll back the others.
+        a rejected cancellation (wrong status, or user is not a
+        superuser) does not roll back the others.
         """
         for invoice in queryset:
             try:

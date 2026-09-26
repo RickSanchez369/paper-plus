@@ -1,0 +1,17 @@
+{% comment %}
+One payment-entry row (4.3b, ported to the frontend by REDESIGN_VISION
+4.1): confirm_sale turns each into a real Payment or a pending Cheque
+(cheque fields stay optional on purpose, see apps/sales/forms.py). Used
+for each bound form already in the formset and, wrapped in a <template>
+by new.html, as what "افزودن ردیف پرداخت" clones (`form` is
+`payment_formset.empty_form`, prefix __prefix__).
+{% endcomment %}
+<div class="payment-row" data-payment-row>
+  {% include "shared/_field.html" with field=form.method %}
+  {% include "shared/_field.html" with field=form.amount %}
+  {% include "shared/_field.html" with field=form.bank_account %}
+  {% include "shared/_field.html" with field=form.cheque_number %}
+  {% include "shared/_field.html" with field=form.bank_name %}
+  {% include "shared/_field.html" with field=form.due_date %}
+  <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+</div>

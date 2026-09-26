@@ -1,0 +1,145 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Purchasing detail (REDESIGN_VISION 4.2): no profit column -- profit is
+sales-only. Same shape as Sales' detail otherwise: payment/cheque
+history, cancel via the existing cancel_purchase (superuser-only, and
+stricter -- blocked once any of this purchase's stock has been sold).
+{% endcomment %}
+
+{% block title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
+{% block header %}فاکتور خرید {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'purchasing:list' %}">خرید</a> / فاکتور {{ invoice.invoice_number|fa_number }}
+</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <div>
+      <h1>فاکتور {{ invoice.invoice_number|fa_number }}</h1>
+      <p class="page-head__lede">
+        تأمین‌کننده:
+        <a href="{% url 'purchasing:supplier_detail' invoice.supplier.pk %}">{{ invoice.supplier.name }}</a>
+        · تاریخ: {{ invoice.invoice_date|jalali_long }}
+        {% if invoice.supplier_invoice_number %} · شماره فاکتور تأمین‌کننده: {{ invoice.supplier_invoice_number }}{% endif %}
+        · ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}
+      </p>
+    </div>
+    <div class="sale-detail__actions">
+      <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% else %} badge--good{% endif %}">
+        {{ invoice.get_status_display }}
+      </span>
+      <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ فاکتور</a>
+      {% if can_cancel %}
+        <form method="post" action="{% url 'purchasing:cancel' invoice.pk %}"
+              onsubmit="return confirm('این فاکتور لغو شود؟ موجودی برگردانده می‌شود و این عملیات بازگشت‌ناپذیر است.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--quiet">لغو فاکتور</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>اقلام فاکتور</h2>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>کالا</th>
+          <th>مقدار</th>
+          <th>قیمت واحد</th>
+          <th>جمع</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items.all %}
+          <tr>
+            <td>{{ item.product.name }}</td>
+            <td class="num">{{ item.quantity|fa_number }}</td>
+            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item.line_total|toman }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="sale-form__totals">
+      <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total_amount|toman }}</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>وضعیت پرداخت</h2>
+    <p>
+      <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
+        {{ invoice.payment_status.label }}
+      </span>
+      — پرداخت‌شده: <span class="num">{{ invoice.paid_amount|toman }}</span>
+    </p>
+
+    {% if invoice.payment_allocations.all %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>مبلغ</th>
+            <th>محل پرداخت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for allocation in invoice.payment_allocations.all %}
+            <tr>
+              <td class="num">{{ allocation.payment.payment_date|jalali }}</td>
+              <td class="num">{{ allocation.amount|toman }}</td>
+              <td>
+                {% if allocation.payment.cheque %}چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}
+                {% elif allocation.payment.bank_account %}{{ allocation.payment.bank_account.name }}
+                {% else %}نقدی{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">هنوز پرداختی برای این فاکتور ثبت نشده است.</p>
+    {% endif %}
+
+    {% if invoice.cheques.all %}
+      <h2>چک‌های مرتبط</h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>شماره چک</th>
+            <th>بانک</th>
+            <th>سررسید</th>
+            <th>مبلغ</th>
+            <th>وضعیت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cheque in invoice.cheques.all %}
+            <tr>
+              <td>{{ cheque.cheque_number|default:"—" }}</td>
+              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td class="num">{{ cheque.amount|toman }}</td>
+              <td>
+                <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
+                  {{ cheque.get_status_display }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

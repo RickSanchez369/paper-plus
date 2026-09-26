@@ -1,0 +1,106 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Cheque detail (REDESIGN_VISION 4.4): full lifecycle trace. A still-PENDING
+cheque can have its descriptive fields completed here (4.3b); once
+cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
+{% endcomment %}
+
+{% block title %}چک {{ cheque.cheque_number|default:"(بدون شماره)" }}{% endblock %}
+{% block header %}چک {{ cheque.cheque_number|default:"(بدون شماره)" }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'cheques:list' %}">چک‌ها</a> / چک {{ cheque.cheque_number|default:"(بدون شماره)" }}</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <div>
+      <h1>چک {{ cheque.cheque_number|default:"(بدون شماره)" }}</h1>
+      <p class="page-head__lede">
+        جهت: {{ cheque.get_direction_display }} ·
+        طرف حساب: {{ cheque.customer|default:cheque.supplier|default:"—" }} ·
+        مبلغ: <span class="num">{{ cheque.amount|toman }}</span> ·
+        سررسید: {{ cheque.due_date|jalali|default:"—" }}
+      </p>
+    </div>
+    <div class="sale-detail__actions">
+      <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
+        {{ cheque.get_status_display }}
+      </span>
+    </div>
+  </div>
+</div>
+
+{% if cheque.status == 'pending' %}
+  <div class="card">
+    <div class="card__body">
+      <h2>اقدامات</h2>
+      <div class="page-head__actions">
+        <form method="post" action="{% url 'cheques:clear' cheque.pk %}"
+              onsubmit="return confirm('این چک وصول شود؟ یک پرداخت ثبت می‌شود.');">
+          {% csrf_token %}
+          <button type="submit" class="btn">وصول چک</button>
+        </form>
+        <form method="post" action="{% url 'cheques:bounce' cheque.pk %}"
+              onsubmit="return confirm('این چک برگشت بخورد؟');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--quiet">برگشت خورد</button>
+        </form>
+        <form method="post" action="{% url 'cheques:cancel' cheque.pk %}"
+              onsubmit="return confirm('این چک لغو شود؟ این چک هرگز پولی محسوب نشده بود.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--quiet">لغو چک</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__body">
+      <h2>تکمیل مشخصات</h2>
+      <form method="post" action="{% url 'cheques:complete' cheque.pk %}" novalidate>
+        {% csrf_token %}
+        {% include "shared/_form_errors.html" with form=completion_form %}
+        {% for field in completion_form %}
+          {% include "shared/_field.html" with field=field %}
+        {% endfor %}
+        <button type="submit" class="btn">ذخیره</button>
+      </form>
+    </div>
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="card__body">
+    <h2>مشخصات</h2>
+    <table class="data-table">
+      <tbody>
+        <tr><th>بانک</th><td>{{ cheque.bank_name|default:"—" }}</td></tr>
+        <tr><th>حساب بانکی</th><td>{{ cheque.bank_account|default:"—" }}</td></tr>
+        <tr>
+          <th>فاکتور مرتبط</th>
+          <td>
+            {% if cheque.sales_invoice %}
+              <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_number }}</a>
+            {% elif cheque.purchase_invoice %}
+              <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_number }}</a>
+            {% else %}عمومی (بدون فاکتور){% endif %}
+          </td>
+        </tr>
+        <tr>
+          <th>پرداخت وصول‌شده</th>
+          <td>
+            {% if cheque.payment %}
+              {{ cheque.payment.amount|toman }} — {{ cheque.payment.payment_date|jalali }}
+              ({{ cheque.payment.bank_account|default:"نقدی" }})
+            {% else %}هنوز وصول نشده{% endif %}
+          </td>
+        </tr>
+        <tr><th>توضیح</th><td>{{ cheque.note|default:"—" }}</td></tr>
+        <tr><th>تاریخ ثبت</th><td class="num">{{ cheque.created_at|jalali_at }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

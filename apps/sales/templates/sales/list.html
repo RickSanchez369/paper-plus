@@ -1,0 +1,116 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Sales list (REDESIGN_VISION 4.1). Cards are always today/this-month/open/
+profit regardless of the table's own filters -- the table's date range is
+a separate, user-chosen window (shared/_date_range.html), while the cards
+answer "how are we doing right now."
+{% endcomment %}
+
+{% block title %}فروش{% endblock %}
+{% block header %}فروش{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>فاکتورهای فروش</h1>
+    <a href="{% url 'sales:new' %}" class="btn">+ فاکتور فروش جدید</a>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">فروش امروز</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">فروش این ماه</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">فاکتورهای باز (نیمه/نسیه)</span>
+    <span class="stat-card__value num">{{ cards.open_count|fa_number }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">سود این ماه</span>
+    <span class="stat-card__value num">{{ cards.month_profit|toman }}</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <form method="get" class="toolbar">
+      <div class="filters">
+        {% include "shared/_field.html" with field=filter_form.q %}
+        {% include "shared/_field.html" with field=filter_form.payment_status %}
+        {% include "shared/_field.html" with field=filter_form.product %}
+        {% include "shared/_field.html" with field=filter_form.amount_min %}
+        {% include "shared/_field.html" with field=filter_form.amount_max %}
+        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+      </div>
+      {% include "shared/_date_range.html" with form=range_form %}
+    </form>
+
+    {% if invoices %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>شماره فاکتور</th>
+              <th>تاریخ</th>
+              <th>مشتری</th>
+              <th>مبلغ کل</th>
+              <th>وضعیت پرداخت</th>
+              <th>سود</th>
+              <th>وضعیت سند</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in invoices %}
+              <tr>
+                <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
+                <td class="num">{{ invoice.invoice_date|jalali }}</td>
+                <td>{{ invoice.customer.name }}</td>
+                <td class="num">{{ invoice.total|toman }}</td>
+                <td>
+                  <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
+                    {{ invoice.payment_status.label }}
+                  </span>
+                </td>
+                <td class="num">{{ invoice.profit|toman }}</td>
+                <td>
+                  <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">
+                    {{ invoice.get_status_display }}
+                  </span>
+                </td>
+                <td>
+                  <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination">
+          {% if page_obj.has_previous %}
+            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.previous_page_number }}">قبلی</a>
+          {% endif %}
+          <span class="field__hint">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
+          {% if page_obj.has_next %}
+            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.next_page_number }}">بعدی</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="placeholder">
+        <p>فاکتوری با این فیلترها پیدا نشد.</p>
+        <a href="{% url 'sales:new' %}" class="btn">ثبت اولین فاکتور فروش</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

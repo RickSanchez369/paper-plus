@@ -1,0 +1,31 @@
+{% extends "shared/base.html" %}
+
+{% comment %}
+New / edit bank account (BankAccountCreateView, BankAccountUpdateView):
+name, owner, account number. The balance is never typed here -- it only
+ever comes from the Payment ledger.
+{% endcomment %}
+
+{% block title %}{% if account %}ویرایش حساب{% else %}حساب بانکی جدید{% endif %}{% endblock %}
+{% block header %}{% if account %}ویرایش حساب: {{ account.name }}{% else %}حساب بانکی جدید{% endif %}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'bank_accounts:list' %}">حساب‌های بانکی</a> /
+  {% if account %}<a href="{% url 'bank_accounts:detail' account.pk %}">{{ account.name }}</a> / ویرایش{% else %}حساب جدید{% endif %}
+</p>
+
+<div class="card">
+  <div class="card__body">
+    <h1>{% if account %}ویرایش مشخصات حساب{% else %}ثبت حساب بانکی جدید{% endif %}</h1>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=form %}
+      {% for field in form %}
+        {% include "shared/_field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="btn">{% if account %}ذخیره{% else %}ثبت حساب{% endif %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

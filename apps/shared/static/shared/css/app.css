@@ -1,0 +1,1175 @@
+/*
+ * paper-plus — application shell.
+ *
+ * Every colour, radius and space is a token on :root. Phase D picks the
+ * visual identity (REDESIGN_VISION 5); when it does, it should be able to
+ * change these values and nothing else. Component rules below reference
+ * tokens only — no literal colours past this block.
+ *
+ * RTL is the only direction this app runs in, so logical properties
+ * (inline-start/end) are used throughout rather than left/right.
+ */
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("../fonts/Vazirmatn.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  /* Neutrals: a single cool-grey ramp, so surfaces never disagree. */
+  --ink-900: #0f1720;
+  --ink-800: #1b2531;
+  --ink-700: #2b3949;
+  --ink-500: #5b6b7f;
+  --ink-400: #7d8da1;
+  --ink-300: #b4c0cd;
+  --ink-200: #dce3ea;
+  --ink-100: #eef2f6;
+  --ink-050: #f7f9fb;
+  --white: #ffffff;
+
+  /* One accent. A trading business reads as serious, not playful. */
+  --accent-700: #12566b;
+  --accent-600: #17708a;
+  --accent-500: #1e8aa8;
+  --accent-100: #e2f1f6;
+
+  /* Money has a direction: in is good, out is not, overdue is urgent. */
+  --positive-600: #1d7a4f;
+  --positive-100: #e3f4ec;
+  --negative-600: #b3261e;
+  --negative-100: #fbe9e7;
+  --warning-600: #9a6300;
+  --warning-100: #fdf1dc;
+
+  --surface: var(--white);
+  --surface-sunken: var(--ink-050);
+  --border: var(--ink-200);
+  --text: var(--ink-900);
+  --text-muted: var(--ink-500);
+
+  /* 4px scale. Anything not on it is a mistake, not a decision. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgb(15 23 32 / 6%), 0 1px 3px rgb(15 23 32 / 4%);
+  --shadow-md: 0 4px 12px rgb(15 23 32 / 8%);
+
+  --sidebar-width: 236px;
+  --header-height: 60px;
+
+  --font: "Vazirmatn", "Segoe UI", Tahoma, system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--surface-sunken);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-600);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+h1 { font-size: 20px; }
+h2 { font-size: 16px; }
+
+/*
+ * Numbers stay left-to-right inside right-to-left text, and use tabular
+ * figures so columns of Rial amounts line up digit for digit.
+ */
+.num {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--ink-900);
+  color: var(--ink-300);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--header-height);
+  padding-inline: var(--space-5);
+  color: var(--white);
+  font-weight: 600;
+  font-size: 15px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  flex-shrink: 0;
+}
+
+.sidebar__brand:hover {
+  text-decoration: none;
+}
+
+.sidebar__mark {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-500);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--white);
+  flex-shrink: 0;
+}
+
+.sidebar__nav {
+  padding: var(--space-4) var(--space-3);
+  flex: 1;
+}
+
+.nav-group + .nav-group {
+  margin-top: var(--space-1);
+}
+
+.nav-group__label {
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+  text-transform: none;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--ink-300);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.nav-link:hover {
+  background: rgb(255 255 255 / 6%);
+  color: var(--white);
+  text-decoration: none;
+}
+
+.nav-link.is-active {
+  background: var(--accent-700);
+  color: var(--white);
+  font-weight: 500;
+}
+
+/* The sub-links of a grouped module (Receivables / Payables / Cheques). */
+.nav-link--child {
+  padding-inline-start: var(--space-6);
+  font-size: 13px;
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-inline: var(--space-6);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.header__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.header__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.content {
+  padding: var(--space-6);
+  max-width: 1440px;
+  width: 100%;
+}
+
+/* ------------------------------------------------------------ components */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.card__body {
+  padding: var(--space-5);
+}
+
+.page-head {
+  margin-bottom: var(--space-5);
+}
+
+.page-head__lede {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--accent-600);
+  color: var(--white);
+}
+
+.btn:hover {
+  background: var(--accent-700);
+  text-decoration: none;
+}
+
+.btn--quiet {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.btn--quiet:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--ink-100);
+  color: var(--ink-700);
+}
+
+.badge--pending { background: var(--warning-100); color: var(--warning-600); }
+.badge--good { background: var(--positive-100); color: var(--positive-600); }
+.badge--bad { background: var(--negative-100); color: var(--negative-600); }
+
+/* ---------------------------------------------------------------- forms */
+
+.field + .field {
+  margin-top: var(--space-4);
+}
+
+.field__label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field__control {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.field__control:focus {
+  outline: 2px solid var(--accent-500);
+  outline-offset: -1px;
+  border-color: var(--accent-500);
+}
+
+.field__error {
+  margin: var(--space-2) 0 0;
+  color: var(--negative-600);
+  font-size: 12.5px;
+}
+
+.form-error {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--negative-100);
+  color: var(--negative-600);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------- messages */
+
+.messages {
+  margin-bottom: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.message {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13.5px;
+}
+
+.message--success { background: var(--positive-100); border-color: transparent; color: var(--positive-600); }
+.message--warning { background: var(--warning-100); border-color: transparent; color: var(--warning-600); }
+.message--error { background: var(--negative-100); border-color: transparent; color: var(--negative-600); }
+
+/* ----------------------------------------------------------- auth page */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background:
+    radial-gradient(ellipse at 20% 0%, rgb(30 138 168 / 10%), transparent 55%),
+    var(--surface-sunken);
+}
+
+.auth__card {
+  width: min(380px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-6);
+}
+
+.auth__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.auth__title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.auth__note {
+  margin: var(--space-5) 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* --------------------------------------------------------- placeholder */
+
+.placeholder {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.placeholder__tag {
+  justify-self: center;
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .sidebar__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .nav-group__label {
+    width: 100%;
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+
+  .header {
+    padding-inline: var(--space-4);
+  }
+}
+
+/* ------------------------------------------------- jalali date picker */
+
+.jdp {
+  position: absolute;
+  z-index: 100;
+  width: 252px;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  user-select: none;
+}
+
+.jdp__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.jdp__title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.jdp__nav {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jdp__nav:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+.jdp__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.jdp__weekday {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jdp__cell {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.jdp__cell:hover {
+  background: var(--ink-100);
+}
+
+.jdp__cell--empty {
+  cursor: default;
+}
+
+.jdp__cell--empty:hover {
+  background: transparent;
+}
+
+/* Today is a hint, the selection is the answer -- so today is an outline
+   and the selection is filled, never both competing as solid blocks. */
+.jdp__cell.is-today {
+  box-shadow: inset 0 0 0 1px var(--accent-500);
+  color: var(--accent-700);
+}
+
+.jdp__cell.is-selected {
+  background: var(--accent-600);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.jdp__foot {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.jdp__action {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.jdp__action:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+/* ------------------------------------------------- shared components */
+
+.field__hint {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.daterange {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.daterange__presets {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.daterange__preset {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.daterange__presets .daterange__preset + .daterange__preset {
+  border-inline-start: 1px solid var(--border);
+}
+
+.daterange__preset:hover {
+  background: var(--ink-100);
+  color: var(--text);
+}
+
+.daterange__preset.is-active {
+  background: var(--accent-600);
+  color: var(--white);
+}
+
+.daterange__custom {
+  position: relative;
+}
+
+/* The disclosure triangle is noise next to buttons that look like a group. */
+.daterange__custom > summary {
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  display: inline-block;
+}
+
+.daterange__custom > summary::-webkit-details-marker {
+  display: none;
+}
+
+.daterange__panel {
+  position: absolute;
+  z-index: 20;
+  inset-inline-end: 0;
+  margin-top: var(--space-2);
+  width: 240px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.daterange__panel .btn {
+  margin-top: var(--space-4);
+}
+
+.payment-form__party {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.invoice-picker {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+
+.invoice-picker__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.invoice-picker__row:hover {
+  background: var(--ink-100);
+}
+
+.quick-party__head {
+  margin-bottom: var(--space-4);
+  font-weight: 600;
+}
+
+.quick-party,
+.payment-form {
+  display: block;
+}
+
+.page-head__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.placeholder__range {
+  font-size: 13px;
+}
+
+.placeholder__range span {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ----------------------------------------------------------- sales/lists */
+
+.breadcrumbs {
+  margin: 0 0 var(--space-3);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.stat-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card__label {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.stat-card__value {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.stat-card__deltas {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.stat-card__delta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-card__delta--up {
+  color: var(--positive-600);
+}
+
+.stat-card__delta--down {
+  color: var(--negative-600);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.filters .field {
+  min-width: 140px;
+}
+
+.filters .field + .field {
+  margin-top: 0;
+}
+
+.filters .btn {
+  height: 38px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.data-table tbody tr:hover {
+  background: var(--surface-sunken);
+}
+
+.table-card {
+  overflow-x: auto;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-5);
+}
+
+/* ------------------------------------------------------- sale item rows */
+
+.item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 100px 140px 120px 70px;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.item-row--head {
+  padding-bottom: var(--space-2);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.item-row__search {
+  position: relative;
+}
+
+.item-row__results:not(:empty) {
+  position: absolute;
+  z-index: 30;
+  inset-inline: 0;
+  top: 100%;
+  margin-top: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.item-row__result {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.item-row__result:hover {
+  background: var(--ink-100);
+}
+
+.item-row__result--empty {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.item-row__result-stock {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.item-row__stock {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.item-row__total {
+  align-self: center;
+  font-weight: 600;
+}
+
+.item-row__remove {
+  align-self: center;
+}
+
+#add-item-row,
+#add-payment-row {
+  margin-top: var(--space-3);
+}
+
+/* ---------------------------------------------------- payment-entry rows */
+
+.payment-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.payment-row .field {
+  margin-top: 0;
+}
+
+.payment-row__remove {
+  height: 38px;
+}
+
+/* --------------------------------------------------------- new-sale form */
+
+.sale-form__header {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.quick-party-disclosure {
+  margin-top: var(--space-2);
+}
+
+.quick-party-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.quick-party-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.quick-party-disclosure .quick-party {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.sale-form__totals {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  max-width: 320px;
+  margin-inline-start: auto;
+}
+
+.sale-form__totals > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+}
+
+.sale-form__totals-final {
+  font-weight: 700;
+  font-size: 15px;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.sale-form__totals-profit {
+  color: var(--positive-600);
+  border-top: 0;
+  padding-top: 0;
+}
+
+.sale-form__totals-discount {
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sale-form__totals-discount .field__control {
+  max-width: 160px;
+}
+
+/* Full settlement vs. split/credit (D-046): a plain radio pair. */
+.payment-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.payment-mode__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Mid-invoice quick-create that cannot nest inside the invoice <form>. */
+.quick-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.quick-dialog::backdrop {
+  background: rgb(15 23 32 / 40%);
+}
+
+.quick-dialog__title {
+  margin-bottom: var(--space-4);
+}
+
+.sale-form__remaining {
+  margin-top: var(--space-3);
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.sale-form__submit {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-5);
+}
+
+.sale-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ------------------------------------------------------------- printing */
+
+.print-page {
+  font-family: var(--font);
+  background: var(--surface);
+  color: var(--text);
+  padding: var(--space-6);
+}
+
+.print-page__trigger {
+  margin-bottom: var(--space-5);
+}
+
+.print-invoice__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 2px solid var(--ink-900);
+}
+
+.print-invoice__party {
+  margin-bottom: var(--space-4);
+}
+
+.print-invoice__totals {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  max-width: 320px;
+  margin-inline-start: auto;
+}
+
+.print-invoice__totals > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.print-invoice__totals-final {
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}
+
+.print-invoice__foot {
+  margin-top: var(--space-6);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

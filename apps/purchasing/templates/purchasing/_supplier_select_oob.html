@@ -1,0 +1,11 @@
+{% comment %}
+Out-of-band replacement for the `supplier` field's <select>, id="id_supplier"
+by Django's own default naming -- mirrors partners/_customer_select_oob.html.
+Sent alongside _quick_supplier_create_success.html by QuickSupplierCreateView.
+{% endcomment %}
+<select id="id_supplier" name="supplier" class="field__control" form="purchase-form" hx-swap-oob="true">
+  <option value="">— انتخاب تأمین‌کننده —</option>
+  {% for s in suppliers %}
+    <option value="{{ s.pk }}"{% if s.pk == selected.pk %} selected{% endif %}>{{ s.name }}</option>
+  {% endfor %}
+</select>
