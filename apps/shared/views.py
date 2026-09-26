@@ -11,7 +11,7 @@ and stock still go through `apps/*/services.py` inside `transaction.atomic`).
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
-from . import dates
+from . import dates, reports
 from .forms import DateRangeForm
 
 
@@ -75,6 +75,37 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
     """
 
     template_name = "shared/dashboard.html"
+
+
+class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
+    """
+    Financial Reports (REDESIGN_VISION 4.8, Phase C module 8): every
+    number computed live for the chosen range (apps.shared.reports),
+    never stored. Read-only, same as every list page -- the numbers here
+    can never disagree with the module pages they summarise, because they
+    are read through the exact same selectors those pages use
+    (`get_bank_account_balance`, `get_customer_outstanding`'s siblings,
+    `get_inventory_as_of`).
+    """
+
+    template_name = "shared/reports.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        start, end = context["date_range"]
+
+        context.update({
+            "cards": reports.summary_cards(start, end),
+            "sales_by_product": reports.sales_by_product(start, end),
+            "purchases_by_product": reports.purchases_by_product(start, end),
+            "top_sellers": reports.top_sellers(start, end),
+            "inventory": reports.inventory_snapshot(start, end),
+            "bank_accounts": reports.bank_accounts_as_of(start, end),
+            "receivables_payables": reports.receivables_payables_as_of(end),
+            "cheques": reports.cheques_by_status(start, end),
+            "user_activity": reports.user_activity(start, end),
+        })
+        return context
 
 
 class DatePickerMonthView(LoginRequiredMixin, TemplateView):

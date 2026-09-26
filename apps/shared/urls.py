@@ -4,7 +4,7 @@
 
 from django.urls import path
 
-from .views import DashboardView, DatePickerMonthView, ModulePlaceholderView
+from .views import DashboardView, DatePickerMonthView, ModulePlaceholderView, ReportsView
 
 urlpatterns = [
     path("", DashboardView.as_view(), name="dashboard"),
@@ -14,15 +14,7 @@ urlpatterns = [
 ]
 
 reports_patterns = ([
-    path(
-        "",
-        ModulePlaceholderView.as_view(
-            title="گزارش‌های مالی",
-            description="فروش، خرید، هزینه، سود ناخالص و خالص در بازهٔ انتخابی — همه زنده از دفترها.",
-            with_date_range=True,
-        ),
-        name="index",
-    ),
+    path("", ReportsView.as_view(), name="index"),
 ], "reports")
 
 user_activity_patterns = ([

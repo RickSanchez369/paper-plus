@@ -64,6 +64,48 @@ def get_customer_outstanding(customer):
     return sum(invoice.outstanding for invoice in invoices)
 
 
+def get_total_receivables_as_of(as_of):
+    """
+    Business-wide accounts receivable as of a past date (REDESIGN_VISION
+    4.8's Financial Reports): confirmed sales invoices dated on or before
+    `as_of`, minus only the allocations whose own payment happened by then
+    -- a payment made after `as_of` must not retroactively shrink a past
+    report's outstanding figure.
+    """
+    from apps.sales.models import SalesInvoice
+
+    invoices = SalesInvoice.objects.filter(
+        status=SalesInvoice.Status.CONFIRMED, invoice_date__lte=as_of,
+    ).prefetch_related("payment_allocations__payment")
+    total = 0
+    for invoice in invoices:
+        paid = sum(
+            allocation.amount
+            for allocation in invoice.payment_allocations.all()
+            if allocation.payment.payment_date <= as_of
+        )
+        total += max(invoice.total - paid, 0)
+    return total
+
+
+def get_total_payables_as_of(as_of):
+    """Exact mirror of `get_total_receivables_as_of`, Supplier/PurchaseInvoice side."""
+    from apps.purchasing.models import PurchaseInvoice
+
+    invoices = PurchaseInvoice.objects.filter(
+        status=PurchaseInvoice.Status.CONFIRMED, invoice_date__lte=as_of,
+    ).prefetch_related("payment_allocations__payment")
+    total = 0
+    for invoice in invoices:
+        paid = sum(
+            allocation.amount
+            for allocation in invoice.payment_allocations.all()
+            if allocation.payment.payment_date <= as_of
+        )
+        total += max(invoice.total_amount - paid, 0)
+    return total
+
+
 def get_open_invoices(model, **party_filter):
     """
     This party's confirmed invoices that still owe something, oldest

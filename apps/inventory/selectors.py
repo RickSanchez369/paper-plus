@@ -126,6 +126,40 @@ def get_total_inventory_value():
     return result["value"] or 0
 
 
+def get_inventory_as_of(as_of):
+    """
+    {product_id: {"stock": n, "value": v}} reconstructed from the layer/
+    consumption ledger up to and including `as_of` (REDESIGN_VISION 4.8's
+    "inventory as of the end of the selected range", not "right now").
+
+    A layer counts only if it already existed by `as_of` and had not yet
+    been cancelled by then; a consumption counts only if it happened by
+    `as_of` -- both compared on `created_at`, the ledger's own timestamp,
+    same as every other point-in-time selector in this app
+    (`get_bank_account_balance`'s `as_of`).
+    """
+    layers = [
+        layer for layer in InventoryLayer.objects.filter(created_at__date__lte=as_of)
+        if not (layer.cancelled_at and layer.cancelled_at.date() <= as_of)
+    ]
+    consumed_map = dict(
+        InventoryConsumption.objects
+        .filter(layer_id__in=[layer.pk for layer in layers], created_at__date__lte=as_of)
+        .values("layer_id")
+        .annotate(total=Sum("quantity"))
+        .values_list("layer_id", "total")
+    )
+    result = {}
+    for layer in layers:
+        remaining = layer.quantity - consumed_map.get(layer.pk, 0)
+        if remaining <= 0:
+            continue
+        row = result.setdefault(layer.product_id, {"stock": 0, "value": 0})
+        row["stock"] += remaining
+        row["value"] += remaining * layer.unit_cost
+    return result
+
+
 def get_layer_balance(layer):
     """
     A layer's remaining quantity rebuilt from its consumption rows.
