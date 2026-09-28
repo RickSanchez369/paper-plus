@@ -8,10 +8,5 @@ psycopg==3.3.6
 psycopg-binary==3.3.6
 sqlparse==0.6.0
 tzdata==2026.4
-
-# Production WSGI server (docs/deployment.md). Not used by `manage.py runserver`.
 gunicorn==23.0.0
-
-# Serves collectstatic output directly from gunicorn (D-049) -- needed on
-# PaaS targets with no nginx layer in front of the container.
 whitenoise==6.11.0
