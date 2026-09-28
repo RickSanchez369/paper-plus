@@ -73,6 +73,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves collectstatic output directly (D-049); must sit right after
+    # SecurityMiddleware, per whitenoise's own install instructions.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -146,6 +149,19 @@ USE_TZ = True
 STATIC_URL = "static/"
 # Collected here by `collectstatic` for a real web server to serve.
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Defining STORAGES replaces Django's whole default dict (D-049), so
+# "default" (media, FileSystemStorage) is repeated here even though it is
+# unchanged -- only "staticfiles" moves to whitenoise, with hashed
+# filenames for cache-busting.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Uploaded files (today: expense receipts). Kept out of the repo by
 # .gitignore -- they are business documents, not source.

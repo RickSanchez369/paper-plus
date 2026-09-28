@@ -884,3 +884,28 @@ profit, so its columns equal `sales_total` and `gross_profit`. The sales
 detail page shows a "سهم تخفیف" column when there is a discount; the
 customer-facing print page is unchanged (still one invoice-level discount
 line). Stock, FIFO consumption and layer costs are untouched, as before.
+
+## D-049 — Static files are served by whitenoise, not nginx
+Date: 2026-09-28
+Status: Final
+
+Context: Sina asked to review ParsPack's PaaS docs (docs.parspack.com/paas)
+and deploy paper-plus there instead of (or alongside) the VPS path in
+docs/deployment.md. That VPS plan has nginx serve `staticfiles/` in front
+of gunicorn; ParsPack's PaaS containers get no such reverse-proxy layer the
+user controls -- the app's own process receives traffic directly. With
+`DEBUG=False` Django serves no static files itself, so admin/htmx CSS and
+JS would 404 in production without a change.
+
+Decision: `whitenoise` (requirements.txt) serves `staticfiles/` directly
+from the gunicorn process. `WhiteNoiseMiddleware` added to `MIDDLEWARE`
+immediately after `SecurityMiddleware` (core/settings.py), per whitenoise's
+own install order requirement. `STORAGES["staticfiles"]` set to
+`whitenoise.storage.CompressedManifestStaticFilesStorage` for hashed,
+cache-busted filenames; `STORAGES["default"]` is repeated unchanged
+(FileSystemStorage, media/expense receipts) because defining `STORAGES` at
+all replaces Django's whole default dict, not just the key being changed.
+No effect on the VPS path: nginx still serves `staticfiles/` there and
+never reaches gunicorn/whitenoise for those requests, so both deployment
+targets keep working off the same `collectstatic` output.
+`manage.py check` verified clean after `pip install -r requirements.txt`.
