@@ -13,6 +13,8 @@ cancel_sale -- D-023, this view never writes stock/money itself).
 {% block title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
 {% block header %}فاکتور فروش {{ invoice.invoice_number }}{% endblock %}
 
+{% block back %}<a href="{% url 'sales:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'sales:list' %}">فروش</a> / فاکتور {{ invoice.invoice_number|fa_number }}

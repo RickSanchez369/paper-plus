@@ -149,18 +149,12 @@
     recomputeInvoice();
   }
 
-  // Products already on the invoice cannot be picked again: grey them out
-  // in every search result that comes back.
-  document.body.addEventListener("htmx:afterSwap", function (event) {
-    var row = event.target.closest && event.target.closest("[data-item-row]");
-    if (!row) return;
-    var taken = chosenProductIds(row);
-    event.target.querySelectorAll("[data-item-row-pick]").forEach(function (button) {
-      if (taken.indexOf(button.dataset.id) !== -1) {
-        button.disabled = true;
-        button.querySelector("span").textContent += " (قبلاً در فاکتور است)";
-      }
-    });
+  // Products already on the invoice never come back in the results: the
+  // search request carries their ids and the server leaves them out.
+  document.body.addEventListener("htmx:configRequest", function (event) {
+    if (!event.target.matches || !event.target.matches("[data-item-row-search]")) return;
+    var row = event.target.closest("[data-item-row]");
+    event.detail.parameters["exclude"] = chosenProductIds(row).join(",");
   });
 
   // Cheque number, issuing bank and due date only exist for a cheque.

@@ -13,18 +13,17 @@ and STATE.md (commit 6d4521a).
 {% block header %}فاکتور خرید جدید{% endblock %}
 
 {% block head %}
-  <script src="{% static 'purchasing/js/purchase_form.js' %}" defer></script>
+  <script src="{% static_v 'purchasing/js/purchase_form.js' %}" defer></script>
 {% endblock %}
 
+{% block back %}<a href="{% url 'purchasing:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
-<div class="page-head page-head__row">
-  <div>
-    <h1>ثبت فاکتور خرید</h1>
-    <p class="page-head__lede">
-      فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
-    </p>
-  </div>
-  <a href="{% url 'purchasing:list' %}" class="btn btn--quiet">بازگشت</a>
+<div class="page-head">
+  <h1>ثبت فاکتور خرید</h1>
+  <p class="page-head__lede">
+    فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
+  </p>
 </div>
 
 {% if error %}

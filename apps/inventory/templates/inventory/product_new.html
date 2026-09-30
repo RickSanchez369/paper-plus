@@ -9,6 +9,8 @@ entered here, at creation, or never -- afterwards only invoices move stock.{% en
 {% block title %}کالای جدید{% endblock %}
 {% block header %}کالای جدید{% endblock %}
 
+{% block back %}<a href="{% url 'inventory:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / کالای جدید</p>
 

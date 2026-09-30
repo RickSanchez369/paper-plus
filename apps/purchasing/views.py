@@ -31,7 +31,7 @@ from apps.inventory.selectors import get_last_known_cost_map, get_stock_map
 from apps.partners.forms import QuickSupplierForm, SupplierForm
 from apps.partners.models import Supplier
 from apps.payments.selectors import get_supplier_outstanding
-from apps.products.forms import QuickProductForm
+from apps.products.forms import QuickProductForm, excluded_product_ids
 from apps.products.models import Product
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
@@ -135,6 +135,7 @@ class ProductSearchView(LoginRequiredMixin, View):
     def get(self, request):
         q = request.GET.get("q", "").strip()
         products = Product.objects.filter(is_active=True)
+        products = products.exclude(pk__in=excluded_product_ids(request.GET.get("exclude", "")))
         if q:
             products = products.filter(Q(name__icontains=q) | Q(sku__icontains=q))
         products = list(products.order_by("name")[:15])

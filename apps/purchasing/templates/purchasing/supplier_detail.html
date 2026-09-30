@@ -11,6 +11,8 @@ flattened, so it stays clear which payment settled which purchase.
 {% block title %}{{ supplier.name }}{% endblock %}
 {% block header %}تأمین‌کننده: {{ supplier.name }}{% endblock %}
 
+{% block back %}<a href="{% url 'purchasing:suppliers' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'purchasing:list' %}">خرید</a> /

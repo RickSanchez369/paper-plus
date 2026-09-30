@@ -9,6 +9,8 @@ ever comes from the Payment ledger.
 {% block title %}{% if account %}ویرایش حساب{% else %}حساب بانکی جدید{% endif %}{% endblock %}
 {% block header %}{% if account %}ویرایش حساب: {{ account.name }}{% else %}حساب بانکی جدید{% endif %}{% endblock %}
 
+{% block back %}<a href="{% if account %}{% url 'bank_accounts:detail' account.pk %}{% else %}{% url 'bank_accounts:list' %}{% endif %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'bank_accounts:list' %}">حساب‌های بانکی</a> /

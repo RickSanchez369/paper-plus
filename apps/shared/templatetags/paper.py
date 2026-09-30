@@ -7,12 +7,25 @@ Money formatting already lived in apps/shared/utils.py; the date filters
 wrap apps/shared/dates.py so no template ever converts a calendar itself.
 """
 
+import os
+
 from django import template
+from django.contrib.staticfiles import finders
+from django.templatetags.static import static
 
 from apps.shared import dates
 from apps.shared.utils import format_number, format_toman
 
 register = template.Library()
+
+
+@register.simple_tag
+def static_v(path):
+    """`{% static %}` plus the file's modification time, so a browser never
+    keeps serving a stale CSS/JS file after it was edited."""
+    url = static(path)
+    found = finders.find(path)
+    return f"{url}?v={int(os.path.getmtime(found))}" if found else url
 
 
 @register.filter(name="jalali")

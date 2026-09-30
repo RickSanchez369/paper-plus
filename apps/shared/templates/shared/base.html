@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static paper %}<!DOCTYPE html>
 {% comment %} The shell every signed-in page renders inside: sidebar, header,
 content. RTL is not a modifier here, it is the only direction. {% endcomment %}
 <html lang="fa" dir="rtl">
@@ -6,7 +6,7 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
-  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   {% comment %} D-047: every htmx form here answers a validation error with 422 + the
      same form re-rendered with its Persian errors (quick customer/supplier/
      product, "ثبت پرداخت"). htmx 2 swaps no 4xx by default, so those errors
@@ -17,7 +17,7 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   {% comment %} Vendored, not from a CDN: this is an internal tool that has to keep
      working when the office internet does not. {% endcomment %}
   <script src="{% static 'shared/js/htmx.min.js' %}" defer></script>
-  <script src="{% static 'shared/js/jalali_picker.js' %}" defer></script>
+  <script src="{% static_v 'shared/js/jalali_picker.js' %}" defer></script>
   {% block head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -26,7 +26,12 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
 
     <div class="main">
       <header class="header">
-        <div class="header__title">{% block header %}{{ page_title }}{% endblock %}</div>
+        <div class="header__lead">
+          {% comment %} "بازگشت" goes one level UP (the parent list/page), never
+             history.back(): the previous page may be a validation error. {% endcomment %}
+          {% block back %}{% endblock %}
+          <div class="header__title">{% block header %}{{ page_title }}{% endblock %}</div>
+        </div>
         <div class="header__user">
           <span>{{ request.user.get_full_name|default:request.user.phone }}</span>
           <form method="post" action="{% url 'logout' %}">

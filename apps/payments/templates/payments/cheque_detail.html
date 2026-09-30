@@ -10,6 +10,8 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
 {% block title %}چک {{ cheque.cheque_number|default:"(بدون شماره)" }}{% endblock %}
 {% block header %}چک {{ cheque.cheque_number|default:"(بدون شماره)" }}{% endblock %}
 
+{% block back %}<a href="{% url 'cheques:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'cheques:list' %}">چک‌ها</a> / چک {{ cheque.cheque_number|default:"(بدون شماره)" }}</p>
 

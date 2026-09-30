@@ -11,6 +11,8 @@ accidental free sale later, since nothing else ever prompts for a
 selling price after this moment.
 """
 
+import uuid
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
@@ -25,6 +27,18 @@ _WIDGETS = {
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
 }
+
+
+def excluded_product_ids(raw):
+    """Ids from the item-row search's `exclude` parameter (products already
+    on the invoice), ignoring anything that is not a UUID."""
+    ids = []
+    for part in raw.split(","):
+        try:
+            ids.append(uuid.UUID(part.strip()))
+        except ValueError:
+            continue
+    return ids
 
 
 class SelectedProductMixin:

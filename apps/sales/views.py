@@ -23,6 +23,7 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.inventory.selectors import get_stock_map
 from apps.partners.forms import QuickCustomerForm
+from apps.products.forms import excluded_product_ids
 from apps.products.models import Product
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
@@ -133,6 +134,7 @@ class ProductSearchView(LoginRequiredMixin, View):
     def get(self, request):
         q = request.GET.get("q", "").strip()
         products = Product.objects.filter(is_active=True)
+        products = products.exclude(pk__in=excluded_product_ids(request.GET.get("exclude", "")))
         if q:
             products = products.filter(Q(name__icontains=q) | Q(sku__icontains=q))
         products = list(products.order_by("name")[:15])

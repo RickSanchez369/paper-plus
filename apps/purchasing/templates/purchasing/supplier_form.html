@@ -9,6 +9,8 @@ purchase form's inline quick-add uses, not a parallel path.
 {% block title %}تأمین‌کنندهٔ جدید{% endblock %}
 {% block header %}تأمین‌کنندهٔ جدید{% endblock %}
 
+{% block back %}<a href="{% url 'purchasing:suppliers' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'purchasing:list' %}">خرید</a> /

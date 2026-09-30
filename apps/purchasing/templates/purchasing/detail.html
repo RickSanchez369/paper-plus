@@ -11,6 +11,8 @@ stricter -- blocked once any of this purchase's stock has been sold).
 {% block title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
 {% block header %}فاکتور خرید {{ invoice.invoice_number }}{% endblock %}
 
+{% block back %}<a href="{% url 'purchasing:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'purchasing:list' %}">خرید</a> / فاکتور {{ invoice.invoice_number|fa_number }}

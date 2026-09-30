@@ -20,18 +20,17 @@ appear only when chosen.
 {% block header %}فاکتور فروش جدید{% endblock %}
 
 {% block head %}
-  <script src="{% static 'sales/js/sale_form.js' %}" defer></script>
+  <script src="{% static_v 'sales/js/sale_form.js' %}" defer></script>
 {% endblock %}
 
+{% block back %}<a href="{% url 'sales:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
+
 {% block content %}
-<div class="page-head page-head__row">
-  <div>
-    <h1>ثبت فاکتور فروش</h1>
-    <p class="page-head__lede">
-      فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
-    </p>
-  </div>
-  <a href="{% url 'sales:list' %}" class="btn btn--quiet">بازگشت</a>
+<div class="page-head">
+  <h1>ثبت فاکتور فروش</h1>
+  <p class="page-head__lede">
+    فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
+  </p>
 </div>
 
 {% if error %}
