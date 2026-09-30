@@ -115,3 +115,5 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-055 Cancelling an invoice refunds its payments (opposite Payment per allocation) and cancels its pending cheques.
 - D-056 Clearing a cheque requires choosing the account (or cash on purpose).
 - D-057 Expense receipts: PDF/PNG/JPG/WebP only, content must match, max 5 MB.
+- D-058 Sign-in throttling: 5 failures per phone / 30 per IP → 15-minute lock (HTTP 429).
+- D-059 The Suppliers list has an active/inactive/all filter and search, like Customers.

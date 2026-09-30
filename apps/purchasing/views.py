@@ -43,6 +43,7 @@ from .forms import (
     PurchaseItemFormSet,
     PurchasePaymentEntryFormSet,
     PurchasingFilterForm,
+    SupplierFilterForm,
 )
 from .models import PurchaseInvoice
 from .services import cancel_purchase, confirm_purchase, plan_full_payment
@@ -359,8 +360,22 @@ class SupplierListView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        filter_form = SupplierFilterForm(self.request.GET or None)
+        suppliers = Supplier.objects.all()
+        # "" (the "همه" option) means everyone; only a missing/unknown value
+        # falls back to active-only.
+        is_active = self.request.GET.get("is_active")
+        if is_active not in ("true", "false", ""):
+            is_active = "true"
+        if is_active == "true":
+            suppliers = suppliers.filter(is_active=True)
+        elif is_active == "false":
+            suppliers = suppliers.filter(is_active=False)
+        if filter_form.is_valid() and filter_form.cleaned_data.get("q"):
+            q = filter_form.cleaned_data["q"]
+            suppliers = suppliers.filter(Q(name__icontains=q) | Q(phone__icontains=q))
         rows = []
-        for supplier in Supplier.objects.filter(is_active=True).order_by("name"):
+        for supplier in suppliers.order_by("name"):
             confirmed = PurchaseInvoice.objects.filter(
                 supplier=supplier, status=PurchaseInvoice.Status.CONFIRMED,
             )
@@ -371,6 +386,7 @@ class SupplierListView(LoginRequiredMixin, TemplateView):
                 "outstanding": get_supplier_outstanding(supplier),
             })
         context["rows"] = rows
+        context["filter_form"] = filter_form
         return context
 
 

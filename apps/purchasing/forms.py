@@ -51,6 +51,17 @@ class PurchasingFilterForm(forms.Form):
         return cleaned
 
 
+class SupplierFilterForm(forms.Form):
+    """Suppliers list filters: free-text search over name/phone and
+    active/inactive (mirrors the Customers list; a deactivated supplier is
+    only ever hidden by default, never lost)."""
+
+    ACTIVE_CHOICES = [("true", "فعال"), ("false", "غیرفعال"), ("", "همه")]
+
+    q = forms.CharField(required=False, label="جست‌وجو (نام یا تلفن)")
+    is_active = forms.ChoiceField(required=False, label="وضعیت فعالیت", choices=ACTIVE_CHOICES, initial="true")
+
+
 class PurchaseInvoiceForm(forms.ModelForm):
     """Header fields: who, when, the supplier's own invoice number. No
     discount field -- the model has none."""

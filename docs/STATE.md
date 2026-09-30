@@ -28,10 +28,9 @@ checked (no data to render): invoice detail/print, cheque detail.
 
 **QA pass done (2026-09-30):** ~750 scripted checks (`tools/qa/`, see its README)
 plus ~90 browser checks over every module found and fixed 14 defects (D-054).
-Fixed since (D-055): cancelling an invoice now refunds its payments.
-Findings that still need Sina's decision, NOT changed:
-- No login throttling.
-- The suppliers list has no way to show inactive suppliers.
+All findings of the QA pass are now fixed (D-055..D-059): invoice cancellation refunds
+payments, clearing a cheque needs an explicit account, receipt uploads are validated,
+sign-in is throttled, inactive suppliers can be listed.
 
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay

@@ -918,3 +918,25 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   5 MB, and the file's leading bytes must match its extension
   (`apps/payments/validators.validate_receipt`). Pages a browser could run (.html,
   .svg), executables and disguised files are refused, on the form and in /admin/.
+
+### D-058: Sign-in is throttled
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: Failed sign-ins are counted per typed phone number (5) and per client IP
+  (30) in Django's cache; over the limit, further attempts get HTTP 429 with a "try
+  again in 15 minutes" message even with the right password, until 15 minutes pass
+  without a new failure. A success resets that phone's counter. The count is keyed on
+  what was typed, so an unknown number locks exactly like a real one (no account
+  enumeration). Persian digits and stray spaces count as the same phone.
+- Limit: the counters live in the per-process cache (`apps/users/throttle.py`); they
+  reset on restart and are not shared between server processes. Point `CACHES` at a
+  shared cache if the app ever runs as several processes.
+
+### D-059: The Suppliers list can show inactive suppliers
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: Like the Customers list, the Suppliers list has a search box (name/phone)
+  and an active / inactive / all filter (default active); inactive rows carry a
+  "غیرفعال" badge. Deactivating a supplier still only hides it by default.

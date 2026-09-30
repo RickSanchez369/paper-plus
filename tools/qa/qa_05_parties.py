@@ -105,6 +105,18 @@ def scenarios(h):
     h.c.post(f"/purchasing/suppliers/{s.pk}/edit/", {"name": nm, "is_active": ""})
     s.refresh_from_db()
     check("U08 deactivate supplier", s.is_active is False)
+    r = h.c.get("/purchasing/suppliers/")
+    check("U08a the default supplier list hides the inactive one", not has(r, nm))
+    for qs, must, mustnt, label in (("?is_active=false", nm, sup0.name, "inactive only"), ("?is_active=", nm, None, "all"), ("?is_active=true", sup0.name, nm, "active only"),
+                                    ("?q=" + nm + "&is_active=", nm, sup0.name, "search + all"), ):
+        r = h.c.get("/purchasing/suppliers/" + qs)
+        check(f"U08b supplier list filter: {label}", r.status_code == 200 and has(r, must) and (mustnt is None or not has(r, mustnt)), r.status_code)
+    ph_s = h.supplier(phone="09355550001")
+    check("U08b supplier list: search by phone", has(h.c.get("/purchasing/suppliers/?q=09355550001"), ph_s.name))
+    r = h.c.get("/purchasing/suppliers/?is_active=false")
+    check("U08c an inactive supplier is badged and links to its page", has(r, "غیرفعال") and has(r, f"/purchasing/suppliers/{s.pk}/"))
+    for qs in ("?is_active=zzz", "?q=%25", "?q=" + "x" * 3000):
+        check(f"U08d weird filter {qs[:14]!r} no crash", h.c.get("/purchasing/suppliers/" + qs).status_code == 200)
     r = h.c.get("/payables/")
     check("U08 a deactivated supplier we still OWE stays visible in Payables", has(r, nm))
     r = h.post_purchase(s, [(p, 1, 10)], mode="split")

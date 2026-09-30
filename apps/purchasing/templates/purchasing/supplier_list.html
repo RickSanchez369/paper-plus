@@ -26,6 +26,14 @@ read from later.
 
 <div class="card">
   <div class="card__body">
+    <form method="get" class="toolbar">
+      <div class="filters">
+        {% include "shared/_field.html" with field=filter_form.q %}
+        {% include "shared/_field.html" with field=filter_form.is_active %}
+        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+      </div>
+    </form>
+
     {% if rows %}
       <div class="table-card">
         <table class="data-table">
@@ -40,7 +48,8 @@ read from later.
           <tbody>
             {% for row in rows %}
               <tr>
-                <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a></td>
+                <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a>
+                  {% if not row.supplier.is_active %}<span class="badge">غیرفعال</span>{% endif %}</td>
                 <td class="num">{{ row.supplier.phone|default:"—" }}</td>
                 <td class="num">{{ row.total_purchased|toman }}</td>
                 <td class="num">{{ row.outstanding|toman }}</td>
@@ -51,8 +60,8 @@ read from later.
       </div>
     {% else %}
       <div class="placeholder">
-        <p>هنوز تأمین‌کننده‌ای ثبت نشده است.</p>
-        <a href="{% url 'purchasing:supplier_new' %}" class="btn">ثبت اولین تأمین‌کننده</a>
+        <p>تأمین‌کننده‌ای با این شرایط پیدا نشد.</p>
+        <a href="{% url 'purchasing:supplier_new' %}" class="btn">+ تأمین‌کنندهٔ جدید</a>
       </div>
     {% endif %}
   </div>
