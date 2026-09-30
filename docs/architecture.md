@@ -122,4 +122,4 @@ the user-facing surface — that is the 11 module pages listed in
 - Process/chat/git conventions: [RULES.md](RULES.md)
 - Current state, what's built, roadmap: [STATE.md](STATE.md)
 - Exact live schema: `PROJECT_MAP.md` (regenerate, not committed)
-- Rebuild history (Phases A-C, now merged): [REDESIGN_VISION.md](REDESIGN_VISION.md), [MASTER_PROMPT.md](MASTER_PROMPT.md)
+- Rebuild summary (Phases A-C, merged): [REDESIGN_VISION.md](REDESIGN_VISION.md)
