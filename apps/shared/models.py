@@ -101,12 +101,13 @@ class AuditLog(BaseModel):
 
 class DocumentSequence(BaseModel):
     """
-    Per-document-type counter for invoice numbers (D-022).
+    Per-document-type, per-Jalali-year counter for invoice numbers (D-022, D-064).
 
-    ``next_number`` is the number to hand out next. Issuing it safely
-    under concurrency is the job of the service function that locks
-    this row with ``select_for_update()`` inside a transaction — this
-    model only holds the state.
+    ``next_number`` is the number to hand out next within ``year``; a new
+    year starts again at 1. Issuing it safely under concurrency is the job
+    of the service function that locks this row with ``select_for_update()``
+    inside a transaction — this model only holds the state. ``year`` 0 is
+    the single legacy counter from before D-064 and is no longer used.
     """
 
     class DocType(models.TextChoices):
@@ -118,8 +119,12 @@ class DocumentSequence(BaseModel):
         choices=DocType.choices,
         verbose_name="نوع سند",
     )
+    year = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="سال شمسی",
+    )
     next_number = models.PositiveIntegerField(
-        default=1,  # configurable once, at setup time
+        default=1,
         verbose_name="شماره بعدی",
     )
 
@@ -128,10 +133,10 @@ class DocumentSequence(BaseModel):
         verbose_name_plural = "شمارنده‌های سند"
         constraints = [
             models.UniqueConstraint(
-                fields=["doc_type"],
-                name="unique_document_sequence_per_doctype",
+                fields=["doc_type", "year"],
+                name="unique_document_sequence_per_doctype_year",
             ),
         ]
 
     def __str__(self):
-        return f"{self.get_doc_type_display()} ({self.next_number})"
+        return f"{self.get_doc_type_display()} {self.year} ({self.next_number})"

@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-10-01. Per-module build history was dropped from this file on
+Updated 2026-10-01 (second batch: D-064 numbering, D-065 drawer menu). Per-module build history was dropped from this file on
 purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
 `DECISIONS.md` the why.
 
@@ -15,8 +15,9 @@ purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
   full-settlement sale default, htmx 422 swap, pro-rata invoice discount).
 - Last verified: 38 scripts in `scripts/`, 724/724 checks passing.
 - Real data currently in the DB: 6 products with opening stock, 2 customers,
-  2 suppliers, 1 bank account. `DocumentSequence` (sale, purchase) starts at
-  9956001 — teardown scripts must never reset it below a number already used.
+  2 suppliers, 1 bank account. Invoices 9956001 (old style) exist; new ones are
+  `1405/0001`-style (D-064). Teardown scripts must never delete a used
+  `DocumentSequence` row.
 
 ## Next
 **Phase D is done (D-050):** IBM Carbon-inspired identity applied app-wide by

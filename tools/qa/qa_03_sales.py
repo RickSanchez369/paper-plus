@@ -8,7 +8,9 @@ from apps.shared.models import DocumentSequence
 
 
 def seq():
-    return DocumentSequence.objects.get(doc_type="sale").next_number
+    from apps.shared import dates
+    row = DocumentSequence.objects.filter(doc_type="sale", year=dates.today().year).first()
+    return row.next_number if row else 1
 
 
 def n_inv():

@@ -23,6 +23,7 @@ python manage.py shell -c "exec(open('tools/qa/qa_02_purchase.py', encoding='utf
 | (qa_06 also runs the receipt-upload rules; qa_07 also runs the login throttle) | |
 | qa_12_cancel_refunds | cancelling an invoice refunds its payments and cheques (D-055) |
 | qa_13_backup | backup page access rules and zip contents (D-060) |
+| qa_15_numbering | invoice numbers year/running, per type, yearly reset (D-064) |
 | qa_14_invoice_print | printed invoice: words, company header, stamp boxes, watermark (D-061) |
 
 `OK`/`FAIL` per check and `n/N passed` at the end. JavaScript behaviour

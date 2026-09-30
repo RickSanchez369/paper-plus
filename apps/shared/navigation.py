@@ -42,8 +42,6 @@ class NavGroup:
     items: tuple = field(default_factory=tuple)
     url_name: str = ""
     prefix: str = ""
-    # Hidden from everyone but superusers (same rule as cancelling, D-034).
-    superuser_only: bool = False
 
 
 # Dashboard first because it is the landing page after login.
@@ -66,5 +64,5 @@ NAVIGATION = (
     NavGroup(label="مشتریان", icon="customer", url_name="customers:list", prefix="customers"),
     NavGroup(label="گزارش‌های مالی", icon="report", url_name="reports:index", prefix="reports"),
     NavGroup(label="فعالیت کاربران", icon="activity", url_name="user_activity:index", prefix="user_activity"),
-    NavGroup(label="پشتیبان‌گیری", icon="backup", url_name="backup:index", prefix="backup", superuser_only=True),
+    NavGroup(label="پشتیبان‌گیری", icon="backup", url_name="backup:index", prefix="backup"),
 )

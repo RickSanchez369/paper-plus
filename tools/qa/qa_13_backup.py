@@ -17,15 +17,16 @@ def scenarios(h):
 
     r = h.anon.get("/backup/")
     check("BK01 anonymous is sent to sign-in", r.status_code == 302 and "/login" in r["Location"])
-    check("BK02 an ordinary user gets 403 on the page", h.cu.get("/backup/").status_code == 403)
-    check("BK03 an ordinary user gets 403 on the download", h.cu.post("/backup/").status_code == 403)
+    check("BK02 an ordinary user (not superuser) sees the page", h.cu.get("/backup/").status_code == 200)
+    r = h.cu.post("/backup/")
+    check("BK03 …and can download", r.status_code == 200 and r["Content-Type"] == "application/zip")
     check("BK04 anonymous cannot download", h.anon.post("/backup/").status_code == 302)
 
     r = h.c.get("/backup/")
     check("BK05 superuser sees the page", r.status_code == 200 and has(r, "دانلود پشتیبان کامل"))
     check("BK06 a GET never downloads (no attachment)", "attachment" not in r.get("Content-Disposition", ""))
-    check("BK07 the sidebar shows the link to the superuser", has(h.c.get("/"), "پشتیبان‌گیری"))
-    check("BK08 …and hides it from an ordinary user", not has(h.cu.get("/"), "/backup/"))
+    check("BK07 the menu shows the link to the superuser", has(h.c.get("/"), "/backup/"))
+    check("BK08 …and to an ordinary user", has(h.cu.get("/"), "/backup/"))
 
     r = h.c.post("/backup/")
     check("BK09 POST returns a zip attachment", r.status_code == 200 and r["Content-Type"] == "application/zip"

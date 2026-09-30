@@ -956,7 +956,9 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   version change. Verified by restoring a real backup into a scratch schema: every
   model's row count matched.
 - Consequence: the file holds every amount, customer address and password hash, hence
-  superuser-only and POST-only (a link or prefetch can never trigger it).
+  POST-only (a link or prefetch can never trigger it).
+- Amended 2026-10-01 (Sina): any signed-in user may back up, not only superusers (there
+  are no roles in this app); the menu link shows for everyone.
 
 ### D-061: The printed sales invoice is a company document with stamp boxes
 - Status: Final
@@ -999,3 +1001,30 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   DB (content types do not exist yet during `migrate`); it now skips the seed there (the
   roles were retired long ago). Without this no new host could have been installed.
 - Hosting needs Python >= 3.12 and PostgreSQL; MySQL is not supported.
+
+### D-064: Invoice numbers read like real invoice numbers: year/running number
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina (on recommendation)
+- Context: D-022's numbers started at 9956001, which looked arbitrary on a printed invoice.
+- Decision: A number is "<Jalali year>/<running number, at least 4 digits>", e.g.
+  `1405/0042` (shown ۱۴۰۵/۰۰۴۲). Sales and purchases count separately, and the running
+  number restarts at 1 every Farvardin (the year is the Jalali year of the day the invoice
+  is confirmed). `DocumentSequence` is now one row per (`doc_type`, `year`), created on
+  first use and locked with `select_for_update` (D-022's concurrency guarantee is
+  unchanged); the old single counter is year 0 and no longer used. The DB still refuses
+  two confirmed invoices with the same number.
+- Existing invoices keep the number they already have (9956001...): their numbers are
+  written into ledger notes that are append-only (D-014), so they are not renumbered.
+- Schema: migration `shared.0016` (adds `year`, unique on `doc_type`+`year`; drops unused
+  legacy counters).
+
+### D-065: The menu is a drawer opened by a hamburger button
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina
+- Decision: The permanent sidebar is gone. A hamburger button at the start of the header
+  opens the module list as a drawer sliding in from the right over a dim overlay, on
+  every screen size; closed, nothing of it is shown or reachable by keyboard. Overlay, X
+  and Esc close it; it is closed on every page load (no remembered state). Small script:
+  `shared/js/nav_drawer.js`.

@@ -85,8 +85,8 @@ erDiagram
 ```
 
 Key entities not shown above: `AuditLog` (every service call logs one row:
-actor, event type, target), `DocumentSequence` (one row per `doc_type`,
-issues invoice numbers at confirmation, D-022), `BankAccount` (payments'
+actor, event type, target), `DocumentSequence` (one row per `doc_type` and Jalali
+year, issues `year/number` invoice numbers at confirmation, D-022/D-064), `BankAccount` (payments'
 and cheques' optional account; `null` = cash).
 
 ## 5. Sale confirmation flow (the most complex path)

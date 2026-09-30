@@ -52,8 +52,9 @@ any `D-0xx` in [DECISIONS.md](DECISIONS.md) (append-only, wins on conflict).
 - Before a new script that calls `confirm_sale`/`confirm_purchase`/
   `set_opening_stock`, copy the setup boilerplate verbatim from an existing
   passing script that calls the same service.
-- `DocumentSequence` is a singleton per `doc_type` (D-033): reuse via
-  `get_or_create`/`update_or_create`, never `create`.
+- `DocumentSequence` is one row per (`doc_type`, Jalali `year`) (D-033, D-064): it is
+  created by `get_next_document_number` on first use; tests read it with
+  `filter(...).first()`, never `create` a row by hand.
 - Unique fields (User.phone, ...): random, never fixed, e.g.
   `f"09{random.randint(100000000, 999999999)}"`. The dev DB is never empty (D-031).
 - After a service that may lock/re-fetch, assert on the object it returns

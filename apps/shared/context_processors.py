@@ -5,7 +5,6 @@
 from django.conf import settings
 
 from .navigation import NAVIGATION
-from .permissions import is_privileged
 
 
 def company(request):
@@ -26,13 +25,7 @@ def navigation(request):
     if match is not None:
         current = match.namespace or (match.url_name or "")
 
-    user = getattr(request, "user", None)
-    visible = tuple(
-        group for group in NAVIGATION
-        if not group.superuser_only or is_privileged(user)
-    )
-
     return {
-        "navigation": visible,
+        "navigation": NAVIGATION,
         "current_section": current,
     }

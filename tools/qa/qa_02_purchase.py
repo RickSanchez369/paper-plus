@@ -8,7 +8,9 @@ from apps.shared.models import DocumentSequence
 
 
 def seq():
-    return DocumentSequence.objects.get(doc_type="purchase").next_number
+    from apps.shared import dates
+    row = DocumentSequence.objects.filter(doc_type="purchase", year=dates.today().year).first()
+    return row.next_number if row else 1
 
 
 def n_inv():
@@ -39,7 +41,7 @@ def scenarios(h):
     check("P02 full settlement in cash redirects", r.status_code == 302)
     inv2 = PurchaseInvoice.objects.filter(supplier=sup).latest("created_at")
     check("P02 cash payment has no bank account", Payment.objects.filter(supplier=sup, amount=1500, bank_account__isnull=True).exists())
-    check("P02 numbers strictly increase", int(inv2.invoice_number) == int(inv.invoice_number) + 1)
+    check("P02 numbers strictly increase", inv2.invoice_number.split("/")[0] == inv.invoice_number.split("/")[0] and int(inv2.invoice_number.split("/")[1]) == int(inv.invoice_number.split("/")[1]) + 1)
 
     n1, s1 = n_inv(), seq()
     r = h.post_purchase(sup, [(a, 1, 100)], account=None)

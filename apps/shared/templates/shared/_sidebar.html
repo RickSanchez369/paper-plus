@@ -1,10 +1,16 @@
 {% comment %} The module list comes from apps/shared/navigation.py, never from this
    file, so "which modules exist" has exactly one answer in the codebase. {% endcomment %}
-<nav class="sidebar">
-  <a class="sidebar__brand" href="{% url 'dashboard' %}">
-    <span class="sidebar__mark">پ</span>
-    <span>پیپر پلاس</span>
-  </a>
+<div class="nav-overlay" data-nav-close hidden></div>
+<nav class="sidebar" id="site-nav" aria-label="منوی اصلی" aria-hidden="true">
+  <div class="sidebar__top">
+    <a class="sidebar__brand" href="{% url 'dashboard' %}">
+      <span class="sidebar__mark">پ</span>
+      <span>{{ company.name }}</span>
+    </a>
+    <button type="button" class="nav-close" data-nav-close aria-label="بستن منو">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
 
   <div class="sidebar__nav">
     {% for group in navigation %}

@@ -138,21 +138,101 @@ h2 { font-size: 16px; }
 /* ---------------------------------------------------------------- layout */
 
 .app {
-  display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
   min-height: 100vh;
 }
 
+/* The menu is a drawer, closed until the hamburger in the header is pressed
+   (nav_drawer.js toggles body.nav-open). Closed it is fully out of the way on
+   every screen size and out of the tab order. */
 .sidebar {
-  position: sticky;
+  position: fixed;
+  z-index: 60;
   top: 0;
-  align-self: start;
-  height: 100vh;
+  bottom: 0;
+  inset-inline-start: 0;
+  width: min(var(--sidebar-width), 86vw);
   overflow-y: auto;
   background: var(--chrome);
   color: var(--ink-300);
   display: flex;
   flex-direction: column;
+  transform: translateX(100%);          /* off the right edge (RTL) */
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0s linear 0.25s;
+  box-shadow: none;
+}
+
+body.nav-open .sidebar {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.25s ease, visibility 0s;
+  box-shadow: var(--shadow-md);
+}
+
+.nav-overlay {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  background: rgb(10 31 68 / 55%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.nav-overlay:not([hidden]) {
+  opacity: 1;
+}
+
+body.nav-open {
+  overflow: hidden;
+}
+
+.sidebar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  flex-shrink: 0;
+  padding-inline-end: var(--space-3);
+}
+
+.nav-toggle,
+.nav-close {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--ink-300);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-900);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nav-toggle:hover {
+  background: var(--ink-100);
+  border-color: var(--ink-700);
+}
+
+.nav-close {
+  border-color: rgb(255 255 255 / 25%);
+  background: transparent;
+  color: var(--white);
+}
+
+.nav-close:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.nav-toggle svg,
+.nav-close svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
 .sidebar__brand {
@@ -164,8 +244,6 @@ h2 { font-size: 16px; }
   color: var(--white);
   font-weight: 600;
   font-size: 15px;
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
-  flex-shrink: 0;
 }
 
 .sidebar__brand:hover {
@@ -544,25 +622,6 @@ h2 { font-size: 16px; }
 /* ------------------------------------------------------------ responsive */
 
 @media (max-width: 860px) {
-  .app {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
-    height: auto;
-  }
-
-  .sidebar__nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-
-  .nav-group__label {
-    width: 100%;
-  }
-
   .content {
     padding: var(--space-4);
   }
