@@ -1,5 +1,5 @@
 /*
- * The new-purchase form's client side (REDESIGN_VISION 4.2). Mirrors
+ * The new-purchase form's client side. Mirrors
  * apps/sales/static/sales/js/sale_form.js almost exactly; the real
  * differences are `pickProduct`, which sets the price field's
  * *placeholder* from the last known cost, never its value -- a purchase

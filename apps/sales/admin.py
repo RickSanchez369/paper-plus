@@ -4,8 +4,7 @@ Admin for SalesInvoice and its items.
 
 Mirror of apps/purchasing/admin.py, with one difference: confirm_sale
 returns (invoice, shortages) and may drive stock negative (D-016).
-Shortages are shown as a warning; during SHADOW each one is a
-discrepancy to log against the paper ledger.
+Shortages are shown as a warning.
 
 Rules enforced here:
 - Stock is written only by confirm_sale; the admin never creates

@@ -7,8 +7,8 @@ Users are deactivated, never deleted: `created_by`/`actor` on movements,
 invoices, payments and audit rows are PROTECT foreign keys, and the audit
 trail depends on them.
 
-Creating and deactivating logins stays an admin-only task for now
-(REDESIGN_VISION §2.3), and `/admin/` is superuser-only (§2.1) — so the
+Creating and deactivating logins stays an admin-only task for now, and
+`/admin/` is superuser-only (D-035), so the
 old per-business scoping, the Owner/Seller role field, and the
 self-deactivation carve-out a Seller needed are all gone with the roles
 themselves.

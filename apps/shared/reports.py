@@ -1,13 +1,13 @@
 # path: apps/shared/reports.py
 
 """
-Read-only aggregates for the Financial Reports page (REDESIGN_VISION 4.8,
-Phase C module 8). A selector module like apps/*/selectors.py, just placed
+Read-only aggregates for the Financial Reports page. A selector module like
+apps/*/selectors.py, just placed
 here because it reads across every app (sales, purchasing, inventory,
 payments, shared) rather than owning one of them.
 
 Every number is computed live for the requested (start, end) range,
-never stored (REDESIGN_VISION 2.8) -- a report for last month must show
+never stored -- a report for last month must show
 last month's true numbers, not today's.
 """
 
@@ -106,7 +106,7 @@ def summary_cards(start, end):
 
 def sales_by_product(start, end):
     """qty, amount, profit per product, across every confirmed sale in the
-    range -- REDESIGN_VISION 4.8's own table, and the source "top sellers" is
+    range -- the Reports table, and the source "top sellers" is
     ranked from.
 
     Amount and profit are net of each invoice's discount, shared across its
@@ -146,14 +146,14 @@ def purchases_by_product(start, end):
 
 
 def top_sellers(start, end, limit=10):
-    """Ranked by quantity, linked (REDESIGN_VISION 4.8) -- the same rows
+    """Ranked by quantity, linked -- the same rows
     `sales_by_product` already computed, just capped."""
     return sales_by_product(start, end)[:limit]
 
 
 def inventory_snapshot(start, end):
-    """Inventory **as of the end of the selected range**, not "right now"
-    (REDESIGN_VISION 4.8) -- reconstructed from the movement/layer ledger."""
+    """Inventory **as of the end of the selected range**, not "right now" --
+    reconstructed from the movement/layer ledger."""
     rows = get_inventory_as_of(end)
     return {
         "total_value": sum(row["value"] for row in rows.values()),
@@ -163,7 +163,7 @@ def inventory_snapshot(start, end):
 
 def bank_accounts_as_of(start, end):
     """Balance as of range end + this period's own in/out totals, per
-    active account (REDESIGN_VISION 4.8)."""
+    active account."""
     rows = []
     for account in BankAccount.objects.filter(is_active=True).order_by("name"):
         period = Payment.objects.filter(bank_account=account, payment_date__gte=start, payment_date__lte=end)
@@ -179,7 +179,7 @@ def bank_accounts_as_of(start, end):
 
 
 def receivables_payables_as_of(end):
-    """Open receivables/payables as of range end (REDESIGN_VISION 4.8) --
+    """Open receivables/payables as of range end --
     the business-wide totals; the per-party breakdown already lives on
     Receivables/Payables."""
     return {
@@ -189,8 +189,8 @@ def receivables_payables_as_of(end):
 
 
 def cheques_by_status(start, end):
-    """Counts/amounts by status, for cheques due within the range
-    (REDESIGN_VISION 4.8) -- due date is what a cheque's own timing means,
+    """Counts/amounts by status, for cheques due within the range -- due date
+    is what a cheque's own timing means,
     not when it was entered."""
     rows = (
         Cheque.objects.filter(due_date__gte=start, due_date__lte=end)
@@ -206,8 +206,8 @@ def cheques_by_status(start, end):
 
 
 def user_activity(start, end):
-    """Event counts grouped by actor, within the range (REDESIGN_VISION
-    4.8) -- the full per-event breakdown is the separate User Activity
+    """Event counts grouped by actor, within the range -- the full per-event
+    breakdown is the separate User Activity
     module (4.9); this is just the report's own summary row per person."""
     User = get_user_model()
     rows = (

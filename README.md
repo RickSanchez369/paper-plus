@@ -8,12 +8,10 @@ stock traces back to who did what, when, why, and on which document.
 
 ## Status
 
-Rebuilt from a Django-Admin-only multi-tenant tool into a real,
-single-business frontend (branch `explore/vision-rethink`, merged into
-`dev` and `main` 2026-09-26, then retired). **Phase C is complete — all 11
-modules are built and browser-verified.** Phase D (visual identity) is
-next; not started. See [docs/STATE.md](docs/STATE.md) for the exact
-current state and roadmap.
+Rebuilt from a Django-Admin-only multi-tenant tool into a single-business
+frontend (merged into `dev` and `main` 2026-09-26). All 11 modules are built
+and browser-verified. Phase D (visual identity) is next; see
+[docs/STATE.md](docs/STATE.md).
 
 ## Stack
 
@@ -44,14 +42,8 @@ Django connects to PostgreSQL as the `paper_app` role (never `postgres`),
 see `docs/RULES.md`'s "Traps" section for the environment-specific
 gotchas (BOM-free files, `psycopg[binary]`, console encoding, etc.).
 
-For a production server (VPS, nginx, gunicorn, systemd, backups), see
-[docs/deployment.md](docs/deployment.md).
-
 ## Documentation
 
-Start at [docs/README.md](docs/README.md) — it maps every document to
-what question it answers and when to read it. In short: `docs/RULES.md`
-(binding process rules), `docs/STATE.md` (current state + roadmap,
-its "Next" section is where new work starts), `docs/DECISIONS.md` (the
-full append-only *why* behind every non-obvious rule), and
-`docs/architecture.md` (system overview, domain model, key flows).
+Start at [docs/README.md](docs/README.md); it maps every document to the
+question it answers. Working rules: `docs/RULES.md`; current state and next
+step: `docs/STATE.md`; the why behind every rule: `docs/DECISIONS.md`.

@@ -51,8 +51,7 @@ class PaymentForm(forms.ModelForm):
     Django validates CheckConstraints inside full_clean(), which runs before
     save_model() and therefore before record_payment()'s own checks -- so
     without this the user sees "Constraint ... is violated" instead of a
-    sentence. Same fix as ChequeForm below, for the same reason
-    (ROADMAP 4.4's lesson, restated in REDESIGN_VISION 2.5).
+    sentence. Same fix as ChequeForm below, for the same reason.
     """
 
     class Meta:
@@ -365,7 +364,7 @@ class ExpenseAdmin(admin.ModelAdmin):
     Add-only: every Expense is created through `record_expense`, which also
     books the Payment that moves the money (see save_model). Never edited or
     deleted -- a mistake is undone by the "لغو" action, which books the
-    opposite entry (REDESIGN_VISION 2.7).
+    opposite entry.
     """
 
     form = ExpenseForm

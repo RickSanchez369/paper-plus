@@ -12,7 +12,7 @@ def get_bank_account_balance(bank_account, as_of=None):
     Net money moved through this account: IN payments minus OUT payments.
 
     `as_of` (a date) restricts the ledger to payments on or before that
-    day, for the Bank Accounts comparison cards (REDESIGN_VISION 4.5) --
+    day, for the Bank Accounts comparison cards --
     "the balance as it stood then", not a separate stored snapshot.
     """
     qs = Payment.objects.filter(bank_account=bank_account)
@@ -33,8 +33,7 @@ def get_bank_account_balance(bank_account, as_of=None):
 def get_supplier_outstanding(supplier):
     """
     Accounts payable: this supplier's unpaid balance across its confirmed
-    purchase invoices (REDESIGN_VISION 4.2's Suppliers sub-section, and
-    the Payables page -- one selector, so the two can never disagree).
+    purchase invoices.
 
     Summed per-invoice (`invoice.outstanding`, already clamped at 0) rather
     than one supplier-wide total minus total paid, so an overpayment on one
@@ -52,7 +51,7 @@ def get_supplier_outstanding(supplier):
 def get_customer_outstanding(customer):
     """
     Accounts receivable: this customer's unpaid balance across its
-    confirmed sales invoices (REDESIGN_VISION 4.4/4.7) -- the exact mirror
+    confirmed sales invoices -- the exact mirror
     of `get_supplier_outstanding`, shared by the Receivables page and the
     Customer-detail statement so the two can never disagree.
     """
@@ -66,8 +65,7 @@ def get_customer_outstanding(customer):
 
 def get_total_receivables_as_of(as_of):
     """
-    Business-wide accounts receivable as of a past date (REDESIGN_VISION
-    4.8's Financial Reports): confirmed sales invoices dated on or before
+    Business-wide accounts receivable as of a past date: confirmed sales invoices dated on or before
     `as_of`, minus only the allocations whose own payment happened by then
     -- a payment made after `as_of` must not retroactively shrink a past
     report's outstanding figure.

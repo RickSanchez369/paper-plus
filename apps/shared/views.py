@@ -20,7 +20,7 @@ from .forms import DateRangeForm, UserActivityFilterForm
 
 class DateRangeMixin:
     """
-    Gives a page the shared date-range filter (REDESIGN_VISION 4.8, 4.9, 4.10).
+    Gives a page the shared date-range filter.
 
     Bound to GET, so the chosen range is in the URL and survives being
     bookmarked or shared. `date_range` is always a usable pair, even when
@@ -38,15 +38,12 @@ class DateRangeMixin:
 
 class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
     """
-    The landing page after login (REDESIGN_VISION 4.10, Phase C module
-    10, the last of the 11 -- built last since it only aggregates the
-    other modules, once there was something true to aggregate).
+    The landing page after login.
 
     `apps.shared.dashboard` does the reading; the date-range picker here
     is carried over from the stub for bookmarkability, but nothing on
     this page is actually range-scoped except the KPI cards, which read
-    their own today/month bounds directly (REDESIGN_VISION 4.10 fixes
-    those two periods, not an arbitrary chosen range).
+    their own today/month bounds directly.
     """
 
     template_name = "shared/dashboard.html"
@@ -72,7 +69,7 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
 
 class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
     """
-    Financial Reports (REDESIGN_VISION 4.8, Phase C module 8): every
+    Financial Reports: every
     number computed live for the chosen range (apps.shared.reports),
     never stored. Read-only, same as every list page -- the numbers here
     can never disagree with the module pages they summarise, because they
@@ -103,7 +100,7 @@ class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
 
 class UserActivityView(DateRangeMixin, LoginRequiredMixin, TemplateView):
     """
-    User Activity's aggregate table (REDESIGN_VISION 4.9): one row per
+    User Activity's aggregate table: one row per
     user, counts per category + a total amount, within the chosen range
     and filters. Drilling into a user is a separate page (`UserActivity
     DetailView`), not a link fragment of this one.
@@ -132,7 +129,7 @@ class UserActivityView(DateRangeMixin, LoginRequiredMixin, TemplateView):
 
 
 class UserActivityDetailView(LoginRequiredMixin, TemplateView):
-    """One user's raw AuditLog feed (REDESIGN_VISION 4.9): event type,
+    """One user's raw AuditLog feed: event type,
     linked target, timestamp -- newest first, within the chosen range and
     event-type filter (the user itself is fixed by the URL, not a filter)."""
 

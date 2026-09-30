@@ -3,8 +3,8 @@
 """
 The sidebar: the one place the module list is defined.
 
-REDESIGN_VISION 4 fixes both the set of modules and their order, and 4.10
-puts the sidebar outside the dashboard — it is the shell every page renders
+The set of modules and their order are fixed here, and the sidebar sits
+outside the dashboard — it is the shell every page renders
 inside, not part of any one page. Keeping it here rather than in the
 template means a page can also ask which section it belongs to (for
 breadcrumbs, or an active state) without re-deriving it from the URL.
@@ -44,8 +44,7 @@ class NavGroup:
     prefix: str = ""
 
 
-# Order is REDESIGN_VISION 4's confirmed order, with the Dashboard first
-# because it is the landing page after login (4.10).
+# Dashboard first because it is the landing page after login.
 NAVIGATION = (
     NavGroup(label="داشبورد", icon="home", url_name="dashboard", prefix="dashboard"),
     NavGroup(label="فروش", icon="sale", url_name="sales:list", prefix="sales"),

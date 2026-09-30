@@ -58,15 +58,6 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - **Hard delete only for unreferenced records**; `InventoryMovement` rows
   and confirmed/cancelled invoices are never deleted, by anyone (D-024).
 
-## Hard gates
-
-- Every schema change belonging to phases 1–2 (see `STATE.md` roadmap) is
-  done before the first real record (phase 3) — schema does not change
-  under real data.
-- SHADOW: run the system in parallel with the paper ledger until 3
-  consecutive days of 0 discrepancies. Every discrepancy is a bug — log
-  it, never fix data by hand.
-
 ## Decision index (full text: [DECISIONS.md](DECISIONS.md))
 - D-001 Settings package `core/`; apps in `apps/`; shared app is `apps/shared`.
 - D-002 Config and secrets from `.env` (django-environ); `.env.example` in git.
@@ -116,4 +107,6 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-046 Sales invoice defaults to full settlement into a chosen account (`plan_full_payment`); split/cheque/credit rows are the explicit alternative mode.
 - D-047 htmx swaps a 422 response (a form re-rendered with its errors) via `htmx-config` in base.html; other 4xx/5xx stay non-swapping errors.
 - D-048 An invoice discount is shared across its lines pro rata by line total (largest remainder, whole Toman); line profit and per-product report rows are net of it and sum to the invoice/report totals. Derived, never stored.
-- D-049 Static files served by whitenoise (not nginx) so PaaS deploys (no user-controlled reverse proxy) still get CSS/JS with DEBUG=False; VPS/nginx path unaffected.
+- ~~D-049~~ superseded by D-051 (no deployment work in this repo).
+- D-050 Visual identity: IBM Carbon-inspired (flat, square, one blue accent), changed via `app.css` tokens only.
+- D-051 Deployment and the SHADOW parallel-run are out of scope and removed from the repo.

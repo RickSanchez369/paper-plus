@@ -138,7 +138,7 @@ class InventoryLayer(BaseModel):
     price" approximation (`get_cost_map`) with real FIFO: a sale consumes
     the oldest layer first and records exactly what it took in
     `InventoryConsumption`, so every sold line has a true cost and every
-    cancellation can be reversed exactly (REDESIGN_VISION 2.4, 3).
+    cancellation can be reversed exactly.
 
     Layers do not replace `InventoryMovement`, which stays the immutable
     source of truth for *how much* stock exists. A layer answers a
@@ -146,7 +146,7 @@ class InventoryLayer(BaseModel):
     it carries a running balance (`quantity_remaining`) that is maintained
     as sales consume it. That balance is never authoritative on its own:
     it is always reconstructable as
-    ``quantity - sum(consumption.quantity)`` (REDESIGN_VISION 8), the same
+    ``quantity - sum(consumption.quantity)``, the same
     way `Payment.allocated_amount` derives from its allocations.
     """
 

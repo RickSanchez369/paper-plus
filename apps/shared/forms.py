@@ -86,8 +86,8 @@ class JalaliDateField(forms.Field):
 
 class DateRangeForm(forms.Form):
     """
-    The date range every report-shaped page filters by (REDESIGN_VISION
-    4.8, 4.9, 4.10). Built once here because three modules use it and a
+    The date range every report-shaped page filters by. Built once here because
+    three modules use it and a
     fourth will; three copies would drift on what "this month" means.
 
     A GET form on purpose: the range belongs in the query string, so a
@@ -175,7 +175,7 @@ class DateRangeForm(forms.Form):
 
 class UserActivityFilterForm(forms.Form):
     """
-    User Activity's own filters (REDESIGN_VISION 4.9), alongside the
+    User Activity's own filters, alongside the
     shared date range: which user, which event type. Used on both the
     aggregate list (narrows which rows/events are counted) and the
     per-user drill-down (narrows the raw feed) -- `user` is simply left

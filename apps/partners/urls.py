@@ -1,6 +1,6 @@
 # path: apps/partners/urls.py
 
-"""Customers module routes (REDESIGN_VISION 4.7). Suppliers live under Purchasing."""
+"""Customers module routes. Suppliers live under Purchasing."""
 
 from django.urls import path
 

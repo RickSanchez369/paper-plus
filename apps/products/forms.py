@@ -1,7 +1,7 @@
 # path: apps/products/forms.py
 
 """
-"کالای جدید", inline mid-purchase (REDESIGN_VISION 4.2, vision doc §13).
+"کالای جدید", inline mid-purchase.
 
 Unlike the quick customer/supplier forms, `default_selling_price` is
 required here even though the user is in a *purchase* flow: the vision

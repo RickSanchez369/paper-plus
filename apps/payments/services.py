@@ -192,7 +192,7 @@ def clear_cheque(cheque, user, bank_account=None):
             bank_account=bank_account or locked.bank_account,
             direction=locked.direction,
             # Carry the cheque's own party across, so the money this cheque
-            # became is still traceable to a person (REDESIGN_VISION 3).
+            # became is still traceable to a person.
             customer=locked.customer,
             supplier=locked.supplier,
             amount=locked.amount,
@@ -262,7 +262,7 @@ def cancel_cheque(cheque, user):
     pending cheque was never counted toward any invoice's payment_status
     (ROADMAP 4.4), so there is nothing to reverse and no Payment is
     involved either way. Mirrors `bounce_cheque`'s shape; the row survives
-    as history rather than being deleted (REDESIGN_VISION 2.7).
+    as history rather than being deleted.
 
     Raises:
         ValidationError: cheque is not pending.
@@ -291,8 +291,7 @@ def record_expense(expense, user):
     settles no invoice) and links it to the Expense in one transaction, so
     the two can never exist apart. Reusing the Payment ledger is the whole
     point: bank balances and every cash-flow figure already read from it,
-    so an expense needs no parallel accounting path
-    (REDESIGN_VISION 3, vision doc 27).
+    so an expense needs no parallel accounting path.
 
     Args:
         expense: an unsaved Expense with expense_date, amount, reason and
@@ -343,12 +342,12 @@ def cancel_expense(expense, user):
 
     Books a Payment of the same amount in the opposite direction against
     the same account, so the bank balance returns to where it was and the
-    ledger keeps both halves of the story (REDESIGN_VISION 2.7). The
+    ledger keeps both halves of the story. The
     Expense row itself stays, flagged cancelled, and stops counting toward
     any total (`counts_toward_totals`).
 
     Superuser-only, same risk tier as cancel_sale/cancel_purchase
-    (REDESIGN_VISION 4.6, D-023's is_superuser gate).
+ (D-023).
 
     Raises:
         ValidationError: expense is already cancelled, or ``user`` is not

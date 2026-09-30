@@ -87,29 +87,10 @@ If this log and SPEC.md disagree, this log wins.
 - Affects: `apps/users`, `core/settings.AUTH_USER_MODEL`, every future `created_by` FK.
 
 ### D-008: User is not scoped to a Business
-- Status: Final
-- Date: 2026-09-20
-- Decided by: me
-- Decision: `User` carries no `business` FK, deliberately departing from
-  non-negotiable rule 1. The user-to-business relation lives in a separate
-  `BusinessMembership` model.
-- Options considered: one `business` FK on User.
-- Rationale: one person may work in more than one business; a direct FK would
-  force duplicate user accounts and duplicate credentials.
-- Affects: `apps/users`, upcoming `BusinessMembership`.
+- Status: Superseded. Superseded by D-033 (Business removed entirely).
 
-### D-009: Roles as a choices field, not a separate model
-- Status: Final
-- Date: 2026-09-20
-- Decided by: me (on recommendation)
-- Decision: `BusinessMembership.role` is a `CharField` with fixed choices
-  (owner, salesperson), not a `Role` model.
-- Options considered: separate `Role` model with dynamic permissions.
-- Rationale: SPEC.md describes two owners and a few salespeople; roles are not
-  expected to be dynamic. Migrating from choices to a model later is a one-day
-  job, cheaper than carrying the complexity now.
-- Affects: upcoming `BusinessMembership`.
-
+### D-009: Roles as a choices field
+- Status: Superseded. Superseded by D-034 (no roles).
 
 ### D-010: Customer and Supplier are two separate models
 - Status: Final
@@ -149,20 +130,8 @@ If this log and SPEC.md disagree, this log wins.
 - Affects: `apps/inventory`, `confirm_purchase`, `confirm_sale`.
 
 
-### D-013: Money is stored as whole Rial in BigIntegerField
-- Status: Final
-- Date: 2026-09-21
-- Decided by: me
-- Decision: All money fields are `BigIntegerField` holding whole Rial. No decimals.
-  Toman display and thousand separators are presentation concerns: a shared helper
-  in `apps/shared` formats numbers as `1,234,567` and shows a Toman hint under
-  price inputs. Storage never changes.
-- Options considered: Toman as integer; DecimalField with 2 places.
-- Rationale: the paper ledger is in Rial; converting at storage time would create
-  rounding and a permanent ambiguity about which unit a row is in. Integer Rial
-  makes every sum exact.
-- Affects: `PurchaseItem.unit_price`, `SaleItem.unit_price`, all future money fields,
-  admin and serializers.
+### D-013: Money stored as whole Rial
+- Status: Superseded. Superseded by D-043 (whole Toman everywhere).
 
 ### D-014: A confirmed invoice is immutable
 - Status: Final
@@ -331,32 +300,13 @@ If this log and SPEC.md disagree, this log wins.
 - Affects: `apps/sales`, the upcoming payments module.
 
 ### D-026: Sellers use the admin, scoped to their business
-- Status: Final
-- Date: 2026-09-21
-- Decided by: me
-- Decision: Sellers log in to the Django admin. Every admin filters its
-  queryset and foreign-key choices to the businesses the user belongs to.
-  Role checks are also enforced inside services, not only in the admin.
-  Superuser is not scoped.
-- Options considered: a separate frontend for sellers (Vue, deferred).
-- Rationale: the admin is the only UI in this phase. Scoping in both the
-  admin and the services means a hidden button is never the only barrier.
-- Affects: all admins, `apps/shared/permissions`, all services.
+- Status: Superseded. Superseded by D-035 (`/admin/` is superuser-only).
 
+### D-027: Seller permission scope
+- Status: Superseded. Superseded by D-034 (no roles).
 
-## D-027 — Seller permission scope
-Seller may create, view, and confirm SalesInvoice/SaleItem for their
-business only, selecting Product and Customer from existing records.
-No access to purchasing app. No create/edit on Product, Customer,
-Supplier. InventoryMovement ledger is view-only (admin-wide rule).
-Owner has full CRUD within their business, subject to D-024 limits.
-Decided 2026-09-22.
-
-
-## D-028
-D-028 — New user + first membership created together from UserAdmin add page, in one transaction; business/role required. Owner sees 
-only own businesses; superuser sees all. A user with no business is created via createsuperuser, not admin.
-
+### D-028: User + first membership created together
+- Status: Superseded. Superseded by D-033/D-034 (no memberships).
 
 ## D-029
 D-029 AuditLog target reference is target_type (CharField, model label) + target_id (UUIDField),
@@ -637,54 +587,8 @@ agree (REDESIGN_VISION 8 item 4). New AuditLog event types `record_expense`
 and `cancel_expense`. `document` is an optional FileField, which is why
 MEDIA_ROOT/MEDIA_URL and the DEBUG-only media route now exist.
 
-## D-041 — Manual stock adjustment draws FIFO layers like a sale
-Date: 2026-09-25
-Status: Final
-
-Context: REDESIGN_VISION 4.3 asks for a manual adjustment (in/out, mandatory
-reason note); STATE.md had flagged since 4.1 that `adjustment_out` must
-consume FIFO layers and `adjustment_in` must carry a unit cost, "or layer
-totals and movement totals diverge" (D-036) — otherwise `InventoryMovement`
-(the stock ledger) and `InventoryLayer` (the cost basis) would silently
-disagree the first time anyone used it.
-
-Decision: `InventoryConsumption` is generalized from "what a sale item drew
-from a layer" to "what a sale item *or* an adjustment_out movement drew from
-a layer" — `sale_item` becomes nullable, a new nullable `movement` FK is
-added, and a CHECK enforces exactly one of the two is set. This is the same
-shape already used repeatedly in this schema for "one of two possible
-owners" (`Payment.customer`/`supplier`, `Cheque.sales_invoice`/
-`purchase_invoice`, `PaymentAllocation`'s invoice pair) — not a new pattern.
-`InventoryLayer.Source` gains `adjustment` (alongside `opening_stock`,
-`purchase_item`), for a layer an increase opens. `InventoryMovement` gains a
-nullable `layer` FK, set only for `opening`/`adjustment_in` (the two types
-with no invoice item to hang a layer link off of) — a backfill migration
-links every pre-existing OPENING movement to its layer, since
-`set_opening_stock` always created both together, one-to-one, before this
-field existed to record it.
-
-`record_adjustment(product, movement_type, quantity, user, note,
-unit_price=None)` (apps/inventory/services.py): `adjustment_in` opens a new
-layer at `unit_price` (required, same rule as `set_opening_stock`).
-`adjustment_out` consumes active layers oldest-first exactly like
-`consume_fifo`, records one `InventoryConsumption` per layer touched
-(`movement=`, not `sale_item=`), and is rejected outright — nothing
-written — if the ledger cannot cover the requested quantity: an adjustment
-corrects a physical count, it does not manufacture an oversell the way a
-sale is allowed to (D-016 is sale-specific, not extended here). Its
-`unit_price` is filled in afterward as the weighted-average cost of what it
-actually drew.
-
-No privilege gate: `apps/shared/permissions.py`'s docstring states exactly
-two actions are superuser-gated (oversell-confirm, cancellation); adding a
-third would contradict that explicit design call (D-034), and nothing in
-REDESIGN_VISION 4.3 asks for one. The mandatory reason note is the only
-safeguard.
-
-Consequences: every stock-changing row — opening, purchase, sale,
-adjustment_in, adjustment_out — now resolves to the specific layer(s) it
-touched, closing the last gap in REDESIGN_VISION 4.3's "which layer each row
-touched" requirement for the per-product transaction history.
+### D-041: Manual stock adjustment draws FIFO layers
+- Status: Superseded. Superseded by D-044 (manual adjustment and its schema removed).
 
 ## D-042 — A split payment settles the oldest open invoice first
 Date: 2026-09-25
@@ -885,27 +789,37 @@ detail page shows a "سهم تخفیف" column when there is a discount; the
 customer-facing print page is unchanged (still one invoice-level discount
 line). Stock, FIFO consumption and layer costs are untouched, as before.
 
-## D-049 — Static files are served by whitenoise, not nginx
-Date: 2026-09-28
-Status: Final
+### D-049: Static files served by whitenoise
+- Status: Superseded. Removed by D-051 along with the rest of the deployment setup.
 
-Context: Sina asked to review ParsPack's PaaS docs (docs.parspack.com/paas)
-and deploy paper-plus there instead of (or alongside) the VPS path in
-docs/deployment.md. That VPS plan has nginx serve `staticfiles/` in front
-of gunicorn; ParsPack's PaaS containers get no such reverse-proxy layer the
-user controls -- the app's own process receives traffic directly. With
-`DEBUG=False` Django serves no static files itself, so admin/htmx CSS and
-JS would 404 in production without a change.
+### D-050: Visual identity is IBM Carbon-inspired
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Claude, on Phase D's own brief (pick or blend, ask only if not obvious)
+- Decision: The app's look follows IBM's Carbon language (`docs/design/ibm/DESIGN.md`):
+  flat near-square chrome (radius 2-4px), thin 1px borders instead of shadows
+  (only overlays keep one), Carbon's cool-grey ramp, one blue accent
+  (`--accent-600: #0f62fe`), dark `#161616` side nav with a blue marker on the
+  active item, light page background `#f4f4f4`. Font stays Vazirmatn (IBM Plex
+  has no Persian). Implemented by changing the token block in
+  `apps/shared/static/shared/css/app.css`; component rules were not touched.
+- Options considered: Stripe (financial but gradient/marketing-led), Linear
+  (dark-first), PostHog (playful illustration).
+- Rationale: dense, numbers-first internal tool; Carbon is built for data
+  tables and forms, and its flat style matches the existing token structure.
+- Affects: `app.css` only. Reversible by editing the `:root` tokens.
+- Not done: dark mode (internal tool, not asked for).
 
-Decision: `whitenoise` (requirements.txt) serves `staticfiles/` directly
-from the gunicorn process. `WhiteNoiseMiddleware` added to `MIDDLEWARE`
-immediately after `SecurityMiddleware` (core/settings.py), per whitenoise's
-own install order requirement. `STORAGES["staticfiles"]` set to
-`whitenoise.storage.CompressedManifestStaticFilesStorage` for hashed,
-cache-busted filenames; `STORAGES["default"]` is repeated unchanged
-(FileSystemStorage, media/expense receipts) because defining `STORAGES` at
-all replaces Django's whole default dict, not just the key being changed.
-No effect on the VPS path: nginx still serves `staticfiles/` there and
-never reaches gunicorn/whitenoise for those requests, so both deployment
-targets keep working off the same `collectstatic` output.
-`manage.py check` verified clean after `pip install -r requirements.txt`.
+### D-051: Deployment and SHADOW are out of scope
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: The repo carries no deployment work and no SHADOW gate. Removed:
+  `docs/deployment.md`, the production-hardening block and whitenoise
+  (middleware + STORAGES) in `core/settings.py`, `gunicorn`/`whitenoise` in
+  requirements.txt, the production keys in `.env.example`, roadmap task 3.4
+  (the 3-day parallel run against the paper ledger), and the "Hard gates"
+  section of business-rules.md. Supersedes D-049.
+- Note: older entries (D-014, D-016, D-017, D-019, D-020) still mention SHADOW
+  or a future deployment as historical rationale; they are not rewritten.
+  The app still reads DEBUG/ALLOWED_HOSTS/CSRF_TRUSTED_ORIGINS from `.env`.

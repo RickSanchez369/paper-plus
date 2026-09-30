@@ -1,6 +1,6 @@
 # path: apps/purchasing/urls.py
 
-"""Purchasing module routes, including the Suppliers sub-section (REDESIGN_VISION 4.2)."""
+"""Purchasing module routes, including the Suppliers sub-section."""
 
 from django.urls import path
 

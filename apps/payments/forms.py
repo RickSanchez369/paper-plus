@@ -3,10 +3,10 @@
 """
 "ثبت پرداخت" — one form, four entry points.
 
-REDESIGN_VISION 8 item 2 called this out explicitly: the button appears on
-Receivables, Payables, Customer detail and Supplier detail, and four
-implementations of it would drift apart on what an allocation means. So it
-is written once, here, and each page renders the same partial.
+The button appears on Receivables, Payables, Customer detail and Supplier
+detail, and four implementations of it would drift apart on what an
+allocation means. So it is written once, here, and each page renders the
+same partial.
 
 The form only validates and shapes input. Money is moved by
 `apps/payments/services.py` inside `transaction.atomic()`, never by a form
@@ -174,7 +174,7 @@ class RecordPaymentForm(forms.Form):
 
 
 class ChequeFilterForm(forms.Form):
-    """Cheques list filters (REDESIGN_VISION 4.4): status, direction, and
+    """Cheques list filters: status, direction, and
     a due-date range -- deliberately separate fields, not one date-range
     picker, since a cheque's due date has nothing to do with when it was
     entered (the shared DateRangeForm's presets don't apply here)."""
@@ -221,7 +221,7 @@ class ChequeCompletionForm(forms.ModelForm):
 
 class ExpenseFilterForm(forms.Form):
     """
-    Expenses list filters (REDESIGN_VISION 4.6): free-text search over
+    Expenses list filters: free-text search over
     reason/note, bank account, and an amount range -- the date range
     itself is the shared `DateRangeForm`, rendered alongside this one,
     same split as Sales/Purchasing's own list filters.
@@ -247,7 +247,7 @@ class ExpenseFilterForm(forms.Form):
 
 class ExpenseForm(forms.ModelForm):
     """
-    New-expense one-shot form (REDESIGN_VISION 4.6, D-045): date, reason,
+    New-expense one-shot form (D-045): date, reason,
     amount, the account it was paid from (or cash, chosen explicitly),
     optional receipt upload, note. The view passes the unsaved instance to
     `record_expense`, which creates the matching `Payment(OUT)` in the

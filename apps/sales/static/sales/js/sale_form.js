@@ -1,11 +1,10 @@
 /*
- * The new-sale form's client side (REDESIGN_VISION 4.1): product search
+ * The new-sale form's client side: product search
  * results, add/remove item and payment rows, live subtotal/discount/total,
  * the payment-mode switch (full settlement vs. split/credit, D-046), and
  * the remaining/نسیه amount. Written fresh for this page rather than
  * ported from apps/sales/admin.py's inline JS -- that version leans on
- * Django admin's select2 and django.jQuery, neither of which exists here
- * (REDESIGN_VISION 2 item 8: plain JS, no jQuery, no build tooling).
+ * Django admin's select2 and django.jQuery, neither of which exists here.
  *
  * All server-side validation still happens on submit, same as always
  * (SaleItemForm/SalesPaymentEntryForm/confirm_sale) -- everything below is

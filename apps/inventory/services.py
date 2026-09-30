@@ -142,7 +142,7 @@ def restore_consumptions(sale_item, user, note=""):
     Reversal is by recorded amount, not by FIFO order: a later sale may
     have drawn further from the same layers in the meantime, and putting
     the units back where they came from keeps every layer's arithmetic
-    right regardless of what happened in between (REDESIGN_VISION 8).
+    right regardless of what happened in between.
 
     Append-only: the original consumption rows are never edited or deleted,
     an opposite row is added instead, so a layer's balance stays
@@ -181,7 +181,7 @@ def cancel_layer(layer, user):
 
     Only an untouched layer may go: once any of it has been sold, removing
     it would leave that sale's recorded cost pointing at stock the system
-    says never existed (REDESIGN_VISION 3). Such a purchase has to be
+    says never existed. Such a purchase has to be
     corrected some other way, not cancelled.
 
     Must be called inside the caller's transaction.

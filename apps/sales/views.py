@@ -1,7 +1,7 @@
 # path: apps/sales/views.py
 
 """
-Sales module views (REDESIGN_VISION 4.1, MASTER_PROMPT Phase C).
+Sales module views.
 
 Nothing here writes stock or money directly -- confirm_sale/cancel_sale
 own that, exactly as they did from the admin (RULES.md: "Writes that
@@ -35,12 +35,12 @@ from .services import cancel_sale, confirm_sale, plan_full_payment
 
 class SalesListView(LoginRequiredMixin, TemplateView):
     """
-    List (REDESIGN_VISION 4.1): summary cards always show today/this-month/
+    List: summary cards always show today/this-month/
     open/profit regardless of the table's own filters, a free-text search
     over invoice number + customer name, and separate structured filters
     (date range, payment status, product, amount range).
 
-    Cards exclude cancelled invoices from every total (vision doc gap #4);
+    Cards exclude cancelled invoices from every total;
     the table itself still lists them, with a status column saying so --
     a cancelled invoice is history, not something to hide.
     """
@@ -125,11 +125,9 @@ class SalesListView(LoginRequiredMixin, TemplateView):
 
 class ProductSearchView(LoginRequiredMixin, View):
     """
-    Live product search for an item row (REDESIGN_VISION 4.1: "product
-    autocomplete showing live stock in the label"). Returns a results
+    Live product search for an item row. Returns a results
     partial, not JSON -- the frontend picks a result by clicking a plain
-    button, no client-side templating needed (HTMX's own use case, per
-    REDESIGN_VISION 2 item 8).
+    button, no client-side templating needed.
     """
 
     def get(self, request):
@@ -160,7 +158,7 @@ def _empty_forms():
 
 class SalesCreateView(LoginRequiredMixin, View):
     """
-    The one-shot new-sale page (REDESIGN_VISION 4.1, non-negotiable #5):
+    The one-shot new-sale page:
     invoice + items + payment, submitted together, created and confirmed
     in one transaction. A rejection at any point -- no items, discount
     over subtotal, payment rows over the total, an oversell by a
@@ -239,7 +237,7 @@ class SalesCreateView(LoginRequiredMixin, View):
 
 class SalesDetailView(LoginRequiredMixin, DetailView):
     """
-    Detail (REDESIGN_VISION 4.1): items with FIFO cost + profit per line,
+    Detail: items with FIFO cost + profit per line,
     totals with invoice profit highlighted, recorded payments/cheques
     linked to their bank account or cheque record, cancel (superuser-only,
     calls the existing cancel_sale), breadcrumbs to the customer and list.

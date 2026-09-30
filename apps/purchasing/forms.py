@@ -1,10 +1,9 @@
 # path: apps/purchasing/forms.py
 
 """
-The one-shot new-purchase form (REDESIGN_VISION 4.2, MASTER_PROMPT Phase C).
+The one-shot new-purchase form.
 
-Symmetric to apps/sales/forms.py, with the differences REDESIGN_VISION 4.2
-calls out explicitly: no discount concept anywhere (the model never had
+Symmetric to apps/sales/forms.py, with these differences: no discount concept anywhere (the model never had
 one), `unit_price` is always manually typed -- there is no per-product
 default to fall back to the way a sale has -- and cancel is stricter
 (handled entirely in `cancel_purchase`/`cancel_layer`, not here).
@@ -50,7 +49,7 @@ class PurchasingFilterForm(forms.Form):
 
 class PurchaseInvoiceForm(forms.ModelForm):
     """Header fields: who, when, the supplier's own invoice number. No
-    discount field -- the model has none (REDESIGN_VISION 4.2)."""
+    discount field -- the model has none."""
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
 

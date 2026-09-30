@@ -21,9 +21,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(BASE_DIR / ".env")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str('SECRET_KEY')
 
@@ -33,26 +30,11 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
-# Deployment hardening (`manage.py check --deploy`), deferred until an
-# actual deployment existed (D-019) -- now it does. Defaults follow DEBUG:
-# off for local dev over plain http, on once DEBUG=False in production.
-SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not DEBUG)
-SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
-CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
-SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0 if DEBUG else 60 * 60 * 24 * 7)
-SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
-SECURE_HSTS_PRELOAD = not DEBUG
-# Set only when actually behind a reverse proxy that terminates TLS
-# (nginx in docs/deployment.md) -- trusting this header without one lets a
-# client spoof "https" and disable the redirect above.
-if env.bool("BEHIND_TLS_PROXY", default=False):
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
 
 # Application definition
 
 INSTALLED_APPS = [
-    # Superuser-only admin site (REDESIGN_VISION 2.1), in place of
+    # Superuser-only admin site, in place of
     # 'django.contrib.admin'.
     'apps.shared.admin_site.PaperPlusAdminConfig',
     'django.contrib.auth',
@@ -73,9 +55,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # Serves collectstatic output directly (D-049); must sit right after
-    # SecurityMiddleware, per whitenoise's own install instructions.
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -147,21 +126,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
-# Collected here by `collectstatic` for a real web server to serve.
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-# Defining STORAGES replaces Django's whole default dict (D-049), so
-# "default" (media, FileSystemStorage) is repeated here even though it is
-# unchanged -- only "staticfiles" moves to whitenoise, with hashed
-# filenames for cache-busting.
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
 
 # Uploaded files (today: expense receipts). Kept out of the repo by
 # .gitignore -- they are business documents, not source.
@@ -181,8 +145,7 @@ MAILERS = {
 # The custom user model. Changing this after migrations exist is extremely costly.
 AUTH_USER_MODEL = "users.User"
 
-# Authentication flow for the frontend (REDESIGN_VISION 4.10: the dashboard
-# is the landing page after login). `/admin/` keeps its own login page.
+# Authentication flow for the frontend. `/admin/` keeps its own login page.
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"

@@ -3,8 +3,8 @@
 """
 "مشتری جدید" / "تأمین‌کننده جدید" — the inline mini-forms.
 
-REDESIGN_VISION 4.1 and 4.2 both want a party created without leaving the
-invoice being written, and 4.7 wants the same form on the Customers page.
+A party can be created without leaving the invoice being written, and the
+same form appears on the Customers page.
 One form class per model, rendered by one shared partial, so the three
 places cannot disagree about which fields a new party needs.
 
@@ -59,7 +59,7 @@ class QuickSupplierForm(forms.ModelForm):
 
 
 class CustomerForm(forms.ModelForm):
-    """Full edit form for the Customers detail page (REDESIGN_VISION 4.7) --
+    """Full edit form for the Customers detail page --
     the quick-create form only asks name/phone/address/note; this one adds
     is_active, since deactivating a customer is an edit-page action, not a
     mid-invoice one."""
@@ -108,7 +108,7 @@ class SupplierForm(forms.ModelForm):
 
 
 class CustomerFilterForm(forms.Form):
-    """Customers list filters (REDESIGN_VISION 4.7): free-text search over
+    """Customers list filters: free-text search over
     name/phone, account status (owes/settled, derived from
     get_customer_outstanding -- never stored, D-025), and active/inactive."""
 
