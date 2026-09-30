@@ -171,3 +171,86 @@ def scenarios(h):
 
 
 run("dashboard_reports_auth", scenarios)
+
+
+def throttle_scenarios(h):
+    """Sign-in brute-force protection (D-058)."""
+    from django.core.cache import cache
+    from apps.users import throttle
+    cache.clear()
+
+    def fresh():
+        return Client(HTTP_HOST="localhost", raise_request_exception=False)
+
+    def make(pw="Right-pass-1"):
+        ph = f"09{random.randint(100000000, 999999999)}"
+        User.objects.create_user(phone=ph, password=pw)
+        return ph
+
+    def login(ph, pw, c=None, ip=None):
+        c = c or fresh()
+        extra = {"REMOTE_ADDR": ip} if ip else {}
+        return c.post("/login/", {"username": ph, "password": pw}, **extra)
+
+    ph = make()
+    for i in range(1, 6):
+        r = login(ph, "bad")
+        check(f"T01 wrong attempt {i} → normal error, not locked yet", r.status_code == 200 and has(r, "درست نیست"), r.status_code)
+    r = login(ph, "bad")
+    check("T02 the 6th attempt is refused with 429 and a lock message", r.status_code == 429 and has(r, "دقیقه دیگر"), r.status_code)
+    r = login(ph, "Right-pass-1")
+    check("T03 even the CORRECT password is refused during the lock", r.status_code == 429)
+    c = fresh(); login(ph, "Right-pass-1", c=c)
+    check("T03 …and no session was created", c.get("/").status_code == 302)
+    other = make()
+    r = login(other, "Right-pass-1")
+    check("T04 another phone number is not affected", r.status_code == 302)
+    r = login(digits_fa(ph), "Right-pass-1")
+    check("T05 Persian digits hit the same lock (normalised)", r.status_code == 429)
+    r = login(" " + ph + " ", "Right-pass-1")
+    check("T05 stray spaces hit the same lock", r.status_code == 429)
+    check("T06 the login page itself (GET) still renders while locked", fresh().get("/login/").status_code == 200)
+    cache.delete(throttle._phone_key(ph))                       # the window passing
+    r = login(ph, "Right-pass-1")
+    check("T07 after the window the user can sign in again", r.status_code == 302)
+
+    p2 = make()
+    for _ in range(4):
+        login(p2, "bad")
+    r = login(p2, "Right-pass-1")
+    check("T08 4 failures then a success: allowed, and the counter is reset", r.status_code == 302)
+    for _ in range(4):
+        login(p2, "bad")
+    r = login(p2, "Right-pass-1")
+    check("T08 …so 4 more failures do not lock (4 < 5)", r.status_code == 302)
+
+    unknown = f"09{random.randint(100000000, 999999999)}"
+    for _ in range(5):
+        login(unknown, "x")
+    r = login(unknown, "x")
+    check("T09 a phone with NO account is locked the same way (no user enumeration)", r.status_code == 429)
+
+    cache.clear()
+    victims = [make() for _ in range(3)]
+    for i in range(throttle.MAX_FAILS_PER_IP):
+        login(f"09{random.randint(100000000, 999999999)}", "bad", ip="203.0.113.7")
+    r = login(victims[0], "Right-pass-1", ip="203.0.113.7")
+    check("T10 30 failures from one IP (spraying many phones) lock that IP", r.status_code == 429, r.status_code)
+    r = login(victims[1], "Right-pass-1", ip="198.51.100.9")
+    check("T10 a different IP is fine", r.status_code == 302)
+    r = fresh().get("/login/", REMOTE_ADDR="203.0.113.7")
+    check("T10 the locked IP can still load the page", r.status_code == 200)
+
+    cache.clear()
+    p3 = make()
+    cc = fresh()
+    login(p3, "Right-pass-1", c=cc)
+    for _ in range(10):
+        cc.post("/login/", {"username": p3, "password": "bad"})
+    check("T11 an already signed-in session is not kicked out by the lock", cc.get("/").status_code in (200, 302))
+    for url in ("/sales/new/",):
+        check("T12 a locked account's other pages still require login for anonymous visitors", h.anon.get(url).status_code == 302)
+    cache.clear()
+
+
+run("login-throttle", throttle_scenarios)

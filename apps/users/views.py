@@ -15,6 +15,8 @@ from django.contrib.auth.views import LoginView, LogoutView
 
 from apps.shared.dates import to_ascii_digits
 
+from . import throttle
+
 
 class PhoneLoginForm(AuthenticationForm):
     """
@@ -65,6 +67,31 @@ class PaperPlusLoginView(LoginView):
     template_name = "users/login.html"
     authentication_form = PhoneLoginForm
     redirect_authenticated_user = True
+
+    LOCKED_MESSAGE = "تعداد تلاش‌های ناموفق زیاد بوده است. %d دقیقه دیگر دوباره تلاش کنید."
+
+    @staticmethod
+    def _typed_phone(request):
+        return to_ascii_digits((request.POST.get("username") or "").strip())
+
+    def post(self, request, *args, **kwargs):
+        # Locked out: refuse without even checking the password, so a right
+        # guess during the lock tells an attacker nothing.
+        if throttle.is_locked(self._typed_phone(request), throttle.client_ip(request)):
+            form = self.get_form()
+            form.is_valid()
+            form.errors.clear()
+            form.add_error(None, self.LOCKED_MESSAGE % (throttle.WINDOW_SECONDS // 60))
+            return self.render_to_response(self.get_context_data(form=form), status=429)
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        throttle.record_failure(self._typed_phone(self.request), throttle.client_ip(self.request))
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        throttle.reset(self._typed_phone(self.request))
+        return super().form_valid(form)
 
 
 class PaperPlusLogoutView(LogoutView):
