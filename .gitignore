@@ -20,4 +20,5 @@ docs/1.md
 # Generated output of the graphify skill
 graphify-out/
 # Local consent flag for an unrelated dev tool; not project config
-.impeccable/*.zip
+.impeccable/
+*.zip
