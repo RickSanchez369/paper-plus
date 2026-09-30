@@ -44,7 +44,7 @@ from .forms import (
     PurchasingFilterForm,
 )
 from .models import PurchaseInvoice
-from .services import cancel_purchase, confirm_purchase
+from .services import cancel_purchase, confirm_purchase, plan_full_payment
 
 
 class PurchasingListView(LoginRequiredMixin, TemplateView):
@@ -198,7 +198,9 @@ def _empty_forms():
 class PurchaseCreateView(LoginRequiredMixin, View):
     """
     The one-shot new-purchase page -- mirrors sales.views.SalesCreateView.
-    No discount field to clean.
+    No discount field to clean. Payment mode as on sales (D-053): full
+    settlement plans one row for the whole total from the chosen account,
+    split mode uses the typed rows and leaves the rest as credit.
     """
 
     template_name = "purchasing/new.html"
@@ -211,9 +213,10 @@ class PurchaseCreateView(LoginRequiredMixin, View):
         item_formset = PurchaseItemFormSet(request.POST, prefix="items")
         payment_formset = PurchasePaymentEntryFormSet(request.POST, prefix="payments")
 
-        forms_valid = (
-            invoice_form.is_valid() and item_formset.is_valid() and payment_formset.is_valid()
-        )
+        forms_valid = invoice_form.is_valid() and item_formset.is_valid()
+        full_payment = forms_valid and invoice_form.is_full_payment
+        if forms_valid and not full_payment:
+            forms_valid = payment_formset.is_valid()
         error = None
         if forms_valid:
             try:
@@ -229,12 +232,15 @@ class PurchaseCreateView(LoginRequiredMixin, View):
                         item.invoice = invoice
                         item.save()
 
-                    for form in payment_formset:
-                        if not form.cleaned_data:
-                            continue
-                        entry = form.save(commit=False)
-                        entry.invoice = invoice
-                        entry.save()
+                    if full_payment:
+                        plan_full_payment(invoice, invoice_form.cleaned_data["paid_from"])
+                    else:
+                        for form in payment_formset:
+                            if not form.cleaned_data:
+                                continue
+                            entry = form.save(commit=False)
+                            entry.invoice = invoice
+                            entry.save()
 
                     invoice = confirm_purchase(invoice, request.user)
             except ValidationError as exc:
@@ -317,7 +323,12 @@ class QuickSupplierCreateView(LoginRequiredMixin, View):
         if not form.is_valid():
             html = render_to_string(
                 "partners/_quick_party_form.html",
-                {"form": form, "post_url": request.path, "title": "تأمین‌کنندهٔ جدید"},
+                {
+                    "form": form,
+                    "post_url": request.path,
+                    "title": "تأمین‌کنندهٔ جدید",
+                    "compact": bool(request.POST.get("compact")),
+                },
                 request=request,
             )
             return HttpResponse(html, status=422)

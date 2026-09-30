@@ -12,12 +12,16 @@ default to fall back to the way a sale has -- and cancel is stricter
 from django import forms
 
 from apps.partners.models import Supplier
+from apps.payments.forms import PaymentSourceField
 from apps.payments.models import BankAccount
 from apps.products.forms import SelectedProductMixin
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
 
 from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
+
+PAYMENT_MODE_FULL = "full"
+PAYMENT_MODE_SPLIT = "split"
 
 
 class PurchasingFilterForm(forms.Form):
@@ -52,6 +56,16 @@ class PurchaseInvoiceForm(forms.ModelForm):
     discount field -- the model has none."""
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
+    payment_mode = forms.ChoiceField(
+        label="نحوهٔ تسویه",
+        choices=(
+            (PAYMENT_MODE_FULL, "تسویهٔ کامل (کل مبلغ پرداخت شد)"),
+            (PAYMENT_MODE_SPLIT, "تفکیکی / چک / نسیه"),
+        ),
+        initial=PAYMENT_MODE_FULL,
+        widget=forms.RadioSelect,
+    )
+    paid_from = PaymentSourceField(label="حساب پرداخت‌کننده", required=False)
 
     class Meta:
         model = PurchaseInvoice
@@ -73,6 +87,18 @@ class PurchaseInvoiceForm(forms.ModelForm):
         self.fields["supplier"].queryset = Supplier.objects.filter(is_active=True).order_by("name")
         self.fields["supplier"].empty_label = "— انتخاب تأمین‌کننده —"
         self.fields["supplier_invoice_number"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        # Full settlement books real money, so it needs a real answer to
+        # "out of which account" -- never cash by omission (D-045).
+        if cleaned.get("payment_mode") == PAYMENT_MODE_FULL and cleaned.get("paid_from") == "":
+            self.add_error("paid_from", "حساب پرداخت‌کننده (یا «نقدی») را انتخاب کنید.")
+        return cleaned
+
+    @property
+    def is_full_payment(self):
+        return self.cleaned_data.get("payment_mode") == PAYMENT_MODE_FULL
 
 
 class PurchaseItemForm(SelectedProductMixin, forms.ModelForm):
@@ -173,6 +199,17 @@ class PurchasePaymentEntryForm(forms.ModelForm):
         self.fields["bank_account"].required = False
         self.fields["cheque_number"].required = False
         self.fields["bank_name"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        # Only a cheque has a number, an issuing bank and a due date; the
+        # page hides those fields for the other methods, so whatever a
+        # switched-away row still holds must not be saved.
+        if cleaned.get("method") != PurchasePaymentEntry.Method.CHEQUE:
+            cleaned["cheque_number"] = ""
+            cleaned["bank_name"] = ""
+            cleaned["due_date"] = None
+        return cleaned
 
 
 PurchasePaymentEntryFormSet = forms.formset_factory(PurchasePaymentEntryForm, extra=0)

@@ -1,13 +1,20 @@
 {% comment %}
 One payment-entry row -- identical shape to sales/_payment_entry_row.html,
-for money paid OUT to a supplier instead of IN from a customer.
+for money paid OUT to a supplier instead of IN from a customer. The cheque
+block (number, issuing bank, due date) is shown only for the cheque method
+(purchase_form.js toggles it; the form drops those values server-side for
+any other method).
 {% endcomment %}
 <div class="payment-row" data-payment-row>
-  {% include "shared/_field.html" with field=form.method %}
-  {% include "shared/_field.html" with field=form.amount %}
-  {% include "shared/_field.html" with field=form.bank_account %}
-  {% include "shared/_field.html" with field=form.cheque_number %}
-  {% include "shared/_field.html" with field=form.bank_name %}
-  {% include "shared/_field.html" with field=form.due_date %}
-  <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+  <div class="payment-row__main">
+    {% include "shared/_field.html" with field=form.method %}
+    {% include "shared/_field.html" with field=form.amount %}
+    {% include "shared/_field.html" with field=form.bank_account %}
+    <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+  </div>
+  <div class="payment-row__cheque" data-cheque-only{% if form.method.value != "cheque" %} hidden{% endif %}>
+    {% include "shared/_field.html" with field=form.cheque_number %}
+    {% include "shared/_field.html" with field=form.bank_name %}
+    {% include "shared/_field.html" with field=form.due_date %}
+  </div>
 </div>

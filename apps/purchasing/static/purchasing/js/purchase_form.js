@@ -55,6 +55,7 @@
     });
 
     setText("sale-total", formatToman(total));
+    setText("sale-full-amount", formatToman(total));
     recomputeRemaining(total);
   }
 
@@ -99,10 +100,70 @@
     recomputeInvoice();
   }
 
+  // One product, one line: ids already chosen in the other rows.
+  function chosenProductIds(exceptRow) {
+    var ids = [];
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
+      if (row === exceptRow) return;
+      var id = row.querySelector('input[name$="-product"]').value;
+      if (id) ids.push(id);
+    });
+    return ids;
+  }
+
   function pickProduct(button) {
     var row = button.closest("[data-item-row]");
-    if (row) fillRow(row, button);
+    if (!row || chosenProductIds(row).indexOf(button.dataset.id) !== -1) return;
+    fillRow(row, button);
   }
+
+  // Products already on the invoice cannot be picked again: grey them out
+  // in every search result that comes back.
+  document.body.addEventListener("htmx:afterSwap", function (event) {
+    var row = event.target.closest && event.target.closest("[data-item-row]");
+    if (!row) return;
+    var taken = chosenProductIds(row);
+    event.target.querySelectorAll("[data-item-row-pick]").forEach(function (button) {
+      if (taken.indexOf(button.dataset.id) !== -1) {
+        button.disabled = true;
+        button.querySelector("span").textContent += " (قبلاً در فاکتور است)";
+      }
+    });
+  });
+
+  // ---- payment: full settlement vs. split/credit, and per-method fields --
+  function currentPaymentMode() {
+    var checked = document.querySelector('input[name="payment_mode"]:checked');
+    return checked ? checked.value : "full";
+  }
+
+  function showPaymentPanel(mode) {
+    document.querySelectorAll("[data-payment-panel]").forEach(function (panel) {
+      panel.hidden = panel.dataset.paymentPanel !== mode;
+    });
+  }
+
+  function setPaymentMode(mode) {
+    var radio = document.querySelector('input[name="payment_mode"][value="' + mode + '"]');
+    if (radio) radio.checked = true;
+    showPaymentPanel(mode);
+  }
+
+  // Cheque number, issuing bank and due date only exist for a cheque.
+  function syncPaymentRow(row) {
+    var method = row.querySelector('select[name$="-method"]');
+    var cheque = row.querySelector("[data-cheque-only]");
+    if (method && cheque) cheque.hidden = method.value !== "cheque";
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target.matches('input[name="payment_mode"]')) {
+      showPaymentPanel(currentPaymentMode());
+    }
+    if (event.target.matches('select[name$="-method"]')) {
+      syncPaymentRow(event.target.closest("[data-payment-row]"));
+    }
+  });
 
   // ---- "+ کالای جدید" dialog -------------------------------------------
   // The row that opened the dialog (from its "not found" result), if any;
@@ -194,8 +255,10 @@
     }
 
     if (event.target.id === "add-payment-row") {
+      if (currentPaymentMode() !== "split") setPaymentMode("split");
       var newRow = addRow("payment-rows", "payment-row-template", "payments");
       if (newRow) {
+        syncPaymentRow(newRow);
         var amountInput = newRow.querySelector('input[name$="-amount"]');
         var remaining = Math.max(currentTotal() - sumPaymentRows(), 0);
         if (amountInput && remaining > 0) {
@@ -224,5 +287,8 @@
     }
   });
 
-  document.addEventListener("DOMContentLoaded", recomputeInvoice);
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
+    recomputeInvoice();
+  });
 })();

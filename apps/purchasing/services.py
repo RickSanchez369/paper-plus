@@ -145,6 +145,30 @@ def confirm_purchase(invoice, user):
     return locked_invoice
 
 
+def plan_full_payment(invoice, bank_account):
+    """
+    The default settlement (mirrors sales, D-046/D-053): the whole invoice was
+    paid to the supplier out of `bank_account` (None = cash, chosen explicitly
+    on the form).
+
+    Adds the one payment-entry row that says so, on a draft invoice whose
+    items are already saved; confirm_purchase then books it like any typed
+    row. The amount is the server's own `invoice.total_amount`, never a
+    figure from the browser. Nothing is planned when the total is not
+    positive. Must be called inside the caller's transaction, before
+    confirm_purchase.
+    """
+    total = invoice.total_amount
+    if total <= 0:
+        return None
+    return PurchasePaymentEntry.objects.create(
+        invoice=invoice,
+        method=PurchasePaymentEntry.Method.CASH if bank_account is None else PurchasePaymentEntry.Method.BANK_TRANSFER,
+        amount=total,
+        bank_account=bank_account,
+    )
+
+
 @transaction.atomic
 def cancel_purchase(invoice, user):
     """

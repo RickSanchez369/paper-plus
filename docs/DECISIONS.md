@@ -839,3 +839,16 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Note: `SaleItem.uncosted_quantity`, the Dashboard's negative-stock row and
   the `shortages` element of `confirm_sale`'s return value are kept but can
   no longer be triggered by a new sale (the tuple is always `(invoice, [])`).
+
+### D-053: A purchase invoice settles like a sale (mode + account)
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: The new-purchase form gets the same payment mode as the new-sale
+  form (D-046): "تسویهٔ کامل" (default) with one required paying account, or
+  "تفکیکی / چک / نسیه" with typed rows (the rest stays credit).
+  `purchasing.services.plan_full_payment(invoice, bank_account)` books the
+  full-settlement row from the server's own `total_amount`. Payment rows show
+  the cheque number, issuing bank and due date only for the cheque method
+  (dropped server-side for other methods). Amends D-046's "purchases are
+  unchanged".
