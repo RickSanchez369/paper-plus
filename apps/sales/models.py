@@ -130,8 +130,13 @@ class SalesInvoice(BaseModel):
 
     @property
     def paid_amount(self):
-        """Sum of PaymentAllocation rows against this invoice, in Toman (4.3)."""
-        return self.payment_allocations.aggregate(total=models.Sum("amount"))["total"] or 0
+        """Sum of PaymentAllocation rows against this invoice, in Toman (4.3),
+        not counting allocations whose money was given back (D-055)."""
+        return (
+            self.payment_allocations.filter(reversal_payment__isnull=True)
+            .aggregate(total=models.Sum("amount"))["total"]
+            or 0
+        )
 
     @property
     def payment_status(self):

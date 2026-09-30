@@ -15,7 +15,7 @@ from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.inventory.services import consume_fifo, restore_consumptions
 from apps.payments.models import Cheque, Payment, PaymentAllocation
-from apps.payments.services import allocate_payment, record_cheque, record_payment
+from apps.payments.services import allocate_payment, record_cheque, record_payment, refund_invoice_payments
 from apps.products.models import Product
 from apps.shared.audit import log_event
 from apps.shared.permissions import is_privileged
@@ -262,6 +262,10 @@ def cancel_sale(invoice, user):
     ]
     InventoryMovement.objects.bulk_create(reversals)
 
+    # The customer's money goes back with the goods (D-055): a refund
+    # Payment per allocation, pending cheques cancelled.
+    refunded = refund_invoice_payments(locked_invoice, user)
+
     locked_invoice.status = SalesInvoice.Status.CANCELLED
     locked_invoice.save(update_fields=["status", "updated_at"])
 
@@ -269,7 +273,8 @@ def cancel_sale(invoice, user):
         actor=user,
         event_type="cancel_sale",
         target=locked_invoice,
-        payload={"item_count": len(items)},
+        payload={"item_count": len(items), "refunded": refunded},
     )
 
+    locked_invoice.refunded_amount = refunded
     return locked_invoice

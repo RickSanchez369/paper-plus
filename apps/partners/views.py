@@ -171,7 +171,15 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
                 {"date": i.invoice_date, "kind": "debit", "label": f"فاکتور {i.invoice_number or '(تأیید نشده)'}", "amount": i.total, "url": reverse("sales:detail", args=[i.pk])}
                 for i in confirmed
             ] + [
-                {"date": p.payment_date, "kind": "credit", "label": p.note or "پرداخت دریافتی", "amount": p.amount, "url": None}
+                {
+                    "date": p.payment_date,
+                    # A refund (D-055) gives money back: it works against the
+                    # earlier credit, so it is a debit line.
+                    "kind": "debit" if p.is_reversal else "credit",
+                    "label": p.note or ("برگشت وجه" if p.is_reversal else "پرداخت دریافتی"),
+                    "amount": p.amount,
+                    "url": None,
+                }
                 for p in payments
             ],
             key=lambda row: row["date"],

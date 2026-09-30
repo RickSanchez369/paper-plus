@@ -31,6 +31,7 @@ _BUCKETS = {
     EventType.CANCEL_PURCHASE: "cancellations",
     EventType.CANCEL_EXPENSE: "cancellations",
     EventType.CANCEL_CHEQUE: "cancellations",
+    EventType.REVERSE_PAYMENT: "cancellations",
     EventType.BOUNCE_CHEQUE: "cancellations",
 }
 BUCKET_LABELS = {

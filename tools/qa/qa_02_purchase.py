@@ -208,8 +208,8 @@ def scenarios(h):
     check("P25 a second cancel is a no-op (no double reversal)", h.stock(cp) == 0)
     check("P25 the cancelled invoice keeps its number", bool(ci.invoice_number))
     out_after = supp_out = get_supplier_outstanding(sup)
-    pay_alloc = PaymentAllocation.objects.filter(purchase_invoice=ci).aggregate(t=Sum("amount"))["t"]
-    check("P25* INFO: payments of a cancelled purchase stay booked (allocation kept)", pay_alloc == 1200, pay_alloc)
+    refund = Payment.objects.filter(supplier=sup, is_reversal=True).aggregate(t=Sum("amount"))["t"]
+    check("P25 what was paid for the cancelled purchase (1200) came back as a refund (D-055)", refund == 1200 and ci.paid_amount == 0, refund)
 
     sold = h.product()
     h.post_purchase(sup, [(sold, 4, 100)], account=acct)

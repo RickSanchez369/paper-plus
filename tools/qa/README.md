@@ -20,6 +20,7 @@ python manage.py shell -c "exec(open('tools/qa/qa_02_purchase.py', encoding='utf
 | qa_09_fuzz_invariants | random operations, then the accounting invariants (`QA_SEED`, `QA_OPS`) |
 | qa_10_admin | /admin/ smoke test |
 | qa_11_report_numbers | reports recomputed independently from the ledgers |
+| qa_12_cancel_refunds | cancelling an invoice refunds its payments and cheques (D-055) |
 
 `OK`/`FAIL` per check and `n/N passed` at the end. JavaScript behaviour
 (item rows, payment rows, date picker, htmx forms) cannot be seen from here:

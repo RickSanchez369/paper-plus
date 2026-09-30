@@ -122,6 +122,68 @@ def allocate_payment(allocation, user):
 
 
 @transaction.atomic
+def refund_invoice_payments(invoice, user):
+    """
+    Give back the money of a cancelled invoice (D-055).
+
+    For every payment allocation still standing on the invoice, books ONE
+    refund Payment in the opposite direction, for exactly the allocated
+    amount, from/to the same account and party, and links it on the
+    allocation (`reversal_payment`) -- the original payment and allocation
+    stay untouched, the correction is a new, opposite entry (D-014/D-023).
+    A payment shared with other invoices is only refunded for this
+    invoice's part. Pending cheques of the invoice never became money, so
+    they are simply cancelled.
+
+    Called by cancel_sale/cancel_purchase inside their own transaction, once
+    the invoice is known to be cancellable. Returns the total refunded.
+    """
+    if isinstance(invoice, SalesInvoice):
+        allocations = PaymentAllocation.objects.filter(sales_invoice=invoice)
+    else:
+        allocations = PaymentAllocation.objects.filter(purchase_invoice=invoice)
+    allocations = list(
+        allocations.filter(reversal_payment__isnull=True)
+        .select_related("payment")
+        .select_for_update()
+        .order_by("created_at", "pk")
+    )
+    refunded = 0
+    for allocation in allocations:
+        original = allocation.payment
+        opposite = (
+            Payment.Direction.OUT if original.direction == Payment.Direction.IN else Payment.Direction.IN
+        )
+        refund = Payment.objects.create(
+            bank_account=original.bank_account,
+            customer=original.customer,
+            supplier=original.supplier,
+            direction=opposite,
+            amount=allocation.amount,
+            payment_date=timezone.localdate(),
+            note=f"برگشت پرداخت بابت لغو فاکتور {invoice.invoice_number}",
+            is_reversal=True,
+            created_by=user,
+        )
+        allocation.reversal_payment = refund
+        allocation.save(update_fields=["reversal_payment", "updated_at"])
+        log_event(
+            actor=user,
+            event_type="reverse_payment",
+            target=refund,
+            payload={"amount": refund.amount, "direction": refund.direction, "invoice": invoice.invoice_number},
+        )
+        refunded += allocation.amount
+
+    for cheque in Cheque.objects.select_for_update().filter(
+        **({"sales_invoice": invoice} if isinstance(invoice, SalesInvoice) else {"purchase_invoice": invoice}),
+        status=Cheque.Status.PENDING,
+    ):
+        cancel_cheque(cheque, user)
+    return refunded
+
+
+@transaction.atomic
 def record_cheque(cheque, user):
     """
     Validate and save a new Cheque, status always PENDING at creation.

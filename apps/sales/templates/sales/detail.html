@@ -118,6 +118,9 @@ cancel_sale -- D-023, this view never writes stock/money itself).
                 {% if allocation.payment.cheque %}چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}
                 {% elif allocation.payment.bank_account %}{{ allocation.payment.bank_account.name }}
                 {% else %}نقدی{% endif %}
+                {% if allocation.reversal_payment %}
+                  <span class="badge badge--bad">برگشت داده شد {{ allocation.reversal_payment.payment_date|jalali }}</span>
+                {% endif %}
               </td>
             </tr>
           {% endfor %}

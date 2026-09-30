@@ -164,9 +164,9 @@ def scenarios(h):
     c5i = last_sale(c5); chq5 = Cheque.objects.get(sales_invoice=c5i)
     h.c.post(f"/sales/{c5i.pk}/cancel/")
     h.c.post(f"/cheques/{chq5.pk}/clear/"); chq5.refresh_from_db()
-    check("K08 clearing a cheque of a CANCELLED invoice is refused (stays pending)", chq5.status == "pending", chq5.status)
-    h.c.post(f"/cheques/{chq5.pk}/cancel/"); chq5.refresh_from_db()
-    check("K08 …and it can be cancelled by hand, without any payment", chq5.status == "cancelled" and chq5.payment is None)
+    check("K08 cancelling the invoice cancels its pending cheque (D-055)", chq5.status == "cancelled" and chq5.payment is None, chq5.status)
+    h.c.post(f"/cheques/{chq5.pk}/clear/"); chq5.refresh_from_db()
+    check("K08 …and it can no longer be cleared", chq5.status == "cancelled" and chq5.payment is None)
     # cheque out (purchase) reduces account balance when cleared
     s6 = h.supplier()
     h.post_purchase(s6, [(p, 4, 100)], mode="split", payments=[{"method": "cheque", "amount": "400", "bank_account": str(acct2.pk), "cheque_number": "OUT1", "bank_name": "M", "due_date": "1405/09/01"}])

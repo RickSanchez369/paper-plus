@@ -28,6 +28,7 @@ from apps.products.models import Product
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.permissions import is_privileged
+from apps.shared.utils import format_toman
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
 from .models import SalesInvoice
@@ -266,11 +267,12 @@ class SalesCancelView(LoginRequiredMixin, View):
     def post(self, request, pk):
         invoice = get_object_or_404(SalesInvoice, pk=pk)
         try:
-            cancel_sale(invoice, request.user)
+            cancelled = cancel_sale(invoice, request.user)
         except ValidationError as exc:
             messages.error(request, "؛ ".join(exc.messages))
         else:
-            messages.success(request, f"فاکتور {invoice.invoice_number} لغو شد.")
+            note = f" مبلغ {format_toman(cancelled.refunded_amount)} پرداخت‌شده برگشت داده شد." if cancelled.refunded_amount else ""
+            messages.success(request, f"فاکتور {invoice.invoice_number} لغو شد.{note}")
         return redirect("sales:detail", pk=pk)
 
 

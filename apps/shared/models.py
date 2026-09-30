@@ -53,6 +53,7 @@ class AuditLog(BaseModel):
         CLEAR_CHEQUE = "clear_cheque", "وصول چک"
         BOUNCE_CHEQUE = "bounce_cheque", "برگشت چک"
         CANCEL_CHEQUE = "cancel_cheque", "لغو چک"
+        REVERSE_PAYMENT = "reverse_payment", "برگشت پرداخت بابت لغو فاکتور"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
         # No longer written (manual adjustment removed, D-044); kept so

@@ -871,3 +871,30 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   - Login accepts Persian digits and stray spaces in the phone.
   - Enter inside an invoice form's text/number box does not submit it.
   - The customers list "همه" option really means everyone.
+
+### D-055: Cancelling an invoice gives its money back
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Context: `cancel_sale`/`cancel_purchase` reversed stock but left the invoice's
+  payments booked: the money stayed in the bank balance and the customer's or
+  supplier's account showed a credit nobody could see (found by the QA pass).
+- Decision: Inside the same transaction, cancelling an invoice books, for every
+  payment allocation still standing on it, ONE refund `Payment` in the opposite
+  direction (customer refund = OUT, supplier refund = IN), for exactly the
+  allocated amount, same bank account (or cash) and same party, dated the day of
+  the cancellation, `is_reversal = True`, and links it on the allocation
+  (`PaymentAllocation.reversal_payment`). The original payment and allocation are
+  never edited or deleted (D-014/D-023). A payment shared with other invoices is
+  refunded only for this invoice's part; an unallocated prepayment is untouched.
+  Pending cheques of the invoice never became money and are cancelled; cleared
+  cheques stay cleared (their payment is refunded like any other); bounced stay
+  bounced. `paid_amount` counts only allocations that were not reversed. New
+  audit event `reverse_payment`.
+- Schema: `Payment.is_reversal`, `PaymentAllocation.reversal_payment` (one-to-one),
+  and `payment_party_matches_direction` now lets a reversal run against the party's
+  usual direction (still at most one party).
+- Consequence: bank balances, the customer statement (refund = debit line), the
+  bank ledger and reports show the refund; cancelling is now the only action that
+  moves money without a person typing an amount, which is why it stays
+  superuser-only.

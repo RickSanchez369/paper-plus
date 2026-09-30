@@ -378,6 +378,7 @@ class BankAccountDetailView(LoginRequiredMixin, DetailView):
             "customer", "supplier", "created_by", "cheque", "expense", "reversed_expense",
         ).prefetch_related(
             "allocations__sales_invoice", "allocations__purchase_invoice",
+            "reversed_allocation__sales_invoice", "reversed_allocation__purchase_invoice",
         ).order_by("-payment_date", "-created_at")
         context["ledger_rows"] = [_describe_payment(payment) for payment in payments]
         return context
@@ -389,6 +390,14 @@ def _describe_payment(payment):
         source, url = f"هزینه: {payment.expense.reason}", None
     elif hasattr(payment, "reversed_expense"):
         source, url = f"لغو هزینه: {payment.reversed_expense.reason}", None
+    elif payment.is_reversal:
+        allocation = getattr(payment, "reversed_allocation", None)
+        invoice = (allocation.sales_invoice or allocation.purchase_invoice) if allocation else None
+        if invoice is not None:
+            page = "sales:detail" if allocation.sales_invoice_id else "purchasing:detail"
+            source, url = f"برگشت پرداخت بابت لغو فاکتور {invoice.invoice_number}", reverse(page, args=[invoice.pk])
+        else:
+            source, url = "برگشت پرداخت", None
     elif hasattr(payment, "cheque"):
         source, url = f"وصول چک {payment.cheque.cheque_number or '(بدون شماره)'}", reverse("cheques:detail", args=[payment.cheque.pk])
     else:

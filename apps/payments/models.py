@@ -114,6 +114,11 @@ class Payment(BaseModel):
         blank=True,
         verbose_name="توضیح",
     )
+    is_reversal = models.BooleanField(
+        default=False,
+        verbose_name="برگشت پرداخت",
+        help_text="پولی که بابت لغو یک فاکتور به مشتری/تأمین‌کننده برگشت داده شده است (D-055).",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -135,10 +140,14 @@ class Payment(BaseModel):
                 # money coming IN can only come from a customer, money going
                 # OUT can only go to a supplier. Neither is the expense /
                 # unattributed case. Same shape as Cheque's own constraint.
+                # A reversal (D-055) is the one exception: it runs against the
+                # party's usual direction (a refund goes OUT to a customer).
                 condition=(
                     models.Q(customer__isnull=True, supplier__isnull=True)
-                    | models.Q(direction="in", customer__isnull=False, supplier__isnull=True)
-                    | models.Q(direction="out", supplier__isnull=False, customer__isnull=True)
+                    | models.Q(is_reversal=False, direction="in", customer__isnull=False, supplier__isnull=True)
+                    | models.Q(is_reversal=False, direction="out", supplier__isnull=False, customer__isnull=True)
+                    | models.Q(is_reversal=True, customer__isnull=True)
+                    | models.Q(is_reversal=True, supplier__isnull=True)
                 ),
                 name="payment_party_matches_direction",
             ),
@@ -198,6 +207,17 @@ class PaymentAllocation(BaseModel):
     )
     amount = models.BigIntegerField(
         verbose_name="مبلغ تخصیص‌یافته (تومان)",
+    )
+    # Set when the invoice was cancelled and this money was given back
+    # (D-055): the refund Payment that reverses exactly this allocation. The
+    # allocation itself is never edited or deleted.
+    reversal_payment = models.OneToOneField(
+        Payment,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversed_allocation",
+        verbose_name="پرداخت برگشتی",
     )
 
     class Meta:

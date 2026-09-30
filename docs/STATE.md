@@ -28,9 +28,8 @@ checked (no data to render): invoice detail/print, cheque detail.
 
 **QA pass done (2026-09-30):** ~750 scripted checks (`tools/qa/`, see its README)
 plus ~90 browser checks over every module found and fixed 14 defects (D-054).
-Findings that need Sina's decision, NOT changed:
-- Cancelling an invoice reverses stock but leaves its payments and cheques booked
-  (the money stays in the bank balance and on the customer's/supplier's account).
+Fixed since (D-055): cancelling an invoice now refunds its payments.
+Findings that still need Sina's decision, NOT changed:
 - A pending cheque with no bank account clears into CASH; the clear button has no
   account picker.
 - Expense receipt upload has no file-type or size limit.

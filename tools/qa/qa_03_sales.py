@@ -181,8 +181,8 @@ def scenarios(h):
     check("S33 cancelled invoice profit is 0 and cost is netted to 0", inv.profit == 0 and inv.items.get().cost_of_goods == 0)
     h.c.post(f"/sales/{inv.pk}/cancel/")
     check("S33 second cancel changes nothing", h.stock(f) == 20)
-    pay_alloc = PaymentAllocation.objects.filter(sales_invoice=inv).aggregate(t=Sum("amount"))["t"]
-    check("S33* INFO: money received for a cancelled sale stays booked", pay_alloc == 7500, pay_alloc)
+    refund = Payment.objects.filter(customer=c4, is_reversal=True).aggregate(t=Sum("amount"))["t"]
+    check("S33 the money received for the cancelled sale (7500) was refunded (D-055)", refund == 7500 and inv.paid_amount == 0, refund)
     inv3 = last(cust)
     r = h.c.get(f"/sales/{inv3.pk}/")
     check("S34 detail renders", r.status_code == 200 and has(r, inv3.invoice_number))

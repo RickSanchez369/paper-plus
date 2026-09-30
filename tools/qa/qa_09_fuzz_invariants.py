@@ -174,6 +174,19 @@ def scenarios(h):
         (i.payment_status == "paid") == (i.paid_amount >= (i.total if not isinstance(i, PurchaseInvoice) else i.total_amount) and (i.total if not isinstance(i, PurchaseInvoice) else i.total_amount) > 0)
         or (i.total if not isinstance(i, PurchaseInvoice) else i.total_amount) == 0
         for i in list(sales.filter(status="confirmed")) + list(PurchaseInvoice.objects.filter(supplier__in=suppliers, status="confirmed"))))
+    # cancelled invoices give their money back (D-055)
+    bad = []
+    for inv in list(sales.filter(status="cancelled")) + list(PurchaseInvoice.objects.filter(supplier__in=suppliers, status="cancelled")):
+        allocs = list(inv.payment_allocations.all())
+        if any(a.reversal_payment is None for a in allocs):
+            bad.append(("unreversed allocation", inv.invoice_number))
+        if any(a.reversal_payment.amount != a.amount or a.reversal_payment.direction == a.payment.direction or not a.reversal_payment.is_reversal for a in allocs if a.reversal_payment):
+            bad.append(("refund mismatch", inv.invoice_number))
+        if inv.paid_amount != 0:
+            bad.append(("net paid not 0", inv.invoice_number))
+        if Cheque.objects.filter(status="pending", **({"sales_invoice": inv} if not isinstance(inv, PurchaseInvoice) else {"purchase_invoice": inv})).exists():
+            bad.append(("pending cheque on a cancelled invoice", inv.invoice_number))
+    check("Z10b every cancelled invoice: all allocations refunded exactly, net paid 0, no pending cheque left", not bad, bad[:3])
     # cheques
     bad = []
     for ch in Cheque.objects.filter(created_by=None) if False else Cheque.objects.all():
