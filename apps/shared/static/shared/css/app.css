@@ -366,21 +366,31 @@ h2 { font-size: 16px; }
   font-weight: 500;
 }
 
-.field__control {
+/* Filter forms render bare widgets (no class), so a control is any input,
+   select or textarea directly inside a .field, not only the classed ones. */
+.field__control,
+.field > input:not([type="checkbox"], [type="radio"], [type="hidden"]),
+.field > select,
+.field > textarea {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
+  /* Carbon field: filled, with only its bottom edge drawn. */
+  border: 1px solid transparent;
+  border-bottom-color: var(--ink-400);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 14px;
   color: var(--text);
-  background: var(--surface);
+  background: var(--ink-100);
 }
 
-.field__control:focus {
-  outline: 2px solid var(--accent-500);
-  outline-offset: -1px;
-  border-color: var(--accent-500);
+.field__control:focus,
+.field > input:focus,
+.field > select:focus,
+.field > textarea:focus {
+  outline: 2px solid var(--accent-600);
+  outline-offset: -2px;
+  border-color: transparent;
 }
 
 .field__error {
@@ -857,7 +867,7 @@ h2 { font-size: 16px; }
 }
 
 .filters .btn {
-  height: 38px;
+  height: 41px;
 }
 
 .data-table {
@@ -874,8 +884,10 @@ h2 { font-size: 16px; }
 }
 
 .data-table th {
-  color: var(--text-muted);
-  font-weight: 500;
+  background: var(--ink-100);
+  border-bottom-color: var(--ink-300);
+  color: var(--text);
+  font-weight: 600;
   font-size: 12px;
 }
 

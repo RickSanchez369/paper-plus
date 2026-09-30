@@ -23,13 +23,14 @@ purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
 ## Next
 **Phase D is done (D-050):** IBM Carbon-inspired identity applied app-wide by
 swapping the `app.css` tokens; three unchosen reference systems deleted, the
-IBM reference kept in `docs/design/ibm/`. Checked in the browser on the
-dashboard, new-sale form and inventory list.
+IBM reference kept in `docs/design/ibm/`. All 23 list/form/detail pages were
+audited in the browser for leftover old-style radii, shadows and colours (none);
+Carbon-style filled inputs and table headers apply app-wide. Not visually
+checked (no data to render): invoice detail/print, cheque detail.
 
 No task is queued. Candidates, in the order of value: the SHADOW run (below),
-deployment (`docs/deployment.md`), a browser pass over every remaining page for
-Phase D polish (date picker, dialogs, print pages), and tidying source comments
-that still cite `REDESIGN_VISION`/`MASTER_PROMPT` section numbers.
+deployment (`docs/deployment.md`), and tidying source comments that still cite
+`REDESIGN_VISION`/`MASTER_PROMPT` section numbers.
 
 ## Open items (raise with Sina before touching)
 - **3.4 real SHADOW run** — run in parallel with the paper ledger until 3
