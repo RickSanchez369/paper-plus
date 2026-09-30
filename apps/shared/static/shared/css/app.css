@@ -1209,6 +1209,60 @@ h2 { font-size: 16px; }
   gap: var(--space-3);
 }
 
+/* Phones: nothing may push the page wider than the screen. Tables scroll
+   inside themselves, the invoice rows stack into a small grid (their cell
+   labels come from data-label, since the column header row is hidden). */
+@media (max-width: 720px) {
+  .data-table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sale-form__header,
+  .payment-row__cheque {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-row__main {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .quick-party--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .item-row--head {
+    display: none;
+  }
+
+  .item-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .item-row__search {
+    grid-column: 1 / -1;
+  }
+
+  .item-row [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .daterange__panel {
+    position: static;
+    width: 100%;
+  }
+
+  .filters .field {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
 /* ------------------------------------------------------------- printing */
 
 .print-page {

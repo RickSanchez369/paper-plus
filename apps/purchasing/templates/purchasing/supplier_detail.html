@@ -60,7 +60,7 @@ flattened, so it stays clear which payment settled which purchase.
         <tbody>
           {% for invoice in invoices %}
             <tr>
-              <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
+              <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
               <td class="num">{{ invoice.invoice_date|jalali }}</td>
               <td class="num">{{ invoice.total_amount|toman }}</td>
               <td class="num">{{ invoice.paid_amount|toman }}</td>

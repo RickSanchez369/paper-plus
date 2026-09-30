@@ -68,7 +68,9 @@ class ReceivablesListView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
-        for customer in Customer.objects.filter(is_active=True).order_by("name"):
+        # Deactivated customers stay: a balance they still owe must not
+        # vanish from the page that collects it.
+        for customer in Customer.objects.order_by("name"):
             outstanding = get_customer_outstanding(customer)
             if outstanding <= 0:
                 continue
@@ -94,7 +96,7 @@ class PayablesListView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rows = []
-        for supplier in Supplier.objects.filter(is_active=True).order_by("name"):
+        for supplier in Supplier.objects.order_by("name"):
             outstanding = get_supplier_outstanding(supplier)
             if outstanding <= 0:
                 continue

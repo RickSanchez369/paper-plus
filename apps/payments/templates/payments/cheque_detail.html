@@ -82,9 +82,9 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
           <th>فاکتور مرتبط</th>
           <td>
             {% if cheque.sales_invoice %}
-              <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_number }}</a>
+              <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
             {% elif cheque.purchase_invoice %}
-              <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_number }}</a>
+              <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
             {% else %}عمومی (بدون فاکتور){% endif %}
           </td>
         </tr>

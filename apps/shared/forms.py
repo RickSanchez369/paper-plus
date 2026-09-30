@@ -67,7 +67,12 @@ class JalaliDateField(forms.Field):
         "required": "تاریخ الزامی است.",
         "invalid": "تاریخ را به شکل ۱۴۰۵/۰۷/۰۳ وارد کنید.",
         "nonexistent": "این تاریخ در تقویم وجود ندارد.",
+        "out_of_range": "سال تاریخ باید بین ۱۳۸۰ و ۱۴۵۰ باشد (تاریخ شمسی وارد کنید).",
     }
+
+    # A Gregorian date typed by mistake ("2026/09/30" reads as Jalali year
+    # 2026) or a slipped digit would otherwise date an invoice centuries away.
+    MIN_YEAR, MAX_YEAR = 1380, 1450
 
     def to_python(self, value):
         if value in self.empty_values:
@@ -81,6 +86,8 @@ class JalaliDateField(forms.Field):
             raise ValidationError(self.error_messages["nonexistent"], code="nonexistent")
         if parsed is None:
             raise ValidationError(self.error_messages["invalid"], code="invalid")
+        if not self.MIN_YEAR <= dates.to_jalali(parsed).year <= self.MAX_YEAR:
+            raise ValidationError(self.error_messages["out_of_range"], code="out_of_range")
         return parsed
 
 

@@ -15,13 +15,13 @@ cancel_sale -- D-023, this view never writes stock/money itself).
 
 {% block content %}
 <p class="breadcrumbs">
-  <a href="{% url 'sales:list' %}">فروش</a> / فاکتور {{ invoice.invoice_number|fa_number }}
+  <a href="{% url 'sales:list' %}">فروش</a> / فاکتور {{ invoice.invoice_number|fa_digits }}
 </p>
 
 <div class="page-head">
   <div class="page-head__row">
     <div>
-      <h1>فاکتور {{ invoice.invoice_number|fa_number }}</h1>
+      <h1>فاکتور {{ invoice.invoice_number|fa_digits }}</h1>
       <p class="page-head__lede">
         مشتری: {{ invoice.customer.name }} ·
         تاریخ: {{ invoice.invoice_date|jalali_long }} ·

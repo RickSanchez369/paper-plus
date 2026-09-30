@@ -133,6 +133,12 @@ class RecordPaymentForm(forms.Form):
     )
 
     def __init__(self, *args, customer=None, supplier=None, open_invoices=(), **kwargs):
+        # Several of these forms share one page (a row per debtor, or beside
+        # the customer's own edit form): ids must differ per party or every
+        # <label for> points at the first form's input.
+        party = customer or supplier
+        if party is not None:
+            kwargs.setdefault("auto_id", f"pay_{party.pk.hex[:8]}_%s")
         super().__init__(*args, **kwargs)
         if bool(customer) == bool(supplier):
             # A programmer error, not a user one: the page that renders this

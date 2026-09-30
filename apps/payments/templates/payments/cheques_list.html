@@ -45,16 +45,17 @@ status, direction and due-date range.
             {% for cheque in cheques %}
               <tr>
                 <td>{{ cheque.get_direction_display }}</td>
-                <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a></td>
+                <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a>
+                  {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}<span class="badge badge--pending">ناقص</span>{% endif %}</td>
                 <td>{{ cheque.customer|default:cheque.supplier|default:"—" }}</td>
                 <td>{{ cheque.bank_name|default:"—" }}</td>
                 <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
                 <td class="num">{{ cheque.amount|toman }}</td>
                 <td>
                   {% if cheque.sales_invoice %}
-                    <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_number }}</a>
+                    <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
                   {% elif cheque.purchase_invoice %}
-                    <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_number }}</a>
+                    <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
                   {% else %}عمومی{% endif %}
                 </td>
                 <td>

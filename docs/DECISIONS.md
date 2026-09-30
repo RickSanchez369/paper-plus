@@ -852,3 +852,22 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   the cheque number, issuing bank and due date only for the cheque method
   (dropped server-side for other methods). Amends D-046's "purchases are
   unchanged".
+
+### D-054: Rules settled by the full QA pass
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Claude, from defects found while testing every page and scenario
+- Decision:
+  - Every Jalali date field accepts years 1380-1450 only. A Gregorian date typed
+    by mistake ("2026/09/30" reads as Jalali 2026) used to date a document
+    centuries away.
+  - A deactivated product cannot be sold or bought, even by a hand-made POST.
+  - Deactivated customers/suppliers stay listed on Receivables/Payables while
+    they owe or are owed money; deactivating never hides a balance.
+  - The dashboard's cheque widget includes pending cheques already past their
+    due date, and a separate widget lists pending cheques still missing a due
+    date or number (they can never fall inside a "due soon" window).
+  - Documents numbers (invoice, cheque) are shown without digit grouping.
+  - Login accepts Persian digits and stray spaces in the phone.
+  - Enter inside an invoice form's text/number box does not submit it.
+  - The customers list "همه" option really means everyone.

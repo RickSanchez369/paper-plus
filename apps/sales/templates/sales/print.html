@@ -18,7 +18,7 @@ nothing that would print alongside the invoice.
     <header class="print-invoice__head">
       <h1>پیپر پلاس</h1>
       <div>
-        <p>فاکتور فروش شمارهٔ {{ invoice.invoice_number|fa_number }}</p>
+        <p>فاکتور فروش شمارهٔ {{ invoice.invoice_number|fa_digits }}</p>
         <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>
       </div>
     </header>

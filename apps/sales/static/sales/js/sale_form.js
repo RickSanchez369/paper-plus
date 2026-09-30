@@ -258,6 +258,17 @@
     }
   });
 
+  // Enter inside a text/number box must not post the invoice: this form
+  // creates and confirms a financial document in one go, and Enter is how
+  // people finish typing a number, not how they mean to submit.
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter") return;
+    var t = event.target;
+    if (t.matches && t.matches("#sale-form input:not([type=submit]):not([type=button]):not([type=radio]):not([type=checkbox])")) {
+      event.preventDefault();
+    }
+  });
+
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();

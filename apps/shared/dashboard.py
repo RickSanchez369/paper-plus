@@ -8,6 +8,7 @@ worse than showing none.
 
 import datetime
 
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -55,13 +56,24 @@ def totals_now():
 
 
 def cheques_due_soon(days=7, limit=5):
-    """Pending cheques due within `days`:
-    a handful shown, plus the real total so "see all" doesn't undersell
-    how many there are."""
+    """Pending cheques due within `days`, INCLUDING ones already past their
+    due date (a cheque still pending after its date is the most urgent of
+    all): a handful shown, plus the real total so "see all" doesn't
+    undersell how many there are."""
     today = timezone.localdate()
     qs = Cheque.objects.filter(
-        status=Cheque.Status.PENDING, due_date__isnull=False, due_date__gte=today, due_date__lte=today + datetime.timedelta(days=days),
+        status=Cheque.Status.PENDING, due_date__isnull=False, due_date__lte=today + datetime.timedelta(days=days),
     ).select_related("customer", "supplier").order_by("due_date")
+    return {"cheques": list(qs[:limit]), "total_count": qs.count()}
+
+
+def cheques_needing_completion(limit=5):
+    """Pending cheques entered incomplete from an invoice (no due date or no
+    number yet). A missing due date can never fall inside a "due soon"
+    window, so without this bucket such a cheque could sit forgotten."""
+    qs = Cheque.objects.filter(status=Cheque.Status.PENDING).filter(
+        Q(due_date__isnull=True) | Q(cheque_number="")
+    ).select_related("customer", "supplier").order_by("created_at")
     return {"cheques": list(qs[:limit]), "total_count": qs.count()}
 
 

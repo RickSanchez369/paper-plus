@@ -63,7 +63,7 @@ the latest global feed (row 4).
   <div class="card__body">
     <h2>نیازمند توجه</h2>
 
-    <h3>چک‌های سررسید تا ۷ روز آینده</h3>
+    <h3>چک‌های سررسیدشده یا سررسید تا ۷ روز آینده</h3>
     {% if cheques_due_soon.cheques %}
       <table class="data-table">
         <thead><tr><th>طرف حساب</th><th>سررسید</th><th>مبلغ</th></tr></thead>
@@ -84,6 +84,27 @@ the latest global feed (row 4).
       <p class="field__hint">چکی با سررسید نزدیک وجود ندارد.</p>
     {% endif %}
 
+    <h3>چک‌های نیازمند تکمیل اطلاعات</h3>
+    {% if cheques_incomplete.cheques %}
+      <table class="data-table">
+        <thead><tr><th>طرف حساب</th><th>چه چیزی کم است</th><th>مبلغ</th></tr></thead>
+        <tbody>
+          {% for cheque in cheques_incomplete.cheques %}
+            <tr>
+              <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.customer|default:cheque.supplier }}</a></td>
+              <td>{% if not cheque.cheque_number %}شمارهٔ چک{% endif %}{% if not cheque.cheque_number and not cheque.due_date %}، {% endif %}{% if not cheque.due_date %}تاریخ سررسید{% endif %}</td>
+              <td class="num">{{ cheque.amount|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if cheques_incomplete.total_count > cheques_incomplete.cheques|length %}
+        <a href="{% url 'cheques:list' %}?status=pending" class="btn btn--quiet">مشاهدهٔ همهٔ {{ cheques_incomplete.total_count|fa_number }} چک</a>
+      {% endif %}
+    {% else %}
+      <p class="field__hint">چک ناقصی وجود ندارد.</p>
+    {% endif %}
+
     <h3>فاکتورهای فروش نسیهٔ قدیمی</h3>
     <form method="get" class="toolbar">
       <div class="filters">
@@ -100,7 +121,7 @@ the latest global feed (row 4).
         <tbody>
           {% for invoice in overdue_invoices.invoices %}
             <tr>
-              <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
+              <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
               <td>{{ invoice.customer.name }}</td>
               <td class="num">{{ invoice.invoice_date|jalali }}</td>
               <td class="num">{{ invoice.outstanding|toman }}</td>

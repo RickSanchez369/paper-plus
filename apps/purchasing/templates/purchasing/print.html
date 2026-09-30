@@ -15,7 +15,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
     <header class="print-invoice__head">
       <h1>پیپر پلاس</h1>
       <div>
-        <p>فاکتور خرید شمارهٔ {{ invoice.invoice_number|fa_number }}</p>
+        <p>فاکتور خرید شمارهٔ {{ invoice.invoice_number|fa_digits }}</p>
         <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>
       </div>
     </header>

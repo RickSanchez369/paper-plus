@@ -90,7 +90,7 @@ component reused as-is from Receivables.
         <tbody>
           {% for invoice in invoices %}
             <tr>
-              <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_number }}</a></td>
+              <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
               <td class="num">{{ invoice.invoice_date|jalali }}</td>
               <td class="num">{{ invoice.total|toman }}</td>
               <td class="num">{{ invoice.paid_amount|toman }}</td>

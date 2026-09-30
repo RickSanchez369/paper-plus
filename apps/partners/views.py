@@ -103,10 +103,13 @@ class CustomerListView(LoginRequiredMixin, TemplateView):
         filter_form = CustomerFilterForm(self.request.GET or None)
 
         qs = Customer.objects.all()
-        is_active = "true"
+        # "" (the "همه" option) must mean everyone; only a missing or unknown
+        # value falls back to active-only.
+        is_active = self.request.GET.get("is_active")
+        if is_active not in ("true", "false", ""):
+            is_active = "true"
         if filter_form.is_valid():
             data = filter_form.cleaned_data
-            is_active = data.get("is_active") or "true"
             if data.get("q"):
                 qs = qs.filter(Q(name__icontains=data["q"]) | Q(phone__icontains=data["q"]))
         if is_active == "true":

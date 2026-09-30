@@ -83,6 +83,15 @@ def fa_number(value):
     return dates.to_persian_digits(format_number(value)).replace(",", "٬")
 
 
+@register.filter(name="fa_digits")
+def fa_digits(value):
+    """Persian digits with NO grouping: document numbers (invoice, cheque),
+    which are identifiers, not quantities -- 9956001, never 9,956,001."""
+    if value in (None, ""):
+        return ""
+    return dates.to_persian_digits(str(value))
+
+
 @register.filter(name="dict_get")
 def dict_get(mapping, key):
     """`{{ mapping|dict_get:key }}` -- a template's `.` lookup only reads a

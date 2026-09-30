@@ -10,7 +10,7 @@ __prefix__, swapped for a real index by purchase_form.js).
 <div class="item-row" data-item-row>
   {{ form.product }}
   <div class="item-row__search">
-    <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" autocomplete="off"
+    <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"
            data-item-row-search
            hx-get="{% url 'purchasing:product_search' %}"
            hx-trigger="keyup changed delay:300ms, focus"
@@ -23,15 +23,15 @@ __prefix__, swapped for a real index by purchase_form.js).
   </div>
   {% comment %} Refilled from the bound row on a re-render (SelectedProductMixin, C.fix-2);
      same text the JS writes when a search result is picked. {% endcomment %}
-  <div class="item-row__stock" data-item-row-stock>{% if form.selected_product %}موجودی: {{ form.selected_stock }}{% endif %}</div>
-  <div class="item-row__qty">
+  <div class="item-row__stock" data-item-row-stock data-label="موجودی">{% if form.selected_product %}موجودی: {{ form.selected_stock }}{% endif %}</div>
+  <div class="item-row__qty" data-label="مقدار">
     {{ form.quantity }}
     {% for error in form.quantity.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
   </div>
-  <div class="item-row__price">
+  <div class="item-row__price" data-label="قیمت واحد (تومان)">
     {{ form.unit_price }}
     {% for error in form.unit_price.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
   </div>
-  <span class="item-row__total num" data-item-row-total>۰</span>
+  <span class="item-row__total num" data-item-row-total data-label="جمع (تومان)">۰</span>
   <button type="button" class="btn btn--quiet item-row__remove" data-item-row-remove>حذف</button>
 </div>

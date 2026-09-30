@@ -55,6 +55,13 @@ class SelectedProductMixin:
     product. None for an unbound form (a fresh page, the row template).
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A deactivated product must not be sold or bought by a hand-made
+        # POST any more than the search box offers it.
+        self.fields["product"].queryset = Product.objects.filter(is_active=True)
+        self.fields["product"].error_messages["invalid_choice"] = "این کالا معتبر یا فعال نیست."
+
     @cached_property
     def selected_product(self):
         if not self.is_bound:

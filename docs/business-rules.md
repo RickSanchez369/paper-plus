@@ -111,3 +111,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-051 Deployment and the SHADOW parallel-run are out of scope and removed from the repo.
 - D-052 A sale may never exceed the stock on hand, not even for a superuser; buy first.
 - D-053 A purchase invoice has the same full-settlement / split payment mode as a sale.
+- D-054 Date years limited to 1380-1450; deactivated parties stay visible while a balance exists; inactive products can't be traded.

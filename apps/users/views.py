@@ -13,6 +13,8 @@ from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView, LogoutView
 
+from apps.shared.dates import to_ascii_digits
+
 
 class PhoneLoginForm(AuthenticationForm):
     """
@@ -43,6 +45,10 @@ class PhoneLoginForm(AuthenticationForm):
             "dir": "ltr",
         }),
     )
+
+    def clean_username(self):
+        # Persian keyboards type ۰۹۱۲…; the stored phone is ASCII (D-007).
+        return to_ascii_digits((self.cleaned_data.get("username") or "").strip())
 
     # Shown for both "no such phone" and "wrong password", deliberately:
     # a different message for each would tell an outsider which phone

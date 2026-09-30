@@ -26,7 +26,18 @@ audited in the browser for leftover old-style radii, shadows and colours (none);
 Carbon-style filled inputs and table headers apply app-wide. Not visually
 checked (no data to render): invoice detail/print, cheque detail.
 
-**Now: bug-fix pass.** Sina reports bugs and defects page by page; each is
+**QA pass done (2026-09-30):** ~750 scripted checks (`tools/qa/`, see its README)
+plus ~90 browser checks over every module found and fixed 14 defects (D-054).
+Findings that need Sina's decision, NOT changed:
+- Cancelling an invoice reverses stock but leaves its payments and cheques booked
+  (the money stays in the bank balance and on the customer's/supplier's account).
+- A pending cheque with no bank account clears into CASH; the clear button has no
+  account picker.
+- Expense receipt upload has no file-type or size limit.
+- No login throttling.
+- The suppliers list has no way to show inactive suppliers.
+
+**Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
 `MASTER_PROMPT` section numbers (removed 2026-09-30).

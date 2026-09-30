@@ -27,6 +27,9 @@
     var popup = null;
     var activeInput = null;
     var pending = null;
+    // The month last asked for. Clicks arriving before the previous month
+    // has finished loading must compound, not all step from the old grid.
+    var view = null;
 
     function buildPopup() {
         var element = document.createElement("div");
@@ -95,9 +98,16 @@
 
         if (action === "prev" || action === "next") {
             var grid = currentGrid();
-            if (!grid) return;
-            var year = Number(grid.getAttribute("data-year"));
-            var month = Number(grid.getAttribute("data-month")) + (action === "prev" ? -1 : 1);
+            if (!grid && !view) return;
+            var base = view || {
+                year: Number(grid.getAttribute("data-year")),
+                month: Number(grid.getAttribute("data-month")),
+            };
+            var year = base.year;
+            var month = base.month + (action === "prev" ? -1 : 1);
+            if (month > 12) { month = 1; year += 1; }
+            if (month < 1) { month = 12; year -= 1; }
+            view = { year: year, month: month };
             load(year, month);
             return;
         }
@@ -149,6 +159,7 @@
     function open(input) {
         if (!popup) popup = buildPopup();
         activeInput = input;
+        view = null;
         popup.hidden = false;
         var parts = readYearMonth(input.value);
         load(parts ? parts.year : "", parts ? parts.month : "");

@@ -166,14 +166,14 @@ class SaleItemForm(SelectedProductMixin, forms.ModelForm):
     quantity = forms.IntegerField(
         min_value=1,
         label="مقدار",
-        widget=forms.NumberInput(attrs={"class": "field__control item-row__qty", "dir": "ltr", "inputmode": "numeric"}),
+        widget=forms.NumberInput(attrs={"class": "field__control item-row__qty", "dir": "ltr", "inputmode": "numeric", "aria-label": "مقدار"}),
         error_messages={"required": "مقدار الزامی است.", "min_value": "مقدار باید بزرگ‌تر از صفر باشد."},
     )
     unit_price = forms.IntegerField(
         required=False,
         min_value=0,
         label="قیمت واحد (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric"}),
+        widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric", "aria-label": "قیمت واحد (تومان)"}),
         error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
     )
 

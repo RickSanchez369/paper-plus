@@ -13,13 +13,13 @@ stricter -- blocked once any of this purchase's stock has been sold).
 
 {% block content %}
 <p class="breadcrumbs">
-  <a href="{% url 'purchasing:list' %}">خرید</a> / فاکتور {{ invoice.invoice_number|fa_number }}
+  <a href="{% url 'purchasing:list' %}">خرید</a> / فاکتور {{ invoice.invoice_number|fa_digits }}
 </p>
 
 <div class="page-head">
   <div class="page-head__row">
     <div>
-      <h1>فاکتور {{ invoice.invoice_number|fa_number }}</h1>
+      <h1>فاکتور {{ invoice.invoice_number|fa_digits }}</h1>
       <p class="page-head__lede">
         تأمین‌کننده:
         <a href="{% url 'purchasing:supplier_detail' invoice.supplier.pk %}">{{ invoice.supplier.name }}</a>
