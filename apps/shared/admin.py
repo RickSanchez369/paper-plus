@@ -2,7 +2,7 @@
 """
 Admin registration for the shared app.
 
-Business and BusinessMembership are gone (REDESIGN_VISION §2.2), so this
+Business and BusinessMembership are gone, so this
 module is down to the AuditLog browser. Site-wide Persian titles live on
 PaperPlusAdminSite (apps/shared/admin_site.py) now, not here.
 """

@@ -1,6 +1,6 @@
 # path: apps/shared/urls.py
 
-"""Dashboard, plus the two cross-cutting report modules (REDESIGN_VISION 4.8, 4.9)."""
+"""Dashboard, plus the two cross-cutting report modules."""
 
 from django.urls import path
 

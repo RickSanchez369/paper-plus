@@ -285,7 +285,7 @@ class SaleItem(BaseModel):
     def cost_of_goods(self):
         """
         What these units actually cost, in Toman, from the FIFO layers this
-        line drew from (REDESIGN_VISION 3). Derived, never stored (D-025):
+        line drew from. Derived, never stored (D-025):
         it is the sum over this line's InventoryConsumption rows of
         quantity x that layer's own unit_cost, so a cancelled line -- whose
         consumptions net to zero -- correctly costs nothing.
@@ -325,7 +325,7 @@ class SaleItem(BaseModel):
         yet, and a cancelled line's consumptions net back to zero cost --
         without this guard both would report their whole revenue as profit,
         and every total built on this property would count cancelled
-        invoices (REDESIGN_VISION 8, item 4).
+        invoices.
         """
         if self.invoice.status != SalesInvoice.Status.CONFIRMED:
             return 0

@@ -34,7 +34,7 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 # Application definition
 
 INSTALLED_APPS = [
-    # Superuser-only admin site (REDESIGN_VISION 2.1), in place of
+    # Superuser-only admin site, in place of
     # 'django.contrib.admin'.
     'apps.shared.admin_site.PaperPlusAdminConfig',
     'django.contrib.auth',
@@ -145,8 +145,7 @@ MAILERS = {
 # The custom user model. Changing this after migrations exist is extremely costly.
 AUTH_USER_MODEL = "users.User"
 
-# Authentication flow for the frontend (REDESIGN_VISION 4.10: the dashboard
-# is the landing page after login). `/admin/` keeps its own login page.
+# Authentication flow for the frontend. `/admin/` keeps its own login page.
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"

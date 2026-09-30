@@ -1,6 +1,5 @@
 """
-The one permission concept left after the single-business rebuild
-(REDESIGN_VISION §2.3).
+The one permission concept left after the single-business rebuild.
 
 Business/BusinessMembership and the Owner/Seller roles are gone, so
 `get_membership`, `has_role`, `is_owner`, `require_role` and

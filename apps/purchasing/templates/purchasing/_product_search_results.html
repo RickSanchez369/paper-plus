@@ -1,8 +1,7 @@
 {% load paper %}
 {% comment %}
 Live product-search results (ProductSearchView). `data-last-cost` fills
-the price field as a placeholder hint only, never a value -- REDESIGN_VISION
-4.2: a purchase price is what this purchase actually cost, not a default.
+the price field as a placeholder hint only, never a value: a purchase price is what this purchase actually cost, not a default.
 {% endcomment %}
 {% if rows %}
   {% for row in rows %}

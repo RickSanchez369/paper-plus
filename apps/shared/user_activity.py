@@ -1,8 +1,8 @@
 # path: apps/shared/user_activity.py
 
 """
-Read-only aggregates and feed queries for User Activity (REDESIGN_VISION
-4.9, Phase C module 9). A selector module like apps/shared/reports.py,
+Read-only aggregates and feed queries for User Activity. A selector module like
+apps/shared/reports.py,
 placed here because it reads AuditLog plus a handful of other apps' models
 only to resolve a target link, not because it owns any of them.
 """
@@ -16,9 +16,8 @@ from apps.shared.models import AuditLog
 
 EventType = AuditLog.EventType
 
-# Which bucket each event type counts toward on the aggregate table
-# (REDESIGN_VISION 4.9: "counts of sales/purchases/expenses/payments/
-# cheques recorded + cancellations"). A cancellation counts only in its
+# Which bucket each event type counts toward on the aggregate table. A
+# cancellation counts only in its
 # own bucket, never double-counted into "recorded" too.
 _BUCKETS = {
     EventType.CONFIRM_SALE: "sales",
@@ -45,9 +44,8 @@ BUCKET_LABELS = {
 BUCKET_ORDER = ("sales", "purchases", "expenses", "payments", "cheques", "cancellations")
 
 # target_type ("app_label.model_name", from AuditLog.target_type) -> a
-# function building that target's own detail URL. Built once, here, per
-# REDESIGN_VISION 4.9's own phrase "a small target_type -> URL routing
-# table" -- some targets (a bare Payment, an Expense, a PaymentAllocation)
+# function building that target's own detail URL. Built once, here,
+# as a small routing table -- some targets (a bare Payment, an Expense, a PaymentAllocation)
 # have no page of their own to link to, and are left unresolved on purpose.
 _TARGET_URL_BUILDERS = {
     "sales.salesinvoice": lambda target_id: reverse("sales:detail", args=[target_id]),
@@ -60,9 +58,7 @@ _TARGET_URL_BUILDERS = {
 def _amount_for(entry):
     """This event's own monetary size -- from the logged payload when it
     carries one (every money event does), or the invoice's own total for
-    confirm_sale/confirm_purchase, which never logged an amount
-    (REDESIGN_VISION 8's lesson about not inventing a number a service
-    never actually wrote)."""
+    confirm_sale/confirm_purchase, which never logged an amount."""
     if "amount" in entry.payload:
         return entry.payload["amount"]
     return None
@@ -71,7 +67,7 @@ def _amount_for(entry):
 def get_activity_summary(start, end, event_type=None):
     """
     One row per user: counts per bucket, and each bucket's own amount
-    total, for events within (start, end) (REDESIGN_VISION 4.9).
+    total, for events within (start, end).
 
     Deliberately per-bucket, not one blended total: `record_expense` and
     `cancel_expense` (and the cheque lifecycle) book their own money
@@ -80,9 +76,8 @@ def get_activity_summary(start, end, event_type=None):
     under "expenses" and once under "payments". Both statements are true
     on their own ("this much was recorded as an expense", "this much
     moved through a payment"); summing them into one number would silently
-    double it. Never fixed by dropping the payment's own audit row either
-    -- that row is its own real, independently useful fact (REDESIGN_VISION
-    2's "who did what, when, why").
+    double it. Never fixed by dropping the payment's own audit row either --
+    that row is its own real, independently useful fact.
     """
     qs = AuditLog.objects.filter(created_at__date__gte=start, created_at__date__lte=end)
     if event_type:
@@ -127,8 +122,7 @@ def get_activity_summary(start, end, event_type=None):
 
 
 def resolve_target_url(target_type, target_id):
-    """This event's target's own page, or None when it has none
-    (REDESIGN_VISION 4.9's routing table). `inventory.inventorymovement`
+    """This event's target's own page, or None when it has none. `inventory.inventorymovement`
     is resolved via its product, since a movement has no page of its own."""
     if target_type == "inventory.inventorymovement":
         product_id = (
@@ -143,7 +137,7 @@ def resolve_target_url(target_type, target_id):
 
 def get_recent_activity(limit=10):
     """The latest N events, any actor, no date range -- the Dashboard's
-    own global activity feed (REDESIGN_VISION 4.10, row 4), not scoped to
+    own global activity feed, not scoped to
     a reporting period the way User Activity's own feed is."""
     entries = AuditLog.objects.select_related("actor").order_by("-created_at")[:limit]
     return [
@@ -153,8 +147,8 @@ def get_recent_activity(limit=10):
 
 
 def get_activity_feed(start, end, actor=None, event_type=None):
-    """The raw AuditLog feed for the drill-down page (REDESIGN_VISION
-    4.9): event type, linked target, timestamp -- newest first."""
+    """The raw AuditLog feed for the drill-down page: event type, linked
+    target, timestamp -- newest first."""
     qs = (
         AuditLog.objects
         .filter(created_at__date__gte=start, created_at__date__lte=end)

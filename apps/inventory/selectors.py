@@ -48,7 +48,7 @@ def get_negative_stock_products():
     """
     Every product whose current stock has gone negative (D-016: a sale is
     allowed to oversell, superuser-only). Defensive only, for the
-    Dashboard's attention-needed row (REDESIGN_VISION 4.10) -- this should
+    Dashboard's attention-needed row -- this should
     normally be empty; if it isn't, someone oversold and it is worth
     surfacing, not because the app treats it as an error.
     """
@@ -109,7 +109,7 @@ def get_last_known_cost_map(product_ids):
 
     Display-only fallback for a product whose stock has hit zero, so its
     "قیمت خرید جاری" column shows the last cost it was bought at instead
-    of a blank (REDESIGN_VISION 8, item 5). Never feeds a calculation.
+    of a blank. Never feeds a calculation.
     """
     rows = (
         InventoryLayer.objects
@@ -129,7 +129,7 @@ def get_inventory_value_map(product_ids):
 
     Sum of every active layer's own remaining quantity times its own cost
     -- layers carry different costs, so a single "stock x latest cost"
-    figure would be wrong (REDESIGN_VISION 4.3).
+    figure would be wrong.
     """
     rows = (
         InventoryLayer.objects
@@ -151,8 +151,7 @@ def get_total_inventory_value():
 def get_inventory_as_of(as_of):
     """
     {product_id: {"stock": n, "value": v}} reconstructed from the layer/
-    consumption ledger up to and including `as_of` (REDESIGN_VISION 4.8's
-    "inventory as of the end of the selected range", not "right now").
+    consumption ledger up to and including `as_of`.
 
     A layer counts only if it already existed by `as_of` and had not yet
     been cancelled by then; a consumption counts only if it happened by

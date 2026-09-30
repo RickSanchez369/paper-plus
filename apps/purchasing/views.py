@@ -1,7 +1,7 @@
 # path: apps/purchasing/views.py
 
 """
-Purchasing module views (REDESIGN_VISION 4.2, MASTER_PROMPT Phase C).
+Purchasing module views.
 
 Mirrors apps/sales/views.py; nothing here writes stock or money directly
 -- confirm_purchase/cancel_purchase own that. See apps/sales/views.py's
@@ -48,7 +48,7 @@ from .services import cancel_purchase, confirm_purchase
 
 
 class PurchasingListView(LoginRequiredMixin, TemplateView):
-    """List (REDESIGN_VISION 4.2): symmetric to Sales' list, no profit
+    """List: symmetric to Sales' list, no profit
     card -- profit is sales-only."""
 
     template_name = "purchasing/list.html"
@@ -155,8 +155,7 @@ QUICK_PRODUCT_AUTO_ID = "quick_product_%s"
 
 class QuickProductCreateView(LoginRequiredMixin, View):
     """
-    Creates a Product from the inline "+ کالای جدید" mini-form
-    (REDESIGN_VISION 4.2, vision doc §13). Reuses partners/
+    Creates a Product from the inline "+ کالای جدید" mini-form. Reuses partners/
     _quick_party_form.html -- that partial is generic (form/post_url/
     title passed in), nothing about it is customer-specific.
 
@@ -199,7 +198,7 @@ def _empty_forms():
 class PurchaseCreateView(LoginRequiredMixin, View):
     """
     The one-shot new-purchase page -- mirrors sales.views.SalesCreateView.
-    No discount field to clean (REDESIGN_VISION 4.2: the model has none).
+    No discount field to clean.
     """
 
     template_name = "purchasing/new.html"
@@ -258,7 +257,7 @@ class PurchaseCreateView(LoginRequiredMixin, View):
 
 
 class PurchaseDetailView(LoginRequiredMixin, DetailView):
-    """Detail (REDESIGN_VISION 4.2): no profit column -- profit is
+    """Detail: no profit column -- profit is
     sales-only. Payment/cheque history and cancel, same shape as Sales."""
 
     model = PurchaseInvoice
@@ -339,7 +338,7 @@ class QuickSupplierCreateView(LoginRequiredMixin, View):
 
 
 class SupplierListView(LoginRequiredMixin, TemplateView):
-    """Suppliers sub-section list (REDESIGN_VISION 4.2): name, phone,
+    """Suppliers sub-section list: name, phone,
     total purchased, outstanding payable -- both derived, never stored."""
 
     template_name = "purchasing/supplier_list.html"
@@ -397,8 +396,8 @@ class SupplierUpdateView(LoginRequiredMixin, View):
 
 
 class SupplierDetailView(LoginRequiredMixin, DetailView):
-    """Purchase history, payments made, cheques issued, running balance
-    (REDESIGN_VISION 4.2) -- the same get_supplier_outstanding the
+    """Purchase history, payments made, cheques issued, running balance -- the
+    same get_supplier_outstanding the
     Payables page (4.4) will read from later."""
 
     model = Supplier

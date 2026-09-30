@@ -1,7 +1,7 @@
 # path: apps/sales/forms.py
 
 """
-The one-shot new-sale form (REDESIGN_VISION 4.1, MASTER_PROMPT Phase C).
+The one-shot new-sale form.
 
 Three pieces submitted together: the invoice itself, a formset of item
 rows, and a formset of payment-entry rows. None of them touch the
@@ -44,8 +44,7 @@ PAYMENT_MODE_SPLIT = "split"
 class SalesFilterForm(forms.Form):
     """
     The list page's structured filters, deliberately separate from the
-    free-text search box (REDESIGN_VISION vision doc §26: never conflate
-    "find this invoice" with "narrow this list"). The date range itself
+    free-text search box. The date range itself
     is `shared.forms.DateRangeForm`, rendered alongside this one -- same
     <form method="get">, disjoint field names, one querystring.
     """
@@ -155,10 +154,7 @@ class SaleItemForm(SelectedProductMixin, forms.ModelForm):
     One invoice line.
 
     `product` is a hidden input: the visible picker is the JS-driven
-    search box in _item_row.html, not a plain <select> of every product
-    (REDESIGN_VISION wants live stock in the label, which a <select>
-    cannot show per option without pre-rendering every product's stock
-    on every page load).
+    search box in _item_row.html, not a plain <select> of every product.
     """
 
     # Declared explicitly, not left to ModelForm's auto-generation: the

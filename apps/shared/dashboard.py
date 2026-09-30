@@ -1,10 +1,9 @@
 # path: apps/shared/dashboard.py
 
 """
-Read-only aggregates for the Dashboard (REDESIGN_VISION 4.10, Phase C
-module 10, the last of the 11). Everything here is computed live, same
-as Financial Reports and User Activity -- REDESIGN_VISION's own words:
-"inventing numbers here would be worse than showing none".
+Read-only aggregates for the Dashboard. Everything here is computed live, same
+as Financial Reports and User Activity: inventing numbers here would be
+worse than showing none.
 """
 
 import datetime
@@ -24,8 +23,7 @@ from apps.shared import dates, reports, user_activity
 
 
 def kpi_cards():
-    """Sales/purchases/expenses/net-profit, each today + this month
-    (REDESIGN_VISION 4.10, row 1) -- reuses Financial Reports' own
+    """Sales/purchases/expenses/net-profit, each today + this month -- reuses Financial Reports' own
     selectors so this card can never disagree with that page."""
     today = timezone.localdate()
     jalali_today = dates.today()
@@ -43,8 +41,7 @@ def kpi_cards():
 
 def totals_now():
     """Open receivables, open payables, total bank balance (all active
-    accounts summed), total inventory value -- REDESIGN_VISION 4.10, row
-    2, each linking to its own module."""
+    accounts summed), total inventory value, each linking to its own module."""
     today = timezone.localdate()
     bank_balance = sum(
         get_bank_account_balance(account) for account in BankAccount.objects.filter(is_active=True)
@@ -58,7 +55,7 @@ def totals_now():
 
 
 def cheques_due_soon(days=7, limit=5):
-    """Pending cheques due within `days` (REDESIGN_VISION 4.10, row 3):
+    """Pending cheques due within `days`:
     a handful shown, plus the real total so "see all" doesn't undersell
     how many there are."""
     today = timezone.localdate()
@@ -70,9 +67,8 @@ def cheques_due_soon(days=7, limit=5):
 
 def overdue_credit_invoices(threshold_days=30, limit=5):
     """
-    Confirmed sales invoices still owing money, older than `threshold_days`
-    (REDESIGN_VISION 4.10, row 3: "default 30-day threshold — a query
-    parameter, not a new field"). Sales side only: this widget is about
+    Confirmed sales invoices still owing money, older than `threshold_days`.
+    Sales side only: this widget is about
     collection risk (money owed *to* the business); the payables mirror
     already has its own home on the Payables page.
     """
@@ -95,5 +91,5 @@ def negative_stock():
 
 
 def recent_activity(limit=10):
-    """The latest N events, all users (REDESIGN_VISION 4.10, row 4)."""
+    """The latest N events, all users."""
     return user_activity.get_recent_activity(limit=limit)

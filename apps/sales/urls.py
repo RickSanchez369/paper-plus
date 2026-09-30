@@ -1,6 +1,6 @@
 # path: apps/sales/urls.py
 
-"""Sales module routes (REDESIGN_VISION 4.1)."""
+"""Sales module routes."""
 
 from django.urls import path
 

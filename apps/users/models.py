@@ -51,8 +51,8 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     """
     Custom user, identified by mobile phone number.
 
-    Carries no role: any authenticated user may use every page
-    (REDESIGN_VISION §2.3). `is_superuser` is the only distinction
+    Carries no role: any authenticated user may use every page. `is_superuser`
+    is the only distinction
     left, and it gates exactly two actions (oversell, cancellation).
     """
 

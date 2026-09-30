@@ -4,7 +4,7 @@
 Routes for the five modules whose models live in this app.
 
 Receivables, Payables and Cheques are one conceptual module with three
-views (REDESIGN_VISION 4.4) and share a sidebar group, but each still gets
+views and share a sidebar group, but each still gets
 its own namespace so a page can link straight to the view it means.
 Each pattern list is exported separately and mounted from core/urls.py,
 rather than declaring a single `app_name` here, because one app owning

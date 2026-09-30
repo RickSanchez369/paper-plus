@@ -1,7 +1,7 @@
 # path: apps/shared/admin_site.py
 
 """
-Superuser-only admin site (REDESIGN_VISION §2.1).
+Superuser-only admin site.
 
 WHY this exists now: until this rebuild, `/admin/` was safe for a staff
 user because every page was business-scoped (`BusinessScopedAdminMixin`)

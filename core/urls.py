@@ -1,9 +1,9 @@
 """
 URL configuration for core project.
 
-One path per module in REDESIGN_VISION 4, in that document's order, so the
-sidebar and this file read the same way. `/admin/` is a superuser-only
-technical backend, not a user-facing surface (2.1); the gate lives on
+One path per module, in the sidebar's order, so the sidebar and this file
+read the same way. `/admin/` is a superuser-only technical backend, not a
+user-facing surface (D-035); the gate lives on
 PaperPlusAdminSite.
 """
 from django.conf import settings

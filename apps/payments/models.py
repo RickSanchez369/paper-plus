@@ -66,8 +66,8 @@ class Payment(BaseModel):
     `customer`/`supplier` answer "whose money is this" without going
     through an allocation. Before they existed, a payment not yet tied to
     an invoice -- a prepayment, say -- had no trace to anyone at all, which
-    breaks the rule that every movement of money resolves back to a person
-    (REDESIGN_VISION 3). Both stay optional: an expense's payment belongs
+    breaks the rule that every movement of money resolves back to a person.
+    Both stay optional: an expense's payment belongs
     to neither. Mirrors `Cheque`'s pair, with a looser constraint.
     """
 
@@ -234,8 +234,8 @@ class Cheque(BaseModel):
     a closed cheque never goes back to pending.
 
     CANCELLED means "I entered this by mistake", not a reversal: a pending
-    cheque never counted toward anything, so withdrawing it moves no money
-    (REDESIGN_VISION 3). Nothing is ever deleted -- the row stays as
+    cheque never counted toward anything, so withdrawing it moves no money.
+    Nothing is ever deleted -- the row stays as
     history, same as a cancelled invoice.
     """
 
@@ -365,7 +365,7 @@ class Expense(BaseModel):
     Money spent on running the business: rent, wages, fuel, a repair.
 
     Deliberately backed by a real `Payment` rather than a second, parallel
-    accounting path (REDESIGN_VISION 3): an expense moves money out of a
+    accounting path: an expense moves money out of a
     bank account (or out of the till, when `bank_account` is blank) exactly
     like any other payment, so bank balances, cash flow and the reports
     built on `Payment` all pick it up for free. The Expense row adds only
@@ -377,7 +377,7 @@ class Expense(BaseModel):
     than what an untouched field falls back to.
 
     Never edited or deleted after recording, like everything else financial
-    here (REDESIGN_VISION 2.7). A mistake is corrected by `cancel_expense`,
+    here. A mistake is corrected by `cancel_expense`,
     which books an opposite Payment and flags this row cancelled.
     """
 
@@ -479,6 +479,6 @@ class Expense(BaseModel):
         False once cancelled, so no card, report or statement counts it.
 
         Stated on the model rather than left to each page, because every
-        place that totals money has to agree (REDESIGN_VISION 8, item 4).
+        place that totals money has to agree.
         """
         return not self.is_cancelled

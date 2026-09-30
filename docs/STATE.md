@@ -26,8 +26,8 @@ audited in the browser for leftover old-style radii, shadows and colours (none);
 Carbon-style filled inputs and table headers apply app-wide. Not visually
 checked (no data to render): invoice detail/print, cheque detail.
 
-No task is queued. One candidate: tidying source comments that still cite
-`REDESIGN_VISION`/`MASTER_PROMPT` section numbers.
+No task is queued. Source comments no longer cite `REDESIGN_VISION` or
+`MASTER_PROMPT` section numbers (removed 2026-09-30).
 
 ## Open items (raise with Sina before touching)
 - **USD-rate source** — undecided; Inventory and Reports show a placeholder

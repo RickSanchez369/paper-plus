@@ -2,7 +2,7 @@
 {% load static paper %}
 
 {% comment %}
-One-shot new-purchase form (REDESIGN_VISION 4.2, non-negotiable #5).
+One-shot new-purchase form.
 Mirrors sales/new.html; the supplier field (and its "+ تأمین‌کنندهٔ
 جدید" disclosure) lives outside <form id="purchase-form"> for the same
 reason Sales' customer field does -- see PurchaseInvoiceForm.Meta.widgets
@@ -131,7 +131,7 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
 </form>
 
 {% comment %}
-"+ کالای جدید" mid-purchase (REDESIGN_VISION 4.2, vision doc §13): the
+"+ کالای جدید" mid-purchase: the
 same Product model and QuickProductForm validation as everywhere else.
 purchase_form.js fills the dialog from the <template> on each open, and
 on success puts the new product straight into the row that asked for it

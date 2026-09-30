@@ -1,6 +1,6 @@
 # path: apps/inventory/urls.py
 
-"""Inventory module routes (REDESIGN_VISION 4.3). No opening-stock or
+"""Inventory module routes. No opening-stock or
 adjustment page: stock changes through documents only (D-044)."""
 
 from django.urls import path

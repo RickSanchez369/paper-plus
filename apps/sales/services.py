@@ -46,7 +46,7 @@ def confirm_sale(invoice, user):
     Raises:
         ValidationError: invoice is not a draft, has no items, or has a
         discount exceeding its subtotal; or the sale would drive stock
-        negative and ``user`` is not a superuser (D-021, §2.3).
+        negative and ``user`` is not a superuser (D-021, D-034).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -105,7 +105,7 @@ def confirm_sale(invoice, user):
         )
 
     if shortages and not is_privileged(user):
-        # D-021, now §2.3: an ordinary user may not confirm a sale that
+        # D-021, D-034: an ordinary user may not confirm a sale that
         # goes negative; a superuser may, and gets it back as a warning (D-016).
         names = "، ".join(s["product"].name for s in shortages)
         raise ValidationError(
@@ -117,8 +117,8 @@ def confirm_sale(invoice, user):
 
     # FIFO: each line takes from the oldest layers still holding stock, and
     # what it took is recorded per layer, so the line's real cost is known
-    # and a later cancellation can put back exactly those amounts
-    # (REDESIGN_VISION 3). The product rows are already locked above, which
+    # and a later cancellation can put back exactly those amounts. The product
+    # rows are already locked above, which
     # is what keeps two concurrent sales from draining the same layer twice.
     for item in items:
         _, uncosted = consume_fifo(
@@ -171,7 +171,7 @@ def confirm_sale(invoice, user):
                 Payment(
                     bank_account=entry.bank_account,
                     direction=Payment.Direction.IN,
-                    customer=locked_invoice.customer,  # whose money this is (REDESIGN_VISION 3)
+                    customer=locked_invoice.customer,  # whose money this is
                     amount=entry.amount,
                     payment_date=locked_invoice.invoice_date,
                     note=f"فاکتور فروش {locked_invoice.invoice_number}",
@@ -241,7 +241,7 @@ def cancel_sale(invoice, user):
 
     Raises:
         ValidationError: invoice is not confirmed (draft or already
-        cancelled), or ``user`` is not a superuser (D-023, §2.3).
+        cancelled), or ``user`` is not a superuser (D-023, D-034).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -255,7 +255,7 @@ def cancel_sale(invoice, user):
 
     # Undo the FIFO draw first: every unit goes back to the exact layer it
     # came from, by recorded amount rather than by FIFO order, so a layer a
-    # later sale has since drawn from still adds up (REDESIGN_VISION 8).
+    # later sale has since drawn from still adds up.
     for item in items:
         restore_consumptions(
             item,

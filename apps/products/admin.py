@@ -135,7 +135,7 @@ class ProductAdmin(SimpleHistoryAdmin):
         stock_map = get_stock_map(product_ids)
         cost_map = get_current_cost_map(product_ids)
         # Fallback so a sold-out product shows the cost it was last bought
-        # at instead of a blank (REDESIGN_VISION 8, item 5). Display only.
+        # at instead of a blank. Display only.
         last_cost_map = get_last_known_cost_map(product_ids)
         value_map = get_inventory_value_map(product_ids)
         for product in products:

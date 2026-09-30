@@ -1,8 +1,8 @@
 # path: apps/partners/views.py
 
 """
-The Customers module (REDESIGN_VISION 4.7) plus the inline "new customer"
-component (REDESIGN_VISION 4.1, 4.2, 4.7) shared with Sales/Purchasing.
+The Customers module plus the inline "new customer"
+component shared with Sales/Purchasing.
 
 Views never write directly -- editing a Customer is a plain field update
 (no money/stock involved), but "record payment" on the detail page still
@@ -84,7 +84,7 @@ def _customer_row(customer):
 
 class CustomerListView(LoginRequiredMixin, TemplateView):
     """
-    List (REDESIGN_VISION 4.7): name, phone, account status badge, open
+    List: name, phone, account status badge, open
     balance, invoice count, last purchase date. Search over name/phone,
     filter by account status (owes/settled) and active/inactive -- shows
     active customers only until the filter says otherwise, same default
@@ -128,7 +128,7 @@ class CustomerListView(LoginRequiredMixin, TemplateView):
 
 class CustomerDetailView(LoginRequiredMixin, DetailView):
     """
-    Detail (REDESIGN_VISION 4.7, the full ROADMAP 4.5): header + edit;
+    Detail: header + edit;
     lifetime cards; invoices/payments/cheques; a combined chronological
     statement (invoices = debit, payments = credit -- a cleared cheque is
     already a Payment by the time it reaches here, a pending or bounced one

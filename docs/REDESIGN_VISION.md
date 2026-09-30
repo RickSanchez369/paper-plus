@@ -2,8 +2,7 @@
 
 The 2026-09-24 design spec for the full rebuild (Django-Admin multi-tenant
 tool → real single-business web app). Built, merged and retired 2026-09-26.
-This is a short summary; source comments that cite `REDESIGN_VISION 4.x` /
-`8` point at the original, recoverable with
+This is a short summary. The original full spec is recoverable with
 `git show 5c14525:docs/REDESIGN_VISION.md`.
 
 Founding principle (Sina): no money, goods, cheque, debt or transaction may

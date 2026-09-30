@@ -1,7 +1,7 @@
 # path: apps/inventory/views.py
 
 """
-Inventory module views (REDESIGN_VISION 4.3, MASTER_PROMPT Phase C).
+Inventory module views.
 
 Nothing here writes stock directly -- set_opening_stock (at product
 creation only, D-044) and the invoice services own that; the selling
@@ -36,7 +36,7 @@ from .services import set_opening_stock
 
 class InventoryListView(LoginRequiredMixin, TemplateView):
     """
-    List (REDESIGN_VISION 4.3): cards (total value, item count,
+    List: cards (total value, item count,
     negative-stock warning, a USD placeholder), table (stock, current
     FIFO cost, last purchase cost, selling price, value, % share of total
     value). Every value figure is cost-based -- Σ active layers × their
@@ -70,7 +70,7 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
                 # consumes (absent once stock hits zero: no layer left)
                 "current_cost": current_cost_map.get(product.pk),
                 # the most recent layer's cost, exhausted or not -- "what
-                # did we last buy it at", display-only (REDESIGN_VISION 8.5)
+                # did we last buy it at", display-only
                 "last_cost": last_cost_map.get(product.pk),
                 "value": value,
                 "share": (value * 100 // total_value) if total_value else 0,
@@ -86,7 +86,7 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
 
 
 class ProductCreateView(LoginRequiredMixin, View):
-    """"+ کالای جدید" (REDESIGN_VISION 4.3), with an optional one-time
+    """"+ کالای جدید", with an optional one-time
     opening stock (D-044) -- the only place stock can enter the ledger
     without an invoice. Product and opening layer are saved in one
     transaction: a rejected opening stock leaves no half-created product."""
@@ -134,7 +134,7 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
 
 class InventoryDetailView(LoginRequiredMixin, DetailView):
     """
-    Per-product detail (REDESIGN_VISION 4.3): cost vs. selling price side
+    Per-product detail: cost vs. selling price side
     by side (with the selling-price form), active layers, the chronological
     movement history (ROADMAP 4.2) extended to show which layer each row
     touched and a link back to its source invoice, and a "تاریخچهٔ قیمت"

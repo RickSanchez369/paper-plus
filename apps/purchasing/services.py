@@ -75,7 +75,7 @@ def confirm_purchase(invoice, user):
     InventoryMovement.objects.bulk_create(movements)
 
     # One FIFO cost layer per line: this is the stock a later sale will
-    # consume, at the price it was actually bought for (REDESIGN_VISION 3).
+    # consume, at the price it was actually bought for.
     InventoryLayer.objects.bulk_create([
         InventoryLayer(
             product=item.product,
@@ -123,7 +123,7 @@ def confirm_purchase(invoice, user):
                 Payment(
                     bank_account=entry.bank_account,
                     direction=Payment.Direction.OUT,
-                    supplier=locked_invoice.supplier,  # who got this money (REDESIGN_VISION 3)
+                    supplier=locked_invoice.supplier,  # who got this money
                     amount=entry.amount,
                     payment_date=locked_invoice.invoice_date,
                     note=f"فاکتور خرید {locked_invoice.invoice_number}",
@@ -167,9 +167,8 @@ def cancel_purchase(invoice, user):
 
     Raises:
         ValidationError: invoice is not confirmed (draft or already
-        cancelled); ``user`` is not a superuser (D-023, now
-        REDESIGN_VISION §2.3); or any of the stock this purchase brought
-        in has already been sold (REDESIGN_VISION §3).
+        cancelled); ``user`` is not a superuser (D-023); or any of the stock this purchase brought
+        in has already been sold.
     """
     locked_invoice = (
         PurchaseInvoice.objects.select_for_update().get(pk=invoice.pk)
@@ -186,7 +185,7 @@ def cancel_purchase(invoice, user):
     # FIFO integrity guard, stricter than a sale's cancel rule: this stock
     # may only be withdrawn while none of it has been sold. Checked for
     # every line before anything is written, so a rejected cancellation
-    # leaves the invoice exactly as it was (REDESIGN_VISION 3).
+    # leaves the invoice exactly as it was.
     for layer in InventoryLayer.objects.select_related("product").filter(
         purchase_item__in=items
     ):

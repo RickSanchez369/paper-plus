@@ -1,7 +1,7 @@
 # path: apps/payments/views.py
 
 """
-Receivables / Payables / Cheques (REDESIGN_VISION 4.4): one conceptual
+Receivables / Payables / Cheques: one conceptual
 module, three views, each with its own namespace so a page can link
 straight to the view it means (apps/payments/urls.py's own docstring).
 
@@ -59,7 +59,7 @@ from .services import (
 
 
 class ReceivablesListView(LoginRequiredMixin, TemplateView):
-    """Customers with an open balance (REDESIGN_VISION 4.4), each row
+    """Customers with an open balance, each row
     carrying its own ready-to-open "ثبت پرداخت" form -- the party is
     already fixed by the row, so no second page is needed to record one."""
 
@@ -85,8 +85,8 @@ class ReceivablesListView(LoginRequiredMixin, TemplateView):
 
 
 class PayablesListView(LoginRequiredMixin, TemplateView):
-    """Exact mirror of Receivables, Supplier/PurchaseInvoice side
-    (REDESIGN_VISION 4.4) -- reads the same `get_supplier_outstanding` the
+    """Exact mirror of Receivables, Supplier/PurchaseInvoice side -- reads the
+    same `get_supplier_outstanding` the
     Suppliers sub-section (4.2) already uses, so the two can never disagree."""
 
     template_name = "payments/payables_list.html"
@@ -112,8 +112,7 @@ class PayablesListView(LoginRequiredMixin, TemplateView):
 
 class _RecordPaymentView(LoginRequiredMixin, View):
     """
-    Shared POST handler behind the one "ثبت پرداخت" component
-    (REDESIGN_VISION 8 item 2): books the Payment, then allocates it
+    Shared POST handler behind the one "ثبت پرداخت" component: books the Payment, then allocates it
     across whichever open invoices were checked, oldest first, until the
     amount runs out -- any leftover stays an unallocated payment on that
     party's account (a prepayment, same as the form's own hint says).
@@ -191,7 +190,7 @@ class RecordSupplierPaymentView(_RecordPaymentView):
 
 
 class ChequesListView(LoginRequiredMixin, TemplateView):
-    """REDESIGN_VISION 4.4: status/direction/due-date-range filters, one
+    """Status/direction/due-date-range filters, one
     table covering both received and issued cheques."""
 
     template_name = "payments/cheques_list.html"
@@ -220,7 +219,7 @@ class ChequesListView(LoginRequiredMixin, TemplateView):
 
 
 class ChequeDetailView(LoginRequiredMixin, DetailView):
-    """Full lifecycle trace (REDESIGN_VISION 4.4): party, linked invoice
+    """Full lifecycle trace: party, linked invoice
     (or "general/unattached"), and, once cleared, the Payment it became."""
 
     model = Cheque
@@ -282,11 +281,11 @@ class ChequeActionView(LoginRequiredMixin, View):
 
 class BankAccountListView(LoginRequiredMixin, TemplateView):
     """
-    Bank Accounts (REDESIGN_VISION 4.5): one card per account -- name,
+    Bank Accounts: one card per account -- name,
     owner, account number, live balance, and the three comparison deltas
     (vs. yesterday/last week/last month), all read straight off the
     Payment ledger via `get_bank_account_balance(as_of=...)`. No
-    independent "cash" row here (REDESIGN_VISION 2.6) -- cash payments
+    independent "cash" row here -- cash payments
     (bank_account left blank) never belong to any BankAccount.
     """
 
@@ -359,7 +358,7 @@ class BankAccountUpdateView(LoginRequiredMixin, View):
 
 class BankAccountDetailView(LoginRequiredMixin, DetailView):
     """
-    Full ledger for one account (REDESIGN_VISION 4.5): every Payment
+    Full ledger for one account: every Payment
     against it, each resolved to what it actually was -- a cheque
     clearing, an expense (or its cancellation reversal), or money
     allocated to one or more invoices -- all already derivable from
@@ -414,7 +413,7 @@ def _describe_payment(payment):
 
 class ExpensesListView(LoginRequiredMixin, TemplateView):
     """
-    Expenses (REDESIGN_VISION 4.6): newest-first, cards for today's and
+    Expenses: newest-first, cards for today's and
     this month's totals (cancelled expenses excluded from both --
     `Expense.counts_toward_totals`), free-text search over reason/note,
     plus the shared date-range picker and structured filters (bank
@@ -479,7 +478,7 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
 
 
 class ExpenseCreateView(LoginRequiredMixin, View):
-    """New-expense one-shot form (REDESIGN_VISION 4.6): atomic create of
+    """New-expense one-shot form: atomic create of
     Expense + Payment(OUT), via record_expense -- no edit/delete after."""
 
     template_name = "payments/expense_new.html"
