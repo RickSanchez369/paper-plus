@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-09-30. Per-module build history was dropped from this file on
+Updated 2026-10-01. Per-module build history was dropped from this file on
 purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
 `DECISIONS.md` the why.
 
@@ -32,12 +32,19 @@ All findings of the QA pass are now fixed (D-055..D-059): invoice cancellation r
 payments, clearing a cheque needs an explicit account, receipt uploads are validated,
 sign-in is throttled, inactive suppliers can be listed.
 
+**Batch 2026-10-01 (D-060..D-063):** backup page/commands, A4 company invoice with
+stamp boxes (company details still to come from Sina: fill `COMPANY_*` in `.env`, logo
+box is a placeholder), hostiran.net visual identity, hosting-ready update path
+(`deploy/UPDATING.md`). A fresh-database `migrate` bug was fixed on the way. Sina has
+not picked a host yet: ask the host for Python >= 3.12 and PostgreSQL first.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
 `MASTER_PROMPT` section numbers (removed 2026-09-30).
 
 ## Open items (raise with Sina before touching)
+- **Real company details/logo for the printed invoice** — Sina will send them.
 - **USD-rate source** — undecided; Inventory and Reports show a placeholder
   card. Do not invent a source.
 - **ROADMAP 4.6 returns (sales/purchase returns)** — explicitly out of scope

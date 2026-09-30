@@ -18,6 +18,7 @@ from apps.inventory.selectors import get_total_inventory_value
 from apps.partners.models import Customer, Supplier
 from apps.payments.models import BankAccount, Expense, Payment
 from apps.payments.selectors import get_bank_account_balance
+from tools.qa.qa_lib import TODAY_J
 from apps.payments.services import cancel_expense, record_expense
 from apps.products.models import Product
 from apps.purchasing.models import PurchaseInvoice
@@ -119,7 +120,7 @@ try:
         base = audit("before", start, end)
 
         def post(url, items, extra):
-            d = {"invoice_date": "1405/07/08", "payment_mode": "full",
+            d = {"invoice_date": TODAY_J, "payment_mode": "full",
                  "items-TOTAL_FORMS": len(items), "items-INITIAL_FORMS": 0, "items-MIN_NUM_FORMS": 0, "items-MAX_NUM_FORMS": 1000,
                  "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0, "payments-MIN_NUM_FORMS": 0, "payments-MAX_NUM_FORMS": 1000}
             for i, (p, q, price) in enumerate(items):

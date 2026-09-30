@@ -18,7 +18,7 @@ from apps.payments.urls import (
     payables_patterns,
     receivables_patterns,
 )
-from apps.shared.urls import reports_patterns, user_activity_patterns
+from apps.shared.urls import backup_patterns, reports_patterns, user_activity_patterns
 
 urlpatterns = [
     path("", include("apps.shared.urls")),
@@ -33,6 +33,7 @@ urlpatterns = [
     path("customers/", include("apps.partners.urls")),
     path("reports/", include(reports_patterns)),
     path("user-activity/", include(user_activity_patterns)),
+    path("backup/", include(backup_patterns)),
     path("", include("apps.users.urls")),
     path("admin/", admin.site.urls),
 ]

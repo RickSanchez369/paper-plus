@@ -16,6 +16,7 @@ from django.urls import Resolver404, resolve
 
 from apps.shared import dates
 from apps.shared.utils import format_number, format_toman
+from apps.shared.words import number_to_words
 
 register = template.Library()
 
@@ -73,6 +74,14 @@ def toman(value):
     if value is None:
         return ""
     return dates.to_persian_digits(format_toman(value)).replace(",", "٬")
+
+
+@register.filter(name="toman_words")
+def toman_words(value):
+    """"یک هزار و دویست تومان" -- the amount in words for a printed invoice."""
+    if value is None:
+        return ""
+    return f"{number_to_words(value)} تومان"
 
 
 @register.filter(name="fa_number")

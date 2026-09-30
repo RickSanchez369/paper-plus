@@ -117,3 +117,7 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-057 Expense receipts: PDF/PNG/JPG/WebP only, content must match, max 5 MB.
 - D-058 Sign-in throttling: 5 failures per phone / 30 per IP → 15-minute lock (HTTP 429).
 - D-059 The Suppliers list has an active/inactive/all filter and search, like Customers.
+- D-060 Superuser-only backup page/command: one zip of data + receipts; restore only into an empty database.
+- D-061 Printed sales invoice = A4 company document with seller/buyer boxes, words, stamp-and-signature boxes; issuer from `.env`.
+- D-062 Visual identity = hostiran.net look (supersedes D-050).
+- D-063 Install/update on a host: `manage.py update`, WhiteNoise, `deploy/UPDATING.md` (amends D-051).

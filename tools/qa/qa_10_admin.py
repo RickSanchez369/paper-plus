@@ -10,7 +10,7 @@ def scenarios(h):
     acct = h.account(); p = h.product(stock=20, cost=10, price=100); c = h.customer(); s = h.supplier()
     h.post_sale(c, [(p, 2, 100)], mode="split", payments=[{"method": "cheque", "amount": "100"}])
     h.post_purchase(s, [(p, 3, 10)], account=acct)
-    h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-adm", "amount": "5", "bank_account": "cash"})
+    h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-adm", "amount": "5", "bank_account": "cash"})
     r = h.c.get("/admin/")
     check("M01 admin index renders for a superuser", r.status_code == 200)
     n = 0

@@ -13,9 +13,16 @@ the latest global feed (row 4).
 {% block header %}داشبورد{% endblock %}
 
 {% block content %}
-<div class="page-head">
-  <h1>خوش آمدید</h1>
-</div>
+<section class="hero">
+  <div class="hero__text">
+    <h1>خوش آمدید{% if request.user.get_full_name %}، {{ request.user.get_full_name }}{% endif %}</h1>
+    <p>{{ today|jalali_long }} — خلاصهٔ وضعیت کسب‌وکار شما</p>
+  </div>
+  <div class="hero__actions">
+    <a href="{% url 'sales:new' %}" class="btn btn--light">فاکتور فروش جدید</a>
+    <a href="{% url 'purchasing:new' %}" class="btn btn--ghost">فاکتور خرید جدید</a>
+  </div>
+</section>
 
 <div class="stats">
   <div class="stat-card">

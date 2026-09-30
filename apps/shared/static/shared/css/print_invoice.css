@@ -1,0 +1,356 @@
+/*
+ * The printed sales invoice (sales/print.html): an A4 sheet in the style of
+ * an Iranian company invoice, with stamp-and-signature boxes. Loaded only by
+ * that page, after app.css (it reuses app.css's tokens and font).
+ * Screen shows the sheet on a grey desk; print drops everything but the sheet.
+ */
+
+@page {
+  size: A4;
+  margin: 10mm;
+}
+
+.print-page {
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface-sunken);
+}
+
+.print-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 210mm;
+  margin: 0 auto var(--space-4);
+}
+
+.print-toolbar__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sheet {
+  position: relative;
+  max-width: 210mm;
+  min-height: 277mm;
+  margin: 0 auto;
+  padding: 12mm 12mm 10mm;
+  background: var(--white);
+  border: 1px solid var(--border);
+  color: #000;
+  font-size: 12px;
+  line-height: 1.7;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- head: logo | title | number + date */
+
+.sheet__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid #000;
+}
+
+.sheet__logo {
+  width: 22mm;
+  height: 22mm;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--ink-400);
+  border-radius: 6px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink-400);
+}
+
+.sheet__title {
+  text-align: center;
+}
+
+.sheet__title h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.sheet__company {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-700);
+}
+
+.sheet__meta {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 48mm;
+}
+
+.sheet__meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 2px 8px;
+  border: 1px solid #000;
+  border-radius: 4px;
+}
+
+.sheet__meta dt,
+.party__grid dt {
+  color: var(--ink-500);
+}
+
+.sheet__meta dd,
+.party__grid dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ---- seller / buyer */
+
+.parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.party {
+  border: 1px solid #000;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.party__title {
+  margin: 0;
+  padding: 3px var(--space-3);
+  background: var(--ink-100);
+  border-bottom: 1px solid #000;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.party__grid {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px var(--space-4);
+}
+
+.party__grid > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.party__wide {
+  grid-column: 1 / -1;
+}
+
+/* ---- items */
+
+.lines {
+  width: 100%;
+  margin-top: var(--space-4);
+  border-collapse: collapse;
+  border: 1px solid #000;
+}
+
+.lines th,
+.lines td {
+  padding: 4px 6px;
+  border: 1px solid #000;
+  text-align: center;
+}
+
+.lines th {
+  background: var(--ink-100);
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.lines__name {
+  text-align: start;
+}
+
+.lines__row {
+  width: 12mm;
+}
+
+.lines tbody tr {
+  break-inside: avoid;
+}
+
+/* ---- summary */
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 72mm;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  break-inside: avoid;
+}
+
+.summary__label {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-500);
+}
+
+.summary__words p {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+.totals {
+  margin: 0;
+  border: 1px solid #000;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 3px var(--space-3);
+  border-bottom: 1px solid var(--ink-200);
+}
+
+.totals > div:last-child {
+  border-bottom: 0;
+}
+
+.totals dt,
+.totals dd {
+  margin: 0;
+}
+
+.totals__final {
+  background: var(--ink-100);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ---- stamp & signature */
+
+.signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: auto;              /* pinned to the bottom of the sheet */
+  padding-top: var(--space-5);
+  break-inside: avoid;
+}
+
+.signature__label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.signature__box {
+  height: 34mm;                   /* room for a round stamp plus a signature */
+  border: 1px solid #000;
+  border-radius: 6px;
+}
+
+.sheet__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  font-size: 10.5px;
+  color: var(--ink-500);
+}
+
+.sheet__foot p {
+  margin: 0;
+}
+
+/* ---- status watermark (cancelled / draft) */
+
+.sheet__watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 96px;
+  font-weight: 800;
+  color: rgb(218 30 40 / 14%);
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+
+.sheet__watermark--draft {
+  color: rgb(0 0 0 / 8%);
+}
+
+@media print {
+  .print-page {
+    padding: 0;
+    background: var(--white);
+  }
+
+  .sheet {
+    max-width: none;
+    min-height: 277mm;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .lines th,
+  .party__title,
+  .totals__final {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ---- purchasing/print.html: the plain internal copy of a purchase invoice
+   (no stamp boxes; it is a record, not a document handed to a customer). */
+
+.print-page__trigger {
+  margin-bottom: var(--space-5);
+}
+
+.print-invoice__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 2px solid var(--ink-900);
+}
+
+.print-invoice__party {
+  margin-bottom: var(--space-4);
+}
+
+.print-invoice__totals {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  max-width: 320px;
+  margin-inline-start: auto;
+}
+
+.print-invoice__totals > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.print-invoice__totals-final {
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}
+
+.print-invoice__foot {
+  margin-top: var(--space-6);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}

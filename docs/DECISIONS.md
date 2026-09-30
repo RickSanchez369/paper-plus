@@ -940,3 +940,62 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Decision: Like the Customers list, the Suppliers list has a search box (name/phone)
   and an active / inactive / all filter (default active); inactive rows carry a
   "غیرفعال" badge. Deactivating a supplier still only hides it by default.
+
+### D-060: One-click backup of the whole business
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina
+- Decision: A superuser-only page (sidebar "پشتیبان‌گیری", `/backup/`) has a POST button
+  that builds and streams one zip: `manifest.json` (time, row counts), `database.json`
+  (Django `dumpdata` of every app model, natural keys; sessions, content types,
+  permissions and the admin log are left out) and `media/` (uploaded receipts).
+  Nothing is stored on the server by the page. `manage.py backup_db` writes the same
+  zip to `BACKUP_DIR`; `manage.py restore_db FILE` loads it into an EMPTY migrated
+  database only (refuses otherwise) and replaces the numbering rows migrate seeds.
+- Why JSON and not pg_dump: it needs no binary on the host and survives a PostgreSQL
+  version change. Verified by restoring a real backup into a scratch schema: every
+  model's row count matched.
+- Consequence: the file holds every amount, customer address and password hash, hence
+  superuser-only and POST-only (a link or prefetch can never trigger it).
+
+### D-061: The printed sales invoice is a company document with stamp boxes
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina
+- Decision: `sales/print.html` is an A4 "صورت‌حساب فروش کالا": logo box, title, number and
+  date; seller and buyer boxes; numbered item table; totals with the amount in words
+  (`apps/shared/words.py`); paid/outstanding when confirmed; two boxes "مهر و امضای
+  فروشنده / خریدار"; a diagonal watermark for cancelled ("باطل شده") and draft invoices.
+  The issuer's details come from `settings.COMPANY`, filled from `COMPANY_*` keys in
+  `.env`, so they change without a code update; an empty key drops that line. The
+  purchase print stays the plain internal copy. Still no PDF generation: the browser's
+  print dialog is the mechanism.
+- Open: Sina will supply the real company details (and logo) later.
+
+### D-062: Visual identity moves from IBM Carbon to the hostiran.net look
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina
+- Decision: Replaces D-050. Navy-tinted neutrals (`#0a1f44` ink, `#213368` action), a
+  navy gradient sidebar/sign-in/dashboard banner with a cyan (`#26a9e0`) highlight and
+  a dotted glow, blue `#0077ff` for links/focus/selection, pale blue-grey page with white
+  rounded cards (radius 8 controls / 12 buttons / 16 cards), full-border white inputs,
+  pill badges, flat surfaces (shadow only on overlays). Vazirmatn stays as the font
+  (hostiran's Dana is a licensed font). Still only tokens on `:root` plus a few
+  component rules in `app.css`; no new dependencies.
+
+### D-063: The app can be installed and updated on a host (amends D-051)
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina
+- Decision: D-051 removed the old deployment machinery; Sina now wants to host the app,
+  so a minimal host-agnostic path is back (SHADOW stays out): WhiteNoise serves the
+  collected static files (`STATIC_ROOT`), production-only cookie/proxy security settings
+  read from `.env`, `BACKUP_DIR`, and `manage.py update` (safety backup -> migrate ->
+  collectstatic -> `check --deploy`) as the single command after every code update.
+  `deploy/UPDATING.md` (Persian runbook) and `deploy/passenger_wsgi.py` are the only
+  hosting files. `.env`, `media/` and `backups/` are never part of an update.
+- Found while testing a fresh database: `shared.0003_seed_role_groups` crashed on an empty
+  DB (content types do not exist yet during `migrate`); it now skips the seed there (the
+  roles were retired long ago). Without this no new host could have been installed.
+- Hosting needs Python >= 3.12 and PostgreSQL; MySQL is not supported.

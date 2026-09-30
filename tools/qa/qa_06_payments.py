@@ -30,7 +30,7 @@ def scenarios(h):
     inv1.invoice_date = h.today - datetime.timedelta(days=10); inv1.save()
     url = f"/receivables/{cust.pk}/record-payment/"
 
-    def pay(amount, invoices=(), account="", date="1405/07/08", note="", client=None, url=url):
+    def pay(amount, invoices=(), account="", date=TODAY_J, note="", client=None, url=url):
         d = {"amount": str(amount), "payment_date": date, "bank_account": str(account.pk) if account not in ("", None) else "", "note": note}
         if invoices:
             d["invoices"] = [str(i.pk) for i in invoices]
@@ -76,7 +76,7 @@ def scenarios(h):
     oinv = last_sale(other)
     r = pay(10, [oinv])
     check("R10 TAMPER: another customer's invoice id is not accepted", r.status_code == 422 and not PaymentAllocation.objects.filter(sales_invoice=oinv).exists())
-    r = h.c.post(url, {"amount": "10", "payment_date": "1405/07/08", "invoices": ["not-a-uuid"]})
+    r = h.c.post(url, {"amount": "10", "payment_date": TODAY_J, "invoices": ["not-a-uuid"]})
     check("R10 malformed invoice id rejected without a 500", r.status_code == 422, r.status_code)
     r = pay(10, [inv2], note="x" * 5000)
     check("R11 a very long note does not crash", r.status_code in (200, 422), r.status_code)
@@ -98,7 +98,7 @@ def scenarios(h):
     h.post_purchase(sup, [(p, 10, 100)], mode="split")
     pi = last_purchase(sup)
     purl = f"/payables/{sup.pk}/record-payment/"
-    d = {"amount": "300", "payment_date": "1405/07/08", "invoices": [str(pi.pk)], "bank_account": str(acct.pk)}
+    d = {"amount": "300", "payment_date": TODAY_J, "invoices": [str(pi.pk)], "bank_account": str(acct.pk)}
     r = h.c.post(purl, d)
     pay_out = Payment.objects.get(supplier=sup)
     check("Y01 supplier payment is OUT, from the account, allocated", r.status_code == 200 and pay_out.direction == "out" and pay_out.bank_account_id == acct.pk and get_supplier_outstanding(sup) == 700)
@@ -244,7 +244,7 @@ def scenarios(h):
     # ledger with every row kind
     h.post_sale(cust, [(p, 1, 100)], account=a)
     h.post_purchase(sup, [(p, 1, 10)], account=a)
-    h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-ledger", "amount": "55", "bank_account": str(a.pk)})
+    h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-ledger", "amount": "55", "bank_account": str(a.pk)})
     r = h.c.get(f"/bank-accounts/{a.pk}/")
     check("B08 ledger shows sale, purchase and expense rows and balance 100-10-55=35", r.status_code == 200 and get_bank_account_balance(a) == 35 and has(r, "QA-ledger"))
     r = h.c.get("/bank-accounts/")
@@ -256,7 +256,7 @@ def scenarios(h):
     b0 = get_bank_account_balance(acct)
 
     def exp(**kw):
-        d = {"expense_date": "1405/07/08", "reason": "QA-exp-" + rnd(), "amount": "1000", "bank_account": str(acct.pk), "note": ""}
+        d = {"expense_date": TODAY_J, "reason": "QA-exp-" + rnd(), "amount": "1000", "bank_account": str(acct.pk), "note": ""}
         d.update(kw)
         return h.c.post("/expenses/new/", d)
 
@@ -329,7 +329,7 @@ def upload_scenarios(h):
     made = []
 
     def send(name, data, content_type="application/octet-stream"):
-        d = {"expense_date": "1405/07/08", "reason": "QA-up-" + rnd(), "amount": "10", "bank_account": "cash"}
+        d = {"expense_date": TODAY_J, "reason": "QA-up-" + rnd(), "amount": "10", "bank_account": "cash"}
         n0 = Expense.objects.count()
         r = h.c.post("/expenses/new/", {**d, "document": SimpleUploadedFile(name, data, content_type=content_type)})
         e = Expense.objects.filter(reason=d["reason"]).first()
@@ -356,7 +356,7 @@ def upload_scenarios(h):
     check("UP03 a file of exactly 5 MB is accepted", r.status_code == 302 and created == 1, (r.status_code, created))
     r = h.c.get("/expenses/new/")
     check("UP04 the form states the rule", has(r, "۵ مگابایت") or has(r, "5"))
-    r = h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-nofile", "amount": "5", "bank_account": "cash"})
+    r = h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-nofile", "amount": "5", "bank_account": "cash"})
     check("UP05 an expense without any file is still fine", r.status_code == 302)
     for f in made:
         try:

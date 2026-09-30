@@ -6,7 +6,8 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
 <head>
   <meta charset="utf-8">
   <title>فاکتور {{ invoice.invoice_number }} | پیپر پلاس</title>
-  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
 </head>
 <body class="print-page">
   <button type="button" class="btn no-print print-page__trigger" onclick="window.print()">چاپ</button>

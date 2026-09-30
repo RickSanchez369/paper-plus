@@ -10,12 +10,15 @@ and stock still go through `apps/*/services.py` inside `transaction.atomic`).
 """
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.generic import TemplateView
 
-from . import dashboard, dates, reports, user_activity
+from . import backup, dashboard, dates, reports, user_activity
 from .forms import DateRangeForm, UserActivityFilterForm
+from .permissions import is_privileged
 
 
 class DateRangeMixin:
@@ -59,6 +62,7 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
         overdue_days = max(1, min(overdue_days, 3650))
 
         context.update({
+            "today": timezone.localdate(),
             "kpi": dashboard.kpi_cards(),
             "totals": dashboard.totals_now(),
             "cheques_due_soon": dashboard.cheques_due_soon(),
@@ -185,3 +189,31 @@ class DatePickerMonthView(LoginRequiredMixin, TemplateView):
         context["grid"] = dates.month_grid(year, month)
         context["weekdays"] = [name[0] for name in dates.WEEKDAY_NAMES]
         return context
+
+
+class BackupView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """
+    Download the whole business as one zip (data + uploaded receipts).
+
+    Superuser only: the file holds every customer, amount and password hash.
+    POST, not GET, so a link or a prefetch can never trigger it.
+    """
+
+    template_name = "shared/backup.html"
+
+    def test_func(self):
+        return is_privileged(self.request.user)
+
+    def handle_no_permission(self):
+        # A signed-in non-superuser gets 403, not a login loop.
+        self.raise_exception = self.request.user.is_authenticated
+        return super().handle_no_permission()
+
+    def post(self, request, *args, **kwargs):
+        handle = backup.build_backup()
+        return FileResponse(
+            handle,
+            as_attachment=True,
+            filename=backup.backup_filename(),
+            content_type="application/zip",
+        )

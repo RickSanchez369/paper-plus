@@ -15,6 +15,14 @@ def get_perms(apps, model_label, codenames):
 
 def seed_groups(apps, schema_editor):
     Group = apps.get_model("auth", "Group")
+    ContentType = apps.get_model("contenttypes", "ContentType")
+
+    # On a brand-new database the content types/permissions do not exist yet
+    # (Django creates them after migrate finishes), so there is nothing to
+    # attach. The roles were retired with the single-business rebuild anyway,
+    # so a fresh install simply skips this seed.
+    if not ContentType.objects.filter(app_label="sales", model="salesinvoice").exists():
+        return
 
     seller_perms = []
     seller_perms += get_perms(apps, "products.Product", ["view_product"])

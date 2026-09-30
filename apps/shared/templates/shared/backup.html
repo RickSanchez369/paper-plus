@@ -1,0 +1,35 @@
+{% extends "shared/base.html" %}
+
+{% comment %}
+Backup: one button, one zip. Superuser only (BackupView). The file is built
+on the fly and streamed; nothing is stored on the server by this page.
+{% endcomment %}
+
+{% block title %}پشتیبان‌گیری{% endblock %}
+{% block header %}پشتیبان‌گیری{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>پشتیبان‌گیری از اطلاعات</h1>
+  <p class="page-head__lede">
+    یک فایل فشرده از همهٔ اطلاعات کسب‌وکار (فاکتورها، پرداخت‌ها، چک‌ها، انبار، مشتریان، کاربران)
+    به‌همراه رسیدهای آپلودشده ساخته و مستقیم دانلود می‌شود.
+  </p>
+</div>
+
+<div class="card backup-card">
+  <div class="card__body">
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn--lg">دانلود پشتیبان کامل</button>
+    </form>
+
+    <ul class="backup-card__notes">
+      <li>فایل را جایی امن و بیرون از هاست نگه دارید (کامپیوتر خودتان یا فضای ابری).</li>
+      <li>این فایل شامل همهٔ اطلاعات مالی و نشانی مشتریان است؛ آن را در اختیار دیگران نگذارید.</li>
+      <li>پیشنهاد: پس از هر روز کاری، یا دست‌کم هفته‌ای یک‌بار، یک پشتیبان بگیرید.</li>
+      <li>بازیابی روی یک پایگاه دادهٔ خالی انجام می‌شود: <code>python manage.py restore_db فایل.zip</code></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -45,14 +45,14 @@ def scenarios(h):
     for c, act in zip(ours, ("clear", "bounce", "cancel")):
         h.c.post(f"/cheques/{c.pk}/{act}/")
     # expenses incl. cancelled
-    h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-rent", "amount": "900", "bank_account": str(acct.pk)})
+    h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-rent", "amount": "900", "bank_account": str(acct.pk)})
     h.c.post("/expenses/new/", {"expense_date": "1405/07/07", "reason": "QA-tea", "amount": "40", "bank_account": "cash"})
     e = Expense.objects.get(reason="QA-tea")
     h.c.post(f"/expenses/{e.pk}/cancel/")
     # a recorded customer payment
     inv = SalesInvoice.objects.filter(customer=c1, status="confirmed").latest("created_at")
-    h.c.post(f"/receivables/{c1.pk}/record-payment/", {"amount": "100", "payment_date": "1405/07/08", "bank_account": str(acct.pk), "invoices": [str(inv.pk)]})
-    h.c.post(f"/payables/{s1.pk}/record-payment/", {"amount": "50", "payment_date": "1405/07/08", "bank_account": ""})
+    h.c.post(f"/receivables/{c1.pk}/record-payment/", {"amount": "100", "payment_date": TODAY_J, "bank_account": str(acct.pk), "invoices": [str(inv.pk)]})
+    h.c.post(f"/payables/{s1.pk}/record-payment/", {"amount": "50", "payment_date": TODAY_J, "bank_account": ""})
 
     seen, queue, problems = set(), ["/"], []
     skip = ("/logout/", "/admin/", "/static/", "/media/")

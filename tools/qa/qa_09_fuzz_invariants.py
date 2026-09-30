@@ -91,7 +91,7 @@ def scenarios(h):
                 c = rng.choice(customers)
                 inv = list(SalesInvoice.objects.filter(customer=c, status="confirmed"))
                 chosen = [str(i.pk) for i in rng.sample(inv, min(len(inv), rng.randint(0, 2)))]
-                d = {"amount": str(rng.randint(1, 3000)), "payment_date": "1405/07/08", "bank_account": rng.choice(["", str(rng.choice(accounts).pk)])}
+                d = {"amount": str(rng.randint(1, 3000)), "payment_date": TODAY_J, "bank_account": rng.choice(["", str(rng.choice(accounts).pk)])}
                 if chosen:
                     d["invoices"] = chosen
                 r = h.c.post(f"/receivables/{c.pk}/record-payment/", d)
@@ -99,7 +99,7 @@ def scenarios(h):
                 s = rng.choice(suppliers)
                 inv = list(PurchaseInvoice.objects.filter(supplier=s, status="confirmed"))
                 chosen = [str(i.pk) for i in rng.sample(inv, min(len(inv), rng.randint(0, 2)))]
-                d = {"amount": str(rng.randint(1, 3000)), "payment_date": "1405/07/08", "bank_account": rng.choice(["", str(rng.choice(accounts).pk)])}
+                d = {"amount": str(rng.randint(1, 3000)), "payment_date": TODAY_J, "bank_account": rng.choice(["", str(rng.choice(accounts).pk)])}
                 if chosen:
                     d["invoices"] = chosen
                 r = h.c.post(f"/payables/{s.pk}/record-payment/", d)
@@ -112,7 +112,7 @@ def scenarios(h):
                 r = h.clear_cheque(ch, account=rng.choice(['cheque', 'cash', rng.choice(accounts)])) if act == 'clear' else h.c.post(f"/cheques/{ch.pk}/{act}/")
                 track(r, op)
         elif op == "expense":
-            r = h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-fz", "amount": str(rng.randint(1, 900)), "bank_account": rng.choice(["cash", str(rng.choice(accounts).pk)])})
+            r = h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-fz", "amount": str(rng.randint(1, 900)), "bank_account": rng.choice(["cash", str(rng.choice(accounts).pk)])})
             track(r, op)
         elif op == "cancel_expense":
             es = list(Expense.objects.all())

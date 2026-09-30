@@ -2,7 +2,15 @@
 
 """Context every page of the frontend needs, so no view has to remember it."""
 
+from django.conf import settings
+
 from .navigation import NAVIGATION
+from .permissions import is_privileged
+
+
+def company(request):
+    """Who issues printed documents (settings.COMPANY, filled from .env)."""
+    return {"company": settings.COMPANY}
 
 
 def navigation(request):
@@ -18,7 +26,13 @@ def navigation(request):
     if match is not None:
         current = match.namespace or (match.url_name or "")
 
+    user = getattr(request, "user", None)
+    visible = tuple(
+        group for group in NAVIGATION
+        if not group.superuser_only or is_privileged(user)
+    )
+
     return {
-        "navigation": NAVIGATION,
+        "navigation": visible,
         "current_section": current,
     }

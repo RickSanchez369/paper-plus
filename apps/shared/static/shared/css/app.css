@@ -1,12 +1,11 @@
 /*
  * paper-plus — application shell.
  *
- * Visual identity (Phase D): IBM Carbon-inspired -- flat square chrome,
- * thin borders instead of shadows, one blue accent, cool-grey neutrals.
- * Chosen because this is a dense, numbers-first financial tool, not a
- * marketing page. Every colour, radius and space is a token on :root, so
- * the identity can change by editing that block alone. Component rules
- * below reference tokens only -- no literal colours past this block.
+ * Visual identity (D-062): modelled on hostiran.net -- deep navy chrome with
+ * a cyan highlight, soft rounded cards on a pale blue-grey page, pill badges,
+ * no hard shadows. Every colour, radius and space is a token on :root, so the
+ * identity can change by editing that block alone. Component rules below
+ * reference tokens only -- no literal colours past this block.
  *
  * RTL is the only direction this app runs in, so logical properties
  * (inline-start/end) are used throughout rather than left/right.
@@ -20,35 +19,38 @@
 }
 
 :root {
-  /* Neutrals: Carbon's grey ramp, so surfaces never disagree. */
-  --ink-900: #161616;
-  --ink-800: #262626;
-  --ink-700: #393939;
-  --ink-500: #525252;
-  --ink-400: #6f6f6f;
-  --ink-300: #c6c6c6;
-  --ink-200: #e0e0e0;
-  --ink-100: #f4f4f4;
-  --ink-050: #f4f4f4;
+  /* Neutrals: a navy-tinted ramp, so text, lines and surfaces all agree. */
+  --ink-900: #0a1f44;
+  --ink-800: #152a58;
+  --ink-700: #213368;
+  --ink-500: #55617a;
+  --ink-400: #8a94a6;
+  --ink-300: #c8d0de;
+  --ink-200: #e3e9f3;
+  --ink-100: #f5f8fd;
+  --ink-050: #f8f9fb;
   --white: #ffffff;
 
-  /* One accent. 600 is the action colour, 700 its hover, 500 the focus ring
-     and the marker on dark surfaces. */
-  --accent-700: #0043ce;
-  --accent-600: #0f62fe;
-  --accent-500: #4589ff;
-  --accent-100: #edf5ff;
+  /* Action colour = the brand navy. Blue is the link / focus / selection
+     colour, cyan is the highlight on dark surfaces. */
+  --action: #213368;
+  --action-hover: #0a1f44;
+  --accent-700: #0062d1;
+  --accent-600: #0077ff;
+  --accent-500: #26a9e0;
+  --accent-100: #e6f1ff;
 
   /* Money has a direction: in is good, out is not, overdue is urgent. */
-  --positive-600: #198038;
-  --positive-100: #defbe6;
-  --negative-600: #da1e28;
-  --negative-100: #fff1f1;
-  --warning-600: #8e6a00;
-  --warning-100: #fcf4d6;
+  --positive-600: #12804a;
+  --positive-100: #e3f7ec;
+  --negative-600: #e0433d;
+  --negative-100: #fdebea;
+  --warning-600: #9a6a00;
+  --warning-100: #fff3d1;
 
   --surface: var(--white);
-  --surface-sunken: var(--ink-100);
+  --surface-sunken: #f2f5fb;
+  --surface-tint: var(--ink-100);
   --border: var(--ink-200);
   --text: var(--ink-900);
   --text-muted: var(--ink-500);
@@ -62,18 +64,21 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  /* One shape rule: near-square everywhere. */
-  --radius-sm: 2px;
-  --radius-md: 2px;
-  --radius-lg: 4px;
+  /* Rounded, never pill-shaped except badges: controls 8, buttons 12,
+     cards 16. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-  /* Flat: cards are separated by borders. Only overlays (dropdowns,
-     dialogs, the date picker) lift off the page. */
+  /* Flat by default; only overlays (dropdowns, dialogs, date picker) lift. */
   --shadow-sm: none;
-  --shadow-md: 0 2px 6px rgb(0 0 0 / 20%);
+  --shadow-md: 0 10px 30px rgb(10 31 68 / 14%);
 
-  --sidebar-width: 236px;
-  --header-height: 60px;
+  /* The dark gradient used by the sidebar and the sign-in page. */
+  --chrome: linear-gradient(200deg, #213368 0%, #0a1f44 100%);
+
+  --sidebar-width: 244px;
+  --header-height: 64px;
 
   --font: "Vazirmatn", "Segoe UI", Tahoma, system-ui, sans-serif;
 }
@@ -144,7 +149,7 @@ h2 { font-size: 16px; }
   align-self: start;
   height: 100vh;
   overflow-y: auto;
-  background: var(--ink-900);
+  background: var(--chrome);
   color: var(--ink-300);
   display: flex;
   flex-direction: column;
@@ -159,7 +164,7 @@ h2 { font-size: 16px; }
   color: var(--white);
   font-weight: 600;
   font-size: 15px;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
   flex-shrink: 0;
 }
 
@@ -168,9 +173,9 @@ h2 { font-size: 16px; }
 }
 
 .sidebar__mark {
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
   background: var(--accent-500);
   display: grid;
   place-items: center;
@@ -194,7 +199,7 @@ h2 { font-size: 16px; }
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--ink-500);
+  color: var(--ink-400);
   text-transform: none;
 }
 
@@ -203,23 +208,22 @@ h2 { font-size: 16px; }
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--ink-300);
   font-size: 13.5px;
   line-height: 1.5;
 }
 
 .nav-link:hover {
-  background: rgb(255 255 255 / 6%);
+  background: rgb(255 255 255 / 8%);
   color: var(--white);
   text-decoration: none;
 }
 
 .nav-link.is-active {
-  background: var(--ink-700);
-  box-shadow: inset -3px 0 0 var(--accent-500);
+  background: rgb(255 255 255 / 14%);
   color: var(--white);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* The sub-links of a grouped module (Receivables / Payables / Cheques). */
@@ -228,9 +232,13 @@ h2 { font-size: 16px; }
   font-size: 13px;
 }
 
+.nav-link.is-active .nav-icon {
+  color: var(--accent-500);
+}
+
 .nav-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   stroke: currentColor;
   fill: none;
@@ -258,6 +266,17 @@ h2 { font-size: 16px; }
   padding-inline: var(--space-6);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+}
+
+.header__title::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  margin-inline-end: var(--space-2);
+  border-radius: 2px;
+  background: var(--accent-500);
+  vertical-align: -2px;
 }
 
 .cheque-clear {
@@ -307,7 +326,7 @@ h2 { font-size: 16px; }
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 
@@ -332,29 +351,41 @@ h2 { font-size: 16px; }
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font: inherit;
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  background: var(--accent-600);
+  background: var(--action);
   color: var(--white);
+  transition: background-color 0.15s;
 }
 
 .btn:hover {
-  background: var(--accent-700);
+  background: var(--action-hover);
   text-decoration: none;
 }
 
+.btn:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+
+.btn--lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: 15px;
+}
+
 .btn--quiet {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--text-muted);
+  background: var(--surface);
+  border-color: var(--ink-300);
+  color: var(--ink-700);
 }
 
 .btn--quiet:hover {
   background: var(--ink-100);
-  color: var(--text);
+  border-color: var(--ink-700);
+  color: var(--ink-900);
 }
 
 .btn--block {
@@ -397,23 +428,21 @@ h2 { font-size: 16px; }
 .field > textarea {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  /* Carbon field: filled, with only its bottom edge drawn. */
-  border: 1px solid transparent;
-  border-bottom-color: var(--ink-400);
+  border: 1px solid var(--ink-300);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 14px;
   color: var(--text);
-  background: var(--ink-100);
+  background: var(--white);
 }
 
 .field__control:focus,
 .field > input:focus,
 .field > select:focus,
 .field > textarea:focus {
-  outline: 2px solid var(--accent-600);
-  outline-offset: -2px;
-  border-color: transparent;
+  outline: 3px solid rgb(0 119 255 / 18%);
+  outline-offset: 0;
+  border-color: var(--accent-600);
 }
 
 .field__error {
@@ -458,15 +487,18 @@ h2 { font-size: 16px; }
   display: grid;
   place-items: center;
   padding: var(--space-5);
-  background: var(--surface-sunken);
+  background:
+    radial-gradient(circle at 15% 110%, rgb(38 169 224 / 40%) 0, transparent 50%),
+    radial-gradient(rgb(255 255 255 / 12%) 1px, transparent 1.5px) 0 0 / 24px 24px,
+    var(--chrome);
 }
 
 .auth__card {
   width: min(380px, 100%);
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  border: 0;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
   padding: var(--space-6);
 }
 
@@ -817,6 +849,61 @@ h2 { font-size: 16px; }
   color: var(--text-muted);
 }
 
+/* Dashboard banner: the same navy gradient as the sidebar, with the soft
+   dotted glow the hostiran.net hero uses. */
+.hero {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-6);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 12% 120%, rgb(38 169 224 / 45%) 0, transparent 45%),
+    radial-gradient(rgb(255 255 255 / 14%) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    var(--chrome);
+  color: var(--white);
+  overflow: hidden;
+}
+
+.hero h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.hero p {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-300);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.btn--light {
+  background: var(--white);
+  color: var(--ink-900);
+}
+
+.btn--light:hover {
+  background: var(--accent-100);
+}
+
+.btn--ghost {
+  background: rgb(255 255 255 / 10%);
+  border-color: rgb(255 255 255 / 35%);
+  color: var(--white);
+}
+
+.btn--ghost:hover {
+  background: rgb(255 255 255 / 20%);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -830,8 +917,9 @@ h2 { font-size: 16px; }
   padding: var(--space-4) var(--space-5);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  border-top: 3px solid var(--accent-500);
 }
 
 .stat-card__label {
@@ -908,8 +996,8 @@ h2 { font-size: 16px; }
 
 .data-table th {
   background: var(--ink-100);
-  border-bottom-color: var(--ink-300);
-  color: var(--text);
+  border-bottom-color: var(--ink-200);
+  color: var(--ink-700);
   font-weight: 600;
   font-size: 12px;
 }
@@ -937,6 +1025,7 @@ h2 { font-size: 16px; }
 
 .table-card {
   overflow-x: auto;
+  border-radius: var(--radius-lg);
 }
 
 .pagination {
@@ -1277,57 +1366,29 @@ h2 { font-size: 16px; }
 
 /* ------------------------------------------------------------- printing */
 
-.print-page {
-  font-family: var(--font);
-  background: var(--surface);
-  color: var(--text);
-  padding: var(--space-6);
-}
-
-.print-page__trigger {
-  margin-bottom: var(--space-5);
-}
-
-.print-invoice__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-5);
-  padding-bottom: var(--space-4);
-  border-bottom: 2px solid var(--ink-900);
-}
-
-.print-invoice__party {
-  margin-bottom: var(--space-4);
-}
-
-.print-invoice__totals {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  max-width: 320px;
-  margin-inline-start: auto;
-}
-
-.print-invoice__totals > div {
-  display: flex;
-  justify-content: space-between;
-}
-
-.print-invoice__totals-final {
-  font-weight: 700;
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-2);
-}
-
-.print-invoice__foot {
-  margin-top: var(--space-6);
-  font-size: 12.5px;
-  color: var(--text-muted);
-}
-
+/* The invoice sheet itself lives in print_invoice.css; this is the one rule
+   every printable page shares. */
 @media print {
   .no-print {
     display: none !important;
   }
+}
+
+/* ------------------------------------------------------------- backup page */
+
+.backup-card__notes {
+  margin: var(--space-5) 0 0;
+  padding-inline-start: var(--space-5);
+  color: var(--text-muted);
+  line-height: 2;
+}
+
+.backup-card__notes code {
+  direction: ltr;
+  unicode-bidi: isolate;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  color: var(--ink-900);
+  font-size: 12.5px;
 }

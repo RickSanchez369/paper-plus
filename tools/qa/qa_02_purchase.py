@@ -95,7 +95,7 @@ def scenarios(h):
     check("P12 same product twice is rejected", r.status_code == 200 and n_inv() == n3)
     r = h.post_purchase(sup, [], account=acct)
     check("P13 no items is rejected", r.status_code == 200 and n_inv() == n3)
-    d = {"supplier": str(sup.pk), "invoice_date": "1405/07/08", "payment_mode": "full", "paid_from": str(acct.pk)}
+    d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "paid_from": str(acct.pk)}
     d.update(h._rows("items", [{"product": "", "quantity": "", "unit_price": ""}, {"product": str(b.pk), "quantity": "2", "unit_price": "10"}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
@@ -129,7 +129,7 @@ def scenarios(h):
     for label, s in (("missing", None), ("inactive", inactive)):
         r = h.post_purchase(s, [(a, 1, 10)], account=acct)
         check(f"P17 {label} supplier rejected", r.status_code == 200 and n_inv() == c0)
-    d = {"supplier": "not-a-uuid", "invoice_date": "1405/07/08", "payment_mode": "full", "paid_from": str(acct.pk)}
+    d = {"supplier": "not-a-uuid", "invoice_date": TODAY_J, "payment_mode": "full", "paid_from": str(acct.pk)}
     d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": "1"}])); d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
     check("P17 malformed supplier id rejected (no 500)", r.status_code == 200 and n_inv() == c0, r.status_code)
@@ -148,7 +148,7 @@ def scenarios(h):
     for label, dt in (("garbage", "hello"), ("empty", ""), ("impossible Jalali day", "1405/13/45"), ("Gregorian-style", "2026-09-30")):
         r = h.post_purchase(sup, [(a, 1, 10)], account=acct, date=dt)
         check(f"P19 date '{label}' rejected without a 500", r.status_code == 200 and n_inv() == c0, (r.status_code, n_inv() - c0))
-    r = h.post_purchase(sup, [(a, 1, 10)], account=acct, date="1405/07/08")
+    r = h.post_purchase(sup, [(a, 1, 10)], account=acct, date=TODAY_J)
     check("P19 a normal Jalali date is accepted", r.status_code == 302)
     r = h.post_purchase(sup, [(a, 1, 10)], account=acct, date="1500/01/01")
     check("P19 a far-future date is accepted or rejected but never a 500", r.status_code in (200, 302))
@@ -171,7 +171,7 @@ def scenarios(h):
 
     # tampered management form
     for total in ("-1", "abc", "100000", ""):
-        d = {"supplier": str(sup.pk), "invoice_date": "1405/07/08", "payment_mode": "full", "paid_from": str(acct.pk),
+        d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "paid_from": str(acct.pk),
              "items-TOTAL_FORMS": total, "items-INITIAL_FORMS": 0, "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0}
         r = h.c.post("/purchasing/new/", d)
         check(f"P23 tampered TOTAL_FORMS='{total}' does not crash", r.status_code in (200, 400), r.status_code)

@@ -1,64 +1,129 @@
 {% load static paper %}<!DOCTYPE html>
 {% comment %}
-A print-friendly render of the invoice, not a generated file (RULES.md
-excludes PDF from scope) -- the browser's own print dialog is the whole
-mechanism. Deliberately outside shared/base.html: no sidebar, no header,
-nothing that would print alongside the invoice.
+The printed sales invoice, laid out as a company "صورت‌حساب فروش" on A4 with
+boxes for the seller's and buyer's stamp and signature. Not a generated
+file (no PDF, RULES.md): the browser's print dialog is the whole mechanism.
+Deliberately outside shared/base.html -- no sidebar or header may print.
+
+Who issues it comes from settings.COMPANY (filled from .env, see
+.env.example); a blank value drops that line from the paper.
 {% endcomment %}
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <title>فاکتور {{ invoice.invoice_number }} | پیپر پلاس</title>
-  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>فاکتور {{ invoice.invoice_number|fa_digits }} | {{ company.name }}</title>
+  <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
 </head>
 <body class="print-page">
-  <button type="button" class="btn no-print print-page__trigger" onclick="window.print()">چاپ</button>
+  <div class="print-toolbar no-print">
+    <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn--quiet">بازگشت</a>
+    <button type="button" class="btn" onclick="window.print()">چاپ فاکتور</button>
+    <span class="print-toolbar__hint">برای چاپ، گزینهٔ «Headers and footers» مرورگر را خاموش کنید.</span>
+  </div>
 
-  <div class="print-invoice">
-    <header class="print-invoice__head">
-      <h1>پیپر پلاس</h1>
-      <div>
-        <p>فاکتور فروش شمارهٔ {{ invoice.invoice_number|fa_digits }}</p>
-        <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>
+  <article class="sheet">
+    {% if invoice.status == "cancelled" %}<div class="sheet__watermark">باطل شده</div>
+    {% elif invoice.status == "draft" %}<div class="sheet__watermark sheet__watermark--draft">پیش‌نویس</div>{% endif %}
+
+    <header class="sheet__head">
+      <div class="sheet__logo" aria-hidden="true">{{ company.name|slice:":1" }}</div>
+      <div class="sheet__title">
+        <h1>صورت‌حساب فروش کالا</h1>
+        <p class="sheet__company">{{ company.legal_name|default:company.name }}</p>
       </div>
+      <dl class="sheet__meta">
+        <div><dt>شمارهٔ فاکتور</dt><dd>{{ invoice.invoice_number|fa_digits|default:"—" }}</dd></div>
+        <div><dt>تاریخ</dt><dd>{{ invoice.invoice_date|jalali }}</dd></div>
+      </dl>
     </header>
 
-    <section class="print-invoice__party">
-      <p><strong>مشتری:</strong> {{ invoice.customer.name }}</p>
-      {% if invoice.customer.phone %}<p><strong>تلفن:</strong> {{ invoice.customer.phone }}</p>{% endif %}
+    <section class="parties">
+      <div class="party">
+        <h2 class="party__title">مشخصات فروشنده</h2>
+        <dl class="party__grid">
+          <div><dt>نام</dt><dd>{{ company.legal_name|default:company.name }}</dd></div>
+          {% if company.economic_code %}<div><dt>شمارهٔ اقتصادی</dt><dd class="num">{{ company.economic_code|fa_digits }}</dd></div>{% endif %}
+          {% if company.registration_no %}<div><dt>شمارهٔ ثبت</dt><dd class="num">{{ company.registration_no|fa_digits }}</dd></div>{% endif %}
+          {% if company.national_id %}<div><dt>شناسهٔ ملی</dt><dd class="num">{{ company.national_id|fa_digits }}</dd></div>{% endif %}
+          {% if company.postal_code %}<div><dt>کد پستی</dt><dd class="num">{{ company.postal_code|fa_digits }}</dd></div>{% endif %}
+          {% if company.phone %}<div><dt>تلفن</dt><dd class="num">{{ company.phone|fa_digits }}</dd></div>{% endif %}
+          {% if company.address %}<div class="party__wide"><dt>نشانی</dt><dd>{{ company.address }}</dd></div>{% endif %}
+        </dl>
+      </div>
+      <div class="party">
+        <h2 class="party__title">مشخصات خریدار</h2>
+        <dl class="party__grid">
+          <div><dt>نام</dt><dd>{{ invoice.customer.name }}</dd></div>
+          {% if invoice.customer.phone %}<div><dt>تلفن</dt><dd class="num">{{ invoice.customer.phone|fa_digits }}</dd></div>{% endif %}
+          {% if invoice.customer.address %}<div class="party__wide"><dt>نشانی</dt><dd>{{ invoice.customer.address }}</dd></div>{% endif %}
+        </dl>
+      </div>
     </section>
 
-    <table class="data-table">
+    <table class="lines">
       <thead>
         <tr>
-          <th>کالا</th>
+          <th class="lines__row">ردیف</th>
+          <th class="lines__name">شرح کالا</th>
+          <th>واحد</th>
           <th>مقدار</th>
           <th>قیمت واحد (تومان)</th>
-          <th>جمع (تومان)</th>
+          <th>مبلغ کل (تومان)</th>
         </tr>
       </thead>
       <tbody>
         {% for item in invoice.items.all %}
           <tr>
-            <td>{{ item.product.name }}</td>
+            <td class="lines__row">{{ forloop.counter|fa_number }}</td>
+            <td class="lines__name">{{ item.product.name }}</td>
+            <td>{{ item.product.unit }}</td>
             <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|toman }}</td>
-            <td class="num">{{ item.line_total|toman }}</td>
+            <td class="num">{{ item.unit_price|fa_number }}</td>
+            <td class="num">{{ item.line_total|fa_number }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
-    <div class="print-invoice__totals">
-      <div><span>جمع جزء</span><span class="num">{{ invoice.subtotal|toman }}</span></div>
-      <div><span>تخفیف</span><span class="num">{{ invoice.discount_amount|toman }}</span></div>
-      <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total|toman }}</span></div>
-    </div>
+    <section class="summary">
+      <div class="summary__words">
+        <span class="summary__label">مبلغ نهایی به حروف</span>
+        <p>{{ invoice.total|toman_words }}</p>
+        {% if invoice.note %}
+          <span class="summary__label">توضیحات</span>
+          <p>{{ invoice.note }}</p>
+        {% endif %}
+      </div>
+      <dl class="totals">
+        <div><dt>جمع اقلام</dt><dd><span class="num">{{ invoice.subtotal|fa_number }}</span> تومان</dd></div>
+        {% if invoice.discount_amount %}
+          <div><dt>تخفیف</dt><dd><span class="num">{{ invoice.discount_amount|fa_number }}</span> تومان</dd></div>
+        {% endif %}
+        <div class="totals__final"><dt>مبلغ قابل پرداخت</dt><dd><span class="num">{{ invoice.total|fa_number }}</span> تومان</dd></div>
+        {% if invoice.status == "confirmed" %}
+          <div><dt>پرداخت‌شده</dt><dd><span class="num">{{ invoice.paid_amount|fa_number }}</span> تومان</dd></div>
+          <div><dt>مانده</dt><dd><span class="num">{{ invoice.outstanding|fa_number }}</span> تومان</dd></div>
+        {% endif %}
+      </dl>
+    </section>
 
-    <footer class="print-invoice__foot">
-      <p>ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}</p>
-      <p>وضعیت: {{ invoice.get_status_display }}</p>
+    <section class="signatures">
+      <div class="signature">
+        <span class="signature__label">مهر و امضای فروشنده</span>
+        <div class="signature__box"></div>
+      </div>
+      <div class="signature">
+        <span class="signature__label">مهر و امضای خریدار</span>
+        <div class="signature__box"></div>
+      </div>
+    </section>
+
+    <footer class="sheet__foot">
+      {% if company.footer_note %}<p>{{ company.footer_note }}</p>{% endif %}
+      <p>ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone|fa_digits }}</p>
     </footer>
-  </div>
+  </article>
 </body>
 </html>

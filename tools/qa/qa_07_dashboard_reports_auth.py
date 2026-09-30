@@ -73,7 +73,7 @@ def scenarios(h):
     k0 = dash.kpi_cards()
     h.post_purchase(sup, [(p, 10, 100)], account=acct)
     h.post_sale(cust, [(p, 5, 300)], account=acct)
-    h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-dash", "amount": "70", "bank_account": str(acct.pk)})
+    h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-dash", "amount": "70", "bank_account": str(acct.pk)})
     k1 = dash.kpi_cards()
     text_k = repr(k1)
     check("D02 KPI cards reflect a new sale/purchase/expense (today)", k1 != k0)

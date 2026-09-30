@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static paper %}<!DOCTYPE html>
 {% comment %} Standalone page: it must not extend the app shell, because the shell's
    sidebar and header assume a signed-in user. {% endcomment %}
 <html lang="fa" dir="rtl">
@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ورود | پیپر پلاس</title>
-  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
 </head>
 <body>
   <main class="auth">

@@ -55,6 +55,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves the collected static files from the app itself, so no host-specific
+    # web-server rule is needed for CSS/JS (see deploy/UPDATING.md).
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,6 +79,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.shared.context_processors.navigation',
+                'apps.shared.context_processors.company',
             ],
         },
     },
@@ -126,6 +130,41 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"   # filled by `manage.py collectstatic` (run by `update`)
+
+# Whole-business backups written by `backup_db` / `update` (gitignored).
+BACKUP_DIR = Path(env.str("BACKUP_DIR", default=str(BASE_DIR / "backups")))
+
+# Who issues the printed sales invoice. Read from .env so a host can change it
+# without a code update; an empty value simply leaves that line off the paper.
+COMPANY = {
+    "name": env.str("COMPANY_NAME", default="پیپر پلاس"),
+    "legal_name": env.str("COMPANY_LEGAL_NAME", default=""),
+    "economic_code": env.str("COMPANY_ECONOMIC_CODE", default=""),
+    "registration_no": env.str("COMPANY_REGISTRATION_NO", default=""),
+    "national_id": env.str("COMPANY_NATIONAL_ID", default=""),
+    "postal_code": env.str("COMPANY_POSTAL_CODE", default=""),
+    "phone": env.str("COMPANY_PHONE", default=""),
+    "address": env.str("COMPANY_ADDRESS", default=""),
+    "footer_note": env.str("COMPANY_FOOTER_NOTE", default=""),
+}
+
+if not DEBUG:
+    # Safe defaults for a real host; each is overridable from .env when the
+    # host terminates HTTPS somewhere Django cannot see.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = env.bool("COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("COOKIE_SECURE", default=True)
+    SECURE_SSL_REDIRECT = env.bool("SSL_REDIRECT", default=False)
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = env.int("HSTS_SECONDS", default=0)   # raise only once HTTPS is final
+    # The app sends no email, so the "console backend is dev-only" check is noise
+    # that would otherwise make `manage.py update` fail on a real host.
+    SILENCED_SYSTEM_CHECKS = ["mail.E001"]
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+    }
 
 # Uploaded files (today: expense receipts). Kept out of the repo by
 # .gitignore -- they are business documents, not source.

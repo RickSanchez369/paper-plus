@@ -5,6 +5,7 @@
 from django.urls import path
 
 from .views import (
+    BackupView,
     DashboardView,
     DatePickerMonthView,
     ReportsView,
@@ -18,6 +19,10 @@ urlpatterns = [
     # is computed here rather than in the browser.
     path("date-picker/month/", DatePickerMonthView.as_view(), name="date_picker_month"),
 ]
+
+backup_patterns = ([
+    path("", BackupView.as_view(), name="index"),
+], "backup")
 
 reports_patterns = ([
     path("", ReportsView.as_view(), name="index"),

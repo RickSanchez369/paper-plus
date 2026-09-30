@@ -14,6 +14,7 @@ import random
 import re
 import string
 
+import jdatetime
 from django.db import transaction
 from django.test import Client
 
@@ -23,6 +24,11 @@ from apps.partners.models import Customer, Supplier
 from apps.payments.models import BankAccount
 from apps.products.models import Product
 from apps.users.models import User
+
+
+# Today as the date field wants it (ASCII digits). Never hard-code a date: the
+# dashboard/report checks depend on it being the real today.
+TODAY_J = jdatetime.date.fromgregorian(date=datetime.date.today()).strftime("%Y/%m/%d")
 
 
 class _Rollback(Exception):
@@ -99,7 +105,7 @@ class Harness:
                 d[f"{prefix}-{i}-{k}"] = v
         return d
 
-    def post_sale(self, customer, items, mode="full", account=None, discount="", payments=(), date="1405/07/08",
+    def post_sale(self, customer, items, mode="full", account=None, discount="", payments=(), date=TODAY_J,
                   client=None, extra=None):
         """items: [(product, qty, price)]; account: BankAccount | "cash" | None."""
         d = {"customer": str(customer.pk) if customer else "", "invoice_date": date,
@@ -116,7 +122,7 @@ class Harness:
         d.update(extra or {})
         return (client or self.c).post("/sales/new/", d)
 
-    def post_purchase(self, supplier, items, mode="full", account=None, payments=(), date="1405/07/08",
+    def post_purchase(self, supplier, items, mode="full", account=None, payments=(), date=TODAY_J,
                       supplier_invoice="", client=None, extra=None):
         d = {"supplier": str(supplier.pk) if supplier else "", "invoice_date": date,
              "supplier_invoice_number": supplier_invoice, "payment_mode": mode}
