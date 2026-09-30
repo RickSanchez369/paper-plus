@@ -82,10 +82,29 @@ this range alone.
 
 <div class="card">
   <div class="card__body">
+    <h2>سود چطور حساب می‌شود</h2>
+    <table class="data-table data-table--figures">
+      <tbody>
+        <tr><td>جمع فروش</td><td class="num">{{ cards.sales.value|toman }}</td></tr>
+        <tr><td>− بهای تمام‌شدهٔ کالاهای فروخته‌شده (روش FIFO)</td><td class="num">{{ cards.cogs|toman }}</td></tr>
+        <tr><td><strong>= سود ناخالص</strong></td><td class="num"><strong>{{ cards.gross_profit.value|toman }}</strong></td></tr>
+        <tr><td>− هزینه‌ها</td><td class="num">{{ cards.expenses.value|toman }}</td></tr>
+        <tr><td><strong>= سود خالص</strong></td><td class="num"><strong>{{ cards.net_profit.value|toman }}</strong></td></tr>
+      </tbody>
+    </table>
+    <p class="field__hint">
+      «جمع خرید» در این محاسبه نیست: خرید فقط موجودی انبار را زیاد می‌کند و تا وقتی آن کالا فروخته نشود
+      هزینه حساب نمی‌شود؛ هر فروش، قیمت خرید همان کالایی را که فروخته شده (قدیمی‌ترین موجودی اول) کم می‌کند.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
     <h2>فروش به تفکیک کالا</h2>
     {% if sales_by_product %}
       <p class="field__hint">مبلغ و سود پس از تخفیف فاکتورها است؛ تخفیف هر فاکتور به نسبت مبلغ ردیف‌ها بین کالاهای آن سرشکن شده است.</p>
-      <table class="data-table">
+      <table class="data-table data-table--figures">
         <thead>
           <tr><th>کالا</th><th>مقدار</th><th>مبلغ خالص</th><th>سود</th></tr>
         </thead>
@@ -110,7 +129,7 @@ this range alone.
   <div class="card__body">
     <h2>خرید به تفکیک کالا</h2>
     {% if purchases_by_product %}
-      <table class="data-table">
+      <table class="data-table data-table--figures">
         <thead>
           <tr><th>کالا</th><th>مقدار</th><th>مبلغ</th></tr>
         </thead>
@@ -134,7 +153,7 @@ this range alone.
   <div class="card__body">
     <h2>پرفروش‌ترین کالاها</h2>
     {% if top_sellers %}
-      <table class="data-table">
+      <table class="data-table data-table--figures">
         <thead>
           <tr><th>#</th><th>کالا</th><th>مقدار فروش</th></tr>
         </thead>
@@ -174,7 +193,7 @@ this range alone.
   <div class="card__body">
     <h2>حساب‌های بانکی (پایان بازه)</h2>
     {% if bank_accounts %}
-      <table class="data-table">
+      <table class="data-table data-table--figures">
         <thead>
           <tr><th>حساب</th><th>مانده (پایان بازه)</th><th>واریز این بازه</th><th>برداشت این بازه</th></tr>
         </thead>
@@ -199,7 +218,7 @@ this range alone.
   <div class="card__body">
     <h2>چک‌ها (سررسید در این بازه)</h2>
     {% if cheques %}
-      <table class="data-table">
+      <table class="data-table data-table--figures">
         <thead>
           <tr><th>وضعیت</th><th>تعداد</th><th>مبلغ</th></tr>
         </thead>
@@ -223,7 +242,7 @@ this range alone.
   <div class="card__body">
     <h2>فعالیت کاربران (در این بازه)</h2>
     {% if user_activity %}
-      <table class="data-table">
+      <table class="data-table data-table--figures">
         <thead>
           <tr><th>کاربر</th><th>تعداد رویداد</th></tr>
         </thead>

@@ -902,6 +902,23 @@ h2 { font-size: 16px; }
   font-size: 12px;
 }
 
+/* Numbers keep their digit order (.num is left-to-right) but their cell
+   must not flip sides: a left-to-right cell put figures at the opposite
+   edge from their right-to-left header, so nothing lined up. */
+.data-table td.num {
+  direction: rtl;
+  text-align: start;
+}
+
+/* Report tables: the name column takes the slack, every figure column is
+   as narrow as its content, so each number sits right under its header. */
+.data-table--figures th:not(:first-child),
+.data-table--figures td:not(:first-child) {
+  width: 1%;
+  min-width: 150px;
+  white-space: nowrap;
+}
+
 .data-table tbody tr:hover {
   background: var(--surface-sunken);
 }

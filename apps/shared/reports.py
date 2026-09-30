@@ -101,6 +101,10 @@ def summary_cards(start, end):
         "expenses": {"value": expenses, "change": pct_change(expenses, prev_expenses)},
         "gross_profit": {"value": gross, "change": pct_change(gross, prev_gross)},
         "net_profit": {"value": net, "change": pct_change(net, prev_net)},
+        # What the goods that were actually sold cost (FIFO). Not the
+        # period's purchases: those only fill the shelf, and cost nothing
+        # until the goods leave it.
+        "cogs": sales - gross,
     }
 
 
