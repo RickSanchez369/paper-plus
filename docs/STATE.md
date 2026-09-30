@@ -14,8 +14,6 @@ purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
   everywhere, stock through documents only, expense paying account,
   full-settlement sale default, htmx 422 swap, pro-rata invoice discount).
 - Last verified: 38 scripts in `scripts/`, 724/724 checks passing.
-- Deployment prep is done (D-049 whitenoise, hardened settings, gunicorn,
-  `docs/deployment.md`); nothing is deployed yet.
 - Real data currently in the DB: 6 products with opening stock, 2 customers,
   2 suppliers, 1 bank account. `DocumentSequence` (sale, purchase) starts at
   9956001 — teardown scripts must never reset it below a number already used.
@@ -28,15 +26,10 @@ audited in the browser for leftover old-style radii, shadows and colours (none);
 Carbon-style filled inputs and table headers apply app-wide. Not visually
 checked (no data to render): invoice detail/print, cheque detail.
 
-No task is queued. Candidates, in the order of value: the SHADOW run (below),
-deployment (`docs/deployment.md`), and tidying source comments that still cite
+No task is queued. One candidate: tidying source comments that still cite
 `REDESIGN_VISION`/`MASTER_PROMPT` section numbers.
 
 ## Open items (raise with Sina before touching)
-- **3.4 real SHADOW run** — run in parallel with the paper ledger until 3
-  consecutive days of 0 discrepancies; every discrepancy is a bug, never fix
-  data by hand. `scripts/test_shadow_simulation.py` only proves the math, it
-  does not satisfy the gate.
 - **USD-rate source** — undecided; Inventory and Reports show a placeholder
   card. Do not invent a source.
 - **ROADMAP 4.6 returns (sales/purchase returns)** — explicitly out of scope

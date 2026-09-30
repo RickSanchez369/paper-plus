@@ -789,30 +789,8 @@ detail page shows a "سهم تخفیف" column when there is a discount; the
 customer-facing print page is unchanged (still one invoice-level discount
 line). Stock, FIFO consumption and layer costs are untouched, as before.
 
-## D-049 — Static files are served by whitenoise, not nginx
-Date: 2026-09-28
-Status: Final
-
-Context: Sina asked to review ParsPack's PaaS docs (docs.parspack.com/paas)
-and deploy paper-plus there instead of (or alongside) the VPS path in
-docs/deployment.md. That VPS plan has nginx serve `staticfiles/` in front
-of gunicorn; ParsPack's PaaS containers get no such reverse-proxy layer the
-user controls -- the app's own process receives traffic directly. With
-`DEBUG=False` Django serves no static files itself, so admin/htmx CSS and
-JS would 404 in production without a change.
-
-Decision: `whitenoise` (requirements.txt) serves `staticfiles/` directly
-from the gunicorn process. `WhiteNoiseMiddleware` added to `MIDDLEWARE`
-immediately after `SecurityMiddleware` (core/settings.py), per whitenoise's
-own install order requirement. `STORAGES["staticfiles"]` set to
-`whitenoise.storage.CompressedManifestStaticFilesStorage` for hashed,
-cache-busted filenames; `STORAGES["default"]` is repeated unchanged
-(FileSystemStorage, media/expense receipts) because defining `STORAGES` at
-all replaces Django's whole default dict, not just the key being changed.
-No effect on the VPS path: nginx still serves `staticfiles/` there and
-never reaches gunicorn/whitenoise for those requests, so both deployment
-targets keep working off the same `collectstatic` output.
-`manage.py check` verified clean after `pip install -r requirements.txt`.
+### D-049: Static files served by whitenoise
+- Status: Superseded. Removed by D-051 along with the rest of the deployment setup.
 
 ### D-050: Visual identity is IBM Carbon-inspired
 - Status: Final
@@ -831,3 +809,17 @@ targets keep working off the same `collectstatic` output.
   tables and forms, and its flat style matches the existing token structure.
 - Affects: `app.css` only. Reversible by editing the `:root` tokens.
 - Not done: dark mode (internal tool, not asked for).
+
+### D-051: Deployment and SHADOW are out of scope
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: The repo carries no deployment work and no SHADOW gate. Removed:
+  `docs/deployment.md`, the production-hardening block and whitenoise
+  (middleware + STORAGES) in `core/settings.py`, `gunicorn`/`whitenoise` in
+  requirements.txt, the production keys in `.env.example`, roadmap task 3.4
+  (the 3-day parallel run against the paper ledger), and the "Hard gates"
+  section of business-rules.md. Supersedes D-049.
+- Note: older entries (D-014, D-016, D-017, D-019, D-020) still mention SHADOW
+  or a future deployment as historical rationale; they are not rewritten.
+  The app still reads DEBUG/ALLOWED_HOSTS/CSRF_TRUSTED_ORIGINS from `.env`.

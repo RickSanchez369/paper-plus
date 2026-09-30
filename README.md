@@ -42,9 +42,6 @@ Django connects to PostgreSQL as the `paper_app` role (never `postgres`),
 see `docs/RULES.md`'s "Traps" section for the environment-specific
 gotchas (BOM-free files, `psycopg[binary]`, console encoding, etc.).
 
-For a production server (VPS, nginx, gunicorn, systemd, backups), see
-[docs/deployment.md](docs/deployment.md).
-
 ## Documentation
 
 Start at [docs/README.md](docs/README.md); it maps every document to the

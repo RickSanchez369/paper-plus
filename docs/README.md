@@ -14,7 +14,6 @@ Start here. Read only what the task in front of you needs.
 | [business-rules.md](business-rules.md) | What the system must never violate, plus the one-line `D-0xx` index |
 | [DECISIONS.md](DECISIONS.md) | *Why* a rule exists. Append-only; wins over any other doc on conflict |
 | [REDESIGN_VISION.md](REDESIGN_VISION.md) | Condensed summary of the finished rebuild (original in git history) |
-| [deployment.md](deployment.md) | Repo → running production server (VPS, nginx, gunicorn, backups) |
 | `design/ibm/DESIGN.md` | The Carbon reference behind the visual identity (D-050) |
 
 ## Where to look

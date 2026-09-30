@@ -31,7 +31,7 @@ def confirm_sale(invoice, user):
 
     Stock may go negative (D-016); the sale is never blocked for that reason.
     Products that end up below zero are reported back to the caller and marked
-    in the movement note so the shadow-phase reconciliation can count them.
+    in the movement note.
 
     Args:
         invoice: the SalesInvoice to confirm.
