@@ -29,7 +29,8 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
         <div class="header__lead">
           {% comment %} "بازگشت" goes one level UP (the parent list/page), never
              history.back(): the previous page may be a validation error. {% endcomment %}
-          {% block back %}{% endblock %}
+          {% parent_url request.path as back_url %}
+          {% block back %}{% if back_url %}<a href="{{ back_url }}" class="btn btn--quiet header__back">بازگشت</a>{% endif %}{% endblock %}
           <div class="header__title">{% block header %}{{ page_title }}{% endblock %}</div>
         </div>
         <div class="header__user">

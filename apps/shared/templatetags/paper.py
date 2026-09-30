@@ -12,11 +12,32 @@ import os
 from django import template
 from django.contrib.staticfiles import finders
 from django.templatetags.static import static
+from django.urls import Resolver404, resolve
 
 from apps.shared import dates
 from apps.shared.utils import format_number, format_toman
 
 register = template.Library()
+
+
+@register.simple_tag
+def parent_url(path):
+    """The page one level up from `path`: drop the last URL segment, and keep
+    dropping while the result is not a real page (e.g. `/inventory/products/`
+    does not exist, so `/inventory/products/new/` goes up to `/inventory/`).
+    Empty for the home page. Used by the header's "بازگشت" button, which
+    deliberately never means history.back() -- the previous page may be a
+    validation error."""
+    parts = [p for p in path.split("/") if p]
+    while parts:
+        parts.pop()
+        candidate = "/" + "/".join(parts) + "/" if parts else "/"
+        try:
+            resolve(candidate)
+        except Resolver404:
+            continue
+        return candidate
+    return ""
 
 
 @register.simple_tag

@@ -12,8 +12,6 @@ component reused as-is from Receivables.
 {% block title %}{{ customer.name }}{% endblock %}
 {% block header %}مشتری: {{ customer.name }}{% endblock %}
 
-{% block back %}<a href="{% url 'customers:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
-
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'customers:list' %}">مشتریان</a> / {{ customer.name }}

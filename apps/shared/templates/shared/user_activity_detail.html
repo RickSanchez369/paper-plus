@@ -11,8 +11,6 @@ simply show no link), timestamp -- newest first.
 {% block title %}فعالیت {{ actor }}{% endblock %}
 {% block header %}فعالیت کاربر: {{ actor }}{% endblock %}
 
-{% block back %}<a href="{% url 'user_activity:index' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
-
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'user_activity:index' %}">فعالیت کاربران</a> / {{ actor }}

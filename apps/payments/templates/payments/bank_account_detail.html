@@ -11,8 +11,6 @@ Expense.payment, resolved once per row in views._describe_payment.
 {% block title %}{{ account.name }}{% endblock %}
 {% block header %}حساب بانکی: {{ account.name }}{% endblock %}
 
-{% block back %}<a href="{% url 'bank_accounts:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
-
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'bank_accounts:list' %}">حساب‌های بانکی</a> / {{ account.name }}</p>
 

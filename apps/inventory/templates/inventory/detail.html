@@ -13,8 +13,6 @@ each row touched and a link back to its source invoice; and a
 {% block title %}{{ product.name }}{% endblock %}
 {% block header %}کالا: {{ product.name }}{% endblock %}
 
-{% block back %}<a href="{% url 'inventory:list' %}" class="btn btn--quiet header__back">بازگشت</a>{% endblock %}
-
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / {{ product.name }}</p>
 
