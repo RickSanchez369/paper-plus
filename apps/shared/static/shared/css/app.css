@@ -260,6 +260,18 @@ h2 { font-size: 16px; }
   border-bottom: 1px solid var(--border);
 }
 
+.cheque-clear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.cheque-clear .field {
+  min-width: 220px;
+  margin-top: 0;
+}
+
 .header__lead {
   display: flex;
   align-items: center;

@@ -113,3 +113,5 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-053 A purchase invoice has the same full-settlement / split payment mode as a sale.
 - D-054 Date years limited to 1380-1450; deactivated parties stay visible while a balance exists; inactive products can't be traded.
 - D-055 Cancelling an invoice refunds its payments (opposite Payment per allocation) and cancels its pending cheques.
+- D-056 Clearing a cheque requires choosing the account (or cash on purpose).
+- D-057 Expense receipts: PDF/PNG/JPG/WebP only, content must match, max 5 MB.

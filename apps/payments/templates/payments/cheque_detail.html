@@ -37,9 +37,10 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
     <div class="card__body">
       <h2>اقدامات</h2>
       <div class="page-head__actions">
-        <form method="post" action="{% url 'cheques:clear' cheque.pk %}"
+        <form method="post" action="{% url 'cheques:clear' cheque.pk %}" class="cheque-clear"
               onsubmit="return confirm('این چک وصول شود؟ یک پرداخت ثبت می‌شود.');">
           {% csrf_token %}
+          {% include "shared/_field.html" with field=clear_form.bank_account %}
           <button type="submit" class="btn">وصول چک</button>
         </form>
         <form method="post" action="{% url 'cheques:bounce' cheque.pk %}"

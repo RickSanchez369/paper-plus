@@ -140,13 +140,13 @@ def scenarios(h):
     r = h.c.post(f"/cheques/{chq2.pk}/complete/", {"cheque_number": "K2", "bank_name": "M", "due_date": "1500/01/01", "bank_account": ""})
     check("K04 an out-of-range due date is refused", Cheque.objects.get(pk=chq2.pk).due_date != datetime.date(2121, 3, 21))
     bal0 = get_bank_account_balance(acct)
-    r = h.c.post(f"/cheques/{chq1.pk}/clear/")
+    r = h.clear_cheque(chq1)
     chq1.refresh_from_db(); csi = SalesInvoice.objects.get(pk=csi.pk)
     check("K05 clearing: status cleared, Payment IN created into the cheque's account", r.status_code == 302 and chq1.status == "cleared" and chq1.payment.direction == "in" and chq1.payment.bank_account_id == acct.pk)
     check("K05 allocated to its invoice automatically (paid 600)", csi.paid_amount == 600 and csi.payment_status == "partial", (csi.paid_amount, csi.payment_status))
     check("K05 account balance +600", get_bank_account_balance(acct) == bal0 + 600)
     n_pay = Payment.objects.count()
-    h.c.post(f"/cheques/{chq1.pk}/clear/")
+    h.clear_cheque(chq1)
     check("K06 a second clear is a no-op (no second payment)", Payment.objects.count() == n_pay)
     h.c.post(f"/cheques/{chq1.pk}/bounce/"); chq1.refresh_from_db()
     check("K06 a cleared cheque cannot bounce or be cancelled", chq1.status == "cleared")
@@ -156,31 +156,65 @@ def scenarios(h):
     check("K06c a cleared cheque cannot be edited", chq1.cheque_number == "K1")
     h.c.post(f"/cheques/{chq2.pk}/bounce/"); chq2.refresh_from_db()
     check("K07 bounce a pending cheque: status bounced, NO payment", chq2.status == "bounced" and chq2.payment is None and SalesInvoice.objects.get(pk=csi.pk).paid_amount == 600)
-    h.c.post(f"/cheques/{chq2.pk}/clear/"); chq2.refresh_from_db()
+    h.clear_cheque(chq2); chq2.refresh_from_db()
     check("K07 a bounced cheque cannot be cleared afterwards", chq2.status == "bounced")
     # cancel path & cheque from a cancelled invoice
     c5 = h.customer()
     h.post_sale(c5, [(p, 2, 100)], mode="split", payments=[{"method": "cheque", "amount": "200", "bank_account": str(acct.pk)}])
     c5i = last_sale(c5); chq5 = Cheque.objects.get(sales_invoice=c5i)
     h.c.post(f"/sales/{c5i.pk}/cancel/")
-    h.c.post(f"/cheques/{chq5.pk}/clear/"); chq5.refresh_from_db()
+    h.clear_cheque(chq5); chq5.refresh_from_db()
     check("K08 cancelling the invoice cancels its pending cheque (D-055)", chq5.status == "cancelled" and chq5.payment is None, chq5.status)
-    h.c.post(f"/cheques/{chq5.pk}/clear/"); chq5.refresh_from_db()
+    h.clear_cheque(chq5); chq5.refresh_from_db()
     check("K08 …and it can no longer be cleared", chq5.status == "cancelled" and chq5.payment is None)
     # cheque out (purchase) reduces account balance when cleared
     s6 = h.supplier()
     h.post_purchase(s6, [(p, 4, 100)], mode="split", payments=[{"method": "cheque", "amount": "400", "bank_account": str(acct2.pk), "cheque_number": "OUT1", "bank_name": "M", "due_date": "1405/09/01"}])
     pch = Cheque.objects.get(supplier=s6)
     b2 = get_bank_account_balance(acct2)
-    h.c.post(f"/cheques/{pch.pk}/clear/"); pch.refresh_from_db()
+    h.clear_cheque(pch); pch.refresh_from_db()
     check("K09 an issued (OUT) cheque clears into a payment OUT and lowers the balance", pch.status == "cleared" and pch.payment.direction == "out" and get_bank_account_balance(acct2) == b2 - 400)
     check("K09 the purchase invoice is now paid", last_purchase(s6).payment_status == "paid")
     # cheque without any bank account
     c7 = h.customer()
     h.post_sale(c7, [(p, 1, 100)], mode="split", payments=[{"method": "cheque", "amount": "100"}])
     nb = Cheque.objects.get(customer=c7)
-    h.c.post(f"/cheques/{nb.pk}/clear/"); nb.refresh_from_db()
-    check("K10* INFO: a cheque with no account, once cleared, becomes a CASH payment (no account chosen at clearing)", nb.status == "cleared" and nb.payment.bank_account is None)
+    r = h.c.get(f"/cheques/{nb.pk}/")
+    check("K10 the detail page offers an account picker for clearing", has(r, 'name="bank_account"') and has(r, "وصول در حساب"))
+    h.clear_cheque(nb, account=""); nb.refresh_from_db()
+    check("K10 clearing with NO account chosen is refused (stays pending)", nb.status == "pending" and nb.payment is None)
+    r = h.c.post(f"/cheques/{nb.pk}/clear/", {}); nb.refresh_from_db()
+    check("K10 clearing with no bank_account field at all is refused too", nb.status == "pending")
+    r = h.c.post(f"/cheques/{nb.pk}/clear/", {"bank_account": "00000000-0000-0000-0000-0000000000ee"}); nb.refresh_from_db()
+    check("K10 an unknown account is refused", nb.status == "pending")
+    ina = h.account(); ina.is_active = False; ina.save()
+    h.clear_cheque(nb, account=ina); nb.refresh_from_db()
+    check("K10 an inactive account is refused", nb.status == "pending")
+    b3 = get_bank_account_balance(acct2)
+    h.clear_cheque(nb, account=acct2); nb.refresh_from_db()
+    check("K10 choosing an account at clearing books the payment there (+100)", nb.status == "cleared" and nb.payment.bank_account_id == acct2.pk and get_bank_account_balance(acct2) == b3 + 100)
+    c8 = h.customer()
+    h.post_sale(c8, [(p, 1, 100)], mode="split", payments=[{"method": "cheque", "amount": "100"}])
+    nc = Cheque.objects.get(customer=c8)
+    h.clear_cheque(nc, account="cash"); nc.refresh_from_db()
+    check("K10 cash chosen ON PURPOSE is accepted (payment without account)", nc.status == "cleared" and nc.payment.bank_account is None)
+    c9 = h.customer()
+    h.post_sale(c9, [(p, 1, 100)], mode="split", payments=[{"method": "cheque", "amount": "100", "bank_account": str(acct.pk)}])
+    nd = Cheque.objects.get(customer=c9)
+    r = h.c.get(f"/cheques/{nd.pk}/")
+    check("K10 a cheque that has an account: the picker is pre-selected with it", has(r, f'value="{acct.pk}" selected'))
+    h.clear_cheque(nd, account=acct2); nd.refresh_from_db()
+    check("K10 …and the user may clear it into another account", nd.payment.bank_account_id == acct2.pk)
+    from apps.payments.services import clear_cheque as svc_clear
+    from django.core.exceptions import ValidationError as VE
+    c10 = h.customer()
+    h.post_sale(c10, [(p, 1, 100)], mode="split", payments=[{"method": "cheque", "amount": "100"}])
+    ne = Cheque.objects.get(customer=c10)
+    try:
+        svc_clear(ne, h.su); raised = False
+    except VE:
+        raised = True
+    check("K10 the service itself refuses to guess an account", raised and Cheque.objects.get(pk=ne.pk).status == "pending")
     check("K11 an ordinary user can clear a cheque", True)
 
     # ================================================= bank accounts
@@ -246,7 +280,7 @@ def scenarios(h):
     r = exp(amount=digits_fa(2500), reason="QA-fa-digits")
     check("E06 Persian digits in amount", r.status_code == 302 and Expense.objects.get(reason="QA-fa-digits").amount == 2500)
     # receipt upload
-    up = SimpleUploadedFile("qa_receipt.txt", b"hello", content_type="text/plain")
+    up = SimpleUploadedFile("qa_receipt.pdf", b"%PDF-1.4 hello", content_type="application/pdf")
     r = exp(reason="QA-upload", document=up)
     ex = Expense.objects.filter(reason="QA-upload").first()
     check("E07 receipt upload accepted", r.status_code == 302 and ex is not None and bool(ex.document))
@@ -254,7 +288,7 @@ def scenarios(h):
     up2 = SimpleUploadedFile("evil.html", b"<script>alert(1)</script>", content_type="text/html")
     r = exp(reason="QA-upload-html", document=up2)
     ex2 = Expense.objects.filter(reason="QA-upload-html").first()
-    check("E07* INFO: an .html receipt is accepted as-is (no file-type/size validation on uploads)", ex2 is not None)
+    check("E07 an .html receipt is refused (D-056)", ex2 is None)
     for f in (path, ex2.document.path if ex2 and ex2.document else None):
         try:
             if f and os.path.exists(f):
@@ -285,3 +319,51 @@ def scenarios(h):
 
 
 run("payments", scenarios)
+
+
+def upload_scenarios(h):
+    """Receipt upload rules (only PDF/PNG/JPG/WebP, matching content, <= 5 MB)."""
+    import os
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    acct = h.account()
+    made = []
+
+    def send(name, data, content_type="application/octet-stream"):
+        d = {"expense_date": "1405/07/08", "reason": "QA-up-" + rnd(), "amount": "10", "bank_account": "cash"}
+        n0 = Expense.objects.count()
+        r = h.c.post("/expenses/new/", {**d, "document": SimpleUploadedFile(name, data, content_type=content_type)})
+        e = Expense.objects.filter(reason=d["reason"]).first()
+        if e and e.document:
+            made.append(e.document.path)
+        return r, Expense.objects.count() - n0
+
+    PDF = b"%PDF-1.4\n%QA\n"
+    PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
+    JPG = b"\xff\xd8\xff\xe0" + b"\x00" * 20
+    WEBP = b"RIFF\x00\x00\x00\x00WEBPVP8 " + b"\x00" * 10
+    for name, data in (("r.pdf", PDF), ("r.png", PNG), ("r.jpg", JPG), ("r.jpeg", JPG), ("r.webp", WEBP), ("R.PDF", PDF), ("رسید.pdf", PDF)):
+        r, created = send(name, data)
+        check(f"UP01 {name} accepted", r.status_code == 302 and created == 1, r.status_code)
+    for label, name, data in (("html", "x.html", b"<script>alert(1)</script>"), ("svg", "x.svg", b"<svg onload=alert(1)/>"), ("exe", "x.exe", b"MZ\x90\x00"),
+                              ("js", "x.js", b"alert(1)"), ("no extension", "receipt", PDF), ("html renamed to pdf", "x.pdf", b"<html><script>alert(1)</script>"),
+                              ("png content named jpg", "x.jpg", PNG), ("double extension pdf.html", "x.pdf.html", PDF), ("empty pdf", "e.pdf", b""),
+                              ("php disguised", "x.php.png", b"<?php echo 1;")):
+        r, created = send(name, data)
+        check(f"UP02 {label} rejected, no expense created", r.status_code == 200 and created == 0, (r.status_code, created))
+    r, created = send("big.pdf", PDF + b"0" * (5 * 1024 * 1024))
+    check("UP03 a file over 5 MB is rejected", r.status_code == 200 and created == 0, (r.status_code, created))
+    r, created = send("ok.pdf", PDF + b"0" * (5 * 1024 * 1024 - len(PDF)))
+    check("UP03 a file of exactly 5 MB is accepted", r.status_code == 302 and created == 1, (r.status_code, created))
+    r = h.c.get("/expenses/new/")
+    check("UP04 the form states the rule", has(r, "۵ مگابایت") or has(r, "5"))
+    r = h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-nofile", "amount": "5", "bank_account": "cash"})
+    check("UP05 an expense without any file is still fine", r.status_code == 302)
+    for f in made:
+        try:
+            if os.path.exists(f):
+                os.remove(f)
+        except Exception:
+            pass
+
+
+run("uploads", upload_scenarios)

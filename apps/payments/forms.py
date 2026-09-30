@@ -202,6 +202,14 @@ class ChequeFilterForm(forms.Form):
         return cleaned
 
 
+class ClearChequeForm(forms.Form):
+    """"وصول چک": which account the money lands in / leaves from. A real
+    answer is required (an account, or cash picked on purpose), pre-selected
+    with the cheque's own account when it has one (D-045)."""
+
+    bank_account = PaymentSourceField(label="وصول در حساب")
+
+
 class ChequeCompletionForm(forms.ModelForm):
     """"تکمیل مشخصات" for a cheque entered incomplete from an invoice's
     payment rows (4.3b) -- the same fields `ChequeAdmin` leaves editable

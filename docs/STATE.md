@@ -30,9 +30,6 @@ checked (no data to render): invoice detail/print, cheque detail.
 plus ~90 browser checks over every module found and fixed 14 defects (D-054).
 Fixed since (D-055): cancelling an invoice now refunds its payments.
 Findings that still need Sina's decision, NOT changed:
-- A pending cheque with no bank account clears into CASH; the clear button has no
-  account picker.
-- Expense receipt upload has no file-type or size limit.
 - No login throttling.
 - The suppliers list has no way to show inactive suppliers.
 

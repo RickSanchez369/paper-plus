@@ -108,7 +108,9 @@ def scenarios(h):
             chs = list(Cheque.objects.all())
             if chs:
                 ch = rng.choice(chs)
-                r = h.c.post(f"/cheques/{ch.pk}/{rng.choice(['clear', 'clear', 'bounce', 'cancel'])}/"); track(r, op)
+                act = rng.choice(['clear', 'clear', 'bounce', 'cancel'])
+                r = h.clear_cheque(ch, account=rng.choice(['cheque', 'cash', rng.choice(accounts)])) if act == 'clear' else h.c.post(f"/cheques/{ch.pk}/{act}/")
+                track(r, op)
         elif op == "expense":
             r = h.c.post("/expenses/new/", {"expense_date": "1405/07/08", "reason": "QA-fz", "amount": str(rng.randint(1, 900)), "bank_account": rng.choice(["cash", str(rng.choice(accounts).pk)])})
             track(r, op)

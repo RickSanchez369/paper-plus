@@ -227,8 +227,13 @@ def record_cheque(cheque, user):
     return cheque
 
 
+# "Use the account the cheque already carries" -- distinct from None, which
+# means cash chosen on purpose (D-045: never cash by omission).
+USE_CHEQUE_ACCOUNT = object()
+
+
 @transaction.atomic
-def clear_cheque(cheque, user, bank_account=None):
+def clear_cheque(cheque, user, bank_account=USE_CHEQUE_ACCOUNT):
     """
     Mark a pending cheque cleared and create the Payment it represents.
 
@@ -239,19 +244,26 @@ def clear_cheque(cheque, user, bank_account=None):
     Args:
         cheque: the Cheque to clear (any status; only PENDING succeeds).
         user: the user performing the action.
-        bank_account: optional BankAccount to attribute the Payment to;
-            defaults to the cheque's own `bank_account`.
+        bank_account: the BankAccount the money moved through, or None for
+            cash chosen on purpose. Left out, the cheque's own account is
+            used -- and if it has none, clearing is refused instead of
+            silently booking cash.
 
     Raises:
-        ValidationError: cheque is not pending.
+        ValidationError: cheque is not pending, or no account was given and
+            the cheque carries none.
     """
     locked = Cheque.objects.select_for_update().get(pk=cheque.pk)
     if locked.status != Cheque.Status.PENDING:
         raise ValidationError("فقط چک در انتظار وصول قابل وصول‌شدن است.")
+    if bank_account is USE_CHEQUE_ACCOUNT:
+        bank_account = locked.bank_account
+        if bank_account is None:
+            raise ValidationError("حساب این چک مشخص نیست؛ هنگام وصول یک حساب (یا «نقدی») انتخاب کنید.")
 
     payment = record_payment(
         Payment(
-            bank_account=bank_account or locked.bank_account,
+            bank_account=bank_account,
             direction=locked.direction,
             # Carry the cheque's own party across, so the money this cheque
             # became is still traceable to a person.

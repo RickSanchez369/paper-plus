@@ -898,3 +898,23 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   bank ledger and reports show the refund; cancelling is now the only action that
   moves money without a person typing an amount, which is why it stays
   superuser-only.
+
+### D-056: Clearing a cheque needs an explicit account
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: The cheque detail page's "وصول چک" carries a required account picker
+  (`ClearChequeForm`, a `PaymentSourceField`), pre-selected with the cheque's own
+  account. A real account, or cash chosen on purpose, must be answered; a cheque
+  with no account can no longer slip into cash silently (D-045's rule, applied to
+  clearing). `clear_cheque` without an account argument uses the cheque's own account
+  and refuses when it has none; `bank_account=None` means cash on purpose.
+
+### D-057: Expense receipts are PDF or images, at most 5 MB
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: `Expense.document` accepts only .pdf, .png, .jpg/.jpeg and .webp, up to
+  5 MB, and the file's leading bytes must match its extension
+  (`apps/payments/validators.validate_receipt`). Pages a browser could run (.html,
+  .svg), executables and disguised files are refused, on the form and in /admin/.

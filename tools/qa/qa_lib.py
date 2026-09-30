@@ -132,6 +132,17 @@ class Harness:
         d.update(extra or {})
         return (client or self.c).post("/purchasing/new/", d)
 
+    def clear_cheque(self, ch, account="cheque", client=None):
+        """POST the clear form. account: "cheque" (its own account, else cash),
+        "cash", a BankAccount, or "" (nothing chosen)."""
+        if account == "cheque":
+            value = str(ch.bank_account_id) if ch.bank_account_id else "cash"
+        elif account in ("cash", ""):
+            value = account
+        else:
+            value = str(account.pk)
+        return (client or self.c).post(f"/cheques/{ch.pk}/clear/", {"bank_account": value})
+
     def stock(self, p):
         return get_stock(p)
 

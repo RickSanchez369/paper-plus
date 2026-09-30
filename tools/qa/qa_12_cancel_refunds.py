@@ -68,7 +68,7 @@ def scenarios(h):
     i4 = last_sale(c4)
     chq = {x.cheque_number: x for x in Cheque.objects.filter(sales_invoice=i4)}
     b_before = get_bank_account_balance(acct)
-    h.c.post(f"/cheques/{chq['P1'].pk}/clear/")
+    h.clear_cheque(chq["P1"])
     h.c.post(f"/cheques/{chq['P2'].pk}/bounce/")
     check("RF05 a cleared cheque moved 300 into the account", get_bank_account_balance(acct) == b_before + 300)
     h.c.post(f"/sales/{i4.pk}/cancel/")

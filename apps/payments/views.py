@@ -33,6 +33,7 @@ from apps.shared.forms import DateRangeForm
 from apps.shared.permissions import is_privileged
 
 from .forms import (
+    ClearChequeForm,
     BankAccountForm,
     ChequeCompletionForm,
     ChequeFilterForm,
@@ -237,6 +238,9 @@ class ChequeDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["completion_form"] = ChequeCompletionForm(instance=self.object)
+        context["clear_form"] = ClearChequeForm(
+            initial={"bank_account": str(self.object.bank_account_id) if self.object.bank_account_id else ""},
+        )
         return context
 
 
@@ -272,8 +276,15 @@ class ChequeActionView(LoginRequiredMixin, View):
     def post(self, request, pk):
         cheque = get_object_or_404(Cheque, pk=pk)
         service = self._services[self.action]
+        kwargs = {}
+        if self.action == "clear":
+            form = ClearChequeForm(request.POST)
+            if not form.is_valid():
+                messages.error(request, "؛ ".join(e for errors in form.errors.values() for e in errors))
+                return redirect("cheques:detail", pk=pk)
+            kwargs["bank_account"] = form.cleaned_data["bank_account"]   # None = cash, chosen
         try:
-            service(cheque, request.user)
+            service(cheque, request.user, **kwargs)
         except ValidationError as exc:
             messages.error(request, "؛ ".join(exc.messages))
         else:

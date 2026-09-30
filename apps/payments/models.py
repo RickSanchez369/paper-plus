@@ -19,6 +19,8 @@ from django.db import models
 
 from apps.shared.models import BaseModel
 
+from .validators import validate_receipt
+
 
 class BankAccount(BaseModel):
     """A bank account of the business, used to record where money moved."""
@@ -422,7 +424,9 @@ class Expense(BaseModel):
     document = models.FileField(
         upload_to="expenses/%Y/%m/",
         blank=True,
+        validators=[validate_receipt],
         verbose_name="سند/رسید",
+        help_text="PDF یا تصویر (PNG، JPG، WebP)، حداکثر ۵ مگابایت.",
     )
     note = models.TextField(
         blank=True,
