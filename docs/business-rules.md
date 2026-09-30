@@ -117,3 +117,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-047 htmx swaps a 422 response (a form re-rendered with its errors) via `htmx-config` in base.html; other 4xx/5xx stay non-swapping errors.
 - D-048 An invoice discount is shared across its lines pro rata by line total (largest remainder, whole Toman); line profit and per-product report rows are net of it and sum to the invoice/report totals. Derived, never stored.
 - D-049 Static files served by whitenoise (not nginx) so PaaS deploys (no user-controlled reverse proxy) still get CSS/JS with DEBUG=False; VPS/nginx path unaffected.
+- D-050 Visual identity: IBM Carbon-inspired (flat, square, one blue accent), changed via `app.css` tokens only.

@@ -1,10 +1,12 @@
 /*
  * paper-plus — application shell.
  *
- * Every colour, radius and space is a token on :root. Phase D picks the
- * visual identity (REDESIGN_VISION 5); when it does, it should be able to
- * change these values and nothing else. Component rules below reference
- * tokens only — no literal colours past this block.
+ * Visual identity (Phase D): IBM Carbon-inspired -- flat square chrome,
+ * thin borders instead of shadows, one blue accent, cool-grey neutrals.
+ * Chosen because this is a dense, numbers-first financial tool, not a
+ * marketing page. Every colour, radius and space is a token on :root, so
+ * the identity can change by editing that block alone. Component rules
+ * below reference tokens only -- no literal colours past this block.
  *
  * RTL is the only direction this app runs in, so logical properties
  * (inline-start/end) are used throughout rather than left/right.
@@ -18,34 +20,35 @@
 }
 
 :root {
-  /* Neutrals: a single cool-grey ramp, so surfaces never disagree. */
-  --ink-900: #0f1720;
-  --ink-800: #1b2531;
-  --ink-700: #2b3949;
-  --ink-500: #5b6b7f;
-  --ink-400: #7d8da1;
-  --ink-300: #b4c0cd;
-  --ink-200: #dce3ea;
-  --ink-100: #eef2f6;
-  --ink-050: #f7f9fb;
+  /* Neutrals: Carbon's grey ramp, so surfaces never disagree. */
+  --ink-900: #161616;
+  --ink-800: #262626;
+  --ink-700: #393939;
+  --ink-500: #525252;
+  --ink-400: #6f6f6f;
+  --ink-300: #c6c6c6;
+  --ink-200: #e0e0e0;
+  --ink-100: #f4f4f4;
+  --ink-050: #f4f4f4;
   --white: #ffffff;
 
-  /* One accent. A trading business reads as serious, not playful. */
-  --accent-700: #12566b;
-  --accent-600: #17708a;
-  --accent-500: #1e8aa8;
-  --accent-100: #e2f1f6;
+  /* One accent. 600 is the action colour, 700 its hover, 500 the focus ring
+     and the marker on dark surfaces. */
+  --accent-700: #0043ce;
+  --accent-600: #0f62fe;
+  --accent-500: #4589ff;
+  --accent-100: #edf5ff;
 
   /* Money has a direction: in is good, out is not, overdue is urgent. */
-  --positive-600: #1d7a4f;
-  --positive-100: #e3f4ec;
-  --negative-600: #b3261e;
-  --negative-100: #fbe9e7;
-  --warning-600: #9a6300;
-  --warning-100: #fdf1dc;
+  --positive-600: #198038;
+  --positive-100: #defbe6;
+  --negative-600: #da1e28;
+  --negative-100: #fff1f1;
+  --warning-600: #8e6a00;
+  --warning-100: #fcf4d6;
 
   --surface: var(--white);
-  --surface-sunken: var(--ink-050);
+  --surface-sunken: var(--ink-100);
   --border: var(--ink-200);
   --text: var(--ink-900);
   --text-muted: var(--ink-500);
@@ -59,12 +62,15 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* One shape rule: near-square everywhere. */
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
 
-  --shadow-sm: 0 1px 2px rgb(15 23 32 / 6%), 0 1px 3px rgb(15 23 32 / 4%);
-  --shadow-md: 0 4px 12px rgb(15 23 32 / 8%);
+  /* Flat: cards are separated by borders. Only overlays (dropdowns,
+     dialogs, the date picker) lift off the page. */
+  --shadow-sm: none;
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 20%);
 
   --sidebar-width: 236px;
   --header-height: 60px;
@@ -110,7 +116,7 @@ h3 {
   line-height: 1.35;
 }
 
-h1 { font-size: 20px; }
+h1 { font-size: 22px; font-weight: 500; }
 h2 { font-size: 16px; }
 
 /*
@@ -210,7 +216,8 @@ h2 { font-size: 16px; }
 }
 
 .nav-link.is-active {
-  background: var(--accent-700);
+  background: var(--ink-700);
+  box-shadow: inset -3px 0 0 var(--accent-500);
   color: var(--white);
   font-weight: 500;
 }
@@ -418,9 +425,7 @@ h2 { font-size: 16px; }
   display: grid;
   place-items: center;
   padding: var(--space-5);
-  background:
-    radial-gradient(ellipse at 20% 0%, rgb(30 138 168 / 10%), transparent 55%),
-    var(--surface-sunken);
+  background: var(--surface-sunken);
 }
 
 .auth__card {

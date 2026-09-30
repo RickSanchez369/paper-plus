@@ -21,12 +21,15 @@ purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
   9956001 — teardown scripts must never reset it below a number already used.
 
 ## Next
-**Phase D — visual identity.** Pick (or blend) one of the four reference
-systems in `docs/design/` (Stripe, Linear, IBM, PostHog); if it isn't obvious
-once real pages are compared, ask Sina. Use the `design-taste-frontend`
-skill for new work and `redesign-existing-projects` for pages already built.
-Apply one look app-wide, not a different feel per module. After the pick,
-delete the three unchosen `docs/design/*` folders.
+**Phase D is done (D-050):** IBM Carbon-inspired identity applied app-wide by
+swapping the `app.css` tokens; three unchosen reference systems deleted, the
+IBM reference kept in `docs/design/ibm/`. Checked in the browser on the
+dashboard, new-sale form and inventory list.
+
+No task is queued. Candidates, in the order of value: the SHADOW run (below),
+deployment (`docs/deployment.md`), a browser pass over every remaining page for
+Phase D polish (date picker, dialogs, print pages), and tidying source comments
+that still cite `REDESIGN_VISION`/`MASTER_PROMPT` section numbers.
 
 ## Open items (raise with Sina before touching)
 - **3.4 real SHADOW run** — run in parallel with the paper ledger until 3

@@ -813,3 +813,21 @@ No effect on the VPS path: nginx still serves `staticfiles/` there and
 never reaches gunicorn/whitenoise for those requests, so both deployment
 targets keep working off the same `collectstatic` output.
 `manage.py check` verified clean after `pip install -r requirements.txt`.
+
+### D-050: Visual identity is IBM Carbon-inspired
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Claude, on Phase D's own brief (pick or blend, ask only if not obvious)
+- Decision: The app's look follows IBM's Carbon language (`docs/design/ibm/DESIGN.md`):
+  flat near-square chrome (radius 2-4px), thin 1px borders instead of shadows
+  (only overlays keep one), Carbon's cool-grey ramp, one blue accent
+  (`--accent-600: #0f62fe`), dark `#161616` side nav with a blue marker on the
+  active item, light page background `#f4f4f4`. Font stays Vazirmatn (IBM Plex
+  has no Persian). Implemented by changing the token block in
+  `apps/shared/static/shared/css/app.css`; component rules were not touched.
+- Options considered: Stripe (financial but gradient/marketing-led), Linear
+  (dark-first), PostHog (playful illustration).
+- Rationale: dense, numbers-first internal tool; Carbon is built for data
+  tables and forms, and its flat style matches the existing token structure.
+- Affects: `app.css` only. Reversible by editing the `:root` tokens.
+- Not done: dark mode (internal tool, not asked for).
