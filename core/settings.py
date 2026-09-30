@@ -95,6 +95,13 @@ DATABASES = {
     "default": env.db("DATABASE_URL"),
 }
 
+if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    # SQLite has no row locks, so every write transaction takes the database's
+    # write lock up front (IMMEDIATE): two people confirming invoices at once
+    # queue instead of racing, which gives the same no-duplicate-number and
+    # no-oversell guarantee select_for_update gives on PostgreSQL.
+    DATABASES["default"]["OPTIONS"] = {"transaction_mode": "IMMEDIATE", "timeout": 30}
+
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 

@@ -1028,3 +1028,20 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   every screen size; closed, nothing of it is shown or reachable by keyboard. Overlay, X
   and Esc close it; it is closed on every page load (no remembered state). Small script:
   `shared/js/nav_drawer.js`.
+
+### D-066: The database engine is chosen by `DATABASE_URL`; SQLite is allowed for a host without PostgreSQL
+- Status: Final
+- Date: 2026-10-01
+- Decided by: Sina
+- Context: The first host (hostiran "هاست فریم‌ورک") offers PostgreSQL only on the dearer "پلاس" plan.
+- Decision: Nothing in the code is PostgreSQL-only, so `DATABASE_URL` alone picks the engine:
+  `postgres://...` (development, `main`, any host with PostgreSQL) or `sqlite:////abs/path/db.sqlite3`
+  (the `deploy` branch's target). On SQLite, `settings.py` turns on `transaction_mode=IMMEDIATE`
+  (every write transaction takes the database's write lock first), which keeps the no-duplicate-number
+  and no-oversell guarantees that `select_for_update` gives on PostgreSQL (8 threads x 10 numbers: 80
+  unique). The whole QA suite, the fuzz run and a restore of a PostgreSQL backup were run on SQLite
+  and pass.
+- Limits: one writer at a time (fine for a few users, not for heavy parallel load); the file must live
+  outside any web-served folder; MySQL/MariaDB is NOT supported (partial unique constraints are ignored there).
+- The `deploy` branch is `dev` plus host-specific files only (`passenger_wsgi.py` at the root, a SQLite
+  `.env.example`, the host runbook); bring in new work with `git merge dev`.

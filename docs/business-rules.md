@@ -123,3 +123,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-064 Invoice numbers are `year/running` (e.g. 1405/0042), per type, restarting each Jalali year.
 - D-065 The module menu is a hamburger-opened drawer on all screen sizes.
 - D-063 Install/update on a host: `manage.py update`, WhiteNoise, `deploy/UPDATING.md` (amends D-051).
+- D-066 The DB engine is chosen by `DATABASE_URL`: PostgreSQL normally, SQLite on the `deploy` branch for a host without PostgreSQL.
