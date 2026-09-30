@@ -27,9 +27,8 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - **Single business, no multi-tenancy.** No `business` FK anywhere;
   a second business would be a separate deployment (D-033).
 - **No role system.** Any authenticated user may use any page/action, with
-  exactly two exceptions, both `is_superuser`-gated: confirming a sale that
-  oversells (D-016/D-021/D-034), and cancelling a confirmed invoice
-  (D-023/D-034).
+  exactly one exception, `is_superuser`-gated: cancelling a confirmed invoice
+  (D-023/D-034). A sale can never take stock below zero, for anyone (D-052).
 - **`/admin/` is a superuser-only technical backend**, never the end-user
   surface (D-035).
 - **Real FIFO costing.** `InventoryLayer` + `InventoryConsumption` track
@@ -74,12 +73,12 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - ~~D-013~~ superseded by D-043 (money is whole Toman).
 - D-014 A confirmed invoice is immutable.
 - D-015 `confirm_sale` locks Product rows as a mutex.
-- D-016 A sale may drive stock negative; shortages are returned as a warning.
+- ~~D-016~~ superseded by D-052 (a sale can no longer drive stock negative).
 - D-017 Opening stock once, before any movement; 0 = onboarded with no row. Entered only at product creation (D-044).
 - D-018 The app DB role `paper_app` owns the database, schema and tables.
 - D-019 DEBUG and ALLOWED_HOSTS from env, safe defaults.
 - D-020 Scope = full remake request; order in the STATE.md roadmap.
-- D-021 Shortage on sale: rejected unless the caller is a superuser (gate narrowed by D-034).
+- ~~D-021~~ superseded by D-052 (shortage is rejected for everyone).
 - D-022 Invoice number assigned at confirmation from a locked DocumentSequence; configurable start; purchase also gets `supplier_invoice_number`.
 - D-023 A confirmed invoice is cancelled (status + reversing movements), never edited. Superuser only (D-034).
 - D-024 Hard delete only for unreferenced records. Movements and confirmed/cancelled invoices are never deleted, by anyone.
@@ -92,7 +91,7 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-031 Verification scripts: random unique identifiers, never fixed; assert on a service's returned object or after refresh_from_db(), never a stale local reference.
 - D-032 Invoice discount: fixed amount (Toman since D-043, not %), invoice-level only, sales invoices only for now; validated against subtotal in confirm_sale, not clean().
 - D-033 Single business: Business/BusinessMembership and every `business` FK deleted; unique constraints global; DocumentSequence singleton per doc_type.
-- D-034 No roles: `is_superuser` is the only distinction; it gates oversell and cancellation only.
+- D-034 No roles: `is_superuser` is the only distinction; it gates cancellation only (oversell gate removed by D-052).
 - D-035 `/admin/` is superuser-only (PaperPlusAdminSite); the frontend is the user surface.
 - D-036 FIFO cost layers: InventoryLayer + signed InventoryConsumption; purchase cancel blocked once any of its stock was sold.
 - D-037 Profit is realised profit — zero unless confirmed; oversold units are surfaced as uncosted, never priced.
@@ -110,3 +109,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - ~~D-049~~ superseded by D-051 (no deployment work in this repo).
 - D-050 Visual identity: IBM Carbon-inspired (flat, square, one blue accent), changed via `app.css` tokens only.
 - D-051 Deployment and the SHADOW parallel-run are out of scope and removed from the repo.
+- D-052 A sale may never exceed the stock on hand, not even for a superuser; buy first.

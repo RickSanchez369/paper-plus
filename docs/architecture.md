@@ -49,8 +49,8 @@ identifiers and comments are English.
   `created_by` and enough FKs to answer who/when/why/which document.
 - **Single business, no roles.** `Business`/`BusinessMembership` and the
   Owner/Seller role are deleted (D-033, D-034). Any authenticated user
-  can use any page; exactly two actions are `is_superuser`-gated:
-  confirming a sale that oversells, and cancelling a confirmed invoice.
+  can use any page; only cancelling a confirmed invoice is
+  `is_superuser`-gated. A sale can never exceed the stock on hand (D-052).
 - **One-shot invoices.** A sale/purchase (party, items, payment split) is
   created and confirmed atomically in one page submit — no draft-then-
   come-back state exposed to the user.

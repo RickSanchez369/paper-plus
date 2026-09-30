@@ -7,13 +7,13 @@ request.
 {% endcomment %}
 {% if rows %}
   {% for row in rows %}
-    <button type="button" class="item-row__result" data-item-row-pick
+    <button type="button" class="item-row__result" data-item-row-pick{% if row.stock <= 0 %} disabled{% endif %}
             data-id="{{ row.product.pk }}"
             data-name="{{ row.product.name }}"
             data-stock="{{ row.stock }}"
             data-price="{{ row.product.default_selling_price }}">
       <span>{{ row.product.name }}</span>
-      <span class="num item-row__result-stock">موجودی: {{ row.stock|fa_number }}</span>
+      <span class="num item-row__result-stock">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|fa_number }}{% endif %}</span>
     </button>
   {% endfor %}
 {% else %}

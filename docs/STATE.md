@@ -26,7 +26,9 @@ audited in the browser for leftover old-style radii, shadows and colours (none);
 Carbon-style filled inputs and table headers apply app-wide. Not visually
 checked (no data to render): invoice detail/print, cheque detail.
 
-No task is queued. Source comments no longer cite `REDESIGN_VISION` or
+**Now: bug-fix pass.** Sina reports bugs and defects page by page; each is
+fixed and verified in the browser before the next. The open items below stay
+open on purpose. Source comments no longer cite `REDESIGN_VISION` or
 `MASTER_PROMPT` section numbers (removed 2026-09-30).
 
 ## Open items (raise with Sina before touching)
@@ -46,5 +48,5 @@ correct; payment status derived from allocations; wrong invoice cancelled by
 a superuser with history kept; stock correct after purchase and sale;
 per-product history visible; selling price manageable with history;
 amounts shown in Toman only (D-043); concurrent sales never oversell
-uncontrolled (D-015, D-021). Most are covered by the existing scripts;
+(D-015, D-052). Most are covered by the existing scripts;
 5.1–5.3 (one script per scenario, all passing, full review) remain open.

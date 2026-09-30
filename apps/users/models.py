@@ -53,7 +53,7 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
 
     Carries no role: any authenticated user may use every page. `is_superuser`
     is the only distinction
-    left, and it gates exactly two actions (oversell, cancellation).
+    left, and it gates one action (cancellation).
     """
 
     phone = models.CharField(

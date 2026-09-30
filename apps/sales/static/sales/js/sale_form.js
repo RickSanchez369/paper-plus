@@ -63,6 +63,8 @@
     var discount = intVal(discountInput);
     var total = Math.max(subtotal - discount, 0);
 
+    validateStock();
+
     setText("sale-subtotal", formatToman(subtotal));
     setText("sale-total", formatToman(total));
     setText("sale-full-amount", formatToman(total));
@@ -92,11 +94,44 @@
     if (el) el.textContent = text;
   }
 
+  // One product, one line: ids already chosen in the other rows.
+  function chosenProductIds(exceptRow) {
+    var ids = [];
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
+      if (row === exceptRow) return;
+      var id = row.querySelector('input[name$="-product"]').value;
+      if (id) ids.push(id);
+    });
+    return ids;
+  }
+
+  // A line above the stock on hand is refused by the server too (D-052);
+  // this only says so before the submit.
+  function validateStock() {
+    var blocked = false;
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
+      var warn = row.querySelector("[data-item-row-warn]");
+      var stock = row.dataset.stock;
+      var over = false;
+      if (stock !== undefined && stock !== "") {
+        over = intVal(row.querySelector('input[name$="-quantity"]')) > parseInt(stock, 10);
+      }
+      if (warn) {
+        warn.textContent = over ? "بیشتر از موجودی (" + formatToman(stock).replace(/,/g, "") + ") است؛ ابتدا خرید ثبت کنید." : "";
+      }
+      if (over) blocked = true;
+    });
+    var submit = document.querySelector("#sale-form [type=submit]");
+    if (submit) submit.disabled = blocked;
+  }
+
   function pickProduct(button) {
     var row = button.closest("[data-item-row]");
     if (!row) return;
+    if (chosenProductIds(row).indexOf(button.dataset.id) !== -1) return;
 
     row.querySelector('input[name$="-product"]').value = button.dataset.id;
+    row.dataset.stock = button.dataset.stock;
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = button.dataset.name;
 
@@ -112,6 +147,27 @@
     if (results) results.innerHTML = "";
 
     recomputeInvoice();
+  }
+
+  // Products already on the invoice cannot be picked again: grey them out
+  // in every search result that comes back.
+  document.body.addEventListener("htmx:afterSwap", function (event) {
+    var row = event.target.closest && event.target.closest("[data-item-row]");
+    if (!row) return;
+    var taken = chosenProductIds(row);
+    event.target.querySelectorAll("[data-item-row-pick]").forEach(function (button) {
+      if (taken.indexOf(button.dataset.id) !== -1) {
+        button.disabled = true;
+        button.querySelector("span").textContent += " (قبلاً در فاکتور است)";
+      }
+    });
+  });
+
+  // Cheque number, issuing bank and due date only exist for a cheque.
+  function syncPaymentRow(row) {
+    var method = row.querySelector('select[name$="-method"]');
+    var cheque = row.querySelector("[data-cheque-only]");
+    if (method && cheque) cheque.hidden = method.value !== "cheque";
   }
 
   document.addEventListener("click", function (event) {
@@ -149,6 +205,7 @@
       if (currentPaymentMode() !== "split") setPaymentMode("split");
       var newRow = addRow("payment-rows", "payment-row-template", "payments");
       if (newRow) {
+        syncPaymentRow(newRow);
         var amountInput = newRow.querySelector('input[name$="-amount"]');
         var remaining = Math.max(currentTotal() - sumPaymentRows(), 0);
         if (amountInput && remaining > 0) {
@@ -183,6 +240,9 @@
     if (event.target.matches('input[name="payment_mode"]')) {
       showPaymentPanel(currentPaymentMode());
     }
+    if (event.target.matches('select[name$="-method"]')) {
+      syncPaymentRow(event.target.closest("[data-payment-row]"));
+    }
   });
 
   function sumPaymentRows() {
@@ -204,5 +264,8 @@
     }
   });
 
-  document.addEventListener("DOMContentLoaded", recomputeInvoice);
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
+    recomputeInvoice();
+  });
 })();

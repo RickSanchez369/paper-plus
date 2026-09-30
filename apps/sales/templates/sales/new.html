@@ -24,11 +24,14 @@ appear only when chosen.
 {% endblock %}
 
 {% block content %}
-<div class="page-head">
-  <h1>ثبت فاکتور فروش</h1>
-  <p class="page-head__lede">
-    فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
-  </p>
+<div class="page-head page-head__row">
+  <div>
+    <h1>ثبت فاکتور فروش</h1>
+    <p class="page-head__lede">
+      فاکتور با تأیید همین صفحه، بلافاصله ثبت و تأیید می‌شود؛ حالت پیش‌نویس ندارد.
+    </p>
+  </div>
+  <a href="{% url 'sales:list' %}" class="btn btn--quiet">بازگشت</a>
 </div>
 
 {% if error %}
@@ -48,11 +51,13 @@ payment rows ever reached the server).
 <div class="card">
   <div class="card__body">
     <h2>مشتری</h2>
-    {% include "shared/_field.html" with field=invoice_form.customer %}
-    <details class="quick-party-disclosure">
-      <summary class="btn btn--quiet">+ مشتری جدید</summary>
-      {% include "partners/_quick_party_form.html" with form=quick_customer_form post_url=quick_customer_url title="مشتری جدید" %}
-    </details>
+    <div class="sale-form__customer">
+      {% include "shared/_field.html" with field=invoice_form.customer %}
+      <details class="quick-party-disclosure">
+        <summary class="btn btn--quiet">+ مشتری جدید</summary>
+        {% include "partners/_quick_party_form.html" with form=quick_customer_form post_url=quick_customer_url title="مشتری جدید" compact=True %}
+      </details>
+    </div>
   </div>
 </div>
 
@@ -148,16 +153,17 @@ payment rows ever reached the server).
           {% include "sales/_payment_entry_row.html" with form=payment_formset.empty_form %}
         </template>
 
+        <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
+
         <p class="sale-form__remaining">
           باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> تومان
         </p>
       </div>
-
-      <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت (چک / نسیه / تفکیکی)</button>
     </div>
   </div>
 
   <div class="sale-form__submit">
+    <a href="{% url 'sales:list' %}" class="btn btn--quiet">انصراف</a>
     <button type="submit" class="btn">ثبت و تأیید فاکتور</button>
   </div>
 </form>

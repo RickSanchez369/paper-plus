@@ -161,8 +161,8 @@ class SalesCreateView(LoginRequiredMixin, View):
     The one-shot new-sale page:
     invoice + items + payment, submitted together, created and confirmed
     in one transaction. A rejection at any point -- no items, discount
-    over subtotal, payment rows over the total, an oversell by a
-    non-superuser -- leaves nothing saved; the same page re-renders with
+    over subtotal, payment rows over the total, a line above the stock on
+    hand (D-052) -- leaves nothing saved; the same page re-renders with
     the Persian error `confirm_sale` already raises.
 
     Payment (D-046): in the default full-settlement mode the payment rows
@@ -210,18 +210,11 @@ class SalesCreateView(LoginRequiredMixin, View):
                             entry.invoice = invoice
                             entry.save()
 
-                    invoice, shortages = confirm_sale(invoice, request.user)
+                    invoice, _ = confirm_sale(invoice, request.user)
             except ValidationError as exc:
                 error = "؛ ".join(exc.messages)
             else:
-                if shortages:
-                    names = "، ".join(s["product"].name for s in shortages)
-                    messages.warning(
-                        request,
-                        f"فاکتور {invoice.invoice_number} تأیید شد، اما موجودی این کالاها منفی شد: {names}",
-                    )
-                else:
-                    messages.success(request, f"فاکتور {invoice.invoice_number} ثبت شد.")
+                messages.success(request, f"فاکتور {invoice.invoice_number} ثبت شد.")
                 return redirect("sales:detail", pk=invoice.pk)
 
         context = {

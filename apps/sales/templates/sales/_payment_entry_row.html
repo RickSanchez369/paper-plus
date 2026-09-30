@@ -4,13 +4,21 @@ One payment-entry row: confirm_sale turns each into a real Payment or a pending 
 for each bound form already in the formset and, wrapped in a <template>
 by new.html, as what "افزودن ردیف پرداخت" clones (`form` is
 `payment_formset.empty_form`, prefix __prefix__).
+
+Only a cheque has a number, an issuing bank and a due date: that block is
+hidden for cash/card/transfer (sale_form.js toggles it when the method
+changes; the form drops those values server-side for a non-cheque row).
 {% endcomment %}
 <div class="payment-row" data-payment-row>
-  {% include "shared/_field.html" with field=form.method %}
-  {% include "shared/_field.html" with field=form.amount %}
-  {% include "shared/_field.html" with field=form.bank_account %}
-  {% include "shared/_field.html" with field=form.cheque_number %}
-  {% include "shared/_field.html" with field=form.bank_name %}
-  {% include "shared/_field.html" with field=form.due_date %}
-  <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+  <div class="payment-row__main">
+    {% include "shared/_field.html" with field=form.method %}
+    {% include "shared/_field.html" with field=form.amount %}
+    {% include "shared/_field.html" with field=form.bank_account %}
+    <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+  </div>
+  <div class="payment-row__cheque" data-cheque-only{% if form.method.value != "cheque" %} hidden{% endif %}>
+    {% include "shared/_field.html" with field=form.cheque_number %}
+    {% include "shared/_field.html" with field=form.bank_name %}
+    {% include "shared/_field.html" with field=form.due_date %}
+  </div>
 </div>

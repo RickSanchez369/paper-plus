@@ -45,7 +45,12 @@ class QuickCustomerCreateView(LoginRequiredMixin, View):
         if not form.is_valid():
             html = render_to_string(
                 "partners/_quick_party_form.html",
-                {"form": form, "post_url": request.path, "title": "مشتری جدید"},
+                {
+                    "form": form,
+                    "post_url": request.path,
+                    "title": "مشتری جدید",
+                    "compact": bool(request.POST.get("compact")),
+                },
                 request=request,
             )
             return HttpResponse(html, status=422)

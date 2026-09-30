@@ -823,3 +823,19 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Note: older entries (D-014, D-016, D-017, D-019, D-020) still mention SHADOW
   or a future deployment as historical rationale; they are not rewritten.
   The app still reads DEBUG/ALLOWED_HOSTS/CSRF_TRUSTED_ORIGINS from `.env`.
+
+### D-052: A sale can never exceed the stock on hand
+- Status: Final
+- Date: 2026-09-30
+- Decided by: Sina
+- Decision: `confirm_sale` rejects any line above the available stock, for
+  every user including a superuser; the new-sale form shows the same error
+  before submit and disables the submit button. The missing goods have to be
+  bought first. Supersedes D-016 and D-021; D-034's list of superuser-gated
+  actions shrinks to cancellation only.
+- Rationale: goods sold before the purchase invoice existed made stock
+  negative and left those units without a cost basis; Sina wants the ledger
+  never to be in that state.
+- Note: `SaleItem.uncosted_quantity`, the Dashboard's negative-stock row and
+  the `shortages` element of `confirm_sale`'s return value are kept but can
+  no longer be triggered by a new sale (the tuple is always `(invoice, [])`).

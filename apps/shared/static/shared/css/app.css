@@ -929,6 +929,7 @@ h2 { font-size: 16px; }
 }
 
 .item-row__results:not(:empty) {
+  min-width: 240px;
   position: absolute;
   z-index: 30;
   inset-inline: 0;
@@ -995,11 +996,27 @@ h2 { font-size: 16px; }
 
 .payment-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr) auto;
   gap: var(--space-3);
-  align-items: end;
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border);
+}
+
+.payment-row__main {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+/* Cheque-only fields: number, issuing bank, due date. */
+.payment-row__cheque {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.payment-row__cheque[hidden] {
+  display: none;
 }
 
 .payment-row .field {
@@ -1011,6 +1028,29 @@ h2 { font-size: 16px; }
 }
 
 /* --------------------------------------------------------- new-sale form */
+
+/* The customer picker and its quick-add stay compact instead of
+   stretching across the whole card. */
+.sale-form__customer {
+  max-width: 420px;
+}
+
+.quick-party--compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.quick-party--compact .field,
+.quick-party--compact .field + .field {
+  margin-top: 0;
+}
+
+.quick-party--compact .form-error {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
 
 .sale-form__header {
   display: grid;
@@ -1125,7 +1165,14 @@ h2 { font-size: 16px; }
 .sale-form__submit {
   display: flex;
   justify-content: flex-end;
+  gap: var(--space-3);
   margin-top: var(--space-5);
+}
+
+.item-row__result:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  background: var(--ink-100);
 }
 
 .sale-detail__actions {

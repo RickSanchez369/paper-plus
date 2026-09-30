@@ -28,6 +28,7 @@ job already; duplicating them here would be a second source of truth.
 
 from django import forms
 
+from apps.inventory.selectors import get_stock_map
 from apps.partners.models import Customer
 from apps.payments.forms import PaymentSourceField
 from apps.payments.models import BankAccount
@@ -187,25 +188,35 @@ class SaleItemForm(SelectedProductMixin, forms.ModelForm):
 
 class BaseSaleItemFormSet(forms.BaseFormSet):
     """Catches the same product picked twice before the DB's unique
-    constraint (`unique_product_per_sales_invoice`) would."""
+    constraint (`unique_product_per_sales_invoice`) would, and any line
+    above the stock on hand (D-052; `confirm_sale` re-checks under lock)."""
 
     def clean(self):
         super().clean()
         if any(self.errors):
             return
-        seen = set()
+        lines = {}
         for form in self.forms:
             if not form.cleaned_data:
                 continue
             product = form.cleaned_data.get("product")
-            if product is None or product.pk not in seen:
-                if product is not None:
-                    seen.add(product.pk)
+            if product is None:
                 continue
-            raise forms.ValidationError(
-                "کالای «%(name)s» بیش از یک بار در فاکتور انتخاب شده است.",
-                params={"name": product.name},
-            )
+            if product.pk in lines:
+                raise forms.ValidationError(
+                    "کالای «%(name)s» بیش از یک بار در فاکتور انتخاب شده است.",
+                    params={"name": product.name},
+                )
+            lines[product.pk] = (product, form.cleaned_data["quantity"])
+        stock = get_stock_map(list(lines))
+        for pk, (product, quantity) in lines.items():
+            available = stock.get(pk, 0)
+            if quantity > available:
+                raise forms.ValidationError(
+                    "موجودی «%(name)s» کافی نیست (موجودی %(available)s، درخواست %(qty)s). "
+                    "ابتدا خرید را ثبت کنید.",
+                    params={"name": product.name, "available": available, "qty": quantity},
+                )
 
 
 SaleItemFormSet = forms.formset_factory(SaleItemForm, formset=BaseSaleItemFormSet, extra=1)
@@ -261,6 +272,17 @@ class SalesPaymentEntryForm(forms.ModelForm):
         self.fields["bank_account"].required = False
         self.fields["cheque_number"].required = False
         self.fields["bank_name"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        # Only a cheque has a number, an issuing bank and a due date; the
+        # page hides those fields for the other methods, so whatever a
+        # switched-away row still holds must not be saved.
+        if cleaned.get("method") != SalesPaymentEntry.Method.CHEQUE:
+            cleaned["cheque_number"] = ""
+            cleaned["bank_name"] = ""
+            cleaned["due_date"] = None
+        return cleaned
 
 
 SalesPaymentEntryFormSet = forms.formset_factory(SalesPaymentEntryForm, extra=0)

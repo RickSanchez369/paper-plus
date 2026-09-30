@@ -7,17 +7,21 @@ Customers page and embedded inside the sale/purchase forms, where creating
 a party must not throw away the invoice being written — hence htmx rather
 than a link to another page.
 {% endcomment %}
-<form class="quick-party"
+<form class="quick-party{% if compact %} quick-party--compact{% endif %}"
       hx-post="{{ post_url }}"
       hx-target="closest .quick-party"
       hx-swap="outerHTML">
   {% csrf_token %}
-  <div class="quick-party__head">{{ title }}</div>
+  {% comment %} `compact` (mid-invoice): name + phone only, on one row; the view
+     reads the hidden flag to re-render the same compact shape on an error. {% endcomment %}
+  {% if compact %}<input type="hidden" name="compact" value="1">{% else %}<div class="quick-party__head">{{ title }}</div>{% endif %}
 
   {% include "shared/_form_errors.html" %}
   {% for field in form %}
-    {% include "shared/_field.html" with field=field %}
+    {% if not compact or field.name == "name" or field.name == "phone" %}
+      {% include "shared/_field.html" with field=field %}
+    {% endif %}
   {% endfor %}
 
-  <button type="submit" class="btn btn--block">ثبت</button>
+  <button type="submit" class="btn{% if not compact %} btn--block{% endif %}">ثبت</button>
 </form>

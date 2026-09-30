@@ -4,9 +4,10 @@ The one permission concept left after the single-business rebuild.
 Business/BusinessMembership and the Owner/Seller roles are gone, so
 `get_membership`, `has_role`, `is_owner`, `require_role` and
 `get_business_ids` are gone with them. Any authenticated user may do
-anything in the app, with exactly two exceptions that used to be
-role-gated and are now gated on Django's own builtin `is_superuser`:
-confirming a sale that drives stock negative, and cancelling a document.
+anything in the app, with one exception that used to be role-gated and is
+now gated on Django's own builtin `is_superuser`: cancelling a document.
+(Confirming a sale that drives stock negative was the second, until D-052
+made that impossible for everyone.)
 
 Services call this helper themselves, so the rule holds even when the
 call does not come from a view (D-026's reasoning, unchanged).

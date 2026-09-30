@@ -29,24 +29,21 @@ def confirm_sale(invoice, user):
     """
     Confirm a draft sales invoice and remove its items from stock.
 
-    Stock may go negative (D-016); the sale is never blocked for that reason.
-    Products that end up below zero are reported back to the caller and marked
-    in the movement note.
+    A sale never takes stock below zero, for anyone (D-052): the missing goods
+    have to be bought first.
 
     Args:
         invoice: the SalesInvoice to confirm.
         user: the user performing the action.
 
     Returns:
-        (invoice, shortages) where shortages is a list of dicts:
-        {"product": Product, "available": int, "requested": int,
-         "resulting": int, and "uncosted": int when some sold units found
-         no FIFO layer at all}
+        (invoice, shortages). ``shortages`` is always empty now (a shortage
+        raises instead); the tuple is kept so callers do not change.
 
     Raises:
         ValidationError: invoice is not a draft, has no items, or has a
-        discount exceeding its subtotal; or the sale would drive stock
-        negative and ``user`` is not a superuser (D-021, D-034).
+        discount exceeding its subtotal; or a line asks for more than the
+        stock on hand (D-052).
     """
     locked_invoice = SalesInvoice.objects.select_for_update().get(pk=invoice.pk)
 
@@ -79,17 +76,13 @@ def confirm_sale(invoice, user):
     movements = []
     for item in items:
         available = stock_map.get(item.product_id, 0)
-        resulting = available - item.quantity
         note = f"فاکتور فروش {locked_invoice.invoice_number}"
 
-        if resulting < 0:
-            # Marked so reconciliation can find these rows later (D-016).
-            note += f" — موجودی منفی شد ({resulting})"
+        if item.quantity > available:
             shortages.append({
                 "product": item.product,
                 "available": available,
                 "requested": item.quantity,
-                "resulting": resulting,
             })
 
         movements.append(
@@ -104,13 +97,14 @@ def confirm_sale(invoice, user):
             )
         )
 
-    if shortages and not is_privileged(user):
-        # D-021, D-034: an ordinary user may not confirm a sale that
-        # goes negative; a superuser may, and gets it back as a warning (D-016).
-        names = "، ".join(s["product"].name for s in shortages)
+    if shortages:
         raise ValidationError(
-            f"این فروش موجودی این کالاها را منفی می‌کند؛ فقط ابرکاربر "
-            f"می‌تواند آن را تأیید کند: {names}"
+            "موجودی کافی نیست: "
+            + "؛ ".join(
+                f"«{s['product'].name}» (موجودی {s['available']}، درخواست {s['requested']})"
+                for s in shortages
+            )
+            + ". ابتدا خرید را ثبت کنید."
         )
 
     InventoryMovement.objects.bulk_create(movements)
@@ -121,20 +115,12 @@ def confirm_sale(invoice, user):
     # rows are already locked above, which
     # is what keeps two concurrent sales from draining the same layer twice.
     for item in items:
-        _, uncosted = consume_fifo(
+        consume_fifo(
             item,
             item.quantity,
             user,
             note=f"فاکتور فروش {locked_invoice.invoice_number}",
         )
-        if uncosted:
-            # Only reachable on an oversell, which a superuser has just been
-            # allowed to make. Those units have no layer and therefore no
-            # cost basis; SaleItem.uncosted_quantity surfaces them instead of
-            # inventing a price for them.
-            for shortage in shortages:
-                if shortage["product"].pk == item.product_id:
-                    shortage["uncosted"] = uncosted
 
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
