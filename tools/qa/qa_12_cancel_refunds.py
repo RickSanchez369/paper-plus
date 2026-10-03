@@ -45,11 +45,12 @@ def scenarios(h):
     check("RF02 a second cancel does not refund again", Payment.objects.filter(customer=c, is_reversal=True).count() == 1)
 
     c2 = h.customer()
-    h.post_sale(c2, [(p, 10, 100)], mode="split", payments=[{"method": "cash", "amount": "400"}])
+    acct2 = h.account()
+    h.post_sale(c2, [(p, 10, 100)], mode="split", payments=[{"method": "bank_transfer", "amount": "400", "bank_account": str(acct2.pk)}])
     i2 = last_sale(c2)
     h.c.post(f"/sales/{i2.pk}/cancel/")
     rf = Payment.objects.get(customer=c2, is_reversal=True)
-    check("RF03 partial cash payment: refund = the paid part (400), cash (no account)", rf.amount == 400 and rf.bank_account is None and rf.direction == "out")
+    check("RF03 partial payment: refund = the paid part (400), from the same account", rf.amount == 400 and rf.bank_account_id == acct2.pk and rf.direction == "out")
 
     c3 = h.customer()
     h.post_sale(c3, [(p, 5, 100)], mode="split")
@@ -92,7 +93,7 @@ def scenarios(h):
     h.c.post(f"/sales/{a2.pk}/cancel/")
     check("RF06 cancelling the newer invoice refunds only ITS 200", Payment.objects.filter(customer=c5, is_reversal=True).get().amount == 200 and get_bank_account_balance(acct2) == b2 - 200)
     check("RF06 the other invoice still counts its 1000 as paid", a1.paid_amount == 1000 and SalesInvoice.objects.get(pk=a1.pk).payment_status == "paid")
-    h.c.post(f"/receivables/{c5.pk}/record-payment/", {"amount": "77", "payment_date": TODAY_J, "bank_account": ""})
+    h.c.post(f"/receivables/{c5.pk}/record-payment/", {"amount": "77", "payment_date": TODAY_J, "bank_account": str(acct2.pk)})
     h.c.post(f"/sales/{a1.pk}/cancel/")
     refunds = list(Payment.objects.filter(customer=c5, is_reversal=True).order_by("created_at"))
     check("RF07 a prepayment (unallocated) is left alone by cancellations", Payment.objects.filter(customer=c5, amount=77, is_reversal=False).exists() and len(refunds) == 2 and sum(x.amount for x in refunds) == 1200)

@@ -1,0 +1,85 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Fixed, repeating costs (D-073): rent, electricity, water -- what, how much,
+how often, when next due. A row inside its reminder window (or overdue) is
+flagged; "ثبت پرداخت" opens the expense form pre-filled and, once recorded,
+the next due date advances by itself. "رد کردن" skips a period without an
+expense. Nothing is booked here -- this page only reminds.
+{% endcomment %}
+
+{% block title %}هزینه‌های ثابت{% endblock %}
+{% block header %}هزینه‌های ثابت{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{% url 'expenses:list' %}">هزینه‌ها</a> / هزینه‌های ثابت</p>
+
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>هزینه‌های ثابت</h1>
+    <a href="{% url 'recurring_expenses:new' %}" class="btn">+ هزینهٔ ثابت جدید</a>
+  </div>
+  <p class="page-head__lede">هزینه‌هایی که طبق روال تکرار می‌شوند (اجاره، قبض آب و برق، …). سر موعد، یا چند روز زودتر، یادآوری می‌گیرید.</p>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>بابت</th>
+              <th>مبلغ معمول</th>
+              <th>تکرار</th>
+              <th>سررسید بعدی</th>
+              <th>یادآوری</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              {% with item=row.item %}
+              <tr{% if not item.is_active %} class="is-muted"{% endif %}>
+                <td>{{ item.reason }}{% if not item.is_active %} <span class="badge">غیرفعال</span>{% endif %}</td>
+                <td class="num">{{ item.amount|toman }}</td>
+                <td>{{ item.interval_label }}</td>
+                <td class="num">
+                  {{ item.next_due_date|jalali }}
+                  {% if item.is_active %}
+                    {% if row.overdue %}<span class="badge badge--pending">سررسید گذشته</span>
+                    {% elif row.due_soon %}<span class="badge badge--pending">{{ row.days_left|fa_number }} روز دیگر</span>{% endif %}
+                  {% endif %}
+                </td>
+                <td>{{ item.remind_days_before|fa_number }} روز قبل</td>
+                <td>
+                  {% if item.is_active %}
+                    <a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.pk }}">ثبت پرداخت</a>
+                    <form method="post" action="{% url 'recurring_expenses:skip' item.pk %}" class="inline-form"
+                          onsubmit="return confirm('این نوبت بدون ثبت هزینه رد شود؟');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn--quiet">رد کردن</button>
+                    </form>
+                  {% endif %}
+                  <a class="btn btn--quiet" href="{% url 'recurring_expenses:edit' item.pk %}">ویرایش</a>
+                  <form method="post" action="{% url 'recurring_expenses:toggle' item.pk %}" class="inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--quiet">{% if item.is_active %}غیرفعال‌سازی{% else %}فعال‌سازی{% endif %}</button>
+                  </form>
+                </td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هنوز هزینهٔ ثابتی تعریف نشده است.</p>
+        <a href="{% url 'recurring_expenses:new' %}" class="btn">ثبت اولین هزینهٔ ثابت</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

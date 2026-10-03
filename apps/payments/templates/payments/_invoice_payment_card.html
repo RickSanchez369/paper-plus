@@ -1,0 +1,74 @@
+{% comment %}
+The "پرداخت" card of a new sales/purchase invoice (D-069), one template for
+both so they cannot drift. Context: invoice_form (has InvoicePaymentFields),
+payment_formset, entry_row (template of one payment row), party_word
+(مشتری / تأمین‌کننده), show_pos (False when paying a supplier: a card reader
+only receives money).
+
+Full settlement: pay by card reader, by bank transfer, or by both at once
+(amounts must add up to the total; leave one blank and it takes the rest).
+Split mode: rows by method, and the unpaid remainder is credit (نسیه) with a
+due date. invoice_payment.js owns the live behaviour.
+{% endcomment %}
+<div class="card">
+  <div class="card__body">
+    <h2>پرداخت</h2>
+    <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.payment_mode.label }}">
+      {% for radio in invoice_form.payment_mode %}
+        <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+      {% endfor %}
+    </div>
+    {% for error in invoice_form.payment_mode.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+
+    <div data-payment-panel="full"{% if invoice_form.payment_mode.value == "split" %} hidden{% endif %}>
+      <p class="field__hint">
+        {{ party_word }} کل مبلغ فاکتور (<span class="num" id="sale-full-amount">۰</span> تومان) را پرداخت کرده است.
+        یک یا هر دو روش را انتخاب کنید؛ اگر هر دو را می‌زنید یکی از مبلغ‌ها را وارد کنید، دیگری خودکار پر می‌شود.
+      </p>
+      <div class="payment-full">
+        {% if show_pos %}
+        <div class="payment-full__method">
+          <h3>کارت‌خوان</h3>
+          {% include "shared/_field.html" with field=invoice_form.pos_account %}
+          {% include "shared/_field.html" with field=invoice_form.pos_amount %}
+        </div>
+        {% endif %}
+        <div class="payment-full__method">
+          <h3>حواله بانکی</h3>
+          {% include "shared/_field.html" with field=invoice_form.transfer_account %}
+          {% include "shared/_field.html" with field=invoice_form.transfer_amount %}
+        </div>
+      </div>
+    </div>
+
+    <div data-payment-panel="split"{% if invoice_form.payment_mode.value != "split" %} hidden{% endif %}>
+      <p class="field__hint">
+        ردیف‌ها را به‌تفکیک روش (کارت‌خوان، حواله بانکی، چک) وارد کنید. هر مبلغی که در ردیف‌ها نیاید
+        به‌صورت نسیه روی حساب {{ party_word }} می‌ماند و برای آن تاریخ سررسید لازم است.
+      </p>
+      {% if payment_formset.non_form_errors %}
+        <div class="form-error">{% for e in payment_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
+      {% endif %}
+      {{ payment_formset.management_form }}
+
+      <div id="payment-rows">
+        {% for form in payment_formset %}
+          {% include entry_row %}
+        {% endfor %}
+      </div>
+
+      <template id="payment-row-template">
+        {% include entry_row with form=payment_formset.empty_form %}
+      </template>
+
+      <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
+
+      <p class="sale-form__remaining">
+        باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> تومان
+      </p>
+      <div data-credit-due>
+        {% include "shared/_field.html" with field=invoice_form.credit_due_date %}
+      </div>
+    </div>
+  </div>
+</div>

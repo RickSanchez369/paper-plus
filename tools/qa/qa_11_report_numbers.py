@@ -128,14 +128,14 @@ try:
             d.update(extra)
             return c.post(url, d)
 
-        r = post("/purchasing/new/", [(pa, 7, 999_001), (pb, 3, 12_345)], {"supplier": str(sup.pk), "paid_from": str(acct.pk)})
+        r = post("/purchasing/new/", [(pa, 7, 999_001), (pb, 3, 12_345)], {"supplier": str(sup.pk), "transfer_account": str(acct.pk)})
         check("purchase created", r.status_code == 302)
         # discount 100,001 over 2 lines forces a largest-remainder split
         r = post("/sales/new/", [(pa, 4, 1_500_000), (pb, 2, 77_777)],
-                 {"customer": str(cust.pk), "discount_amount": "100001", "received_into": str(acct.pk)})
+                 {"customer": str(cust.pk), "discount_amount": "100001", "transfer_account": str(acct.pk)})
         check("sale with odd discount created", r.status_code == 302)
         s1 = SalesInvoice.objects.order_by("-created_at").first()
-        r = post("/sales/new/", [(pa, 1, 1_600_000)], {"customer": str(cust.pk), "discount_amount": "", "received_into": str(acct.pk)})
+        r = post("/sales/new/", [(pa, 1, 1_600_000)], {"customer": str(cust.pk), "discount_amount": "", "transfer_account": str(acct.pk)})
         s2 = SalesInvoice.objects.order_by("-created_at").first()
         check("second sale created", r.status_code == 302 and s2.pk != s1.pk)
         after_sales = audit("after sales", start, end)

@@ -236,7 +236,7 @@ class PurchaseCreateView(LoginRequiredMixin, View):
                         item.save()
 
                     if full_payment:
-                        plan_full_payment(invoice, invoice_form.cleaned_data["paid_from"])
+                        plan_full_payment(invoice, invoice_form.full_payment_parts)
                     else:
                         for form in payment_formset:
                             if not form.cleaned_data:

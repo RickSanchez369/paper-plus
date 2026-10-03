@@ -21,3 +21,6 @@ docs/1.md
 graphify-out/
 # Local consent flag for an unrelated dev tool; not project config
 .impeccable/
+# throwaway database for browser QA (tools/qa/run_qa_server.py)
+tools/qa/.qa.sqlite3*
+tools/qa/.qa_login.txt

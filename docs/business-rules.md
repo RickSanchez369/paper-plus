@@ -126,3 +126,9 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-066 The DB engine is chosen by `DATABASE_URL`: PostgreSQL normally, SQLite on the `deploy` branch for a host without PostgreSQL.
 - D-067 Bank accounts are `pos` (card reader) or `current`; shown in two sections.
 - D-068 Cheques carry an `issuer` (who signed it) besides the bank name.
+- D-069 No cash: card reader (pos) / bank transfer (current) / cheque; unpaid remainder is نسیه with a due date; a card reader never pays out.
+- D-070 Sales discount may be typed as a percent; only Toman is stored.
+- D-071 Receivables/Payables split into cheques and credit-on-account, each with due dates and settle actions.
+- D-072 Expenses are paid by transfer, cheque or credit; `Expense.payment` is nullable.
+- D-073 Fixed repeating costs (`RecurringExpense`) remind and advance; they book nothing themselves.
+- D-074 Dashboard shows the coming week's payments instead of recent activity.

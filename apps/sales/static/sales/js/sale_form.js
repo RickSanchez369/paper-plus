@@ -59,8 +59,7 @@
       subtotal += lineTotal;
     });
 
-    var discountInput = document.getElementById("id_discount_amount");
-    var discount = intVal(discountInput);
+    var discount = currentDiscount(subtotal);
     var total = Math.max(subtotal - discount, 0);
 
     validateStock();
@@ -70,6 +69,32 @@
     setText("sale-full-amount", formatToman(total));
 
     recomputeRemaining(total);
+    document.dispatchEvent(new CustomEvent("invoice:recomputed"));
+  }
+
+  // Discount typed as Toman or as a percent of the subtotal (D-070); the
+  // server recomputes the percent itself, this is only the live preview.
+  function currentDiscountMode() {
+    var checked = document.querySelector('input[name="discount_mode"]:checked');
+    return checked ? checked.value : "amount";
+  }
+
+  function currentDiscount(subtotal) {
+    var discount;
+    if (currentDiscountMode() === "percent") {
+      var pct = parseFloat((document.getElementById("id_discount_percent") || {}).value);
+      discount = isNaN(pct) ? 0 : Math.floor((subtotal * Math.min(Math.max(pct, 0), 100)) / 100);
+      setText("sale-discount-preview", formatToman(discount));
+    } else {
+      discount = intVal(document.getElementById("id_discount_amount"));
+    }
+    return discount;
+  }
+
+  function showDiscountPanel(mode) {
+    document.querySelectorAll("[data-discount-panel]").forEach(function (panel) {
+      panel.hidden = panel.dataset.discountPanel !== mode;
+    });
   }
 
   function recomputeRemaining(total) {
@@ -234,6 +259,10 @@
     if (event.target.matches('input[name="payment_mode"]')) {
       showPaymentPanel(currentPaymentMode());
     }
+    if (event.target.matches('input[name="discount_mode"]')) {
+      showDiscountPanel(currentDiscountMode());
+      recomputeInvoice();
+    }
     if (event.target.matches('select[name$="-method"]')) {
       syncPaymentRow(event.target.closest("[data-payment-row]"));
     }
@@ -252,7 +281,8 @@
       event.target.matches('input[name$="-quantity"]') ||
       event.target.matches('input[name$="-unit_price"]') ||
       event.target.matches('input[name$="-amount"]') ||
-      event.target.id === "id_discount_amount"
+      event.target.id === "id_discount_amount" ||
+      event.target.id === "id_discount_percent"
     ) {
       recomputeInvoice();
     }
@@ -270,6 +300,7 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
+    showDiscountPanel(currentDiscountMode());
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
   });

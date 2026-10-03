@@ -17,7 +17,7 @@ def scenarios(h):
 
     p = h.product(stock=20)
     cust = h.customer(address="تهران، خیابان آزادی")
-    h.post_sale(cust, [(p, 2, 1500)], discount=500, account="cash")
+    h.post_sale(cust, [(p, 2, 1500)], discount=500, account=h.account())
     from apps.sales.models import SalesInvoice
     inv = SalesInvoice.objects.filter(customer=cust).get()
     SalesInvoice.objects.filter(pk=inv.pk).update(note="تحویل درب انبار")   # note is admin-entered
@@ -46,7 +46,7 @@ def scenarios(h):
     check("PR12 a cancelled invoice is watermarked 'باطل شده'", r.status_code == 200 and has(r, "sheet__watermark") and has(r, "باطل شده"))
     from apps.purchasing.models import PurchaseInvoice
     sup = h.supplier()
-    h.post_purchase(sup, [(p, 3, 400)], account="cash")
+    h.post_purchase(sup, [(p, 3, 400)], account=h.account())
     pur = PurchaseInvoice.objects.filter(supplier=sup).get()
     r = h.c.get(f"/purchasing/{pur.pk}/print/")
     check("PR13 purchase print still renders with its styles", r.status_code == 200 and has(r, "print_invoice.css"))

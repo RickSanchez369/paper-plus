@@ -75,6 +75,11 @@ class SalesInvoice(BaseModel):
         blank=True,  # free text for now: bank/account name, cheque number, etc.
         verbose_name="یادداشت پرداخت",  # real BankAccount/Cheque tracking is phase 4.3/4.4, not here
     )
+    credit_due_date = models.DateField(
+        null=True,
+        blank=True,  # only meaningful when part of the invoice is left unpaid (نسیه), D-069
+        verbose_name="تاریخ سررسید نسیه",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -351,7 +356,7 @@ class SalesPaymentEntry(BaseModel):
     """
 
     class Method(models.TextChoices):
-        CASH = "cash", "نقدی"
+        CASH = "cash", "نقدی (قدیمی)"
         CARD = "card", "کارت‌خوان"
         BANK_TRANSFER = "bank_transfer", "حواله بانکی"
         CHEQUE = "cheque", "چک"

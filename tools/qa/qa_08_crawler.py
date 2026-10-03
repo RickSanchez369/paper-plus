@@ -26,9 +26,9 @@ def scenarios(h):
     s1, s2 = h.supplier(), h.supplier()
     # sales in every state
     h.post_sale(c1, [(p1, 5, 300)], account=acct)
-    h.post_sale(c1, [(p1, 2, 300), (p2, 3, 500)], mode="split", payments=[{"method": "cash", "amount": "100"}])
+    h.post_sale(c1, [(p1, 2, 300), (p2, 3, 500)], mode="split", payments=[{"method": "bank_transfer", "amount": "100", "bank_account": str(acct.pk)}])
     h.post_sale(c2, [(p2, 4, 500)], mode="split", payments=[{"method": "cheque", "amount": "1000", "bank_account": str(acct.pk), "cheque_number": "X1", "bank_name": "M", "due_date": "1405/08/01"}, {"method": "cheque", "amount": "500"}])
-    h.post_sale(c2, [(p1, 3, 300)], account="cash", discount="50")
+    h.post_sale(c2, [(p1, 3, 300)], account=acct, discount="50")
     h.post_sale(c3, [(p1, 1, 300)], mode="split")
     cancelled = SalesInvoice.objects.filter(customer=c1).earliest("created_at")
     h.c.post(f"/sales/{cancelled.pk}/cancel/")
@@ -46,13 +46,13 @@ def scenarios(h):
         h.c.post(f"/cheques/{c.pk}/{act}/")
     # expenses incl. cancelled
     h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-rent", "amount": "900", "bank_account": str(acct.pk)})
-    h.c.post("/expenses/new/", {"expense_date": "1405/07/07", "reason": "QA-tea", "amount": "40", "bank_account": "cash"})
+    h.c.post("/expenses/new/", {"expense_date": "1405/07/07", "reason": "QA-tea", "amount": "40", "bank_account": str(acct.pk)})
     e = Expense.objects.get(reason="QA-tea")
     h.c.post(f"/expenses/{e.pk}/cancel/")
     # a recorded customer payment
     inv = SalesInvoice.objects.filter(customer=c1, status="confirmed").latest("created_at")
     h.c.post(f"/receivables/{c1.pk}/record-payment/", {"amount": "100", "payment_date": TODAY_J, "bank_account": str(acct.pk), "invoices": [str(inv.pk)]})
-    h.c.post(f"/payables/{s1.pk}/record-payment/", {"amount": "50", "payment_date": TODAY_J, "bank_account": ""})
+    h.c.post(f"/payables/{s1.pk}/record-payment/", {"amount": "50", "payment_date": TODAY_J, "bank_account": str(acct.pk)})
 
     seen, queue, problems = set(), ["/"], []
     skip = ("/logout/", "/admin/", "/static/", "/media/")

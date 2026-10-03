@@ -32,7 +32,7 @@ from apps.shared.utils import format_toman
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
 from .models import SalesInvoice
-from .services import cancel_sale, confirm_sale, plan_full_payment
+from .services import cancel_sale, confirm_sale, percent_to_amount, plan_full_payment
 
 
 class SalesListView(LoginRequiredMixin, TemplateView):
@@ -203,8 +203,14 @@ class SalesCreateView(LoginRequiredMixin, View):
                         item.invoice = invoice
                         item.save()
 
+                    if invoice_form.is_percent_discount:
+                        invoice.discount_amount = percent_to_amount(
+                            invoice.subtotal, invoice_form.cleaned_data.get("discount_percent") or 0,
+                        )
+                        invoice.save(update_fields=["discount_amount", "updated_at"])
+
                     if full_payment:
-                        plan_full_payment(invoice, invoice_form.cleaned_data["received_into"])
+                        plan_full_payment(invoice, invoice_form.full_payment_parts)
                     else:
                         for form in payment_formset:
                             if not form.cleaned_data:

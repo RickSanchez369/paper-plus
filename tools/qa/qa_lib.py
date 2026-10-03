@@ -85,8 +85,9 @@ class Harness:
     def supplier(self, name=None, **kw):
         return Supplier.objects.create(name=name or f"QA-S-{rnd()}", **kw)
 
-    def account(self, name=None):
-        return BankAccount.objects.create(name=name or f"QA-B-{rnd()}", account_number=f"QA{random.randint(10**8, 10**9)}")
+    def account(self, name=None, kind="current"):
+        return BankAccount.objects.create(name=name or f"QA-B-{rnd()}", account_number=f"QA{random.randint(10**8, 10**9)}",
+                                          account_type=kind)
 
     def product(self, name=None, price=1000, stock=0, cost=500, sku=None, **kw):
         p = Product.objects.create(name=name or f"QA-P-{rnd()}", sku=sku or f"QA{random.randint(10**7, 10**8)}",
@@ -106,16 +107,14 @@ class Harness:
         return d
 
     def post_sale(self, customer, items, mode="full", account=None, discount="", payments=(), date=TODAY_J,
-                  client=None, extra=None):
-        """items: [(product, qty, price)]; account: BankAccount | "cash" | None."""
+                  client=None, extra=None, credit_due=TODAY_J):
+        """items: [(product, qty, price)]; account: BankAccount | None (cash no longer exists, D-069)."""
         d = {"customer": str(customer.pk) if customer else "", "invoice_date": date,
              "discount_amount": str(discount), "payment_mode": mode}
-        if account == "cash":
-            d["received_into"] = "cash"
-        elif account is not None:
-            d["received_into"] = str(account.pk)
-        else:
-            d["received_into"] = ""
+        # D-069: a card-reader account is posted as the card part, any other as the transfer part.
+        if account is not None and account != "cash":
+            d["pos_account" if account.account_type == "pos" else "transfer_account"] = str(account.pk)
+        d["credit_due_date"] = credit_due
         d.update(self._rows("items", [
             {"product": str(p.pk) if p else "", "quantity": str(q), "unit_price": str(pr)} for p, q, pr in items]))
         d.update(self._rows("payments", list(payments)))
@@ -123,15 +122,12 @@ class Harness:
         return (client or self.c).post("/sales/new/", d)
 
     def post_purchase(self, supplier, items, mode="full", account=None, payments=(), date=TODAY_J,
-                      supplier_invoice="", client=None, extra=None):
+                      supplier_invoice="", client=None, extra=None, credit_due=TODAY_J):
         d = {"supplier": str(supplier.pk) if supplier else "", "invoice_date": date,
              "supplier_invoice_number": supplier_invoice, "payment_mode": mode}
-        if account == "cash":
-            d["paid_from"] = "cash"
-        elif account is not None:
-            d["paid_from"] = str(account.pk)
-        else:
-            d["paid_from"] = ""
+        if account is not None and account != "cash":
+            d["transfer_account"] = str(account.pk)
+        d["credit_due_date"] = credit_due
         d.update(self._rows("items", [
             {"product": str(p.pk) if p else "", "quantity": str(q), "unit_price": str(pr)} for p, q, pr in items]))
         d.update(self._rows("payments", list(payments)))
@@ -142,9 +138,9 @@ class Harness:
         """POST the clear form. account: "cheque" (its own account, else cash),
         "cash", a BankAccount, or "" (nothing chosen)."""
         if account == "cheque":
-            value = str(ch.bank_account_id) if ch.bank_account_id else "cash"
+            value = str(ch.bank_account_id) if ch.bank_account_id else ""
         elif account in ("cash", ""):
-            value = account
+            value = ""
         else:
             value = str(account.pk)
         return (client or self.c).post(f"/cheques/{ch.pk}/clear/", {"bank_account": value})

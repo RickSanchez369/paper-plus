@@ -7,6 +7,8 @@ Unlike a purchase, a sale removes stock, so it must serialise against other
 sales of the same products (D-015).
 """
 
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -15,13 +17,31 @@ from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.inventory.services import consume_fifo, restore_consumptions
 from apps.payments.models import Cheque, Payment, PaymentAllocation
-from apps.payments.services import allocate_payment, record_cheque, record_payment, refund_invoice_payments
+from apps.payments.services import (
+    allocate_payment,
+    record_cheque,
+    record_payment,
+    refund_invoice_payments,
+    resolve_full_payment_amounts,
+    validate_entry_account,
+)
 from apps.products.models import Product
 from apps.shared.audit import log_event
 from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
 
 from .models import SalesInvoice, SalesPaymentEntry
+
+
+def percent_to_amount(subtotal, percent):
+    """
+    Whole-Toman discount for ``percent`` % of ``subtotal`` (D-070).
+
+    Rounded down, so the discount never exceeds what the percent says and
+    never exceeds the subtotal. Only the Toman figure is ever stored; the
+    percent was just a way of typing it.
+    """
+    return int(Decimal(subtotal) * Decimal(percent) / Decimal(100))
 
 
 @transaction.atomic
@@ -135,9 +155,19 @@ def confirm_sale(invoice, user):
     # Whatever is left over than these rows is simply the نسیه/credit
     # portion; it needs no row of its own, payment_status already shows it.
     entries = list(locked_invoice.payment_entries.all())
-    if sum(entry.amount for entry in entries) > locked_invoice.total:
+    paid_by_rows = sum(entry.amount for entry in entries)
+    if paid_by_rows > locked_invoice.total:
         raise ValidationError("جمع ردیف‌های پرداخت از مبلغ کل فاکتور بیشتر است.")
+    # What the rows leave unpaid is credit (نسیه) and needs a due date (D-069);
+    # a due date on a fully covered invoice means nothing and is dropped.
+    if paid_by_rows < locked_invoice.total:
+        if locked_invoice.credit_due_date is None:
+            raise ValidationError("برای مبلغ نسیه، تاریخ سررسید را وارد کنید.")
+    elif locked_invoice.credit_due_date is not None:
+        locked_invoice.credit_due_date = None
+        locked_invoice.save(update_fields=["credit_due_date", "updated_at"])
     for entry in entries:
+        validate_entry_account(entry.method, entry.bank_account)
         if entry.method == SalesPaymentEntry.Method.CHEQUE:
             record_cheque(
                 Cheque(
@@ -180,30 +210,29 @@ def confirm_sale(invoice, user):
     return locked_invoice, shortages
 
 
-def plan_full_payment(invoice, bank_account):
+def plan_full_payment(invoice, parts):
     """
-    The default settlement (D-046): the customer paid the whole invoice,
-    into `bank_account` (None = cash, chosen explicitly on the form).
+    The default settlement (D-046, D-069): the customer paid the whole
+    invoice by card reader, by bank transfer, or by both.
 
-    Adds the one payment-entry row that says so, on a draft invoice whose
-    items are already saved -- confirm_sale then books it exactly like
-    any row typed by hand (a real Payment, allocated to this invoice), so
-    there is no second way money gets recorded. The amount is the
-    server's own `invoice.total`, never a figure from the browser.
-    Nothing is planned when the total is not positive; confirm_sale
-    rejects a discount above the subtotal on its own.
+    ``parts`` is ``[(method, account, amount_or_None)]`` as built by the
+    form; `resolve_full_payment_amounts` settles it against the server's own
+    ``invoice.total`` (never a figure from the browser) and raises if it does
+    not add up. One payment-entry row per method is added on a draft invoice
+    whose items are already saved -- confirm_sale then books them exactly like
+    rows typed by hand (a real Payment, allocated to this invoice), so there is
+    no second way money gets recorded. Nothing is planned when the total is
+    not positive; confirm_sale rejects a discount above the subtotal on its own.
 
     Must be called inside the caller's transaction, before confirm_sale.
     """
     total = invoice.total
     if total <= 0:
-        return None
-    return SalesPaymentEntry.objects.create(
-        invoice=invoice,
-        method=SalesPaymentEntry.Method.CASH if bank_account is None else SalesPaymentEntry.Method.BANK_TRANSFER,
-        amount=total,
-        bank_account=bank_account,
-    )
+        return []
+    return [
+        SalesPaymentEntry.objects.create(invoice=invoice, method=method, amount=amount, bank_account=account)
+        for method, account, amount in resolve_full_payment_amounts(total, parts)
+    ]
 
 
 @transaction.atomic

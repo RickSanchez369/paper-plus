@@ -17,48 +17,176 @@ from django import forms
 
 from apps.shared.forms import JalaliDateField
 
-from .models import BankAccount, Cheque, Expense, Payment
+from .models import BankAccount, Cheque, Expense, Payment, RecurringExpense
 
 
-class PaymentSourceField(forms.ChoiceField):
+class AccountSelect(forms.Select):
     """
-    Which account money moved through: one real, active bank account, or
-    cash picked on purpose (D-045).
-
-    The blank choice is a prompt, not a value -- cash is never what an
-    untouched select silently means, so "which account paid this?" always
-    has an answer somebody actually chose. Cleans to a `BankAccount`, to
-    `None` for cash (the same meaning `bank_account = null` already has on
-    Payment/Expense), or to "" when nothing was picked on a non-required
-    field.
+    A <select> whose options carry `data-type` (pos/current), so the invoice
+    form's script can offer a card reader for "کارت‌خوان" and a current
+    account for "حواله بانکی" without a round trip (D-067, D-069).
     """
 
-    CASH = "cash"
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None:
+            option["attrs"]["data-type"] = instance.account_type
+        return option
 
-    def __init__(self, **kwargs):
-        kwargs.setdefault("label", "حساب بانکی")
-        kwargs.setdefault("widget", forms.Select(attrs={"class": "field__control"}))
-        error_messages = {
-            "required": "حساب بانکی (یا «نقدی») را انتخاب کنید.",
-            "invalid_choice": "این حساب بانکی معتبر یا فعال نیست.",
-            **kwargs.pop("error_messages", {}),
-        }
-        # A callable, so a bank account added a minute ago shows up without
-        # restarting anything -- Django re-evaluates it per form instance.
-        super().__init__(choices=self._current_choices, error_messages=error_messages, **kwargs)
 
-    @classmethod
-    def _current_choices(cls):
-        accounts = [(str(a.pk), str(a)) for a in BankAccount.objects.filter(is_active=True)]
-        return [("", "— انتخاب حساب —"), *accounts, (cls.CASH, "نقدی (صندوق)")]
+class AccountChoiceField(forms.ModelChoiceField):
+    """
+    One active bank account of a given type (or of any type when
+    `account_type` is None). Cash does not exist as a choice (D-069): the
+    blank option is only a prompt, and a required field refuses it.
+    """
 
-    def clean(self, value):
-        value = super().clean(value)
-        if value == self.CASH:
-            return None
-        if not value:
-            return ""
-        return BankAccount.objects.get(pk=value)
+    def __init__(self, account_type=None, **kwargs):
+        queryset = BankAccount.objects.filter(is_active=True).order_by("name")
+        if account_type:
+            queryset = queryset.filter(account_type=account_type)
+        kwargs.setdefault("widget", AccountSelect(attrs={"class": "field__control"}))
+        kwargs.setdefault("empty_label", "— انتخاب حساب —")
+        kwargs.setdefault("error_messages", {
+            "required": "حساب بانکی را انتخاب کنید.",
+            "invalid_choice": "این حساب بانکی معتبر یا فعال نیست یا از نوع مناسب نیست.",
+        })
+        super().__init__(queryset=queryset, **kwargs)
+
+
+def current_account_field(**kwargs):
+    """A current account: where transfers and cheques land and where payments leave from."""
+    return AccountChoiceField(account_type=BankAccount.AccountType.CURRENT, **kwargs)
+
+
+def pos_account_field(**kwargs):
+    """A card-reader account: where card payments land."""
+    return AccountChoiceField(account_type=BankAccount.AccountType.POS, **kwargs)
+
+
+PAYMENT_MODE_FULL = "full"
+PAYMENT_MODE_SPLIT = "split"
+
+# The ways a payment row can be made. Cash is gone (D-069).
+ENTRY_METHOD_CHOICES = (
+    ("card", "کارت‌خوان"),
+    ("bank_transfer", "حواله بانکی"),
+    ("cheque", "چک"),
+)
+
+
+class InvoicePaymentFields(forms.Form):
+    """
+    The payment half of the sales/purchase invoice forms (D-069), written
+    once so both invoices behave the same.
+
+    Full settlement ("تسویهٔ کامل"): the whole total was paid by card reader,
+    by bank transfer, or by both at once (each into its own account, with its
+    own amount). Split mode ("تفکیکی"): the payment rows, and whatever they
+    leave unpaid is credit (نسیه), which then needs a due date.
+
+    These fields only collect input. The amounts are settled against the
+    real total by `resolve_full_payment_amounts` once the lines exist.
+    """
+
+    payment_mode = forms.ChoiceField(
+        label="نحوهٔ تسویه",
+        choices=(
+            (PAYMENT_MODE_FULL, "تسویهٔ کامل (کل مبلغ پرداخت شد)"),
+            (PAYMENT_MODE_SPLIT, "تفکیکی / چک / نسیه"),
+        ),
+        initial=PAYMENT_MODE_FULL,
+        widget=forms.RadioSelect,
+    )
+    pos_account = pos_account_field(required=False, label="حساب کارت‌خوان", empty_label="— بدون کارت‌خوان —")
+    pos_amount = forms.IntegerField(
+        required=False,
+        min_value=1,
+        label="مبلغ کارت‌خوان (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
+    )
+    transfer_account = current_account_field(required=False, label="حساب جاری (حواله بانکی)", empty_label="— بدون حواله —")
+    transfer_amount = forms.IntegerField(
+        required=False,
+        min_value=1,
+        label="مبلغ حواله بانکی (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
+    )
+    credit_due_date = JalaliDateField(required=False, label="تاریخ سررسید نسیه")
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("payment_mode") == PAYMENT_MODE_FULL:
+            if not cleaned.get("pos_account") and not cleaned.get("transfer_account"):
+                self.add_error(None, "حداقل یک روش پرداخت (کارت‌خوان یا حواله بانکی) را انتخاب کنید.")
+            for account, amount in (("pos_account", "pos_amount"), ("transfer_account", "transfer_amount")):
+                if cleaned.get(amount) and not cleaned.get(account):
+                    self.add_error(account, "برای این مبلغ حساب را انتخاب کنید.")
+        return cleaned
+
+    @property
+    def is_full_payment(self):
+        return self.cleaned_data.get("payment_mode") == PAYMENT_MODE_FULL
+
+    @property
+    def full_payment_parts(self):
+        """``[(method, account, amount_or_None)]`` for the methods picked, for `resolve_full_payment_amounts`."""
+        data = self.cleaned_data
+        parts = []
+        if data.get("pos_account"):
+            parts.append(("card", data["pos_account"], data.get("pos_amount")))
+        if data.get("transfer_account"):
+            parts.append(("bank_transfer", data["transfer_account"], data.get("transfer_amount")))
+        return parts
+
+
+class PaymentEntryFormMixin:
+    """
+    Shared behaviour of the sales/purchase payment-row forms (D-069): the
+    method list without cash, the account select tagged by type, the account
+    checked against the method, and cheque-only fields dropped for other
+    methods. Put it before `forms.ModelForm` in the bases. A form that pays
+    OUT sets `entry_methods` without "card" (a card reader only receives).
+    """
+
+    entry_methods = ENTRY_METHOD_CHOICES
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["method"] = forms.ChoiceField(
+            choices=self.entry_methods,
+            initial=self.entry_methods[0][0],
+            label="روش",
+            widget=forms.Select(attrs={"class": "field__control"}),
+        )
+        self.fields["bank_account"] = AccountChoiceField(required=False, label="حساب بانکی", empty_label="— انتخاب حساب —")
+        for name in ("cheque_number", "bank_name", "issuer"):
+            self.fields[name].required = False
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        from .services import validate_entry_account
+
+        cleaned = super().clean()
+        method = cleaned.get("method")
+        if method:
+            try:
+                validate_entry_account(method, cleaned.get("bank_account"))
+            except ValidationError as exc:
+                self.add_error("bank_account", exc)
+        # Only a cheque has a number, an issuer, a bank and a due date; the
+        # page hides them for other methods, so whatever a switched-away row
+        # still holds must not be saved.
+        if method != "cheque":
+            cleaned["cheque_number"] = ""
+            cleaned["bank_name"] = ""
+            cleaned["issuer"] = ""
+            cleaned["due_date"] = None
+        return cleaned
 
 
 class BankAccountForm(forms.ModelForm):
@@ -115,13 +243,9 @@ class RecordPaymentForm(forms.Form):
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
     payment_date = JalaliDateField(label="تاریخ")
-    bank_account = forms.ModelChoiceField(
-        queryset=BankAccount.objects.none(),
-        required=False,
-        label="حساب بانکی",
-        empty_label="نقدی",  # blank means cash, same rule as the model (2.6)
-        widget=forms.Select(attrs={"class": "field__control"}),
-    )
+    # Never cash (D-069). Money in may land in a card reader or a current
+    # account; money out only leaves a current account (narrowed in __init__).
+    bank_account = AccountChoiceField(label="حساب بانکی")
     note = forms.CharField(
         required=False,
         label="توضیح",
@@ -150,7 +274,10 @@ class RecordPaymentForm(forms.Form):
         self.supplier = supplier
         self.open_invoices = list(open_invoices)
 
-        self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
+        accounts = BankAccount.objects.filter(is_active=True).order_by("name")
+        if supplier is not None:
+            accounts = accounts.filter(account_type=BankAccount.AccountType.CURRENT)
+        self.fields["bank_account"].queryset = accounts
         self.fields["invoices"].choices = [
             (str(invoice.pk), invoice) for invoice in self.open_invoices
         ]
@@ -178,6 +305,43 @@ class RecordPaymentForm(forms.Form):
                     "مبلغ پرداخت از باقیماندهٔ فاکتورهای انتخاب‌شده بیشتر است.",
                 )
         return cleaned
+
+
+class PayInvoiceForm(forms.Form):
+    """
+    Settle (all or part of) one invoice's credit part from the Receivables /
+    Payables page (D-071). The invoice is fixed by the row, so it is passed to
+    the constructor; the amount may not exceed the credit still open on it
+    (cheques pending against the invoice are settled by clearing them).
+    """
+
+    amount = forms.IntegerField(
+        min_value=1,
+        label="مبلغ (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد.", "required": "مبلغ الزامی است."},
+    )
+    payment_date = JalaliDateField(label="تاریخ")
+    bank_account = AccountChoiceField(label="حساب بانکی")
+    note = forms.CharField(required=False, label="توضیح", widget=forms.TextInput(attrs={"class": "field__control"}))
+
+    def __init__(self, *args, invoice=None, credit_amount=0, paying_supplier=False, **kwargs):
+        if invoice is not None:
+            kwargs.setdefault("auto_id", f"payinv_{invoice.pk.hex[:8]}_%s")
+        super().__init__(*args, **kwargs)
+        self.invoice = invoice
+        self.credit_amount = credit_amount
+        accounts = BankAccount.objects.filter(is_active=True).order_by("name")
+        if paying_supplier:
+            accounts = accounts.filter(account_type=BankAccount.AccountType.CURRENT)
+        self.fields["bank_account"].queryset = accounts
+        self.fields["amount"].initial = credit_amount
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+        if amount > self.credit_amount:
+            raise forms.ValidationError("مبلغ از باقیماندهٔ نسیهٔ این فاکتور بیشتر است.")
+        return amount
 
 
 class ChequeFilterForm(forms.Form):
@@ -208,7 +372,7 @@ class ClearChequeForm(forms.Form):
     answer is required (an account, or cash picked on purpose), pre-selected
     with the cheque's own account when it has one (D-045)."""
 
-    bank_account = PaymentSourceField(label="وصول در حساب")
+    bank_account = current_account_field(label="وصول در حساب")
 
 
 class ChequeCompletionForm(forms.ModelForm):
@@ -252,6 +416,10 @@ class ExpenseFilterForm(forms.Form):
     )
     amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
     amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
+    status = forms.ChoiceField(
+        required=False, label="وضعیت پرداخت",
+        choices=[("", "همه"), ("owed", "پرداخت‌نشده (نسیه / چک در انتظار)"), ("paid", "پرداخت‌شده")],
+    )
 
     def clean(self):
         cleaned = super().clean()
@@ -263,11 +431,13 @@ class ExpenseFilterForm(forms.Form):
 
 class ExpenseForm(forms.ModelForm):
     """
-    New-expense one-shot form (D-045): date, reason,
-    amount, the account it was paid from (or cash, chosen explicitly),
-    optional receipt upload, note. The view passes the unsaved instance to
-    `record_expense`, which creates the matching `Payment(OUT)` in the
-    same transaction -- this form never touches money itself.
+    New-expense one-shot form (D-045, D-072): date, reason, amount and HOW it
+    is paid -- by bank transfer from a current account, by cheque, or on
+    credit (نسیه, paid later by its due date). The view passes the unsaved
+    instance (and `build_cheque()` for a cheque) to `record_expense`, which
+    books any money in the same transaction -- this form never touches money.
+
+    `recurring` (hidden) ties the expense to a fixed cost it settles (D-073).
     """
 
     expense_date = JalaliDateField(label="تاریخ")
@@ -277,14 +447,114 @@ class ExpenseForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
-    # Same name as the model field, so ModelForm assigns the cleaned
-    # BankAccount (or None for cash) straight onto the instance.
-    bank_account = PaymentSourceField(label="پرداخت از حساب")
+    payment_method = forms.ChoiceField(
+        label="روش پرداخت",
+        required=False,  # absent = a bank transfer, the original behaviour
+        choices=Expense.PaymentMethod.choices,
+        initial=Expense.PaymentMethod.TRANSFER,
+        widget=forms.RadioSelect,
+    )
+    # Transfer: the account it leaves from. Cheque: the account it is drawn on, if known.
+    bank_account = current_account_field(required=False, label="حساب جاری (پرداخت از / چک روی)")
+    due_date = JalaliDateField(required=False, label="سررسید پرداخت نسیه")
+    cheque_number = forms.CharField(
+        required=False, label="شمارهٔ چک",
+        widget=forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
+    )
+    bank_name = forms.CharField(
+        required=False, label="نام بانک", widget=forms.TextInput(attrs={"class": "field__control"}),
+    )
+    issuer = forms.CharField(
+        required=False, label="صادرکنندهٔ چک", widget=forms.TextInput(attrs={"class": "field__control"}),
+    )
+    cheque_due_date = JalaliDateField(required=False, label="سررسید چک")
+    recurring = forms.ModelChoiceField(
+        queryset=RecurringExpense.objects.filter(is_active=True), required=False, widget=forms.HiddenInput,
+    )
 
     class Meta:
         model = Expense
-        fields = ("expense_date", "reason", "amount", "bank_account", "document", "note")
+        fields = (
+            "expense_date", "reason", "amount", "payment_method", "bank_account", "due_date",
+            "recurring", "document", "note",
+        )
         widgets = {
             "reason": forms.TextInput(attrs={"class": "field__control"}),
             "note": forms.Textarea(attrs={"class": "field__control", "rows": 2}),
         }
+
+    def clean_payment_method(self):
+        return self.cleaned_data.get("payment_method") or Expense.PaymentMethod.TRANSFER
+
+    def clean(self):
+        cleaned = super().clean()
+        method = cleaned.get("payment_method")
+        if method == Expense.PaymentMethod.TRANSFER:
+            if not cleaned.get("bank_account"):
+                self.add_error("bank_account", "حساب جاری پرداخت‌کننده را انتخاب کنید.")
+            cleaned["due_date"] = None
+        elif method == Expense.PaymentMethod.CREDIT:
+            if not cleaned.get("due_date"):
+                self.add_error("due_date", "تاریخ سررسید پرداخت را وارد کنید.")
+            cleaned["bank_account"] = None
+        elif method == Expense.PaymentMethod.CHEQUE:
+            if not cleaned.get("cheque_due_date"):
+                self.add_error("cheque_due_date", "تاریخ سررسید چک را وارد کنید.")
+            cleaned["due_date"] = None
+        return cleaned
+
+    def build_cheque(self):
+        """An unsaved Cheque with the typed cheque details, for a cheque expense (else None)."""
+        data = self.cleaned_data
+        if data.get("payment_method") != Expense.PaymentMethod.CHEQUE:
+            return None
+        return Cheque(
+            cheque_number=data.get("cheque_number", ""),
+            bank_name=data.get("bank_name", ""),
+            issuer=data.get("issuer", ""),
+            due_date=data.get("cheque_due_date"),
+        )
+
+
+class PayExpenseForm(forms.Form):
+    """"پرداخت" for an expense that is still owed (a نسیه one when its date comes, or one whose cheque bounced)."""
+
+    bank_account = current_account_field(label="پرداخت از حساب جاری")
+    payment_date = JalaliDateField(label="تاریخ پرداخت")
+
+    def __init__(self, *args, expense=None, **kwargs):
+        if expense is not None:
+            kwargs.setdefault("auto_id", f"payexp_{expense.pk.hex[:8]}_%s")
+        super().__init__(*args, **kwargs)
+
+
+class RecurringExpenseForm(forms.ModelForm):
+    """Add or edit a fixed, repeating cost (D-073): what, how much, how often, when next, and how early to remind."""
+
+    next_due_date = JalaliDateField(label="سررسید بعدی")
+    amount = forms.IntegerField(
+        min_value=1,
+        label="مبلغ (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
+    )
+
+    class Meta:
+        model = RecurringExpense
+        fields = ("reason", "amount", "repeat_every", "repeat_unit", "next_due_date", "remind_days_before", "note")
+        widgets = {
+            "reason": forms.TextInput(attrs={"class": "field__control"}),
+            "repeat_every": forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "min": 1}),
+            "repeat_unit": forms.Select(attrs={"class": "field__control"}),
+            "remind_days_before": forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "min": 0}),
+            "note": forms.Textarea(attrs={"class": "field__control", "rows": 2}),
+        }
+        error_messages = {
+            "reason": {"required": "عنوان هزینه الزامی است."},
+        }
+
+    def clean_repeat_every(self):
+        value = self.cleaned_data["repeat_every"]
+        if value < 1:
+            raise forms.ValidationError("تعداد تکرار باید حداقل ۱ باشد.")
+        return value

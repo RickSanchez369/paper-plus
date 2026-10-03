@@ -1062,3 +1062,62 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Decision: `Cheque.issuer` («صادرکنندهٔ چک», free text, optional) is added next to the existing
   `bank_name`, and mirrored on `SalesPaymentEntry`/`PurchasePaymentEntry` so it is typed once on the
   invoice and copied onto the cheque. Shown on every page that lists or details a cheque.
+
+### D-069: Cash is gone; money moves by card reader, bank transfer or cheque
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Context: The business never handles cash through the system; "نقدی" only confused the payment screens.
+- Decision: No form offers cash any more. Receiving: card reader (a `pos` account), bank transfer (a `current`
+  account), cheque. Paying out: bank transfer (`current`) or cheque only — a card reader cannot pay anyone.
+  Full settlement ("تسویهٔ کامل") = card, transfer or both at once (amounts must sum to the server's own
+  invoice total; one amount blank takes the rest). Split mode rows are card / transfer / cheque; whatever
+  they leave unpaid is credit (نسیه) and needs `credit_due_date` (new nullable field on both invoices; a due
+  date on a fully covered invoice is dropped). Account-vs-method is enforced in `validate_entry_account`
+  (service) and mirrored in the forms; cheque clearing needs a current account.
+- Legacy: payments/entries written before this (`bank_account` null, method `cash`) stay valid and readable
+  ("نقدی" / "نقدی (قدیمی)"); nothing is rewritten. `PaymentSourceField` is replaced by `AccountChoiceField`.
+
+### D-070: A sales discount can be typed as a percent
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: The new-sale form has a Toman / percent switch for the discount. The percent (0–100, two decimals)
+  is turned into whole Toman by `percent_to_amount` (rounded down) once the lines exist; only the Toman
+  figure is stored — D-032/D-048 are untouched (invoice-level, pro rata across lines, never stored as a percent).
+
+### D-071: Receivables and Payables are split by how the money will arrive/leave
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: Both pages show (1) pending cheques, each with due date, issuer, bank and pass/bounce buttons
+  (for customers «وصول شد», for suppliers «پاس شد»), (2) credit on account per invoice with its due date and a
+  pay-all-or-part form (`PayInvoiceForm`; at most the credit part, cheques are settled by clearing them), and
+  (3) the per-party totals with the general payment form. The credit part is derived
+  (`get_credit_items`: invoice outstanding minus its pending cheques), never stored (D-025).
+
+### D-072: An expense is paid by transfer, by cheque, or on credit
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `Expense.payment_method` = transfer (as before: Payment OUT from a current account at once),
+  cheque (a pending OUT `Cheque` with no customer/supplier, linked by `Cheque.expense`; clearing it links
+  the payment to the expense) or credit (nothing booked; `due_date` required; later `pay_expense`).
+  `Expense.payment` is therefore nullable; paid = a payment exists (derived). Cancelling an unpaid expense
+  needs no reversal. Totals/reports still count an expense on its own date, paid or not.
+
+### D-073: Fixed, repeating costs (rent, bills) with reminders
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `RecurringExpense` (reason, usual amount, every N days/months — months are Jalali —, next due
+  date, remind N days ahead, active). It books nothing: «ثبت پرداخت» opens the expense form pre-filled and, once
+  recorded, the next due date advances one period; «رد کردن» skips a period (audit-logged). Deactivated, never deleted.
+
+### D-074: The dashboard shows next week's payments instead of recent activity
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: «پرداخت‌های هفتهٔ آینده» lists, soonest first and including anything overdue: cheques we issued
+  (supplier or expense), credit expenses, fixed costs whose reminder window opened, supplier credit due.
+  The activity feed leaves the dashboard (its own page stays).

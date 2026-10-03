@@ -14,6 +14,7 @@ and STATE.md (commit 6d4521a).
 
 {% block head %}
   <script src="{% static_v 'purchasing/js/purchase_form.js' %}" defer></script>
+  <script src="{% static_v 'shared/js/invoice_payment.js' %}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -100,52 +101,7 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
     </div>
   </div>
 
-  <div class="card">
-    <div class="card__body">
-      <h2>پرداخت</h2>
-      <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.payment_mode.label }}">
-        {% for radio in invoice_form.payment_mode %}
-          <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
-        {% endfor %}
-      </div>
-      {% for error in invoice_form.payment_mode.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
-
-      <div data-payment-panel="full"{% if invoice_form.payment_mode.value == "split" %} hidden{% endif %}>
-        <p class="field__hint">
-          کل مبلغ فاکتور (<span class="num" id="sale-full-amount">۰</span> تومان) به تأمین‌کننده پرداخت شده است؛
-          فقط حساب پرداخت‌کننده را انتخاب کنید.
-        </p>
-        {% include "shared/_field.html" with field=invoice_form.paid_from %}
-      </div>
-
-      <div data-payment-panel="split"{% if invoice_form.payment_mode.value != "split" %} hidden{% endif %}>
-        <p class="field__hint">
-          برای چک، نسیه یا چند روش پرداخت: ردیف‌ها را وارد کنید. هر مبلغی که در ردیف‌ها نیاید
-          به‌صورت نسیه روی حساب تأمین‌کننده می‌ماند (بدون هیچ ردیف = کاملاً نسیه).
-        </p>
-        {% if payment_formset.non_form_errors %}
-          <div class="form-error">{% for e in payment_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
-        {% endif %}
-        {{ payment_formset.management_form }}
-
-        <div id="payment-rows">
-          {% for form in payment_formset %}
-            {% include "purchasing/_payment_entry_row.html" %}
-          {% endfor %}
-        </div>
-
-        <template id="payment-row-template">
-          {% include "purchasing/_payment_entry_row.html" with form=payment_formset.empty_form %}
-        </template>
-
-        <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
-
-        <p class="sale-form__remaining">
-          باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> تومان
-        </p>
-      </div>
-    </div>
-  </div>
+  {% include "payments/_invoice_payment_card.html" with entry_row="purchasing/_payment_entry_row.html" party_word="تأمین‌کننده" show_pos=False %}
 
   <div class="sale-form__submit">
     <a href="{% url 'purchasing:list' %}" class="btn btn--quiet">انصراف</a>

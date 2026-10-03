@@ -29,9 +29,11 @@ def scenarios(h):
     inv2 = last_sale(cust)
     inv1.invoice_date = h.today - datetime.timedelta(days=10); inv1.save()
     url = f"/receivables/{cust.pk}/record-payment/"
+    acct_r = h.account()
 
-    def pay(amount, invoices=(), account="", date=TODAY_J, note="", client=None, url=url):
-        d = {"amount": str(amount), "payment_date": date, "bank_account": str(account.pk) if account not in ("", None) else "", "note": note}
+    def pay(amount, invoices=(), account=None, date=TODAY_J, note="", client=None, url=url):
+        account = account or acct_r   # cash no longer exists (D-069): an account is always chosen
+        d = {"amount": str(amount), "payment_date": date, "bank_account": str(account.pk), "note": note}
         if invoices:
             d["invoices"] = [str(i.pk) for i in invoices]
         return (client or h.c).post(url, d)
@@ -197,7 +199,7 @@ def scenarios(h):
     h.post_sale(c8, [(p, 1, 100)], mode="split", payments=[{"method": "cheque", "amount": "100"}])
     nc = Cheque.objects.get(customer=c8)
     h.clear_cheque(nc, account="cash"); nc.refresh_from_db()
-    check("K10 cash chosen ON PURPOSE is accepted (payment without account)", nc.status == "cleared" and nc.payment.bank_account is None)
+    check("K10 'cash' at clearing is refused (D-069): the cheque stays pending", nc.status == "pending")
     c9 = h.customer()
     h.post_sale(c9, [(p, 1, 100)], mode="split", payments=[{"method": "cheque", "amount": "100", "bank_account": str(acct.pk)}])
     nd = Cheque.objects.get(customer=c9)
@@ -234,7 +236,7 @@ def scenarios(h):
     check("B05 detail (empty ledger) renders", r.status_code == 200)
     r = h.c.get(f"/bank-accounts/{a.pk}/edit/")
     check("B06 edit page renders", r.status_code == 200)
-    r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "QA-acc2", "account_type": "pos", "owner": "you", "account_number": num})
+    r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "QA-acc2", "account_type": "current", "owner": "you", "account_number": num})
     a.refresh_from_db()
     check("B06 edit saves", r.status_code == 302 and a.name == "QA-acc2")
     r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "n", "account_type": "current", "account_number": acct.account_number})
@@ -264,9 +266,12 @@ def scenarios(h):
     r = exp(reason="QA-bank")
     e1 = Expense.objects.get(reason="QA-bank")
     check("E03 expense from a bank account: redirect, Payment OUT, balance -1000", r.status_code == 302 and e1.payment.direction == "out" and get_bank_account_balance(acct) == b0 - 1000)
+    c0 = Expense.objects.count()
     r = exp(reason="QA-cash", bank_account="cash")
-    e2 = Expense.objects.get(reason="QA-cash")
-    check("E04 cash expense has no account", r.status_code == 302 and e2.bank_account is None and e2.payment.bank_account is None)
+    check("E04 a cash expense is refused (D-069), nothing saved", r.status_code == 200 and Expense.objects.count() == c0)
+    pos_acct = h.account(kind="pos")
+    r = exp(reason="QA-pos", bank_account=str(pos_acct.pk))
+    check("E04 a card-reader account cannot pay an expense", r.status_code == 200 and Expense.objects.count() == c0)
     for label, kw in (("no account chosen", dict(bank_account="")), ("zero amount", dict(amount="0")), ("negative", dict(amount="-3")), ("text amount", dict(amount="x")),
                       ("blank reason", dict(reason="")), ("blank date", dict(expense_date="")), ("garbage date", dict(expense_date="zz")), ("Gregorian date", dict(expense_date="2026-09-30")),
                       ("unknown account", dict(bank_account="00000000-0000-0000-0000-0000000000dd"))):
@@ -329,7 +334,7 @@ def upload_scenarios(h):
     made = []
 
     def send(name, data, content_type="application/octet-stream"):
-        d = {"expense_date": TODAY_J, "reason": "QA-up-" + rnd(), "amount": "10", "bank_account": "cash"}
+        d = {"expense_date": TODAY_J, "reason": "QA-up-" + rnd(), "amount": "10", "bank_account": str(acct.pk)}
         n0 = Expense.objects.count()
         r = h.c.post("/expenses/new/", {**d, "document": SimpleUploadedFile(name, data, content_type=content_type)})
         e = Expense.objects.filter(reason=d["reason"]).first()
@@ -356,7 +361,7 @@ def upload_scenarios(h):
     check("UP03 a file of exactly 5 MB is accepted", r.status_code == 302 and created == 1, (r.status_code, created))
     r = h.c.get("/expenses/new/")
     check("UP04 the form states the rule", has(r, "۵ مگابایت") or has(r, "5"))
-    r = h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-nofile", "amount": "5", "bank_account": "cash"})
+    r = h.c.post("/expenses/new/", {"expense_date": TODAY_J, "reason": "QA-nofile", "amount": "5", "bank_account": str(acct.pk)})
     check("UP05 an expense without any file is still fine", r.status_code == 302)
     for f in made:
         try:

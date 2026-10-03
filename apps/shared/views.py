@@ -69,7 +69,7 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
             "overdue_days": overdue_days,
             "overdue_invoices": dashboard.overdue_credit_invoices(threshold_days=overdue_days),
             "negative_stock": dashboard.negative_stock(),
-            "recent_activity": dashboard.recent_activity(),
+            "upcoming_payments": dashboard.upcoming_payments(),
         })
         return context
 

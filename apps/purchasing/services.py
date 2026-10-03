@@ -13,7 +13,14 @@ from django.utils import timezone
 from apps.inventory.models import InventoryLayer, InventoryMovement
 from apps.inventory.services import cancel_layer
 from apps.payments.models import Cheque, Payment, PaymentAllocation
-from apps.payments.services import allocate_payment, record_cheque, record_payment, refund_invoice_payments
+from apps.payments.services import (
+    allocate_payment,
+    record_cheque,
+    record_payment,
+    refund_invoice_payments,
+    resolve_full_payment_amounts,
+    validate_entry_account,
+)
 from apps.shared.audit import log_event
 from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
@@ -101,9 +108,20 @@ def confirm_purchase(invoice, user):
     # -- see clear_cheque). Whatever is left over than these rows is
     # simply the نسیه/credit portion; payment_status already shows it.
     entries = list(locked_invoice.payment_entries.all())
-    if sum(entry.amount for entry in entries) > locked_invoice.total_amount:
+    paid_by_rows = sum(entry.amount for entry in entries)
+    if paid_by_rows > locked_invoice.total_amount:
         raise ValidationError("جمع ردیف‌های پرداخت از مبلغ کل فاکتور بیشتر است.")
+    # What the rows leave unpaid is credit (نسیه) and needs a due date (D-069).
+    if paid_by_rows < locked_invoice.total_amount:
+        if locked_invoice.credit_due_date is None:
+            raise ValidationError("برای مبلغ نسیه، تاریخ سررسید را وارد کنید.")
+    elif locked_invoice.credit_due_date is not None:
+        locked_invoice.credit_due_date = None
+        locked_invoice.save(update_fields=["credit_due_date", "updated_at"])
     for entry in entries:
+        if entry.method == PurchasePaymentEntry.Method.CARD:
+            raise ValidationError("پرداخت به تأمین‌کننده با کارت‌خوان ممکن نیست.")
+        validate_entry_account(entry.method, entry.bank_account)
         if entry.method == PurchasePaymentEntry.Method.CHEQUE:
             record_cheque(
                 Cheque(
@@ -146,28 +164,29 @@ def confirm_purchase(invoice, user):
     return locked_invoice
 
 
-def plan_full_payment(invoice, bank_account):
+def plan_full_payment(invoice, parts):
     """
-    The default settlement (mirrors sales, D-046/D-053): the whole invoice was
-    paid to the supplier out of `bank_account` (None = cash, chosen explicitly
-    on the form).
+    The default settlement (mirrors sales, D-046/D-053/D-069): the whole
+    invoice was paid to the supplier by bank transfer out of a current account
+    -- or, for symmetry with the shared form, by any methods in ``parts``
+    (``[(method, account, amount_or_None)]``).
 
-    Adds the one payment-entry row that says so, on a draft invoice whose
-    items are already saved; confirm_purchase then books it like any typed
-    row. The amount is the server's own `invoice.total_amount`, never a
-    figure from the browser. Nothing is planned when the total is not
-    positive. Must be called inside the caller's transaction, before
-    confirm_purchase.
+    `resolve_full_payment_amounts` settles ``parts`` against the server's own
+    ``invoice.total_amount`` (never a figure from the browser). One entry row
+    per method is added on a draft invoice whose items are already saved;
+    confirm_purchase then books them like any typed row. Nothing is planned
+    when the total is not positive. Must be called inside the caller's
+    transaction, before confirm_purchase.
     """
     total = invoice.total_amount
     if total <= 0:
-        return None
-    return PurchasePaymentEntry.objects.create(
-        invoice=invoice,
-        method=PurchasePaymentEntry.Method.CASH if bank_account is None else PurchasePaymentEntry.Method.BANK_TRANSFER,
-        amount=total,
-        bank_account=bank_account,
-    )
+        return []
+    if any(method == "card" for method, _, _ in parts):
+        raise ValidationError("پرداخت به تأمین‌کننده با کارت‌خوان ممکن نیست.")
+    return [
+        PurchasePaymentEntry.objects.create(invoice=invoice, method=method, amount=amount, bank_account=account)
+        for method, account, amount in resolve_full_payment_amounts(total, parts)
+    ]
 
 
 @transaction.atomic

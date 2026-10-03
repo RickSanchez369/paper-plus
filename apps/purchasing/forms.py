@@ -12,16 +12,12 @@ default to fall back to the way a sale has -- and cancel is stricter
 from django import forms
 
 from apps.partners.models import Supplier
-from apps.payments.forms import PaymentSourceField
-from apps.payments.models import BankAccount
+from apps.payments.forms import ENTRY_METHOD_CHOICES, InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import SelectedProductMixin
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
 
 from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
-
-PAYMENT_MODE_FULL = "full"
-PAYMENT_MODE_SPLIT = "split"
 
 
 class PurchasingFilterForm(forms.Form):
@@ -62,25 +58,14 @@ class SupplierFilterForm(forms.Form):
     is_active = forms.ChoiceField(required=False, label="وضعیت فعالیت", choices=ACTIVE_CHOICES, initial="true")
 
 
-class PurchaseInvoiceForm(forms.ModelForm):
+class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     """Header fields: who, when, the supplier's own invoice number. No
     discount field -- the model has none."""
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
-    payment_mode = forms.ChoiceField(
-        label="نحوهٔ تسویه",
-        choices=(
-            (PAYMENT_MODE_FULL, "تسویهٔ کامل (کل مبلغ پرداخت شد)"),
-            (PAYMENT_MODE_SPLIT, "تفکیکی / چک / نسیه"),
-        ),
-        initial=PAYMENT_MODE_FULL,
-        widget=forms.RadioSelect,
-    )
-    paid_from = PaymentSourceField(label="حساب پرداخت‌کننده", required=False)
-
     class Meta:
         model = PurchaseInvoice
-        fields = ("supplier", "invoice_date", "supplier_invoice_number")
+        fields = ("supplier", "invoice_date", "supplier_invoice_number", "credit_due_date")
         widgets = {
             # form="purchase-form": rendered outside <form id="purchase-form">
             # on purpose, same reason and same fix as Sales' customer field
@@ -98,18 +83,6 @@ class PurchaseInvoiceForm(forms.ModelForm):
         self.fields["supplier"].queryset = Supplier.objects.filter(is_active=True).order_by("name")
         self.fields["supplier"].empty_label = "— انتخاب تأمین‌کننده —"
         self.fields["supplier_invoice_number"].required = False
-
-    def clean(self):
-        cleaned = super().clean()
-        # Full settlement books real money, so it needs a real answer to
-        # "out of which account" -- never cash by omission (D-045).
-        if cleaned.get("payment_mode") == PAYMENT_MODE_FULL and cleaned.get("paid_from") == "":
-            self.add_error("paid_from", "حساب پرداخت‌کننده (یا «نقدی») را انتخاب کنید.")
-        return cleaned
-
-    @property
-    def is_full_payment(self):
-        return self.cleaned_data.get("payment_mode") == PAYMENT_MODE_FULL
 
 
 class PurchaseItemForm(SelectedProductMixin, forms.ModelForm):
@@ -171,20 +144,17 @@ class BasePurchaseItemFormSet(forms.BaseFormSet):
 PurchaseItemFormSet = forms.formset_factory(PurchaseItemForm, formset=BasePurchaseItemFormSet, extra=1)
 
 
-class PurchasePaymentEntryForm(forms.ModelForm):
+class PurchasePaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
     """One planned payment row -- mirrors sales.forms.SalesPaymentEntryForm
-    exactly (same two fixes baked in from the start: `method` declared
-    explicitly with an initial so it never gets Django's English blank
-    choice, `amount` declared with min_value since BigIntegerField has no
-    built-in positivity)."""
+    (method list without cash, account checked against the method, cheque-only
+    fields dropped for other methods: all in `PaymentEntryFormMixin`, D-069).
+    `amount` is declared with min_value since BigIntegerField has no built-in
+    positivity."""
+
+    # Paying a supplier: transfer or cheque; a card reader only receives money.
+    entry_methods = tuple(m for m in ENTRY_METHOD_CHOICES if m[0] != "card")
 
     due_date = JalaliDateField(required=False, label="تاریخ سررسید چک")
-    method = forms.ChoiceField(
-        choices=PurchasePaymentEntry.Method.choices,
-        initial=PurchasePaymentEntry.Method.CASH,
-        label="روش",
-        widget=forms.Select(attrs={"class": "field__control"}),
-    )
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
@@ -198,32 +168,10 @@ class PurchasePaymentEntryForm(forms.ModelForm):
         model = PurchasePaymentEntry
         fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "issuer", "due_date")
         widgets = {
-            "bank_account": forms.Select(attrs={"class": "field__control"}),
             "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
             "issuer": forms.TextInput(attrs={"class": "field__control"}),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
-        self.fields["bank_account"].empty_label = "نقدی"
-        self.fields["bank_account"].required = False
-        self.fields["cheque_number"].required = False
-        self.fields["bank_name"].required = False
-        self.fields["issuer"].required = False
-
-    def clean(self):
-        cleaned = super().clean()
-        # Only a cheque has a number, an issuing bank and a due date; the
-        # page hides those fields for the other methods, so whatever a
-        # switched-away row still holds must not be saved.
-        if cleaned.get("method") != PurchasePaymentEntry.Method.CHEQUE:
-            cleaned["cheque_number"] = ""
-            cleaned["bank_name"] = ""
-            cleaned["issuer"] = ""
-            cleaned["due_date"] = None
-        return cleaned
 
 
 PurchasePaymentEntryFormSet = forms.formset_factory(PurchasePaymentEntryForm, extra=0)

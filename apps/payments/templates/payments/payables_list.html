@@ -2,8 +2,8 @@
 {% load paper %}
 
 {% comment %}
-Payables: exact mirror of Receivables,
-Supplier/PurchaseInvoice side.
+Payables (D-071): the exact mirror of Receivables -- what we owe suppliers,
+split into pending cheques we issued and credit on account.
 {% endcomment %}
 
 {% block title %}بدهی‌ها{% endblock %}
@@ -12,44 +12,7 @@ Supplier/PurchaseInvoice side.
 {% block content %}
 <div class="page-head">
   <h1>بدهی به تأمین‌کنندگان</h1>
-  <p class="page-head__lede">فقط تأمین‌کنندگانی که حساب باز داریم.</p>
+  <p class="page-head__lede">چک‌های پرداختی در انتظار پاس‌شدن و نسیه‌های باز، با تاریخ سررسید.</p>
 </div>
-
-<div class="card">
-  <div class="card__body">
-    {% if rows %}
-      <div class="table-card">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>تأمین‌کننده</th>
-              <th>تلفن</th>
-              <th>مانده بدهی</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in rows %}
-              <tr>
-                <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a></td>
-                <td class="num">{{ row.supplier.phone|default:"—" }}</td>
-                <td class="num">{{ row.outstanding|toman }}</td>
-                <td>
-                  <details class="quick-party-disclosure">
-                    <summary class="btn btn--quiet">ثبت پرداخت</summary>
-                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
-                  </details>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="placeholder">
-        <p>به هیچ تأمین‌کننده‌ای بدهی باز نداریم.</p>
-      </div>
-    {% endif %}
-  </div>
-</div>
+{% include "payments/_dues_page.html" with party_word="تأمین‌کننده" party_header="تأمین‌کننده" clear_label="پاس شد" pay_label="پرداخت" %}
 {% endblock %}

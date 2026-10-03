@@ -24,6 +24,7 @@ def last(cust):
 def scenarios(h):
     cust, cust2 = h.customer(), h.customer()
     acct = h.account()
+    pos = h.account(kind="pos")
     a = h.product(stock=50, cost=100, price=1000)
     b = h.product(stock=20, cost=300, price=2000)
     zero = h.product(stock=0)
@@ -41,24 +42,24 @@ def scenarios(h):
     check("S01 COGS 10×100 = 1000 and profit 9000", it.cost_of_goods == 1000 and it.profit == 9000, (it.cost_of_goods, it.profit))
     check("S01 customer owes nothing", get_customer_outstanding(cust) == 0)
 
-    r = h.post_sale(cust, [(a, 1, 1000)], account="cash")
-    check("S02 full settlement in cash: payment has no bank account", r.status_code == 302 and
-          Payment.objects.filter(customer=cust, amount=1000, bank_account__isnull=True).exists())
+    r = h.post_sale(cust, [(a, 1, 1000)], account=pos)
+    check("S02 full settlement by card reader: payment into the card-reader account", r.status_code == 302 and
+          Payment.objects.filter(customer=cust, amount=1000, bank_account=pos).exists())
     n1, s1 = n_inv(), seq()
     r = h.post_sale(cust, [(a, 1, 1000)], account=None)
     check("S03 full settlement without an account rejected, nothing consumed", r.status_code == 200 and n_inv() == n1 and seq() == s1 and h.stock(a) == 39)
 
     r = h.post_sale(cust2, [(a, 2, 1000)], mode="split")
     check("S04 split with no rows = fully on credit", r.status_code == 302 and last(cust2).payment_status == "unpaid" and get_customer_outstanding(cust2) == 2000)
-    r = h.post_sale(cust2, [(a, 2, 1000)], mode="split", payments=[{"method": "cash", "amount": "500"}])
-    check("S05 partial cash row → partial", r.status_code == 302 and last(cust2).payment_status == "partial" and get_customer_outstanding(cust2) == 3500)
-    r = h.post_sale(cust2, [(a, 1, 1000)], mode="split", payments=[{"method": "card", "amount": "1000", "bank_account": str(acct.pk)}])
+    r = h.post_sale(cust2, [(a, 2, 1000)], mode="split", payments=[{"method": "bank_transfer", "amount": "500", "bank_account": str(acct.pk)}])
+    check("S05 partial transfer row → partial", r.status_code == 302 and last(cust2).payment_status == "partial" and get_customer_outstanding(cust2) == 3500)
+    r = h.post_sale(cust2, [(a, 1, 1000)], mode="split", payments=[{"method": "card", "amount": "1000", "bank_account": str(pos.pk)}])
     check("S06 card row paying everything → paid", r.status_code == 302 and last(cust2).payment_status == "paid")
-    r = h.post_sale(cust2, [(a, 1, 1000)], mode="split", payments=[{"method": "bank_transfer", "amount": "400", "bank_account": str(acct.pk)}, {"method": "cash", "amount": "600"}])
+    r = h.post_sale(cust2, [(a, 1, 1000)], mode="split", payments=[{"method": "bank_transfer", "amount": "400", "bank_account": str(acct.pk)}, {"method": "card", "amount": "600", "bank_account": str(pos.pk)}])
     check("S07 two rows summing to the total → paid", r.status_code == 302 and last(cust2).payment_status == "paid")
     r = h.post_sale(cust2, [(a, 2, 1000)], mode="split", payments=[
         {"method": "cheque", "amount": "1500", "bank_account": str(acct.pk), "cheque_number": "C9", "bank_name": "Mellat", "due_date": "1405/08/10"},
-        {"method": "cash", "amount": "500"}])
+        {"method": "bank_transfer", "amount": "500", "bank_account": str(acct.pk)}])
     ic = last(cust2)
     chq = Cheque.objects.get(sales_invoice=ic)
     check("S08 cheque row → PENDING IN cheque, not counted as paid", chq.status == "pending" and chq.direction == "in" and ic.paid_amount == 500 and ic.payment_status == "partial")
@@ -110,7 +111,7 @@ def scenarios(h):
         if pr in ("-1", "abc", "1.5"):
             check(f"S20 price '{pr}' rejected", n_inv() == c0)
     # blank price falls back to the product default (2.4)
-    d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "discount_amount": "", "payment_mode": "full", "received_into": str(acct.pk)}
+    d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "discount_amount": "", "payment_mode": "full", "transfer_account": str(acct.pk)}
     d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": ""}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/sales/new/", d)
@@ -214,7 +215,7 @@ def scenarios(h):
 
     # ------------------------------------------------ misc / tamper
     for total in ("-1", "abc", "100000", ""):
-        d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "payment_mode": "full", "received_into": str(acct.pk),
+        d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk),
              "items-TOTAL_FORMS": total, "items-INITIAL_FORMS": 0, "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0}
         r = h.c.post("/sales/new/", d)
         check(f"S37 tampered TOTAL_FORMS '{total}' no crash", r.status_code in (200, 400), r.status_code)
