@@ -1162,3 +1162,14 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Decision: The host's one SQLite file is protected by a cPanel cron job running `manage.py backup_db --keep 14`
   daily (the command prunes only files named `paper-plus-backup-*.zip` in the target folder). Setup steps are in
   `deploy/HOSTIRAN.md` (deploy branch). Copying a backup off the host stays a manual weekly habit.
+
+### D-078: Full settlement is ticked per method; a single card reader is the default
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: on the full-settlement panel of a sales/purchase invoice, «کارت‌خوان» and «حواله بانکی» are tick boxes
+  (`use_pos`, `use_transfer`). Only a ticked method shows its fields and counts; an unticked method's account and
+  amount are ignored by the server even if sent. Both ticked keeps the two-amount rule of D-069. When exactly one
+  active card-reader account exists the account is not asked for: the page shows its name, and the form falls back
+  to it if none is posted; with several the choice stays. Card rows in split mode preselect a lone card reader too.
+  Purchase invoices still have no card option (D-069: a card reader only receives money).

@@ -113,7 +113,7 @@ try:
         c.force_login(u)
         cust = Customer.objects.filter(is_active=True).first()
         sup = Supplier.objects.filter(is_active=True).first()
-        acct = BankAccount.objects.filter(is_active=True).first()
+        acct = BankAccount.objects.filter(is_active=True, account_type="current").first()
         pa, pb = list(Product.objects.filter(is_active=True).order_by("name")[:2])
         today = datetime.date.today()
         start, end = today - datetime.timedelta(days=5), today + datetime.timedelta(days=5)
@@ -128,14 +128,14 @@ try:
             d.update(extra)
             return c.post(url, d)
 
-        r = post("/purchasing/new/", [(pa, 7, 999_001), (pb, 3, 12_345)], {"supplier": str(sup.pk), "transfer_account": str(acct.pk)})
+        r = post("/purchasing/new/", [(pa, 7, 999_001), (pb, 3, 12_345)], {"supplier": str(sup.pk), "transfer_account": str(acct.pk), "use_transfer": "on"})
         check("purchase created", r.status_code == 302)
         # discount 100,001 over 2 lines forces a largest-remainder split
         r = post("/sales/new/", [(pa, 4, 1_500_000), (pb, 2, 77_777)],
-                 {"customer": str(cust.pk), "discount_amount": "100001", "transfer_account": str(acct.pk)})
+                 {"customer": str(cust.pk), "discount_amount": "100001", "transfer_account": str(acct.pk), "use_transfer": "on"})
         check("sale with odd discount created", r.status_code == 302)
         s1 = SalesInvoice.objects.order_by("-created_at").first()
-        r = post("/sales/new/", [(pa, 1, 1_600_000)], {"customer": str(cust.pk), "discount_amount": "", "transfer_account": str(acct.pk)})
+        r = post("/sales/new/", [(pa, 1, 1_600_000)], {"customer": str(cust.pk), "discount_amount": "", "transfer_account": str(acct.pk), "use_transfer": "on"})
         s2 = SalesInvoice.objects.order_by("-created_at").first()
         check("second sale created", r.status_code == 302 and s2.pk != s1.pk)
         after_sales = audit("after sales", start, end)

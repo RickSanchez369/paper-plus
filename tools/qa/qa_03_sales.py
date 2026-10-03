@@ -111,7 +111,7 @@ def scenarios(h):
         if pr in ("-1", "abc", "1.5"):
             check(f"S20 price '{pr}' rejected", n_inv() == c0)
     # blank price falls back to the product default (2.4)
-    d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "discount_amount": "", "payment_mode": "full", "transfer_account": str(acct.pk)}
+    d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "discount_amount": "", "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on"}
     d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": ""}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/sales/new/", d)
@@ -215,7 +215,7 @@ def scenarios(h):
 
     # ------------------------------------------------ misc / tamper
     for total in ("-1", "abc", "100000", ""):
-        d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk),
+        d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on",
              "items-TOTAL_FORMS": total, "items-INITIAL_FORMS": 0, "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0}
         r = h.c.post("/sales/new/", d)
         check(f"S37 tampered TOTAL_FORMS '{total}' no crash", r.status_code in (200, 400), r.status_code)

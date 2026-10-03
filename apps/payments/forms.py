@@ -99,7 +99,11 @@ class InvoicePaymentFields(forms.Form):
         initial=PAYMENT_MODE_FULL,
         widget=forms.RadioSelect,
     )
-    pos_account = pos_account_field(required=False, label="حساب کارت‌خوان", empty_label="— بدون کارت‌خوان —")
+    # Ticks decide which methods are in play (D-078); an unticked method's
+    # account and amount are ignored even if the browser sent them.
+    use_pos = forms.BooleanField(required=False, label="کارت‌خوان")
+    use_transfer = forms.BooleanField(required=False, label="حواله بانکی")
+    pos_account = pos_account_field(required=False, label="حساب کارت‌خوان", empty_label="— انتخاب حساب —")
     pos_amount = forms.IntegerField(
         required=False,
         min_value=1,
@@ -107,7 +111,7 @@ class InvoicePaymentFields(forms.Form):
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
-    transfer_account = current_account_field(required=False, label="حساب جاری (حواله بانکی)", empty_label="— بدون حواله —")
+    transfer_account = current_account_field(required=False, label="حساب جاری (حواله بانکی)", empty_label="— انتخاب حساب —")
     transfer_amount = forms.IntegerField(
         required=False,
         min_value=1,
@@ -117,14 +121,37 @@ class InvoicePaymentFields(forms.Form):
     )
     credit_due_date = JalaliDateField(required=False, label="تاریخ سررسید نسیه")
 
+    @staticmethod
+    def single_pos_account():
+        """The only active card reader, or None when there are none or several (D-078)."""
+        accounts = list(BankAccount.objects.filter(is_active=True, account_type=BankAccount.AccountType.POS)[:2])
+        return accounts[0] if len(accounts) == 1 else None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # One card reader means nothing to choose: it is preselected and the
+        # page shows its name instead of a list.
+        self.pos_default = self.single_pos_account()
+        if self.pos_default:
+            self.fields["pos_account"].initial = self.pos_default.pk
+
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("payment_mode") == PAYMENT_MODE_FULL:
-            if not cleaned.get("pos_account") and not cleaned.get("transfer_account"):
-                self.add_error(None, "حداقل یک روش پرداخت (کارت‌خوان یا حواله بانکی) را انتخاب کنید.")
-            for account, amount in (("pos_account", "pos_amount"), ("transfer_account", "transfer_amount")):
-                if cleaned.get(amount) and not cleaned.get(account):
-                    self.add_error(account, "برای این مبلغ حساب را انتخاب کنید.")
+            if cleaned.get("use_pos") and not cleaned.get("pos_account") and self.pos_default:
+                cleaned["pos_account"] = self.pos_default
+            for tick, account, amount in (
+                ("use_pos", "pos_account", "pos_amount"),
+                ("use_transfer", "transfer_account", "transfer_amount"),
+            ):
+                if not cleaned.get(tick):
+                    # Unticked: whatever was typed for it does not count.
+                    cleaned[account] = None
+                    cleaned[amount] = None
+                elif not cleaned.get(account):
+                    self.add_error(account, "حساب بانکی را انتخاب کنید.")
+            if not cleaned.get("use_pos") and not cleaned.get("use_transfer"):
+                self.add_error(None, "حداقل یک روش پرداخت (کارت‌خوان یا حواله بانکی) را تیک بزنید.")
         return cleaned
 
     @property

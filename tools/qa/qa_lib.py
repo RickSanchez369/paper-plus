@@ -65,6 +65,15 @@ def has(resp, needle):
     return needle in body or digits_fa(needle) in body
 
 
+
+def tick_methods(d):
+    """D-078: a method is only in play when its tick is posted; tests that name an account mean the tick too."""
+    for key, tick in (("pos_account", "use_pos"), ("transfer_account", "use_transfer")):
+        if d.get(key) and tick not in d:
+            d[tick] = "on"
+    return d
+
+
 class Harness:
     def __init__(self):
         self.su = User.objects.create_user(phone=f"09{random.randint(100000000, 999999999)}", password="x")
@@ -119,7 +128,7 @@ class Harness:
             {"product": str(p.pk) if p else "", "quantity": str(q), "unit_price": str(pr)} for p, q, pr in items]))
         d.update(self._rows("payments", list(payments)))
         d.update(extra or {})
-        return (client or self.c).post("/sales/new/", d)
+        return (client or self.c).post("/sales/new/", tick_methods(d))
 
     def post_purchase(self, supplier, items, mode="full", account=None, payments=(), date=TODAY_J,
                       supplier_invoice="", client=None, extra=None, credit_due=TODAY_J):
@@ -132,7 +141,7 @@ class Harness:
             {"product": str(p.pk) if p else "", "quantity": str(q), "unit_price": str(pr)} for p, q, pr in items]))
         d.update(self._rows("payments", list(payments)))
         d.update(extra or {})
-        return (client or self.c).post("/purchasing/new/", d)
+        return (client or self.c).post("/purchasing/new/", tick_methods(d))
 
     def clear_cheque(self, ch, account="cheque", client=None):
         """POST the clear form. account: "cheque" (its own account, else cash),

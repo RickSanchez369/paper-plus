@@ -102,7 +102,7 @@ def scenarios(h):
     check("P12 same product twice is rejected", r.status_code == 200 and n_inv() == n3)
     r = h.post_purchase(sup, [], account=acct)
     check("P13 no items is rejected", r.status_code == 200 and n_inv() == n3)
-    d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk)}
+    d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on"}
     d.update(h._rows("items", [{"product": "", "quantity": "", "unit_price": ""}, {"product": str(b.pk), "quantity": "2", "unit_price": "10"}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
@@ -136,7 +136,7 @@ def scenarios(h):
     for label, s in (("missing", None), ("inactive", inactive)):
         r = h.post_purchase(s, [(a, 1, 10)], account=acct)
         check(f"P17 {label} supplier rejected", r.status_code == 200 and n_inv() == c0)
-    d = {"supplier": "not-a-uuid", "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk)}
+    d = {"supplier": "not-a-uuid", "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on"}
     d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": "1"}])); d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
     check("P17 malformed supplier id rejected (no 500)", r.status_code == 200 and n_inv() == c0, r.status_code)
@@ -178,7 +178,7 @@ def scenarios(h):
 
     # tampered management form
     for total in ("-1", "abc", "100000", ""):
-        d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk),
+        d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on",
              "items-TOTAL_FORMS": total, "items-INITIAL_FORMS": 0, "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0}
         r = h.c.post("/purchasing/new/", d)
         check(f"P23 tampered TOTAL_FORMS='{total}' does not crash", r.status_code in (200, 400), r.status_code)
