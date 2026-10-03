@@ -18,9 +18,13 @@ docs/1.md
 # Local Claude Code settings; not shared
 .claude/
 # Generated output of the graphify skill
-graphify-out/
 # Local consent flag for an unrelated dev tool; not project config
 .impeccable/
 # throwaway database for browser QA (tools/qa/run_qa_server.py)
 tools/qa/.qa.sqlite3*
 tools/qa/.qa_login.txt
+
+# graphify: keep graph.json + GRAPH_REPORT.md, drop the cache and the large html
+graphify-out/cache/
+graphify-out/graph.html
+graphify-out/manifest.json
