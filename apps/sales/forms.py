@@ -32,8 +32,9 @@ from django.utils.functional import cached_property
 from apps.inventory.selectors import get_stock_map
 from apps.partners.models import Customer
 from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
-from apps.products.forms import SelectedProductMixin
-from apps.products.models import PriceTier, Product
+from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
+from apps.products.models import Product
+from apps.products.units import split_units, units_phrase
 from apps.shared.forms import JalaliDateField
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
@@ -121,11 +122,8 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
 
     class Meta:
         model = SalesInvoice
-        fields = ("customer", "price_tier", "invoice_date", "discount_amount", "credit_due_date")
+        fields = ("customer", "invoice_date", "discount_amount", "credit_due_date")
         widgets = {
-            # Wholesale or retail, chosen once at the top (D-075). Same `form`
-            # trick as the customer select: it is rendered above the <form>.
-            "price_tier": forms.RadioSelect(attrs={"form": "sale-form"}),
             # `form="sale-form"` because new.html renders this field (and
             # its "+ مشتری جدید" disclosure) outside the <form> tag on
             # purpose: the disclosure is itself a <form> (see
@@ -143,14 +141,8 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["price_tier"].required = False  # absent = retail, the original single price
-        self.fields["price_tier"].choices = PriceTier.choices
-        self.fields["price_tier"].initial = PriceTier.RETAIL
         self.fields["customer"].queryset = Customer.objects.filter(is_active=True).order_by("name")
         self.fields["customer"].empty_label = "— انتخاب مشتری —"
-
-    def clean_price_tier(self):
-        return self.cleaned_data.get("price_tier") or PriceTier.RETAIL
 
     def clean_discount_mode(self):
         return self.cleaned_data.get("discount_mode") or DISCOUNT_MODE_AMOUNT
@@ -169,55 +161,27 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         return self.cleaned_data.get("discount_mode") == DISCOUNT_MODE_PERCENT
 
 
-class SaleItemForm(SelectedProductMixin, forms.ModelForm):
+class SaleItemForm(CartonPackItemFormMixin, SelectedProductMixin, forms.ModelForm):
     """
-    One invoice line.
+    One invoice line, typed as cartons + loose packs in a single row (D-081).
 
-    `product` is a hidden input: the visible picker is the JS-driven
-    search box in _item_row.html, not a plain <select> of every product.
+    `product` is a hidden input: the visible picker is the JS-driven search
+    box in _item_row.html. A blank price is filled from the product (the
+    pack price for packs, the carton price for cartons); a typed one wins.
     """
-
-    # Declared explicitly, not left to ModelForm's auto-generation: the
-    # model's CheckConstraints say quantity > 0 and unit_price >= 0, and
-    # `min_value` only becomes a real validator when passed to the field's
-    # own __init__ -- setting it as a post-hoc attribute does nothing
-    # (lesson already learned once for a different field, see 66d4acc).
-    quantity = forms.IntegerField(
-        min_value=1,
-        label="مقدار",
-        widget=forms.NumberInput(attrs={"class": "field__control item-row__qty", "dir": "ltr", "inputmode": "numeric", "aria-label": "مقدار"}),
-        error_messages={"required": "مقدار الزامی است.", "min_value": "مقدار باید بزرگ‌تر از صفر باشد."},
-    )
-    unit_price = forms.IntegerField(
-        required=False,
-        min_value=0,
-        label="قیمت واحد (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric", "aria-label": "قیمت واحد (تومان)"}),
-        error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
-    )
-
-    def __init__(self, *args, price_tier=None, **kwargs):
-        # The invoice's sale type (D-075), known to the formset before the
-        # invoice exists: a blank price is filled from the right column.
-        super().__init__(*args, **kwargs)
-        self.price_tier = price_tier or PriceTier.RETAIL
-
-    def _post_clean(self):
-        self.instance._tier_hint = self.price_tier
-        super()._post_clean()
 
     @cached_property
     def selected_prices(self):
-        """(retail, wholesale) of the product this row already holds, so a
-        re-rendered row keeps both for the sale-type switch (D-075)."""
+        """(pack price, carton price) of the product this row already holds, so a
+        re-rendered row keeps both for the live total."""
         product = self.selected_product
         if product is None:
             return None
-        return product.default_selling_price, product.price_for(PriceTier.WHOLESALE)
+        return product.pack_price, product.carton_price
 
     class Meta:
         model = SaleItem
-        fields = ("product", "quantity", "unit_price")
+        fields = ("product", "cartons", "unit_price", "carton_price")
         widgets = {"product": forms.HiddenInput()}
         error_messages = {
             "product": {"required": "یک کالا از فهرست جست‌وجو انتخاب کنید."},
@@ -253,7 +217,11 @@ class BaseSaleItemFormSet(forms.BaseFormSet):
                 raise forms.ValidationError(
                     "موجودی «%(name)s» کافی نیست (موجودی %(available)s، درخواست %(qty)s). "
                     "ابتدا خرید را ثبت کنید.",
-                    params={"name": product.name, "available": available, "qty": quantity},
+                    params={
+                        "name": product.name,
+                        "available": units_phrase(*split_units(available, product.pack_per_carton)),
+                        "qty": units_phrase(*split_units(quantity, product.pack_per_carton)),
+                    },
                 )
 
 

@@ -103,7 +103,7 @@ def scenarios(h):
     r = h.post_purchase(sup, [], account=acct)
     check("P13 no items is rejected", r.status_code == 200 and n_inv() == n3)
     d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on"}
-    d.update(h._rows("items", [{"product": "", "quantity": "", "unit_price": ""}, {"product": str(b.pk), "quantity": "2", "unit_price": "10"}]))
+    d.update(h._rows("items", [{"product": "", "packs": "", "unit_price": ""}, {"product": str(b.pk), "packs": "2", "unit_price": "10"}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
     check("P14 an untouched blank row next to a valid one is ignored", r.status_code == 302, r.status_code)
@@ -137,7 +137,7 @@ def scenarios(h):
         r = h.post_purchase(s, [(a, 1, 10)], account=acct)
         check(f"P17 {label} supplier rejected", r.status_code == 200 and n_inv() == c0)
     d = {"supplier": "not-a-uuid", "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on"}
-    d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": "1"}])); d.update(h._rows("payments", []))
+    d.update(h._rows("items", [{"product": str(a.pk), "packs": "1", "unit_price": "1"}])); d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
     check("P17 malformed supplier id rejected (no 500)", r.status_code == 200 and n_inv() == c0, r.status_code)
     d["supplier"] = "00000000-0000-0000-0000-000000000000"
@@ -278,13 +278,13 @@ def scenarios(h):
     check("P31 …and a compact error re-renders compact (name+phone only)", r.status_code == 422 and has(r, "quick-party--compact") and not has(r, 'name="address"'))
 
     sku = f"QQ{random.randint(10**6, 10**7)}"
-    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp-" + rnd(), "sku": sku, "unit": "بسته", "default_selling_price": "1200"})
+    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp-" + rnd(), "sku": sku, "pack_per_carton": "5", "default_selling_price": "1200"})
     check("P32 quick product: created", r.status_code == 200 and has(r, "data-quick-product-created"))
-    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp2-" + rnd(), "sku": sku, "unit": "بسته", "default_selling_price": "1"})
+    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp2-" + rnd(), "sku": sku, "pack_per_carton": "5", "default_selling_price": "1"})
     check("P32 quick product: duplicate SKU → 422", r.status_code == 422)
-    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp3-" + rnd(), "sku": "S" + rnd(), "unit": "بسته", "default_selling_price": ""})
+    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp3-" + rnd(), "sku": "S" + rnd(), "pack_per_carton": "5", "default_selling_price": ""})
     check("P32 quick product: missing selling price → 422 (gap #6)", r.status_code == 422)
-    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp4-" + rnd(), "sku": "S" + rnd(), "unit": "بسته", "default_selling_price": "-5"})
+    r = h.c.post("/purchasing/quick-product/", {"name": "QA-qp4-" + rnd(), "sku": "S" + rnd(), "pack_per_carton": "5", "default_selling_price": "-5"})
     check("P32 quick product: negative price → 422", r.status_code == 422)
 
     ps = h.product(name="QA-searchable-" + rnd())

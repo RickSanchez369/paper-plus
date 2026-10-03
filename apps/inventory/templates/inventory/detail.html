@@ -21,8 +21,8 @@ each row touched and a link back to its source invoice; and a
     <div>
       <h1>{{ product.name }} ({{ product.sku }})</h1>
       <p class="page-head__lede">
-        واحد: {{ product.unit }} ·
-        موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|fa_number }}</strong>
+        هر کارتن: {{ product.pack_per_carton|fa_number }} بسته ·
+        موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|units:product.pack_per_carton }}</strong>
       </p>
     </div>
   </div>
@@ -30,22 +30,27 @@ each row touched and a link back to its source invoice; and a
 
 <div class="stats">
   <div class="stat-card">
-    <span class="stat-card__label">بهای خرید جاری (FIFO)</span>
-    <span class="stat-card__value num">{% if current_cost is not None %}{{ current_cost|toman }}{% else %}—{% endif %}</span>
-    <span class="field__hint">بهای قدیمی‌ترین لایهٔ فعال؛ فروش بعدی از همین مصرف می‌کند.</span>
+    <span class="stat-card__label">میانگین قیمت خرید (هر بسته)</span>
+    <span class="stat-card__value num">{% if average_cost is not None %}{{ average_cost|toman }}{% else %}—{% endif %}</span>
+    <span class="field__hint">فقط بر اساس موجودی باقی‌مانده؛ برای نمایش است و در سود نقشی ندارد.</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">بهای لایهٔ بعدی (FIFO)</span>
+    <span class="stat-card__value num">{% if fifo_cost is not None %}{{ fifo_cost|toman }}{% else %}—{% endif %}</span>
+    <span class="field__hint">بهای قدیمی‌ترین لایهٔ فعال؛ فروش بعدی و سود از همین حساب می‌شود.</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">آخرین قیمت خرید</span>
     <span class="stat-card__value num">{% if last_cost is not None %}{{ last_cost|toman }}{% else %}—{% endif %}</span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">قیمت فروش خرد</span>
+    <span class="stat-card__label">قیمت فروش خرد (هر بسته)</span>
     <span class="stat-card__value num">{{ product.default_selling_price|toman }}</span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">قیمت فروش عمده</span>
-    <span class="stat-card__value num">{{ product.wholesale_selling_price|toman }}</span>
-    {% if product.wholesale_is_unset %}<span class="field__hint">هنوز تعیین نشده یا برابر قیمت خرد است.</span>{% endif %}
+    <span class="stat-card__label">قیمت فروش عمده (هر کارتن)</span>
+    <span class="stat-card__value num">{{ product.carton_price|toman }}</span>
+    {% if product.wholesale_is_unset %}<span class="field__hint">هنوز جدا تعیین نشده؛ قیمت بسته × {{ product.pack_per_carton|fa_number }}.</span>{% endif %}
   </div>
   <div class="stat-card">
     <span class="stat-card__label">ارزش موجودی (به بهای خرید)</span>
@@ -78,7 +83,7 @@ each row touched and a link back to its source invoice; and a
           <tr>
             <th>منشأ</th>
             <th>تاریخ</th>
-            <th>بهای واحد</th>
+            <th>بهای هر بسته</th>
             <th>مانده</th>
             <th>ارزش مانده</th>
           </tr>
@@ -89,7 +94,7 @@ each row touched and a link back to its source invoice; and a
               <td>{{ layer.get_source_display }}</td>
               <td class="num">{{ layer.created_at|jalali }}</td>
               <td class="num">{{ layer.unit_cost|toman }}</td>
-              <td class="num">{{ layer.quantity_remaining|fa_number }}</td>
+              <td class="num">{{ layer.quantity_remaining|units:product.pack_per_carton }}</td>
               <td class="num">{{ layer.remaining_value|toman }}</td>
             </tr>
           {% endfor %}
@@ -111,7 +116,7 @@ each row touched and a link back to its source invoice; and a
             <th>تاریخ</th>
             <th>نوع</th>
             <th>مقدار</th>
-            <th>قیمت واحد</th>
+            <th>قیمت هر بسته</th>
             <th>لایه(های) مرتبط</th>
             <th>فاکتور</th>
             <th>ثبت‌کننده</th>
@@ -123,7 +128,7 @@ each row touched and a link back to its source invoice; and a
             <tr>
               <td class="num">{{ row.movement.created_at|jalali_at }}</td>
               <td>{{ row.movement.get_movement_type_display }}</td>
-              <td class="num">{{ row.movement.signed_quantity|fa_number }}</td>
+              <td class="num">{{ row.movement.signed_quantity|units:product.pack_per_carton }}</td>
               <td class="num">{{ row.movement.unit_price|toman|default:"—" }}</td>
               <td class="num">
                 {% if row.layers %}

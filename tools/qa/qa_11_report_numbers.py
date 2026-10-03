@@ -49,10 +49,10 @@ def audit(tag, start, end):
     # revenue: line totals minus each invoice discount
     revenue = 0
     for i in inv:
-        revenue += sum(it.quantity * it.unit_price for it in i.items.all()) - i.discount_amount
+        revenue += sum(it.line_total for it in i.items.all()) - i.discount_amount
     cogs = InventoryConsumption.objects.filter(sale_item__invoice__in=inv).aggregate(t=Sum(COST))["t"] or 0
     purchases = sum(
-        sum(it.quantity * it.unit_price for it in p.items.all())
+        sum(it.line_total for it in p.items.all())
         for p in PurchaseInvoice.objects.filter(status="confirmed", invoice_date__gte=start, invoice_date__lte=end)
     )
     expenses = Expense.objects.filter(cancelled_at__isnull=True, expense_date__gte=start, expense_date__lte=end).aggregate(t=Sum("amount"))["t"] or 0
@@ -124,7 +124,7 @@ try:
                  "items-TOTAL_FORMS": len(items), "items-INITIAL_FORMS": 0, "items-MIN_NUM_FORMS": 0, "items-MAX_NUM_FORMS": 1000,
                  "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0, "payments-MIN_NUM_FORMS": 0, "payments-MAX_NUM_FORMS": 1000}
             for i, (p, q, price) in enumerate(items):
-                d.update({f"items-{i}-product": str(p.pk), f"items-{i}-quantity": str(q), f"items-{i}-unit_price": str(price)})
+                d.update({f"items-{i}-product": str(p.pk), f"items-{i}-packs": str(q), f"items-{i}-unit_price": str(price)})
             d.update(extra)
             return c.post(url, d)
 
@@ -150,7 +150,7 @@ try:
         audit("after expenses", start, end)
         bank_identity("synthetic")
         check("cancelled sale contributes nothing", reports.sales_total(start, end) - base[0] ==
-              sum(it.quantity * it.unit_price for it in s1.items.all()) - s1.discount_amount)
+              sum(it.line_total for it in s1.items.all()) - s1.discount_amount)
         raise _Rollback()
 except _Rollback:
     pass

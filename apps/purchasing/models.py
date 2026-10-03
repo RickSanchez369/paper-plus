@@ -5,7 +5,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Supplier
-from apps.products.models import Product
+from apps.products.models import CartonLine, Product
 from apps.shared.models import BaseModel
 
 
@@ -157,7 +157,7 @@ class PurchaseInvoice(BaseModel):
         return max(self.total_amount - self.paid_amount, 0)
 
 
-class PurchaseItem(BaseModel):
+class PurchaseItem(CartonLine, BaseModel):
     """One line of a purchase invoice."""
 
     invoice = models.ForeignKey(
@@ -173,10 +173,10 @@ class PurchaseItem(BaseModel):
         verbose_name="کالا",
     )
     quantity = models.PositiveIntegerField(
-        verbose_name="مقدار",
+        verbose_name="مقدار (بسته)",  # the total in packs, the base unit (D-081)
     )
     unit_price = models.BigIntegerField(
-        verbose_name="قیمت واحد (تومان)",  # whole Toman (D-043)
+        verbose_name="قیمت هر بسته (تومان)",  # whole Toman (D-043)
     )
 
     class Meta:
@@ -191,6 +191,14 @@ class PurchaseItem(BaseModel):
                 condition=models.Q(unit_price__gte=0),
                 name="purchase_item_price_non_negative",
             ),
+            models.CheckConstraint(
+                condition=models.Q(carton_price__gte=0, pack_per_carton__gte=1),
+                name="purchase_item_carton_fields_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=models.F("cartons") * models.F("pack_per_carton")),
+                name="purchase_item_cartons_within_quantity",
+            ),
             models.UniqueConstraint(
                 fields=["invoice", "product"],
                 name="unique_product_per_purchase_invoice",
@@ -201,8 +209,15 @@ class PurchaseItem(BaseModel):
         return f"{self.product} x {self.quantity}"
 
     @property
-    def line_total(self):
-        return self.quantity * self.unit_price
+    def unit_cost(self):
+        """
+        What one pack of this line cost, in whole Toman, rounded to nearest
+        (D-081): the line's money divided by its packs. This is the cost of
+        the FIFO layer the line creates. A line bought only in packs is exactly
+        its pack price; a carton price that does not divide evenly rounds here
+        once, and the drift (under one Toman per pack) is accepted.
+        """
+        return (2 * self.line_total + self.quantity) // (2 * self.quantity)
 
 
 class PurchasePaymentEntry(BaseModel):

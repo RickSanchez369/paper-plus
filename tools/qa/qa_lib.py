@@ -107,6 +107,17 @@ class Harness:
 
     # ---- form posting
     @staticmethod
+    def item_row(p, qty, price):
+        """(product, packs, pack price) as the posted line fields (D-081): everything typed as loose packs."""
+        return {"product": str(p.pk) if p else "", "cartons": "", "packs": str(qty), "carton_price": "", "unit_price": str(price)}
+
+    @staticmethod
+    def carton_row(p, cartons, packs=0, carton_price="", unit_price=""):
+        """A line typed as cartons + loose packs, prices optional (a sale fills them from the product)."""
+        return {"product": str(p.pk), "cartons": str(cartons), "packs": str(packs or ""), "carton_price": str(carton_price),
+                "unit_price": str(unit_price)}
+
+    @staticmethod
     def _rows(prefix, rows):
         d = {f"{prefix}-TOTAL_FORMS": len(rows), f"{prefix}-INITIAL_FORMS": 0,
              f"{prefix}-MIN_NUM_FORMS": 0, f"{prefix}-MAX_NUM_FORMS": 1000}
@@ -124,8 +135,7 @@ class Harness:
         if account is not None and account != "cash":
             d["pos_account" if account.account_type == "pos" else "transfer_account"] = str(account.pk)
         d["credit_due_date"] = credit_due
-        d.update(self._rows("items", [
-            {"product": str(p.pk) if p else "", "quantity": str(q), "unit_price": str(pr)} for p, q, pr in items]))
+        d.update(self._rows("items", [self.item_row(*i) if not isinstance(i, dict) else i for i in items]))
         d.update(self._rows("payments", list(payments)))
         d.update(extra or {})
         return (client or self.c).post("/sales/new/", tick_methods(d))
@@ -137,8 +147,7 @@ class Harness:
         if account is not None and account != "cash":
             d["transfer_account"] = str(account.pk)
         d["credit_due_date"] = credit_due
-        d.update(self._rows("items", [
-            {"product": str(p.pk) if p else "", "quantity": str(q), "unit_price": str(pr)} for p, q, pr in items]))
+        d.update(self._rows("items", [self.item_row(*i) if not isinstance(i, dict) else i for i in items]))
         d.update(self._rows("payments", list(payments)))
         d.update(extra or {})
         return (client or self.c).post("/purchasing/new/", tick_methods(d))

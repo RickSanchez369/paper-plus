@@ -69,9 +69,8 @@ Who issues it comes from settings.COMPANY (filled from .env, see
         <tr>
           <th class="lines__row">ردیف</th>
           <th class="lines__name">شرح کالا</th>
-          <th>واحد</th>
           <th>مقدار</th>
-          <th>قیمت واحد (تومان)</th>
+          <th>قیمت (تومان)</th>
           <th>مبلغ کل (تومان)</th>
         </tr>
       </thead>
@@ -80,9 +79,11 @@ Who issues it comes from settings.COMPANY (filled from .env, see
           <tr>
             <td class="lines__row">{{ forloop.counter|fa_number }}</td>
             <td class="lines__name">{{ item.product.name }}</td>
-            <td>{{ item.product.unit }}</td>
-            <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|fa_number }}</td>
+            <td class="num">{{ item|line_units }}</td>
+            <td class="num">
+              {% if item.cartons %}<div>کارتن: {{ item.carton_price|fa_number }}</div>{% endif %}
+              {% if item.loose_packs %}<div>بسته: {{ item.unit_price|fa_number }}</div>{% endif %}
+            </td>
             <td class="num">{{ item.line_total|fa_number }}</td>
           </tr>
         {% endfor %}

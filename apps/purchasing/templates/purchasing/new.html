@@ -13,6 +13,7 @@ and STATE.md (commit 6d4521a).
 {% block header %}فاکتور خرید جدید{% endblock %}
 
 {% block head %}
+  <script src="{% static_v 'shared/js/units.js' %}" defer></script>
   <script src="{% static_v 'purchasing/js/purchase_form.js' %}" defer></script>
   <script src="{% static_v 'shared/js/invoice_payment.js' %}" defer></script>
 {% endblock %}
@@ -74,8 +75,10 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
       <div class="item-row item-row--head">
         <span>کالا</span>
         <span>موجودی</span>
-        <span>مقدار</span>
-        <span>قیمت خرید واحد (تومان)</span>
+        <span>کارتن</span>
+        <span>بسته</span>
+        <span>قیمت خرید هر کارتن (تومان)</span>
+        <span>قیمت خرید هر بسته (تومان)</span>
         <span>جمع (تومان)</span>
         <span></span>
       </div>

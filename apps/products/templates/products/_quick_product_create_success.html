@@ -8,6 +8,7 @@ button carries, so both paths fill a row identically.
      data-quick-product-created
      data-id="{{ product.pk }}"
      data-name="{{ product.name }}"
-     data-stock="0">
+     data-stock="0"
+     data-ratio="{{ product.pack_per_carton }}">
   <p class="field__hint">«{{ product.name }}» ثبت شد و به فاکتور اضافه شد.</p>
 </div>

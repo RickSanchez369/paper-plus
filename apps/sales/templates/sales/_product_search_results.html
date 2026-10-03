@@ -1,9 +1,9 @@
 {% load paper %}
 {% comment %}
 Live product-search results (ProductSearchView). Each result carries
-everything sale_form.js needs on click -- id, name, current stock,
-default price -- as data-* attributes, so picking one needs no second
-request.
+everything sale_form.js needs on click -- id, name, stock in packs, the
+packs-per-carton ratio and both prices -- as data-* attributes, so picking
+one needs no second request.
 {% endcomment %}
 {% if rows %}
   {% for row in rows %}
@@ -11,11 +11,11 @@ request.
             data-id="{{ row.product.pk }}"
             data-name="{{ row.product.name }}"
             data-stock="{{ row.stock }}"
-            data-price="{{ row.price_retail }}"
-            data-price-retail="{{ row.price_retail }}"
-            data-price-wholesale="{{ row.price_wholesale }}">
+            data-ratio="{{ row.product.pack_per_carton }}"
+            data-pack-price="{{ row.pack_price }}"
+            data-carton-price="{{ row.carton_price }}">
       <span>{{ row.product.name }}</span>
-      <span class="num item-row__result-stock">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|fa_number }}{% endif %}</span>
+      <span class="num item-row__result-stock">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|units:row.product.pack_per_carton }}{% endif %}</span>
     </button>
   {% endfor %}
 {% else %}

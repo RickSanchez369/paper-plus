@@ -1099,7 +1099,8 @@ body.nav-open {
 
 .item-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 100px 140px 120px 70px;
+  /* product, stock, cartons, packs, carton price, pack price, total, remove (D-081) */
+  grid-template-columns: 2fr 1.3fr 80px 80px 130px 130px 110px 64px;
   gap: var(--space-3);
   align-items: start;
   padding: var(--space-3) 0;
@@ -1114,6 +1115,18 @@ body.nav-open {
 
 .item-row__search {
   position: relative;
+}
+
+/* What stays after the line / which limit it broke, under the whole row. */
+.item-row__note {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--space-3);
+}
+
+.item-row__note:empty,
+.item-row__note > :empty:only-child {
+  display: none;
 }
 
 .item-row__results:not(:empty) {
@@ -1399,6 +1412,10 @@ body.nav-open {
 
   .item-row {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .item-row__stock {
+    grid-column: 1 / -1;
   }
 
   .item-row__search {

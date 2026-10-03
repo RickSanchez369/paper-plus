@@ -54,7 +54,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
         <tr>
           <th>کالا</th>
           <th>مقدار</th>
-          <th>قیمت واحد</th>
+          <th>قیمت</th>
           <th>جمع</th>
           {% if invoice.discount_amount %}<th>سهم تخفیف</th>{% endif %}
           <th>بهای تمام‌شده (FIFO)</th>
@@ -67,11 +67,14 @@ cancel_sale -- D-023, this view never writes stock/money itself).
             <td>
               {{ item.product.name }}
               {% if item.uncosted_quantity %}
-                <span class="badge badge--bad">{{ item.uncosted_quantity|fa_number }} عدد بدون بهای پایه</span>
+                <span class="badge badge--bad">{{ item.uncosted_quantity|fa_number }} بسته بدون بهای پایه</span>
               {% endif %}
             </td>
-            <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item|line_units }}</td>
+            <td class="num">
+              {% if item.cartons %}<div>کارتن: {{ item.carton_price|toman }}</div>{% endif %}
+              {% if item.loose_packs %}<div>بسته: {{ item.unit_price|toman }}</div>{% endif %}
+            </td>
             <td class="num">{{ item.line_total|toman }}</td>
             {% if invoice.discount_amount %}<td class="num">−{{ item.discount_share|toman }}</td>{% endif %}
             <td class="num">{{ item.cost_of_goods|toman }}</td>

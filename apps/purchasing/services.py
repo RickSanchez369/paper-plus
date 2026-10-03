@@ -73,7 +73,7 @@ def confirm_purchase(invoice, user):
             product=item.product,
             movement_type=InventoryMovement.MovementType.PURCHASE,
             quantity=item.quantity,
-            unit_price=item.unit_price,
+            unit_price=item.unit_cost,
             purchase_item=item,
             created_by=user,
             note=f"فاکتور خرید {locked_invoice.invoice_number}",
@@ -91,7 +91,7 @@ def confirm_purchase(invoice, user):
             purchase_item=item,
             quantity=item.quantity,
             quantity_remaining=item.quantity,
-            unit_cost=item.unit_price,
+            unit_cost=item.unit_cost,
             created_by=user,
         )
         for item in items
@@ -243,7 +243,7 @@ def cancel_purchase(invoice, user):
             product=item.product,
             movement_type=InventoryMovement.MovementType.ADJUSTMENT_OUT,
             quantity=item.quantity,
-            unit_price=item.unit_price,
+            unit_price=item.unit_cost,
             created_by=user,
             note=f"لغو فاکتور خرید {locked_invoice.invoice_number}",
         )

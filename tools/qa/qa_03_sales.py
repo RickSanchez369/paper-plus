@@ -112,7 +112,7 @@ def scenarios(h):
             check(f"S20 price '{pr}' rejected", n_inv() == c0)
     # blank price falls back to the product default (2.4)
     d = {"customer": str(cust.pk), "invoice_date": TODAY_J, "discount_amount": "", "payment_mode": "full", "transfer_account": str(acct.pk), "use_transfer": "on"}
-    d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": ""}]))
+    d.update(h._rows("items", [{"product": str(a.pk), "packs": "1", "unit_price": ""}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/sales/new/", d)
     check("S21 a blank price falls back to the product's selling price", r.status_code == 302 and last(cust).items.get().unit_price == 1000, r.status_code)
@@ -207,7 +207,7 @@ def scenarios(h):
     r = h.c.get("/sales/?q=" + cust.name + "&payment_status=unpaid")
     check("S35 filter + search combine", r.status_code == 200)
     r = h.c.get("/sales/product-search/?q=" + a.name)
-    check("S36 product search shows stock and price data", has(r, str(a.pk)) and has(r, "data-price"))
+    check("S36 product search shows stock and price data", has(r, str(a.pk)) and has(r, "data-pack-price"))
     r = h.c.get(f"/sales/product-search/?q={a.name}&exclude={a.pk}")
     check("S36 exclude hides a chosen product", not has(r, str(a.pk)))
     r = h.c.get("/sales/product-search/?q=" + zero.name)

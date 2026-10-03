@@ -1123,7 +1123,7 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   The activity feed leaves the dashboard (its own page stays).
 
 ### D-075: Wholesale and retail prices, chosen once on the sales invoice
-- Status: Final
+- Status: Final, except that D-081 drops the sale-type choice on the invoice and changes what the two prices mean
 - Date: 2026-10-03
 - Decided by: Sina (the idea); design chosen after comparing 12 independent proposals judged on owner fit,
   live-data safety, correctness/tests, extensibility and counter UX.
@@ -1146,7 +1146,7 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   default tier, per-line tier, quantity breaks, renaming the retail column (rebuilds the table on SQLite).
 
 ### D-076: A product is counted in pack or carton; the two are separate products
-- Status: Final
+- Status: Superseded by D-081 (2026-10-04)
 - Date: 2026-10-03
 - Decided by: Sina
 - Decision: `Product.unit` is one of `بسته` / `کارتن` (the stored value is the Persian word, so every page that
@@ -1202,3 +1202,37 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   the rate with the time it was read; a later rate never changes a confirmed invoice.
 - Cards show the newest valid rate with its age, flag it «قدیمی» after `USD_RATE_STALE_HOURS` (12), and say when the
   last attempt failed. Unknown: whether the shared host allows outbound HTTPS; test from the host before relying on it.
+
+### D-081: One product, two trade units: pack (base) and carton
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: a product is ONE product again. Its base unit is the pack; `Product.pack_per_carton` (default 5, editable
+  per product, never below 1) says how many packs make a carton. Stock, FIFO layers, movements, consumptions and every
+  cost are counted in packs only, so there is one stock figure and FIFO code is unchanged. The carton + pack split is how
+  a quantity is typed and shown: an invoice line (`SaleItem`/`PurchaseItem`) has `cartons`, `pack_per_carton` (a snapshot,
+  so changing the ratio later never rewrites an old line) and `carton_price`; `quantity` stays the stored total in packs;
+  loose packs = quantity - cartons x ratio; `line_total = cartons x carton_price + loose packs x unit_price` (`unit_price`
+  = price of one pack), so a carton priced as a whole is never rounded through a per-pack figure. A user types cartons
+  and packs in one row; one row per product per invoice stays.
+- Prices: `default_selling_price` = retail = price of one pack; `wholesale_selling_price` = wholesale = price of one whole
+  carton (0 = unset, suggested as pack price x ratio). A sales line prices cartons at the carton price and packs at the
+  pack price, both editable, a blank one filled from the product. The sale type on the invoice form is gone;
+  `SalesInvoice.price_tier` is set when the invoice is confirmed (wholesale if any line has cartons) so the
+  wholesale/retail report keeps working and old invoices read as before.
+- Average vs FIFO: inventory shows «میانگین قیمت خرید» = Σ(remaining x layer cost) / Σ(remaining) over active layers only
+  (`get_average_cost_map`), for reading stock. Cost of goods, profit and layer consumption stay on real FIFO
+  (`consume_fifo`); no calculation reads the average. The product page shows both, plus the next FIFO layer cost.
+- Display: stock and quantities print as «۶ کارتن + ۴ بسته (۳۴ بسته)» (inventory, product search, invoice rows with the
+  stock left after the line, detail and printed invoices; the printed line shows what was typed). The negative-stock
+  card/section is removed from Inventory and the dashboard; oversell protection in forms and `confirm_sale` is unchanged.
+  The pack/carton sections and the unit column are gone. No «empty carton» item exists (cartons = 0 just means none).
+- Purchase line cost: the FIFO layer cost per pack is the line's money / its packs, rounded to the nearest Toman
+  (`PurchaseItem.unit_cost`); invoice totals stay exact.
+- Existing data: migration `products.0009` turns a pack product's old wholesale price into a carton price (x ratio; a
+  price that only equalled retail becomes unset). Carton-counted products are converted by a command, never guessed:
+  `inventory_unit_report` (read-only) shows every product, uneven costs and look-alike pairs; the owner writes a map of
+  merges; `convert_units [--map FILE] [--dry-run] [--allow-rounding]` rewrites stock, layers, movements, consumptions
+  and invoice lines into packs in one transaction (invoice totals must stay exactly equal, stock must match, uneven
+  costs are refused unless rounding is allowed and the drift is printed). `Product.unit` stays until every database has
+  been converted, then a later migration drops it.

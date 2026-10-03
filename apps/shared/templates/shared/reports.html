@@ -132,7 +132,7 @@ this range alone.
           {% for row in sales_by_product %}
             <tr>
               <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
-              <td class="num">{{ row.quantity|fa_number }}</td>
+              <td class="num">{{ row.quantity|units:row.product.pack_per_carton }}</td>
               <td class="num">{{ row.amount|toman }}</td>
               <td class="num">{{ row.profit|toman }}</td>
             </tr>
@@ -157,7 +157,7 @@ this range alone.
           {% for row in purchases_by_product %}
             <tr>
               <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
-              <td class="num">{{ row.quantity|fa_number }}</td>
+              <td class="num">{{ row.quantity|units:row.product.pack_per_carton }}</td>
               <td class="num">{{ row.amount|toman }}</td>
             </tr>
           {% endfor %}
@@ -182,7 +182,7 @@ this range alone.
             <tr>
               <td class="num">{{ forloop.counter|fa_number }}</td>
               <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
-              <td class="num">{{ row.quantity|fa_number }}</td>
+              <td class="num">{{ row.quantity|units:row.product.pack_per_carton }}</td>
             </tr>
           {% endfor %}
         </tbody>

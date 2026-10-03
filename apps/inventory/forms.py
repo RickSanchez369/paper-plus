@@ -14,6 +14,7 @@ added gets it once, here, at its own cost (D-017's rule, unchanged).
 from django import forms
 
 from apps.products.forms import QuickProductForm
+from apps.products.units import to_packs
 
 _NUMBER = {"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
 
@@ -27,18 +28,25 @@ class InventoryProductForm(QuickProductForm):
     cost-based from the very first unit (never the selling price).
     """
 
-    opening_quantity = forms.IntegerField(
+    opening_cartons = forms.IntegerField(
         required=False,
-        min_value=1,
-        label="موجودی فعلی انبار (اختیاری)",
+        min_value=0,
+        label="موجودی فعلی - کارتن (اختیاری)",
         help_text="فقط برای کالایی که همین حالا در انبار موجود است؛ بعداً فقط با فاکتور خرید/فروش تغییر می‌کند.",
         widget=forms.NumberInput(attrs=_NUMBER),
-        error_messages={"min_value": "مقدار باید بزرگ‌تر از صفر باشد."},
+        error_messages={"min_value": "مقدار نمی‌تواند منفی باشد."},
+    )
+    opening_packs = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="موجودی فعلی - بسته (اختیاری)",
+        widget=forms.NumberInput(attrs=_NUMBER),
+        error_messages={"min_value": "مقدار نمی‌تواند منفی باشد."},
     )
     opening_unit_cost = forms.IntegerField(
         required=False,
         min_value=0,
-        label="بهای خرید هر واحد (تومان)",
+        label="بهای خرید هر بسته (تومان)",
         help_text="بهای تمام‌شدهٔ همین موجودی؛ مبنای ارزش انبار است، نه قیمت فروش.",
         widget=forms.NumberInput(attrs=_NUMBER),
         error_messages={"min_value": "بها نمی‌تواند منفی باشد."},
@@ -46,10 +54,12 @@ class InventoryProductForm(QuickProductForm):
 
     def clean(self):
         cleaned = super().clean()
-        quantity = cleaned.get("opening_quantity")
+        # The stored quantity is always packs (D-081): cartons x ratio + loose packs.
+        quantity = to_packs(cleaned.get("opening_cartons"), cleaned.get("opening_packs"), cleaned.get("pack_per_carton") or 1)
+        cleaned["opening_quantity"] = quantity or None
         cost = cleaned.get("opening_unit_cost")
         if quantity and cost is None:
-            self.add_error("opening_unit_cost", "همراه موجودی فعلی، بهای خرید هر واحد هم لازم است.")
+            self.add_error("opening_unit_cost", "همراه موجودی فعلی، بهای خرید هر بسته هم لازم است.")
         if cost is not None and not quantity:
-            self.add_error("opening_quantity", "بها بدون مقدار معنایی ندارد؛ مقدار را وارد کنید یا بها را خالی بگذارید.")
+            self.add_error("opening_cartons", "بها بدون مقدار معنایی ندارد؛ مقدار را وارد کنید یا بها را خالی بگذارید.")
         return cleaned

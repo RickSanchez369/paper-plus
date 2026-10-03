@@ -14,6 +14,7 @@ from django.contrib.staticfiles import finders
 from django.templatetags.static import static
 from django.urls import Resolver404, resolve
 
+from apps.products.units import split_units, units_phrase
 from apps.shared import dates
 from apps.shared.utils import format_number, format_toman
 from apps.shared.words import number_to_words
@@ -107,6 +108,29 @@ def fa_number(value):
     if value is None:
         return ""
     return dates.to_persian_digits(format_number(value)).replace(",", "٬")
+
+
+@register.filter(name="units")
+def units(quantity, pack_per_carton):
+    """A stock/quantity in packs as «۶ کارتن + ۴ بسته», plus «(۳۴ بسته)» once cartons are involved (D-081)."""
+    if quantity is None:
+        return ""
+    cartons, packs = split_units(quantity, pack_per_carton)
+    text = units_phrase(cartons, packs)
+    if cartons:
+        text += f" ({quantity} بسته)"
+    return dates.to_persian_digits(text)
+
+
+@register.filter(name="line_units")
+def line_units(item):
+    """An invoice line's quantity exactly as it was entered: cartons + loose packs, plus the pack total (D-081)."""
+    cartons = item.cartons
+    packs = item.loose_packs
+    text = units_phrase(cartons, packs)
+    if cartons:
+        text += f" ({item.quantity} بسته)"
+    return dates.to_persian_digits(text)
 
 
 @register.filter(name="fa_digits")

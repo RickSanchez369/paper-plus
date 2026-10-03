@@ -81,7 +81,7 @@ class ProductAdmin(SimpleHistoryAdmin):
 
     form = ProductAdminForm
     list_display = (
-        "name", "sku", "unit", "price_display",
+        "name", "sku", "pack_per_carton", "price_display",
         "stock_display", "cost_display", "value_display", "history_link",
         "is_onboarded", "is_active",
     )
@@ -96,7 +96,7 @@ class ProductAdmin(SimpleHistoryAdmin):
         if obj is None:
             stock_fields = ("opening_quantity", "opening_unit_price") + stock_fields
         return (
-            ("اطلاعات اصلی", {"fields": ("name", "sku", "unit", "description", "default_selling_price", "wholesale_selling_price")}),
+            ("اطلاعات اصلی", {"fields": ("name", "sku", "pack_per_carton", "description", "default_selling_price", "wholesale_selling_price")}),
             ("موجودی", {"fields": stock_fields}),
             ("وضعیت", {"fields": ("is_active",)}),
             ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
@@ -240,5 +240,5 @@ class ProductAdmin(SimpleHistoryAdmin):
             return JsonResponse({"error": "not found"}, status=404)
         return JsonResponse({
             "default_selling_price": product.default_selling_price,
-            "wholesale_selling_price": product.price_for("wholesale"),
+            "wholesale_selling_price": product.carton_price,
         })

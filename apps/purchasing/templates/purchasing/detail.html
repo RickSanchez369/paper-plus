@@ -53,7 +53,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
         <tr>
           <th>کالا</th>
           <th>مقدار</th>
-          <th>قیمت واحد</th>
+          <th>قیمت خرید</th>
           <th>جمع</th>
         </tr>
       </thead>
@@ -61,8 +61,11 @@ stricter -- blocked once any of this purchase's stock has been sold).
         {% for item in invoice.items.all %}
           <tr>
             <td>{{ item.product.name }}</td>
-            <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item|line_units }}</td>
+            <td class="num">
+              {% if item.cartons %}<div>کارتن: {{ item.carton_price|toman }}</div>{% endif %}
+              {% if item.loose_packs %}<div>بسته: {{ item.unit_price|toman }}</div>{% endif %}
+            </td>
             <td class="num">{{ item.line_total|toman }}</td>
           </tr>
         {% endfor %}

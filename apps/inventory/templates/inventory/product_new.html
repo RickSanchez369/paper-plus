@@ -20,11 +20,12 @@ entered here, at creation, or never -- afterwards only invoices move stock.{% en
       {% include "shared/_form_errors.html" with form=form %}
       {% include "shared/_field.html" with field=form.name %}
       {% include "shared/_field.html" with field=form.sku %}
-      {% include "shared/_field.html" with field=form.unit %}
+      {% include "shared/_field.html" with field=form.pack_per_carton %}
       {% include "shared/_field.html" with field=form.default_selling_price %}
       {% include "shared/_field.html" with field=form.wholesale_selling_price %}
       <h2>موجودی فعلی انبار (اختیاری، فقط همین یک‌بار)</h2>
-      {% include "shared/_field.html" with field=form.opening_quantity %}
+      {% include "shared/_field.html" with field=form.opening_cartons %}
+      {% include "shared/_field.html" with field=form.opening_packs %}
       {% include "shared/_field.html" with field=form.opening_unit_cost %}
       <button type="submit" class="btn">ثبت کالا</button>
     </form>

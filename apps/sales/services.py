@@ -25,7 +25,8 @@ from apps.payments.services import (
     resolve_full_payment_amounts,
     validate_entry_account,
 )
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
+from apps.products.units import split_units, units_phrase
 from apps.shared.audit import log_event
 from apps.shared.exchange import latest_valid_rate
 from apps.shared.permissions import is_privileged
@@ -122,7 +123,8 @@ def confirm_sale(invoice, user):
         raise ValidationError(
             "موجودی کافی نیست: "
             + "؛ ".join(
-                f"«{s['product'].name}» (موجودی {s['available']}، درخواست {s['requested']})"
+                f"«{s['product'].name}» (موجودی {units_phrase(*split_units(s['available'], s['product'].pack_per_carton))}، "
+                f"درخواست {units_phrase(*split_units(s['requested'], s['product'].pack_per_carton))})"
                 for s in shortages
             )
             + ". ابتدا خرید را ثبت کنید."
@@ -143,12 +145,17 @@ def confirm_sale(invoice, user):
             note=f"فاکتور فروش {locked_invoice.invoice_number}",
         )
 
+    # The sale type is no longer picked on the form (D-081): cartons sell at the carton
+    # (wholesale) price, so an invoice with any carton counts as wholesale for the reports.
+    locked_invoice.price_tier = (
+        PriceTier.WHOLESALE if any(i.cartons for i in items) else PriceTier.RETAIL
+    )
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
     # Freeze today's USD rate on the invoice (D-080); None while no rate was ever read.
     locked_invoice.usd_rate = latest_valid_rate()
     locked_invoice.save(
-        update_fields=["status", "confirmed_at", "invoice_number", "usd_rate", "updated_at"]
+        update_fields=["status", "confirmed_at", "invoice_number", "usd_rate", "price_tier", "updated_at"]
     )
 
     # Payment entries drafted on the invoice (Sina, 2026-09-24: "2M by

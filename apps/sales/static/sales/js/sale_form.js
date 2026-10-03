@@ -48,15 +48,26 @@
     return row;
   }
 
+  // A line is cartons x carton price + loose packs x pack price (D-081).
+  function lineQuantity(row) {
+    var ratio = parseInt(row.dataset.ratio, 10) || 1;
+    return intVal(row.querySelector('input[name$="-cartons"]')) * ratio + intVal(row.querySelector('input[name$="-packs"]'));
+  }
+
+  function lineTotal(row) {
+    return (
+      intVal(row.querySelector('input[name$="-cartons"]')) * intVal(row.querySelector('input[name$="-carton_price"]')) +
+      intVal(row.querySelector('input[name$="-packs"]')) * intVal(row.querySelector('input[name$="-unit_price"]'))
+    );
+  }
+
   function recomputeInvoice() {
     var subtotal = 0;
     document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
-      var qty = intVal(row.querySelector('input[name$="-quantity"]'));
-      var price = intVal(row.querySelector('input[name$="-unit_price"]'));
-      var lineTotal = qty * price;
+      var total = lineTotal(row);
       var totalCell = row.querySelector("[data-item-row-total]");
-      if (totalCell) totalCell.textContent = formatToman(lineTotal);
-      subtotal += lineTotal;
+      if (totalCell) totalCell.textContent = formatToman(total);
+      subtotal += total;
     });
 
     var discount = currentDiscount(subtotal);
@@ -131,66 +142,29 @@
   }
 
   // A line above the stock on hand is refused by the server too (D-052);
-  // this only says so before the submit.
+  // this only says so before the submit, and shows what would be left.
   function validateStock() {
     var blocked = false;
     document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
       var warn = row.querySelector("[data-item-row-warn]");
+      var after = row.querySelector("[data-item-row-after]");
       var stock = row.dataset.stock;
       var over = false;
       if (stock !== undefined && stock !== "") {
-        over = intVal(row.querySelector('input[name$="-quantity"]')) > parseInt(stock, 10);
+        var qty = lineQuantity(row);
+        var left = parseInt(stock, 10) - qty;
+        over = left < 0;
+        if (after) after.textContent = qty > 0 && !over ? "پس از این فروش: " + window.PaperUnits.phrase(left, row.dataset.ratio) : "";
       }
       if (warn) {
-        warn.textContent = over ? "بیشتر از موجودی (" + formatToman(stock).replace(/,/g, "") + ") است؛ ابتدا خرید ثبت کنید." : "";
+        warn.textContent = over
+          ? "بیشتر از موجودی (" + window.PaperUnits.phrase(stock, row.dataset.ratio) + ") است؛ ابتدا خرید ثبت کنید."
+          : "";
       }
       if (over) blocked = true;
     });
     var submit = document.querySelector("#sale-form [type=submit]");
     if (submit) submit.disabled = blocked;
-  }
-
-  // ---- retail / wholesale (D-075)
-  function currentTier() {
-    var checked = document.querySelector('input[name="price_tier"]:checked');
-    return checked ? checked.value : "retail";
-  }
-
-  function tierPrice(row, tier) {
-    var raw = tier === "wholesale" ? row.dataset.priceWholesale : row.dataset.priceRetail;
-    var n = parseInt(raw, 10);
-    return isNaN(n) ? "" : n;
-  }
-
-  // A line is "manual" once its price differs from the current tier's price;
-  // derived from the numbers themselves, so it survives a re-rendered page.
-  function refreshManualFlag(row) {
-    var input = row.querySelector('input[name$="-unit_price"]');
-    if (!input || row.dataset.priceRetail === undefined) return;
-    if (String(input.value) === String(tierPrice(row, currentTier()))) delete row.dataset.manual;
-    else row.dataset.manual = "1";
-    row.classList.toggle("item-row--manual", row.dataset.manual === "1");
-  }
-
-  // Switching the sale type reprices the lines still on a tier price and
-  // leaves the ones the cashier typed over, saying how many (never silent).
-  function applyTier(tier) {
-    var kept = 0;
-    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
-      var input = row.querySelector('input[name$="-unit_price"]');
-      if (!input || row.dataset.priceRetail === undefined || !row.querySelector('input[name$="-product"]').value) return;
-      if (row.dataset.manual === "1") {
-        kept += 1;
-      } else {
-        input.value = tierPrice(row, tier);
-      }
-    });
-    var note = document.getElementById("tier-note");
-    if (note) {
-      note.hidden = kept === 0;
-      note.textContent = kept ? kept + " ردیف با قیمت دستی تغییر نکرد." : "";
-    }
-    recomputeInvoice();
   }
 
   function pickProduct(button) {
@@ -200,22 +174,18 @@
 
     row.querySelector('input[name$="-product"]').value = button.dataset.id;
     row.dataset.stock = button.dataset.stock;
+    row.dataset.ratio = button.dataset.ratio || "1";
+    row.dataset.packPrice = button.dataset.packPrice || "0";
+    row.dataset.cartonPrice = button.dataset.cartonPrice || "0";
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = button.dataset.name;
 
-    // Both tier prices ride on the row (D-075): switching retail/wholesale
-    // later needs no request. The price field is filled from the current
-    // tier unless the cashier already typed one.
-    row.dataset.priceRetail = button.dataset.priceRetail || button.dataset.price || "0";
-    row.dataset.priceWholesale = button.dataset.priceWholesale || button.dataset.price || "0";
-    var priceInput = row.querySelector('input[name$="-unit_price"]');
-    if (priceInput && (!priceInput.value || row.dataset.manual !== "1")) {
-      priceInput.value = tierPrice(row, currentTier());
-      delete row.dataset.manual;
-    }
+    // Both prices are suggested from the product (D-081); the cashier can type over either.
+    row.querySelector('input[name$="-unit_price"]').value = row.dataset.packPrice;
+    row.querySelector('input[name$="-carton_price"]').value = row.dataset.cartonPrice;
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
-    if (stockLabel) stockLabel.textContent = "موجودی: " + button.dataset.stock;
+    if (stockLabel) stockLabel.textContent = "موجودی: " + window.PaperUnits.phrase(button.dataset.stock, row.dataset.ratio);
 
     var results = row.querySelector(".item-row__results");
     if (results) results.innerHTML = "";
@@ -308,9 +278,6 @@
     if (event.target.matches('input[name="payment_mode"]')) {
       showPaymentPanel(currentPaymentMode());
     }
-    if (event.target.matches('input[name="price_tier"]')) {
-      applyTier(currentTier());
-    }
     if (event.target.matches('input[name="discount_mode"]')) {
       showDiscountPanel(currentDiscountMode());
       recomputeInvoice();
@@ -329,12 +296,10 @@
   }
 
   document.addEventListener("input", function (event) {
-    if (event.target.matches('input[name$="-unit_price"]')) {
-      var priceRow = event.target.closest("[data-item-row]");
-      if (priceRow) refreshManualFlag(priceRow);
-    }
     if (
-      event.target.matches('input[name$="-quantity"]') ||
+      event.target.matches('input[name$="-cartons"]') ||
+      event.target.matches('input[name$="-packs"]') ||
+      event.target.matches('input[name$="-carton_price"]') ||
       event.target.matches('input[name$="-unit_price"]') ||
       event.target.matches('input[name$="-amount"]') ||
       event.target.id === "id_discount_amount" ||
@@ -357,7 +322,6 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     showDiscountPanel(currentDiscountMode());
-    document.querySelectorAll("#item-rows [data-item-row]").forEach(refreshManualFlag);
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
   });
