@@ -1236,3 +1236,16 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   and invoice lines into packs in one transaction (invoice totals must stay exactly equal, stock must match, uneven
   costs are refused unless rounding is allowed and the drift is printed). `Product.unit` stays until every database has
   been converted, then a later migration drops it.
+
+### D-082: Freight on a purchase invoice
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (paid to the same supplier, split by quantity)
+- Decision: `PurchaseInvoice.freight_amount` (Toman, default 0) is entered by ticking «کرایه بار» on the purchase form.
+  It is part of `total_amount` (= lines + freight), so it is part of what the supplier is owed and of every payment,
+  payable and report figure that already reads `total_amount`. At confirmation it is spread over the lines in
+  proportion to their packs (`allocate_freight`, largest remainder, exact sum) and stored per line in
+  `PurchaseItem.freight_share`; the FIFO layer cost and the purchase movement price per pack become
+  (line goods + freight share) / packs, rounded to the nearest Toman (`PurchaseItem.unit_cost`; `carton_cost` = the same
+  per carton). The invoice detail shows items total, freight, total and the landed cost per pack and per carton; the
+  print shows the freight line. Cancelling keeps working because it reads the stored layer. Unticked = the amount is ignored.

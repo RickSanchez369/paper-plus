@@ -65,6 +65,15 @@
       total += lineTotal;
     });
 
+    // Freight counts only while its box is ticked (D-082); it is part of what the supplier is owed.
+    var freight = 0;
+    var tick = document.getElementById("id_has_freight");
+    if (tick && tick.checked) freight = intVal(document.getElementById("id_freight_amount"));
+    var panel = document.querySelector("[data-freight-fields]");
+    if (panel && tick) panel.hidden = !tick.checked;
+    setText("sale-subtotal", formatToman(total));
+    total += freight;
+
     setText("sale-total", formatToman(total));
     setText("sale-full-amount", formatToman(total));
     recomputeRemaining(total);
@@ -295,10 +304,15 @@
       event.target.matches('input[name$="-packs"]') ||
       event.target.matches('input[name$="-carton_price"]') ||
       event.target.matches('input[name$="-unit_price"]') ||
-      event.target.matches('input[name$="-amount"]')
+      event.target.matches('input[name$="-amount"]') ||
+      event.target.id === "id_freight_amount"
     ) {
       recomputeInvoice();
     }
+  });
+
+  document.addEventListener("change", function (event) {
+    if (event.target.id === "id_has_freight") recomputeInvoice();
   });
 
   // Enter inside a text/number box must not post the invoice: this form

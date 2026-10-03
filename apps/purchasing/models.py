@@ -81,6 +81,11 @@ class PurchaseInvoice(BaseModel):
         blank=True,  # only meaningful when part of the invoice is left unpaid (نسیه), D-069
         verbose_name="تاریخ سررسید نسیه",
     )
+    freight_amount = models.BigIntegerField(
+        default=0,
+        verbose_name="کرایه بار (تومان)",
+        help_text="به جمع فاکتور اضافه می‌شود و به نسبت تعداد بین اقلام در بهای تمام‌شده می‌رود.",
+    )
     # The USD rate in force when the invoice was confirmed (D-080); null on older invoices.
     usd_rate = models.ForeignKey(
         "shared.ExchangeRate",
@@ -110,6 +115,10 @@ class PurchaseInvoice(BaseModel):
                 condition=~models.Q(invoice_number=""),
                 name="unique_purchase_invoice_number",
             ),
+            models.CheckConstraint(
+                condition=models.Q(freight_amount__gte=0),
+                name="purchase_invoice_freight_non_negative",
+            ),
         ]
 
     def __str__(self):
@@ -121,9 +130,18 @@ class PurchaseInvoice(BaseModel):
         return self.status == self.Status.DRAFT
 
     @property
-    def total_amount(self):
-        """Sum of line totals, in Toman."""
+    def items_total(self):
+        """Sum of line totals before freight, in Toman."""
         return sum(item.line_total for item in self.items.all())
+
+    @property
+    def total_amount(self):
+        """
+        What the supplier is owed for this invoice, in Toman: the lines plus the
+        freight (D-082). Every payable, payment check and report reads this, so
+        freight is part of the debt and of every settlement.
+        """
+        return self.items_total + self.freight_amount
 
     class PaymentStatus(models.TextChoices):
         UNPAID = "unpaid", "پرداخت‌نشده"
@@ -208,16 +226,33 @@ class PurchaseItem(CartonLine, BaseModel):
     def __str__(self):
         return f"{self.product} x {self.quantity}"
 
+    freight_share = models.BigIntegerField(
+        default=0,
+        verbose_name="سهم کرایه بار (تومان)",
+        help_text="سهم این قلم از کرایه فاکتور، به نسبت تعداد بسته؛ هنگام تأیید ثبت می‌شود.",
+    )
+
+    @property
+    def cost_total(self):
+        """What the whole line cost, in Toman: its goods plus its share of the freight (D-082)."""
+        return self.line_total + self.freight_share
+
     @property
     def unit_cost(self):
         """
         What one pack of this line cost, in whole Toman, rounded to nearest
-        (D-081): the line's money divided by its packs. This is the cost of
-        the FIFO layer the line creates. A line bought only in packs is exactly
-        its pack price; a carton price that does not divide evenly rounds here
-        once, and the drift (under one Toman per pack) is accepted.
+        (D-081, D-082): the line's goods plus its freight share, divided by its
+        packs. This is the cost of the FIFO layer the line creates. A line
+        bought only in packs with no freight is exactly its pack price; a total
+        that does not divide evenly rounds here once, and the drift (under one
+        Toman per pack) is accepted.
         """
-        return (2 * self.line_total + self.quantity) // (2 * self.quantity)
+        return (2 * self.cost_total + self.quantity) // (2 * self.quantity)
+
+    @property
+    def carton_cost(self):
+        """What one carton of this line cost, with freight: the same cost per pack times the ratio."""
+        return (2 * self.cost_total * self.pack_per_carton + self.quantity) // (2 * self.quantity)
 
 
 class PurchasePaymentEntry(BaseModel):

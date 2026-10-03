@@ -63,9 +63,20 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     discount field -- the model has none."""
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
+    # Freight (D-082): a tick reveals the amount. It is part of the total owed to the supplier and is
+    # spread over the lines in their cost; unticked, whatever was typed is ignored.
+    has_freight = forms.BooleanField(required=False, label="کرایه بار")
+    freight_amount = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="مبلغ کرایه بار (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "کرایه بار نمی‌تواند منفی باشد."},
+    )
+
     class Meta:
         model = PurchaseInvoice
-        fields = ("supplier", "invoice_date", "supplier_invoice_number", "credit_due_date")
+        fields = ("supplier", "invoice_date", "supplier_invoice_number", "credit_due_date", "freight_amount")
         widgets = {
             # form="purchase-form": rendered outside <form id="purchase-form">
             # on purpose, same reason and same fix as Sales' customer field
@@ -83,6 +94,19 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         self.fields["supplier"].queryset = Supplier.objects.filter(is_active=True).order_by("name")
         self.fields["supplier"].empty_label = "— انتخاب تأمین‌کننده —"
         self.fields["supplier_invoice_number"].required = False
+
+    def clean_freight_amount(self):
+        # An empty box means no freight, 0 (the column is NOT NULL).
+        return self.cleaned_data.get("freight_amount") or 0
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("has_freight"):
+            if not cleaned.get("freight_amount") and "freight_amount" not in self.errors:
+                self.add_error("freight_amount", "مبلغ کرایه بار را وارد کنید.")
+        else:
+            cleaned["freight_amount"] = 0
+        return cleaned
 
 
 class PurchaseItemForm(CartonPackItemFormMixin, SelectedProductMixin, forms.ModelForm):

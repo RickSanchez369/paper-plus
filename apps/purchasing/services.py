@@ -29,6 +29,29 @@ from apps.shared.services import get_next_document_number
 from .models import PurchaseInvoice, PurchasePaymentEntry
 
 
+def allocate_freight(freight, items):
+    """
+    Split an invoice's freight over its lines in proportion to their packs
+    (D-082): ``{item pk: Toman}`` summing to exactly ``freight``. Each line's
+    share is floored, then the leftover Toman go one each to the lines with
+    the biggest remainders (ties by pk, so the same invoice always splits the
+    same way) -- the same rule as the sales discount allocation (D-048).
+    """
+    total_packs = sum(item.quantity for item in items)
+    if not freight or total_packs <= 0:
+        return {item.pk: 0 for item in items}
+    shares = {}
+    remainders = []
+    for item in items:
+        numerator = freight * item.quantity
+        shares[item.pk] = numerator // total_packs
+        remainders.append((numerator % total_packs, str(item.pk), item.pk))
+    leftover = freight - sum(shares.values())
+    for _, _, pk in sorted(remainders, key=lambda r: (-r[0], r[1]))[:leftover]:
+        shares[pk] += 1
+    return shares
+
+
 @transaction.atomic
 def confirm_purchase(invoice, user):
     """
@@ -64,6 +87,15 @@ def confirm_purchase(invoice, user):
 
     # Number assigned only now, at confirmation (D-022) — never while draft.
     locked_invoice.invoice_number = get_next_document_number("purchase")
+
+    # The freight is spread over the lines by packs before any cost is read (D-082), so the
+    # movement and the FIFO layer of each line carry its landed cost.
+    shares = allocate_freight(locked_invoice.freight_amount, items)
+    for item in items:
+        share = shares[item.pk]
+        if item.freight_share != share:
+            item.freight_share = share
+            item.save(update_fields=["freight_share", "updated_at"])
 
     # One ledger row per line. quantity stays positive; the type carries
     # the direction (D-012).

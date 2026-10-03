@@ -60,6 +60,13 @@ def text(resp):
     return resp.content.decode("utf-8", "replace")
 
 
+def shown(resp, n):
+    """An amount as a page prints it: grouped, with either separator, in either digit set."""
+    body = text(resp)
+    plain = f"{n:,}"
+    return any(v in body for v in (plain, digits_fa(plain), digits_fa(plain).replace(",", "٬")))
+
+
 def has(resp, needle):
     body = text(resp)
     return needle in body or digits_fa(needle) in body

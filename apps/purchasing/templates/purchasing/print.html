@@ -53,6 +53,10 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
     </table>
 
     <div class="print-invoice__totals">
+      {% if invoice.freight_amount %}
+        <div><span>جمع اقلام</span><span class="num">{{ invoice.items_total|toman }}</span></div>
+        <div><span>کرایه بار</span><span class="num">{{ invoice.freight_amount|toman }}</span></div>
+      {% endif %}
       <div class="print-invoice__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total_amount|toman }}</span></div>
     </div>
 

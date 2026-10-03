@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-10-03 (third batch: D-067..D-076 — payments rework, pricing tiers, units). Per-module build history was dropped from this file on
+Updated 2026-10-04 (fourth batch: D-078..D-082 — payment ticks, dues card, USD rate, one product with pack/carton, freight). Per-module build history was dropped from this file on
 purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
 `DECISIONS.md` the why.
 
@@ -54,6 +54,19 @@ Live host: deploy with `manage.py update` (it backs up first); lessons learned o
 at the registrar, cPanel shared IP differs from `hostname -i`, Secure cookies need https, certificate from the
 SSL/TLS Wizard) belong in `deploy/HOSTIRAN.md` on the `deploy` branch.
 
+**Batch 2026-10-04 (D-078..D-082), from Sina's list of five:** full settlement is ticked per method and a lone card
+reader is the default account; one dashboard card for receivables and payables (cheques / credit, 10-day window); USD
+rate history read from tgju (`fetch_usd_rate`, button, frozen on each confirmed invoice); one product counted in packs
+with `pack_per_carton`, lines typed as cartons + packs, retail = per pack, wholesale = per carton, average purchase price
+for display with FIFO still deciding profit, negative-stock card removed; freight on purchase invoices spread over the lines
+into their landed cost. Checks: `qa_18`..`qa_23` (12, 11, 32, 43, 28, 19) and every older script pass on PostgreSQL;
+migrations `shared.0018`, `sales.0014/0015`, `purchasing.0011..0013`, `products.0008/0009` were applied to the dev database
+and the throwaway SQLite one; browser-checked on `paper-plus-qa` (ticks, single-account default, dues card, rate button,
+cartons + packs row with stock left, over-stock block, freight tick, detail pages). **Before deploying:** run
+`inventory_unit_report` on the real data, agree the merge map with Sina, then `convert_units --dry-run` and the real run
+(see `deploy/UPDATING.md`); until then carton-counted products read wrongly. Not changed on purpose: purchase invoices
+still offer no card-reader option (a card reader only receives money, D-069).
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
@@ -61,8 +74,9 @@ open on purpose. Source comments no longer cite `REDESIGN_VISION` or
 
 ## Open items (raise with Sina before touching)
 - **Real company details/logo for the printed invoice** — Sina will send them.
-- **USD-rate source** — undecided; Inventory and Reports show a placeholder
-  card. Do not invent a source.
+- **USD rate on the host** — tgju is read with stdlib `urllib` (D-080); whether the shared host allows outbound HTTPS is
+  untested, and the cron line `manage.py fetch_usd_rate` still has to be added there.
+- **Drop `Product.unit`** — only after `convert_units` has run on every database (D-081).
 - **ROADMAP 4.6 returns (sales/purchase returns)** — explicitly out of scope
   (Sina, 2026-09-24). Do not design around it.
 - **No scheduled backup on the host** (Critical): the live database is one SQLite file; until a cron job
