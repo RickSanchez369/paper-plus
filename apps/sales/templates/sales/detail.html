@@ -136,7 +136,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
         <thead>
           <tr>
             <th>شماره چک</th>
-            <th>بانک</th>
+            <th>صادرکننده</th><th>بانک</th>
             <th>سررسید</th>
             <th>مبلغ</th>
             <th>وضعیت</th>
@@ -146,7 +146,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
           {% for cheque in invoice.cheques.all %}
             <tr>
               <td>{{ cheque.cheque_number|default:"—" }}</td>
-              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>

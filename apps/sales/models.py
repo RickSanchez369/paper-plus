@@ -388,6 +388,11 @@ class SalesPaymentEntry(BaseModel):
         blank=True,
         verbose_name="نام بانک صادرکننده چک",
     )
+    issuer = models.CharField(
+        max_length=150,
+        blank=True,  # who signed the cheque; may differ from the customer/supplier (D-068)
+        verbose_name="صادرکنندهٔ چک",
+    )
     due_date = models.DateField(
         null=True,
         blank=True,  # required only when method=cheque (validated in the admin form)

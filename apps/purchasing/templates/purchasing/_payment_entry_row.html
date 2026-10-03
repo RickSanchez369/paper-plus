@@ -15,6 +15,7 @@ any other method).
   <div class="payment-row__cheque" data-cheque-only{% if form.method.value != "cheque" %} hidden{% endif %}>
     {% include "shared/_field.html" with field=form.cheque_number %}
     {% include "shared/_field.html" with field=form.bank_name %}
+    {% include "shared/_field.html" with field=form.issuer %}
     {% include "shared/_field.html" with field=form.due_date %}
   </div>
 </div>

@@ -91,7 +91,7 @@ class SalesPaymentEntryInline(admin.TabularInline):
     model = SalesPaymentEntry
     form = SalesPaymentEntryForm
     extra = 0
-    fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
+    fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "issuer", "due_date")
     autocomplete_fields = ("bank_account",)
 
     class Media:

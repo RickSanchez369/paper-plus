@@ -146,6 +146,7 @@ def confirm_sale(invoice, user):
                     bank_account=entry.bank_account,
                     cheque_number=entry.cheque_number,
                     bank_name=entry.bank_name,
+                    issuer=entry.issuer,
                     due_date=entry.due_date,
                     amount=entry.amount,
                     sales_invoice=locked_invoice,

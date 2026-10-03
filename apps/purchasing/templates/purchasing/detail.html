@@ -120,7 +120,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
         <thead>
           <tr>
             <th>شماره چک</th>
-            <th>بانک</th>
+            <th>صادرکننده</th><th>بانک</th>
             <th>سررسید</th>
             <th>مبلغ</th>
             <th>وضعیت</th>
@@ -130,7 +130,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
           {% for cheque in invoice.cheques.all %}
             <tr>
               <td>{{ cheque.cheque_number|default:"—" }}</td>
-              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>

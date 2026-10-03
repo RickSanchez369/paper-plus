@@ -124,3 +124,5 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-065 The module menu is a hamburger-opened drawer on all screen sizes.
 - D-063 Install/update on a host: `manage.py update`, WhiteNoise, `deploy/UPDATING.md` (amends D-051).
 - D-066 The DB engine is chosen by `DATABASE_URL`: PostgreSQL normally, SQLite on the `deploy` branch for a host without PostgreSQL.
+- D-067 Bank accounts are `pos` (card reader) or `current`; shown in two sections.
+- D-068 Cheques carry an `issuer` (who signed it) besides the bank name.

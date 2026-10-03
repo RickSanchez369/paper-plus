@@ -25,6 +25,13 @@ from .validators import validate_receipt
 class BankAccount(BaseModel):
     """A bank account of the business, used to record where money moved."""
 
+    class AccountType(models.TextChoices):
+        # Two kinds only (D-067): a card reader (POS) receives card
+        # payments; a current account receives transfers and cheques and
+        # pays suppliers/expenses. Cash has no account (D-069).
+        POS = "pos", "کارت‌خوان"
+        CURRENT = "current", "حساب جاری"
+
     name = models.CharField(
         max_length=100,
         verbose_name="نام حساب",
@@ -37,6 +44,12 @@ class BankAccount(BaseModel):
     account_number = models.CharField(
         max_length=50,
         verbose_name="شماره حساب",
+    )
+    account_type = models.CharField(
+        max_length=10,
+        choices=AccountType.choices,
+        default=AccountType.CURRENT,  # every account that existed before D-067 is a normal current account
+        verbose_name="نوع حساب",
     )
     is_active = models.BooleanField(
         default=True,
@@ -305,6 +318,11 @@ class Cheque(BaseModel):
         max_length=100,
         blank=True,
         verbose_name="نام بانک صادرکننده",
+    )
+    issuer = models.CharField(
+        max_length=150,
+        blank=True,  # who signed the cheque; may differ from the customer/supplier (D-068)
+        verbose_name="صادرکنندهٔ چک",
     )
     due_date = models.DateField(
         null=True,

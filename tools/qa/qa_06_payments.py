@@ -223,10 +223,10 @@ def scenarios(h):
     check("B02 new page renders", r.status_code == 200)
     num = "QA" + str(random.randint(10**8, 10**9))
     n = BankAccount.objects.count()
-    r = h.c.post("/bank-accounts/new/", {"name": "QA-acc", "owner": "me", "account_number": num})
+    r = h.c.post("/bank-accounts/new/", {"name": "QA-acc", "account_type": "current", "owner": "me", "account_number": num})
     check("B03 create account → detail", r.status_code == 302 and BankAccount.objects.count() == n + 1)
-    for label, d in (("duplicate number", {"name": "x", "account_number": num}), ("number with spaces matching", {"name": "x", "account_number": "  " + num + "  "}),
-                     ("blank name", {"name": "", "account_number": "Z1"}), ("blank number", {"name": "x", "account_number": ""})):
+    for label, d in (("duplicate number", {"account_type": "current", "name": "x", "account_number": num}), ("number with spaces matching", {"account_type": "current", "name": "x", "account_number": "  " + num + "  "}),
+                     ("blank name", {"account_type": "current", "name": "", "account_number": "Z1"}), ("blank number", {"account_type": "current", "name": "x", "account_number": ""})):
         r = h.c.post("/bank-accounts/new/", d)
         check(f"B04 {label} refused", r.status_code == 200 and BankAccount.objects.count() == n + 1)
     a = BankAccount.objects.get(account_number=num)
@@ -234,10 +234,10 @@ def scenarios(h):
     check("B05 detail (empty ledger) renders", r.status_code == 200)
     r = h.c.get(f"/bank-accounts/{a.pk}/edit/")
     check("B06 edit page renders", r.status_code == 200)
-    r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "QA-acc2", "owner": "you", "account_number": num})
+    r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "QA-acc2", "account_type": "pos", "owner": "you", "account_number": num})
     a.refresh_from_db()
     check("B06 edit saves", r.status_code == 302 and a.name == "QA-acc2")
-    r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "n", "account_number": acct.account_number})
+    r = h.c.post(f"/bank-accounts/{a.pk}/edit/", {"name": "n", "account_type": "current", "account_number": acct.account_number})
     a.refresh_from_db()
     check("B06 edit to another account's number refused", a.account_number == num)
     check("B07 unknown account 404", h.c.get("/bank-accounts/00000000-0000-0000-0000-000000000011/").status_code == 404)

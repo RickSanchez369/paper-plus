@@ -258,11 +258,12 @@ class SalesPaymentEntryForm(forms.ModelForm):
 
     class Meta:
         model = SalesPaymentEntry
-        fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
+        fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "issuer", "due_date")
         widgets = {
             "bank_account": forms.Select(attrs={"class": "field__control"}),
             "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
+            "issuer": forms.TextInput(attrs={"class": "field__control"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -272,6 +273,7 @@ class SalesPaymentEntryForm(forms.ModelForm):
         self.fields["bank_account"].required = False
         self.fields["cheque_number"].required = False
         self.fields["bank_name"].required = False
+        self.fields["issuer"].required = False
 
     def clean(self):
         cleaned = super().clean()
@@ -281,6 +283,7 @@ class SalesPaymentEntryForm(forms.ModelForm):
         if cleaned.get("method") != SalesPaymentEntry.Method.CHEQUE:
             cleaned["cheque_number"] = ""
             cleaned["bank_name"] = ""
+            cleaned["issuer"] = ""
             cleaned["due_date"] = None
         return cleaned
 

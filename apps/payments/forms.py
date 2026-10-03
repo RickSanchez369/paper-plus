@@ -72,9 +72,10 @@ class BankAccountForm(forms.ModelForm):
 
     class Meta:
         model = BankAccount
-        fields = ("name", "owner", "account_number")
+        fields = ("name", "account_type", "owner", "account_number")
         widgets = {
             "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
+            "account_type": forms.Select(attrs={"class": "field__control"}),
             "owner": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
             "account_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
         }
@@ -219,10 +220,11 @@ class ChequeCompletionForm(forms.ModelForm):
 
     class Meta:
         model = Cheque
-        fields = ("cheque_number", "bank_name", "due_date", "bank_account")
+        fields = ("cheque_number", "bank_name", "issuer", "due_date", "bank_account")
         widgets = {
             "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
+            "issuer": forms.TextInput(attrs={"class": "field__control"}),
             "bank_account": forms.Select(attrs={"class": "field__control"}),
         }
 

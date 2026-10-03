@@ -325,6 +325,11 @@ class BankAccountListView(LoginRequiredMixin, TemplateView):
                     )},
                 ],
             })
+        # Card readers and current accounts are shown as two sections (D-067).
+        context["groups"] = [
+            {"title": label, "rows": [r for r in rows if r["account"].account_type == value]}
+            for value, label in BankAccount.AccountType.choices
+        ]
         context["rows"] = rows
         return context
 

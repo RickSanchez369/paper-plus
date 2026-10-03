@@ -1045,3 +1045,20 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   outside any web-served folder; MySQL/MariaDB is NOT supported (partial unique constraints are ignored there).
 - The `deploy` branch is `dev` plus host-specific files only (`passenger_wsgi.py` at the root, a SQLite
   `.env.example`, the host runbook); bring in new work with `git merge dev`.
+
+### D-067: A bank account is either a card reader or a current account
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `BankAccount.account_type` = `pos` (کارت‌خوان) or `current` (حساب جاری), default `current`
+  (every account that existed before is a current account). The Bank Accounts page shows the two kinds
+  as separate sections. Card payments will only be accepted into `pos` accounts, transfers/cheques/
+  expenses only through `current` ones (D-069).
+
+### D-068: A cheque records who issued it, apart from the bank
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `Cheque.issuer` («صادرکنندهٔ چک», free text, optional) is added next to the existing
+  `bank_name`, and mirrored on `SalesPaymentEntry`/`PurchasePaymentEntry` so it is typed once on the
+  invoice and copied onto the cheque. Shown on every page that lists or details a cheque.

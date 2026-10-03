@@ -33,8 +33,8 @@ from .services import (
 
 @admin.register(BankAccount)
 class BankAccountAdmin(admin.ModelAdmin):
-    list_display = ("name", "owner", "account_number", "balance_display", "is_active")
-    list_filter = ("is_active",)
+    list_display = ("name", "account_type", "owner", "account_number", "balance_display", "is_active")
+    list_filter = ("account_type", "is_active")
     search_fields = ("name", "account_number")
 
     @admin.display(description="موجودی")
@@ -191,7 +191,7 @@ class ChequeForm(forms.ModelForm):
         model = Cheque
         fields = (
             "direction", "customer", "supplier", "bank_account",
-            "cheque_number", "bank_name", "due_date", "amount",
+            "cheque_number", "bank_name", "issuer", "due_date", "amount",
             "sales_invoice", "purchase_invoice", "note",
         )
 
