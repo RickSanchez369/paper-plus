@@ -134,3 +134,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-074 Dashboard shows the coming week's payments instead of recent activity.
 - D-075 Retail price = `default_selling_price`, wholesale = `wholesale_selling_price`; the invoice's `price_tier` is picked once and frozen; typed prices are never overwritten.
 - D-076 Product unit is pack or carton; pack and carton are separate products with separate stock; no conversion ratio.
+- D-077 Scheduled host backup: cron `backup_db --keep 14` daily; copy a zip off the host weekly.

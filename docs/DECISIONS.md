@@ -1154,3 +1154,11 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   goods sold in both units are two products with their own stock, FIFO layers, costs and prices — no
   pack-per-carton ratio exists or is needed. Inventory shows the pack and carton products in two sections,
   each with its own stock total (never added together).
+
+### D-077: Scheduled backups on the host use `backup_db --keep N`
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: The host's one SQLite file is protected by a cPanel cron job running `manage.py backup_db --keep 14`
+  daily (the command prunes only files named `paper-plus-backup-*.zip` in the target folder). Setup steps are in
+  `deploy/HOSTIRAN.md` (deploy branch). Copying a backup off the host stays a manual weekly habit.
