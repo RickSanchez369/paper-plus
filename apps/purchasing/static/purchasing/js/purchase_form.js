@@ -57,6 +57,7 @@
     setText("sale-total", formatToman(total));
     setText("sale-full-amount", formatToman(total));
     recomputeRemaining(total);
+    document.dispatchEvent(new CustomEvent("invoice:recomputed"));
   }
 
   function recomputeRemaining(total) {

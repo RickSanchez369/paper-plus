@@ -5,7 +5,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Customer
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.shared.models import BaseModel
 
 
@@ -36,6 +36,12 @@ class SalesInvoice(BaseModel):
         on_delete=models.PROTECT,
         related_name="sales_invoices",
         verbose_name="مشتری",
+    )
+    price_tier = models.CharField(
+        max_length=10,
+        choices=PriceTier.choices,
+        default=PriceTier.RETAIL,  # every invoice before D-075 was sold at the one price there was
+        verbose_name="نوع فروش",
     )
     invoice_number = models.CharField(
         max_length=50,
@@ -74,6 +80,11 @@ class SalesInvoice(BaseModel):
     payment_note = models.TextField(
         blank=True,  # free text for now: bank/account name, cheque number, etc.
         verbose_name="یادداشت پرداخت",  # real BankAccount/Cheque tracking is phase 4.3/4.4, not here
+    )
+    credit_due_date = models.DateField(
+        null=True,
+        blank=True,  # only meaningful when part of the invoice is left unpaid (نسیه), D-069
+        verbose_name="تاریخ سررسید نسیه",
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -264,7 +275,10 @@ class SaleItem(BaseModel):
         never touch it (it's a snapshot, not a live reference).
         """
         if self.unit_price is None and self.product_id:
-            self.unit_price = self.product.default_selling_price
+            # The tier of the invoice this line belongs to (D-075). A form
+            # validating the line before the invoice exists passes it as a hint.
+            tier = getattr(self, "_tier_hint", None) or (self.invoice.price_tier if self.invoice_id else PriceTier.RETAIL)
+            self.unit_price = self.product.price_for(tier)
         super().clean_fields(exclude=exclude)
 
     def __str__(self):
@@ -351,7 +365,7 @@ class SalesPaymentEntry(BaseModel):
     """
 
     class Method(models.TextChoices):
-        CASH = "cash", "نقدی"
+        CASH = "cash", "نقدی (قدیمی)"
         CARD = "card", "کارت‌خوان"
         BANK_TRANSFER = "bank_transfer", "حواله بانکی"
         CHEQUE = "cheque", "چک"
@@ -387,6 +401,11 @@ class SalesPaymentEntry(BaseModel):
         max_length=100,
         blank=True,
         verbose_name="نام بانک صادرکننده چک",
+    )
+    issuer = models.CharField(
+        max_length=150,
+        blank=True,  # who signed the cheque; may differ from the customer/supplier (D-068)
+        verbose_name="صادرکنندهٔ چک",
     )
     due_date = models.DateField(
         null=True,

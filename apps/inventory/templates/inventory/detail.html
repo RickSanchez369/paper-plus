@@ -39,8 +39,13 @@ each row touched and a link back to its source invoice; and a
     <span class="stat-card__value num">{% if last_cost is not None %}{{ last_cost|toman }}{% else %}—{% endif %}</span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">قیمت فروش فعلی</span>
+    <span class="stat-card__label">قیمت فروش خرد</span>
     <span class="stat-card__value num">{{ product.default_selling_price|toman }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">قیمت فروش عمده</span>
+    <span class="stat-card__value num">{{ product.wholesale_selling_price|toman }}</span>
+    {% if product.wholesale_is_unset %}<span class="field__hint">هنوز تعیین نشده یا برابر قیمت خرد است.</span>{% endif %}
   </div>
   <div class="stat-card">
     <span class="stat-card__label">ارزش موجودی (به بهای خرید)</span>
@@ -50,14 +55,16 @@ each row touched and a link back to its source invoice; and a
 
 <div class="card" id="selling-price">
   <div class="card__body">
-    <h2>تغییر قیمت فروش</h2>
+    <h2>تغییر قیمت‌های فروش (خرد و عمده)</h2>
     <p class="field__hint">
       فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
     </p>
     <form method="post" action="{% url 'inventory:selling_price' product.pk %}" novalidate>
       {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=price_form %}
       {% include "shared/_field.html" with field=price_form.default_selling_price %}
-      <button type="submit" class="btn">ذخیرهٔ قیمت فروش</button>
+      {% include "shared/_field.html" with field=price_form.wholesale_selling_price %}
+      <button type="submit" class="btn">ذخیرهٔ قیمت‌ها</button>
     </form>
   </div>
 </div>
@@ -153,7 +160,8 @@ each row touched and a link back to its source invoice; and a
           <thead>
             <tr>
               <th>تاریخ</th>
-              <th>قیمت فروش پیش‌فرض</th>
+              <th>قیمت فروش خرد</th>
+              <th>قیمت فروش عمده</th>
               <th>نوع تغییر</th>
               <th>کاربر</th>
             </tr>
@@ -163,6 +171,7 @@ each row touched and a link back to its source invoice; and a
               <tr>
                 <td class="num">{{ record.history_date|jalali_at }}</td>
                 <td class="num">{{ record.default_selling_price|toman }}</td>
+                <td class="num">{{ record.wholesale_selling_price|toman }}</td>
                 <td>{{ record.get_history_type_display }}</td>
                 <td>
                   {% if record.history_user %}{{ record.history_user.get_full_name|default:record.history_user.phone }}{% else %}—{% endif %}

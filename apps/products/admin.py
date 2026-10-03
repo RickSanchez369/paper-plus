@@ -96,7 +96,7 @@ class ProductAdmin(SimpleHistoryAdmin):
         if obj is None:
             stock_fields = ("opening_quantity", "opening_unit_price") + stock_fields
         return (
-            ("اطلاعات اصلی", {"fields": ("name", "sku", "unit", "description", "default_selling_price")}),
+            ("اطلاعات اصلی", {"fields": ("name", "sku", "unit", "description", "default_selling_price", "wholesale_selling_price")}),
             ("موجودی", {"fields": stock_fields}),
             ("وضعیت", {"fields": ("is_active",)}),
             ("اطلاعات سیستمی", {"fields": SYSTEM_FIELDS, "classes": ("collapse",)}),
@@ -238,4 +238,7 @@ class ProductAdmin(SimpleHistoryAdmin):
         product = self.get_queryset(request).filter(pk=pk).first()
         if product is None:
             return JsonResponse({"error": "not found"}, status=404)
-        return JsonResponse({"default_selling_price": product.default_selling_price})
+        return JsonResponse({
+            "default_selling_price": product.default_selling_price,
+            "wholesale_selling_price": product.price_for("wholesale"),
+        })

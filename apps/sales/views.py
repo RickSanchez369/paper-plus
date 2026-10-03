@@ -24,7 +24,7 @@ from django.views.generic import DetailView, TemplateView
 from apps.inventory.selectors import get_stock_map
 from apps.partners.forms import QuickCustomerForm
 from apps.products.forms import excluded_product_ids
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.permissions import is_privileged
@@ -32,7 +32,7 @@ from apps.shared.utils import format_toman
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
 from .models import SalesInvoice
-from .services import cancel_sale, confirm_sale, plan_full_payment
+from .services import cancel_sale, confirm_sale, percent_to_amount, plan_full_payment
 
 
 class SalesListView(LoginRequiredMixin, TemplateView):
@@ -141,10 +141,23 @@ class ProductSearchView(LoginRequiredMixin, View):
         products = list(products.order_by("name")[:15])
         stock_map = get_stock_map([p.pk for p in products])
         rows = [
-            {"product": p, "stock": stock_map.get(p.pk, 0)}
+            {
+                "product": p,
+                "stock": stock_map.get(p.pk, 0),
+                # Both prices ride on the result so switching retail/wholesale
+                # needs no second request (D-075).
+                "price_retail": p.default_selling_price,
+                "price_wholesale": p.price_for("wholesale"),
+            }
             for p in products
         ]
         return render(request, "sales/_product_search_results.html", {"rows": rows})
+
+
+def _posted_tier(post):
+    """The sale type typed on the form, or retail if it is missing or not one of the two (D-075)."""
+    value = post.get("price_tier")
+    return value if value in PriceTier.values else PriceTier.RETAIL
 
 
 def _empty_forms():
@@ -181,7 +194,9 @@ class SalesCreateView(LoginRequiredMixin, View):
 
     def post(self, request):
         invoice_form = SaleInvoiceForm(request.POST)
-        item_formset = SaleItemFormSet(request.POST, prefix="items")
+        item_formset = SaleItemFormSet(
+            request.POST, prefix="items", form_kwargs={"price_tier": _posted_tier(request.POST)},
+        )
         payment_formset = SalesPaymentEntryFormSet(request.POST, prefix="payments")
 
         forms_valid = invoice_form.is_valid() and item_formset.is_valid()
@@ -203,8 +218,14 @@ class SalesCreateView(LoginRequiredMixin, View):
                         item.invoice = invoice
                         item.save()
 
+                    if invoice_form.is_percent_discount:
+                        invoice.discount_amount = percent_to_amount(
+                            invoice.subtotal, invoice_form.cleaned_data.get("discount_percent") or 0,
+                        )
+                        invoice.save(update_fields=["discount_amount", "updated_at"])
+
                     if full_payment:
-                        plan_full_payment(invoice, invoice_form.cleaned_data["received_into"])
+                        plan_full_payment(invoice, invoice_form.full_payment_parts)
                     else:
                         for form in payment_formset:
                             if not form.cleaned_data:

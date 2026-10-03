@@ -2,11 +2,13 @@
 {% load paper %}
 
 {% comment %}
-Expenses: newest-first, today's/this month's total
-cards (cancelled expenses excluded), free-text search + the shared
-date-range picker + structured filters. No edit -- only cancel_expense
-(superuser-only), same append-only rule as every other invoice-shaped
-module here.
+Expenses: newest-first, today's/this month's total cards (cancelled expenses
+excluded) plus what is still owed (D-072), free-text search + the shared
+date-range picker + structured filters. An expense paid by cheque or on credit
+shows its method and, until paid, a "پرداخت" form. No edit -- only
+cancel_expense (superuser-only), same append-only rule as every other
+invoice-shaped module here. Fixed costs about to fall due are flagged on top
+(D-073).
 {% endcomment %}
 
 {% block title %}هزینه‌ها{% endblock %}
@@ -16,9 +18,44 @@ module here.
 <div class="page-head">
   <div class="page-head__row">
     <h1>هزینه‌ها</h1>
-    <a href="{% url 'expenses:new' %}" class="btn">+ هزینهٔ جدید</a>
+    <div>
+      <a href="{% url 'recurring_expenses:list' %}" class="btn btn--quiet">هزینه‌های ثابت</a>
+      <a href="{% url 'expenses:new' %}" class="btn">+ هزینهٔ جدید</a>
+    </div>
   </div>
 </div>
+
+{% if due_reminders %}
+  <div class="card">
+    <div class="card__body">
+      <h2>سررسید نزدیک</h2>
+      <table class="data-table">
+        <thead><tr><th>بابت</th><th>سررسید</th><th>مبلغ</th><th></th></tr></thead>
+        <tbody>
+          {% for item in due_reminders %}
+            <tr>
+              <td>{{ item.label }}{% if item.kind == "recurring" %} <span class="field__hint">(هزینهٔ ثابت)</span>{% endif %}</td>
+              <td class="num">
+                {{ item.due_date|jalali }}
+                {% if item.overdue %}<span class="badge badge--pending">سررسید گذشته</span>
+                {% elif item.days_left == 0 %}<span class="badge badge--pending">امروز</span>
+                {% else %}<span class="field__hint">{{ item.days_left|fa_number }} روز دیگر</span>{% endif %}
+              </td>
+              <td class="num">{{ item.amount|toman }}</td>
+              <td>
+                {% if item.kind == "recurring" %}
+                  <a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">ثبت پرداخت</a>
+                {% else %}
+                  <a class="btn btn--quiet" href="#expense-{{ item.obj.pk }}">پرداخت</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
 
 <div class="stats">
   <div class="stat-card">
@@ -29,6 +66,11 @@ module here.
     <span class="stat-card__label">هزینهٔ این ماه</span>
     <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
   </div>
+  <div class="stat-card">
+    <span class="stat-card__label">هنوز پرداخت‌نشده</span>
+    <span class="stat-card__value num">{{ cards.owed_total|toman }}</span>
+    <span class="field__hint">نسیه و چک‌های در انتظار</span>
+  </div>
 </div>
 
 <div class="card">
@@ -37,6 +79,7 @@ module here.
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.bank_account %}
+        {% include "shared/_field.html" with field=filter_form.status %}
         {% include "shared/_field.html" with field=filter_form.amount_min %}
         {% include "shared/_field.html" with field=filter_form.amount_max %}
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
@@ -44,7 +87,7 @@ module here.
       {% include "shared/_date_range.html" with form=range_form %}
     </form>
 
-    {% if expenses %}
+    {% if rows %}
       <div class="table-card">
         <table class="data-table">
           <thead>
@@ -52,6 +95,7 @@ module here.
               <th>تاریخ</th>
               <th>بابت</th>
               <th>مبلغ</th>
+              <th>روش</th>
               <th>حساب پرداخت‌کننده</th>
               <th>ثبت‌کننده</th>
               <th>سند</th>
@@ -60,29 +104,54 @@ module here.
             </tr>
           </thead>
           <tbody>
-            {% for expense in expenses %}
-              <tr>
+            {% for row in rows %}
+              {% with expense=row.expense %}
+              <tr id="expense-{{ expense.pk }}">
                 <td class="num">{{ expense.expense_date|jalali }}</td>
-                <td>{{ expense.reason }}</td>
+                <td>{{ expense.reason }}{% if expense.recurring_id %} <span class="field__hint">(ثابت)</span>{% endif %}</td>
                 <td class="num">{{ expense.amount|toman }}</td>
-                <td>{{ expense.bank_account|default:"نقدی" }}</td>
+                <td>
+                  {{ expense.get_payment_method_display }}
+                  {% if expense.payment_method == "credit" and expense.due_date and not expense.is_paid %}
+                    <span class="field__hint">تا {{ expense.due_date|jalali }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ expense.payment.bank_account|default:expense.bank_account|default:"—" }}</td>
                 <td>{{ expense.created_by.get_full_name|default:expense.created_by.phone }}</td>
                 <td>{% if expense.document %}📎{% else %}—{% endif %}</td>
                 <td>
-                  <span class="badge{% if expense.is_cancelled %} badge--bad{% else %} badge--good{% endif %}">
-                    {% if expense.is_cancelled %}لغو شده{% else %}ثبت‌شده{% endif %}
-                  </span>
+                  {% if expense.is_cancelled %}
+                    <span class="badge badge--bad">لغو شده</span>
+                  {% elif expense.is_paid %}
+                    <span class="badge badge--good">پرداخت‌شده</span>
+                  {% elif expense.payment_method == "cheque" %}
+                    <span class="badge badge--pending">چک در انتظار</span>
+                  {% else %}
+                    <span class="badge badge--pending">پرداخت‌نشده</span>
+                  {% endif %}
                 </td>
                 <td>
+                  {% if row.pay_form %}
+                    <details class="quick-party-disclosure">
+                      <summary class="btn btn--quiet">پرداخت</summary>
+                      <form method="post" action="{% url 'expenses:pay' expense.pk %}" class="payment-form">
+                        {% csrf_token %}
+                        {% include "shared/_field.html" with field=row.pay_form.bank_account %}
+                        {% include "shared/_field.html" with field=row.pay_form.payment_date %}
+                        <button type="submit" class="btn btn--block">ثبت پرداخت</button>
+                      </form>
+                    </details>
+                  {% endif %}
                   {% if can_cancel and not expense.is_cancelled %}
                     <form method="post" action="{% url 'expenses:cancel' expense.pk %}"
-                          onsubmit="return confirm('این هزینه لغو شود؟ یک پرداخت برگشتی ثبت می‌شود.');">
+                          onsubmit="return confirm('این هزینه لغو شود؟ اگر پرداخت شده باشد، یک پرداخت برگشتی ثبت می‌شود.');">
                       {% csrf_token %}
                       <button type="submit" class="btn btn--quiet">لغو</button>
                     </form>
                   {% endif %}
                 </td>
               </tr>
+              {% endwith %}
             {% endfor %}
           </tbody>
         </table>

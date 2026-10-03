@@ -19,7 +19,7 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.products.forms import SellingPriceForm
 from apps.products.models import Product
-from apps.products.services import update_selling_price
+from apps.products.services import update_selling_prices
 
 from .forms import InventoryProductForm
 from .models import InventoryMovement
@@ -76,8 +76,21 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
                 "share": (value * 100 // total_value) if total_value else 0,
             })
 
+        # Pack and carton products are shown apart, each with its own stock
+        # total (D-076): the two units are never added together.
+        groups = []
+        for unit_value, unit_label in Product.Unit.choices:
+            unit_rows = [r for r in rows if r["product"].unit == unit_value]
+            groups.append({
+                "unit": unit_label,
+                "rows": unit_rows,
+                "stock_total": sum(r["stock"] for r in unit_rows),
+                "value_total": sum(r["value"] for r in unit_rows),
+            })
+
         context.update({
             "rows": rows,
+            "groups": groups,
             "total_value": total_value,
             "item_count": len(products),
             "negative_count": negative_count,
@@ -114,15 +127,20 @@ class ProductCreateView(LoginRequiredMixin, View):
 
 
 class SellingPriceUpdateView(LoginRequiredMixin, View):
-    """POST-only: the per-product "قیمت فروش" form. update_selling_price
-    changes that one field only -- no invoice, layer or cost is touched."""
+    """POST-only: the per-product "قیمت فروش" form (retail + wholesale).
+    update_selling_prices changes those fields only -- no invoice, layer or
+    cost is touched."""
 
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         form = SellingPriceForm(request.POST)
         if form.is_valid():
             try:
-                update_selling_price(product, form.cleaned_data["default_selling_price"], request.user)
+                update_selling_prices(
+                    product, request.user,
+                    retail=form.cleaned_data.get("default_selling_price"),
+                    wholesale=form.cleaned_data.get("wholesale_selling_price"),
+                )
             except ValidationError as exc:
                 messages.error(request, "؛ ".join(exc.messages))
             else:
@@ -158,7 +176,10 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         context["current_cost"] = get_current_cost_map([product.pk]).get(product.pk)
         context["last_cost"] = get_last_known_cost_map([product.pk]).get(product.pk)
         context["price_form"] = SellingPriceForm(
-            initial={"default_selling_price": product.default_selling_price},
+            initial={
+                "default_selling_price": product.default_selling_price,
+                "wholesale_selling_price": product.wholesale_selling_price,
+            },
         )
 
         movements = (

@@ -1451,3 +1451,20 @@ body.nav-open {
   color: var(--ink-900);
   font-size: 12.5px;
 }
+
+/* An element hidden by script or template must stay hidden even when a component sets its display. */
+[hidden] {
+  display: none !important;
+}
+
+/* Full settlement: one block per method (card reader / bank transfer), side by side (D-069). */
+.payment-full {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.payment-full__method h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}

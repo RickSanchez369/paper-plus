@@ -17,6 +17,7 @@ from apps.payments.models import BankAccount, Cheque
 from apps.payments.selectors import (
     get_bank_account_balance,
     get_total_payables_as_of,
+    get_upcoming_payments,
     get_total_receivables_as_of,
 )
 from apps.sales.models import SalesInvoice
@@ -100,6 +101,17 @@ def negative_stock():
     """Products whose stock has gone negative (defensive only, D-016 --
     an oversell is allowed for a superuser, this just surfaces it)."""
     return get_negative_stock_products()
+
+
+def upcoming_payments(days=7):
+    """
+    What has to be paid in the next ``days`` days (plus anything already
+    late), soonest first (D-074): cheques we issued, unpaid expenses, fixed
+    costs, supplier credit. Replaces the old recent-activity feed on the
+    dashboard -- the activity log keeps its own page.
+    """
+    items = get_upcoming_payments(timezone.localdate(), days)
+    return {"items": items, "total": sum(i["amount"] for i in items), "days": days}
 
 
 def recent_activity(limit=10):

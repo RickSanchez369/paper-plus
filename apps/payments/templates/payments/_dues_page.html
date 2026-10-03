@@ -1,0 +1,188 @@
+{% load paper %}
+{% comment %}
+The body of Receivables and Payables (D-071), one template for both sides.
+Context: cheques, cheques_total, credit, credit_total, rows, next_url (from
+_DuesListView) and, from the including page: party_word (مشتری/تأمین‌کننده),
+clear_label (وصول شد/پاس شد), pay_label (دریافت/پرداخت), party_header.
+
+Three blocks, by how the money will be settled:
+  1. pending cheques -- due date, issuer, bank, and the pass / bounce buttons;
+  2. credit on account (نسیه) -- per invoice, due date, pay all or part;
+  3. the per-party summary with the general "ثبت پرداخت" form.
+{% endcomment %}
+
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">چک‌های در انتظار</span>
+    <span class="stat-card__value num">{{ cheques_total|toman }}</span>
+    <span class="field__hint">{{ cheques|length|fa_number }} چک</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">نسیه (روی حساب)</span>
+    <span class="stat-card__value num">{{ credit_total|toman }}</span>
+    <span class="field__hint">{{ credit|length|fa_number }} فاکتور</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>چک‌ها</h2>
+    {% if cheques %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>سررسید</th>
+              <th>{{ party_header }}</th>
+              <th>چک</th>
+              <th>صادرکننده</th>
+              <th>بانک</th>
+              <th>فاکتور</th>
+              <th>مبلغ</th>
+              <th>اقدام</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in cheques %}
+              {% with cheque=row.cheque %}
+              <tr>
+                <td class="num">
+                  {% if cheque.due_date %}{{ cheque.due_date|jalali }}{% else %}—{% endif %}
+                  {% if row.overdue %}<span class="badge badge--pending">سررسید گذشته</span>{% endif %}
+                </td>
+                <td>{{ row.party }}</td>
+                <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a></td>
+                <td>{{ cheque.issuer|default:"—" }}</td>
+                <td>{{ cheque.bank_name|default:"—" }}</td>
+                <td>
+                  {% if cheque.sales_invoice %}
+                    <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
+                  {% elif cheque.purchase_invoice %}
+                    <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="num">{{ cheque.amount|toman }}</td>
+                <td>
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">{{ clear_label }}</summary>
+                    <form method="post" action="{% url 'cheques:clear' cheque.pk %}" class="payment-form">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ next_url }}">
+                      {% include "shared/_field.html" with field=row.clear_form.bank_account %}
+                      <button type="submit" class="btn btn--block">تأیید «{{ clear_label }}»</button>
+                    </form>
+                  </details>
+                  <form method="post" action="{% url 'cheques:bounce' cheque.pk %}" class="inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+                    <button type="submit" class="btn btn--quiet" onclick="return confirm('چک برگشت‌خورده ثبت شود؟')">برگشت</button>
+                  </form>
+                </td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="field__hint">چک در انتظاری وجود ندارد.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>نسیه (روی حساب)</h2>
+    <p class="field__hint">باقیماندهٔ هر فاکتور پس از کسر چک‌های در انتظار. هر مبلغی را می‌توان ثبت کرد؛ تسویهٔ کامل یعنی ثبت کل مبلغ.</p>
+    {% if credit %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>سررسید</th>
+              <th>{{ party_header }}</th>
+              <th>فاکتور</th>
+              <th>تاریخ فاکتور</th>
+              <th>باقیمانده</th>
+              <th>اقدام</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in credit %}
+              <tr>
+                <td class="num">
+                  {% if item.due_date %}{{ item.due_date|jalali }}{% else %}—{% endif %}
+                  {% if item.overdue %}<span class="badge badge--pending">سررسید گذشته</span>{% endif %}
+                </td>
+                <td>{{ item.party }}</td>
+                <td>
+                  {% if item.invoice.customer_id %}
+                    <a href="{% url 'sales:detail' item.invoice.pk %}">{{ item.invoice.invoice_number|fa_digits }}</a>
+                  {% else %}
+                    <a href="{% url 'purchasing:detail' item.invoice.pk %}">{{ item.invoice.invoice_number|fa_digits }}</a>
+                  {% endif %}
+                </td>
+                <td class="num">{{ item.invoice.invoice_date|jalali }}</td>
+                <td class="num">{{ item.amount|toman }}</td>
+                <td>
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">ثبت {{ pay_label }}</summary>
+                    <form method="post" action="{{ item.post_url }}" class="payment-form">
+                      {% csrf_token %}
+                      {% include "shared/_field.html" with field=item.form.amount %}
+                      {% include "shared/_field.html" with field=item.form.payment_date %}
+                      {% include "shared/_field.html" with field=item.form.bank_account %}
+                      {% include "shared/_field.html" with field=item.form.note %}
+                      <button type="submit" class="btn btn--block">ثبت</button>
+                    </form>
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="field__hint">نسیهٔ بازی وجود ندارد.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>جمع به تفکیک {{ party_word }}</h2>
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ party_header }}</th>
+              <th>تلفن</th>
+              <th>جمع مانده</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>{{ row.party.name }}</td>
+                <td class="num">{{ row.party.phone|default:"—" }}</td>
+                <td class="num">{{ row.outstanding|toman }}</td>
+                <td>
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">ثبت پرداخت کلی</summary>
+                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هیچ {{ party_word }}‌ای حساب باز ندارد.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>

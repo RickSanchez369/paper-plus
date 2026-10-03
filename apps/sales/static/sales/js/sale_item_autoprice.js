@@ -27,7 +27,10 @@
             })
             .then(function (data) {
                 if (data && typeof data.default_selling_price !== "undefined") {
-                    priceInput.value = data.default_selling_price;
+                    // The invoice's own sale type picks the price (D-075).
+                    var tier = document.getElementById("id_price_tier");
+                    var wholesale = tier && tier.value === "wholesale";
+                    priceInput.value = wholesale ? data.wholesale_selling_price : data.default_selling_price;
                 }
             })
             .catch(function () {

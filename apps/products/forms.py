@@ -22,8 +22,11 @@ from .models import Product
 _WIDGETS = {
     "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
     "sku": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
-    "unit": forms.TextInput(attrs={"class": "field__control"}),
+    "unit": forms.Select(attrs={"class": "field__control"}),
     "default_selling_price": forms.NumberInput(
+        attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
+    ),
+    "wholesale_selling_price": forms.NumberInput(
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
 }
@@ -94,7 +97,7 @@ class QuickProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ("name", "sku", "unit", "default_selling_price")
+        fields = ("name", "sku", "unit", "default_selling_price", "wholesale_selling_price")
         widgets = _WIDGETS
         error_messages = {
             "name": {"required": "نام کالا الزامی است."},
@@ -105,12 +108,23 @@ class QuickProductForm(forms.ModelForm):
             "unit": {"required": "واحد کالا الزامی است."},
         }
 
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("wholesale_selling_price") is None:
+            cleaned["wholesale_selling_price"] = cleaned.get("default_selling_price") or 0
+        return cleaned
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # The model's `default=0` would otherwise pre-fill the box with 0,
         # and an untouched 0 passes "required" -- exactly the accidental
         # free sale gap #6 is about. Starting empty makes someone type it.
         self.fields["default_selling_price"].initial = None
+        # Wholesale is optional here: left blank it starts equal to retail
+        # (the owner sets the real one in Inventory, D-075).
+        self.fields["wholesale_selling_price"].required = False
+        self.fields["wholesale_selling_price"].initial = None
+        self.fields["wholesale_selling_price"].help_text = "اگر خالی بماند، برابر قیمت خرد ثبت می‌شود."
         # Already required (the model field has no blank=True); only the
         # message changes, since Django's generic one gives no hint why a
         # *purchase* flow is asking for a *selling* price.
@@ -121,17 +135,33 @@ class QuickProductForm(forms.ModelForm):
 
 
 class SellingPriceForm(forms.Form):
-    """The one price a user sets by hand after creation: what the product
-    sells for from now on (feeds products.services.update_selling_price).
-    Purchase cost is never typed here -- it comes only from purchase
+    """The prices a user sets by hand after creation: what the product sells
+    for from now on, retail and wholesale (feeds
+    products.services.update_selling_prices). A blank box leaves that price
+    alone. Purchase cost is never typed here -- it comes only from purchase
     invoices, and inventory value only ever reads that cost."""
 
     default_selling_price = forms.IntegerField(
+        required=False,
         min_value=0,
-        label="قیمت فروش جدید (تومان)",
+        label="قیمت فروش خرد (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        error_messages={
-            "required": "قیمت فروش را وارد کنید.",
-            "min_value": "قیمت فروش نمی‌تواند منفی باشد.",
-        },
+        error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
     )
+    wholesale_selling_price = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="قیمت فروش عمده (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if (
+            not self.errors
+            and cleaned.get("default_selling_price") is None
+            and cleaned.get("wholesale_selling_price") is None
+        ):
+            raise forms.ValidationError("قیمت فروش را وارد کنید.")
+        return cleaned

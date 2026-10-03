@@ -25,21 +25,31 @@ from .views import (
     ChequesListView,
     ExpenseCancelView,
     ExpenseCreateView,
+    ExpensePayView,
     ExpensesListView,
     PayablesListView,
+    PayCustomerInvoiceView,
+    PaySupplierInvoiceView,
     ReceivablesListView,
     RecordCustomerPaymentView,
     RecordSupplierPaymentView,
+    RecurringExpenseCreateView,
+    RecurringExpenseListView,
+    RecurringExpenseSkipView,
+    RecurringExpenseToggleView,
+    RecurringExpenseUpdateView,
 )
 
 receivables_patterns = ([
     path("", ReceivablesListView.as_view(), name="list"),
     path("<uuid:pk>/record-payment/", RecordCustomerPaymentView.as_view(), name="record_payment"),
+    path("invoice/<uuid:pk>/pay/", PayCustomerInvoiceView.as_view(), name="pay_invoice"),
 ], "receivables")
 
 payables_patterns = ([
     path("", PayablesListView.as_view(), name="list"),
     path("<uuid:pk>/record-payment/", RecordSupplierPaymentView.as_view(), name="record_payment"),
+    path("invoice/<uuid:pk>/pay/", PaySupplierInvoiceView.as_view(), name="pay_invoice"),
 ], "payables")
 
 cheques_patterns = ([
@@ -62,4 +72,15 @@ expenses_patterns = ([
     path("", ExpensesListView.as_view(), name="list"),
     path("new/", ExpenseCreateView.as_view(), name="new"),
     path("<uuid:pk>/cancel/", ExpenseCancelView.as_view(), name="cancel"),
+    path("<uuid:pk>/pay/", ExpensePayView.as_view(), name="pay"),
 ], "expenses")
+
+# Fixed, repeating costs (D-073) live under /expenses/recurring/ but in their
+# own namespace, so the sidebar can list them beside Expenses.
+recurring_expenses_patterns = ([
+    path("", RecurringExpenseListView.as_view(), name="list"),
+    path("new/", RecurringExpenseCreateView.as_view(), name="new"),
+    path("<uuid:pk>/edit/", RecurringExpenseUpdateView.as_view(), name="edit"),
+    path("<uuid:pk>/skip/", RecurringExpenseSkipView.as_view(), name="skip"),
+    path("<uuid:pk>/toggle/", RecurringExpenseToggleView.as_view(), name="toggle"),
+], "recurring_expenses")

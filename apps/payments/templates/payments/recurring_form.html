@@ -1,0 +1,37 @@
+{% extends "shared/base.html" %}
+
+{% comment %}
+New / edit a fixed, repeating cost (D-073). "تکرار هر N روز/ماه": monthly is
+Jalali months (rent due on the 1st stays on the 1st); days are plain days.
+{% endcomment %}
+
+{% block title %}{% if item %}ویرایش هزینهٔ ثابت{% else %}هزینهٔ ثابت جدید{% endif %}{% endblock %}
+{% block header %}{% if item %}ویرایش: {{ item.reason }}{% else %}هزینهٔ ثابت جدید{% endif %}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'expenses:list' %}">هزینه‌ها</a> /
+  <a href="{% url 'recurring_expenses:list' %}">هزینه‌های ثابت</a> /
+  {% if item %}ویرایش{% else %}جدید{% endif %}
+</p>
+
+<div class="card">
+  <div class="card__body">
+    <h1>{% if item %}ویرایش هزینهٔ ثابت{% else %}ثبت هزینهٔ ثابت{% endif %}</h1>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=form %}
+      {% include "shared/_field.html" with field=form.reason %}
+      {% include "shared/_field.html" with field=form.amount %}
+      <div class="payment-full">
+        {% include "shared/_field.html" with field=form.repeat_every %}
+        {% include "shared/_field.html" with field=form.repeat_unit %}
+      </div>
+      {% include "shared/_field.html" with field=form.next_due_date %}
+      {% include "shared/_field.html" with field=form.remind_days_before %}
+      {% include "shared/_field.html" with field=form.note %}
+      <button type="submit" class="btn">ذخیره</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

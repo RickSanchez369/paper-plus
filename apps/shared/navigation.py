@@ -60,7 +60,14 @@ NAVIGATION = (
         ),
     ),
     NavGroup(label="حساب‌های بانکی", icon="bank", url_name="bank_accounts:list", prefix="bank_accounts"),
-    NavGroup(label="هزینه‌ها", icon="expense", url_name="expenses:list", prefix="expenses"),
+    NavGroup(
+        label="هزینه‌ها",
+        icon="expense",
+        items=(
+            NavItem(label="هزینه‌ها", url_name="expenses:list", prefix="expenses"),
+            NavItem(label="هزینه‌های ثابت", url_name="recurring_expenses:list", prefix="recurring_expenses"),
+        ),
+    ),
     NavGroup(label="مشتریان", icon="customer", url_name="customers:list", prefix="customers"),
     NavGroup(label="گزارش‌های مالی", icon="report", url_name="reports:index", prefix="reports"),
     NavGroup(label="فعالیت کاربران", icon="activity", url_name="user_activity:index", prefix="user_activity"),

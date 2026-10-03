@@ -1045,3 +1045,112 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   outside any web-served folder; MySQL/MariaDB is NOT supported (partial unique constraints are ignored there).
 - The `deploy` branch is `dev` plus host-specific files only (`passenger_wsgi.py` at the root, a SQLite
   `.env.example`, the host runbook); bring in new work with `git merge dev`.
+
+### D-067: A bank account is either a card reader or a current account
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `BankAccount.account_type` = `pos` (کارت‌خوان) or `current` (حساب جاری), default `current`
+  (every account that existed before is a current account). The Bank Accounts page shows the two kinds
+  as separate sections. Card payments will only be accepted into `pos` accounts, transfers/cheques/
+  expenses only through `current` ones (D-069).
+
+### D-068: A cheque records who issued it, apart from the bank
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `Cheque.issuer` («صادرکنندهٔ چک», free text, optional) is added next to the existing
+  `bank_name`, and mirrored on `SalesPaymentEntry`/`PurchasePaymentEntry` so it is typed once on the
+  invoice and copied onto the cheque. Shown on every page that lists or details a cheque.
+
+### D-069: Cash is gone; money moves by card reader, bank transfer or cheque
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Context: The business never handles cash through the system; "نقدی" only confused the payment screens.
+- Decision: No form offers cash any more. Receiving: card reader (a `pos` account), bank transfer (a `current`
+  account), cheque. Paying out: bank transfer (`current`) or cheque only — a card reader cannot pay anyone.
+  Full settlement ("تسویهٔ کامل") = card, transfer or both at once (amounts must sum to the server's own
+  invoice total; one amount blank takes the rest). Split mode rows are card / transfer / cheque; whatever
+  they leave unpaid is credit (نسیه) and needs `credit_due_date` (new nullable field on both invoices; a due
+  date on a fully covered invoice is dropped). Account-vs-method is enforced in `validate_entry_account`
+  (service) and mirrored in the forms; cheque clearing needs a current account.
+- Legacy: payments/entries written before this (`bank_account` null, method `cash`) stay valid and readable
+  ("نقدی" / "نقدی (قدیمی)"); nothing is rewritten. `PaymentSourceField` is replaced by `AccountChoiceField`.
+
+### D-070: A sales discount can be typed as a percent
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: The new-sale form has a Toman / percent switch for the discount. The percent (0–100, two decimals)
+  is turned into whole Toman by `percent_to_amount` (rounded down) once the lines exist; only the Toman
+  figure is stored — D-032/D-048 are untouched (invoice-level, pro rata across lines, never stored as a percent).
+
+### D-071: Receivables and Payables are split by how the money will arrive/leave
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: Both pages show (1) pending cheques, each with due date, issuer, bank and pass/bounce buttons
+  (for customers «وصول شد», for suppliers «پاس شد»), (2) credit on account per invoice with its due date and a
+  pay-all-or-part form (`PayInvoiceForm`; at most the credit part, cheques are settled by clearing them), and
+  (3) the per-party totals with the general payment form. The credit part is derived
+  (`get_credit_items`: invoice outstanding minus its pending cheques), never stored (D-025).
+
+### D-072: An expense is paid by transfer, by cheque, or on credit
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `Expense.payment_method` = transfer (as before: Payment OUT from a current account at once),
+  cheque (a pending OUT `Cheque` with no customer/supplier, linked by `Cheque.expense`; clearing it links
+  the payment to the expense) or credit (nothing booked; `due_date` required; later `pay_expense`).
+  `Expense.payment` is therefore nullable; paid = a payment exists (derived). Cancelling an unpaid expense
+  needs no reversal. Totals/reports still count an expense on its own date, paid or not.
+
+### D-073: Fixed, repeating costs (rent, bills) with reminders
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `RecurringExpense` (reason, usual amount, every N days/months — months are Jalali —, next due
+  date, remind N days ahead, active). It books nothing: «ثبت پرداخت» opens the expense form pre-filled and, once
+  recorded, the next due date advances one period; «رد کردن» skips a period (audit-logged). Deactivated, never deleted.
+
+### D-074: The dashboard shows next week's payments instead of recent activity
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: «پرداخت‌های هفتهٔ آینده» lists, soonest first and including anything overdue: cheques we issued
+  (supplier or expense), credit expenses, fixed costs whose reminder window opened, supplier credit due.
+  The activity feed leaves the dashboard (its own page stays).
+
+### D-075: Wholesale and retail prices, chosen once on the sales invoice
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina (the idea); design chosen after comparing 12 independent proposals judged on owner fit,
+  live-data safety, correctness/tests, extensibility and counter UX.
+- Decision: `Product.default_selling_price` keeps its name and now means the RETAIL price;
+  `Product.wholesale_selling_price` is new (0 = unset, then retail is suggested). `SalesInvoice.price_tier`
+  (`retail` default / `wholesale`) is picked at the top of the form and frozen with the invoice (D-014); old
+  invoices read as retail (there was only one price). `SaleItem.unit_price` stays the only stored line price
+  (a snapshot). One service, `update_selling_prices(product, user, retail=None, wholesale=None)` (None = leave
+  alone), logs one `change_selling_price` row per changed tier (payload has `tier`); `update_selling_price`
+  remains as the retail-only wrapper. `Product.price_for(tier)` is the single reader.
+- Counter behaviour: both prices ride on each search result (`data-price-retail/-wholesale`), so switching
+  the sale type needs no request. Switching reprices lines still on a tier price and never overwrites a
+  price the cashier typed (a line is "manual" when its price differs from the tier price — derived from the
+  numbers, no stored flag); the page says how many lines were kept. A blank price is filled server-side from
+  the invoice's own tier. Inventory edits both prices on the product page (with history); a product whose
+  wholesale price is unset or equal to retail is flagged.
+- Reports: «فروش عمده و خرد» card (invoices, net sales, discount, profit, margin per type) that adds up to
+  `sales_total`/`gross_profit` exactly.
+- Rejected: a price-list table or append-only price ledger (heavier than two fixed prices), a customer-level
+  default tier, per-line tier, quantity breaks, renaming the retail column (rebuilds the table on SQLite).
+
+### D-076: A product is counted in pack or carton; the two are separate products
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `Product.unit` is one of `بسته` / `کارتن` (the stored value is the Persian word, so every page that
+  prints it is unchanged; existing free-text units were normalised in migration `products.0007`). The same
+  goods sold in both units are two products with their own stock, FIFO layers, costs and prices — no
+  pack-per-carton ratio exists or is needed. Inventory shows the pack and carton products in two sections,
+  each with its own stock total (never added together).

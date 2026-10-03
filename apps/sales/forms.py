@@ -27,19 +27,19 @@ job already; duplicating them here would be a second source of truth.
 """
 
 from django import forms
+from django.utils.functional import cached_property
 
 from apps.inventory.selectors import get_stock_map
 from apps.partners.models import Customer
-from apps.payments.forms import PaymentSourceField
-from apps.payments.models import BankAccount
+from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import SelectedProductMixin
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.shared.forms import JalaliDateField
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 
-PAYMENT_MODE_FULL = "full"
-PAYMENT_MODE_SPLIT = "split"
+DISCOUNT_MODE_AMOUNT = "amount"
+DISCOUNT_MODE_PERCENT = "percent"
 
 
 class SalesFilterForm(forms.Form):
@@ -73,12 +73,13 @@ class SalesFilterForm(forms.Form):
         return cleaned
 
 
-class SaleInvoiceForm(forms.ModelForm):
+class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     """
     Invoice-level fields: who, when, how much discount, and how it was
-    settled. `payment_mode`/`received_into` are not model fields -- they
-    decide which payment-entry rows the view plans before confirm_sale
-    (D-046); the invoice itself stores no payment state (D-025).
+    settled. The payment fields come from `InvoicePaymentFields`: they are
+    not model fields -- they decide which payment-entry rows the view plans
+    before confirm_sale (D-046, D-069); the invoice itself stores no payment
+    state (D-025) except the due date of an unpaid (نسیه) remainder.
     """
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
@@ -93,21 +94,38 @@ class SaleInvoiceForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "تخفیف نمی‌تواند منفی باشد."},
     )
-    payment_mode = forms.ChoiceField(
-        label="نحوهٔ تسویه",
-        choices=(
-            (PAYMENT_MODE_FULL, "تسویهٔ کامل (کل مبلغ پرداخت شد)"),
-            (PAYMENT_MODE_SPLIT, "تفکیکی / چک / نسیه"),
-        ),
-        initial=PAYMENT_MODE_FULL,
+    # The discount can be typed as a Toman amount or as a percent of the
+    # subtotal (D-070). Neither mode adds a stored field: the percent is
+    # turned into Toman by the view once the lines (hence the subtotal) exist.
+    discount_mode = forms.ChoiceField(
+        label="نوع تخفیف",
+        required=False,  # absent = a Toman amount, the original behaviour
+        choices=((DISCOUNT_MODE_AMOUNT, "مبلغ (تومان)"), (DISCOUNT_MODE_PERCENT, "درصد")),
+        initial=DISCOUNT_MODE_AMOUNT,
         widget=forms.RadioSelect,
     )
-    received_into = PaymentSourceField(label="حساب دریافت‌کننده", required=False)
+    discount_percent = forms.DecimalField(
+        required=False,
+        min_value=0,
+        max_value=100,
+        max_digits=5,
+        decimal_places=2,
+        label="تخفیف (درصد)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "decimal", "step": "any"}),
+        error_messages={
+            "min_value": "درصد تخفیف نمی‌تواند منفی باشد.",
+            "max_value": "درصد تخفیف نمی‌تواند از ۱۰۰ بیشتر باشد.",
+            "invalid": "درصد تخفیف معتبر نیست.",
+        },
+    )
 
     class Meta:
         model = SalesInvoice
-        fields = ("customer", "invoice_date", "discount_amount")
+        fields = ("customer", "price_tier", "invoice_date", "discount_amount", "credit_due_date")
         widgets = {
+            # Wholesale or retail, chosen once at the top (D-075). Same `form`
+            # trick as the customer select: it is rendered above the <form>.
+            "price_tier": forms.RadioSelect(attrs={"form": "sale-form"}),
             # `form="sale-form"` because new.html renders this field (and
             # its "+ مشتری جدید" disclosure) outside the <form> tag on
             # purpose: the disclosure is itself a <form> (see
@@ -125,8 +143,17 @@ class SaleInvoiceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["price_tier"].required = False  # absent = retail, the original single price
+        self.fields["price_tier"].choices = PriceTier.choices
+        self.fields["price_tier"].initial = PriceTier.RETAIL
         self.fields["customer"].queryset = Customer.objects.filter(is_active=True).order_by("name")
         self.fields["customer"].empty_label = "— انتخاب مشتری —"
+
+    def clean_price_tier(self):
+        return self.cleaned_data.get("price_tier") or PriceTier.RETAIL
+
+    def clean_discount_mode(self):
+        return self.cleaned_data.get("discount_mode") or DISCOUNT_MODE_AMOUNT
 
     def clean_discount_amount(self):
         # required=False on an IntegerField cleans a blank box to None, but
@@ -137,17 +164,9 @@ class SaleInvoiceForm(forms.ModelForm):
         # form with the field left blank, the normal case for most sales).
         return self.cleaned_data.get("discount_amount") or 0
 
-    def clean(self):
-        cleaned = super().clean()
-        # Full settlement books real money, so it needs a real answer to
-        # "into which account" -- never cash by omission (D-045/D-046).
-        if cleaned.get("payment_mode") == PAYMENT_MODE_FULL and cleaned.get("received_into") == "":
-            self.add_error("received_into", "حساب دریافت‌کننده (یا «نقدی») را انتخاب کنید.")
-        return cleaned
-
     @property
-    def is_full_payment(self):
-        return self.cleaned_data.get("payment_mode") == PAYMENT_MODE_FULL
+    def is_percent_discount(self):
+        return self.cleaned_data.get("discount_mode") == DISCOUNT_MODE_PERCENT
 
 
 class SaleItemForm(SelectedProductMixin, forms.ModelForm):
@@ -176,6 +195,25 @@ class SaleItemForm(SelectedProductMixin, forms.ModelForm):
         widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric", "aria-label": "قیمت واحد (تومان)"}),
         error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
     )
+
+    def __init__(self, *args, price_tier=None, **kwargs):
+        # The invoice's sale type (D-075), known to the formset before the
+        # invoice exists: a blank price is filled from the right column.
+        super().__init__(*args, **kwargs)
+        self.price_tier = price_tier or PriceTier.RETAIL
+
+    def _post_clean(self):
+        self.instance._tier_hint = self.price_tier
+        super()._post_clean()
+
+    @cached_property
+    def selected_prices(self):
+        """(retail, wholesale) of the product this row already holds, so a
+        re-rendered row keeps both for the sale-type switch (D-075)."""
+        product = self.selected_product
+        if product is None:
+            return None
+        return product.default_selling_price, product.price_for(PriceTier.WHOLESALE)
 
     class Meta:
         model = SaleItem
@@ -222,31 +260,19 @@ class BaseSaleItemFormSet(forms.BaseFormSet):
 SaleItemFormSet = forms.formset_factory(SaleItemForm, formset=BaseSaleItemFormSet, extra=1)
 
 
-class SalesPaymentEntryForm(forms.ModelForm):
+class SalesPaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
     """
-    One planned payment row (cash/card/bank/cheque), same shape as the
-    admin inline it replaces -- cheque number/bank/due date stay optional
-    (Sina, 2026-09-24: finished later on the Cheques page, see D-014-style
-    note on apps/sales/admin.SalesPaymentEntryForm).
+    One planned payment row (card reader / bank transfer / cheque, D-069),
+    same shape as the admin inline it replaces -- cheque number/issuer/bank/due
+    date stay optional (Sina, 2026-09-24: finished later on the Cheques page).
+    The method list, the account-vs-method check and the dropping of cheque
+    fields for other methods live in `PaymentEntryFormMixin`.
     """
 
     due_date = JalaliDateField(required=False, label="تاریخ سررسید چک")
     # BigIntegerField has no built-in positivity; only the DB CheckConstraint
     # (`sales_payment_entry_amount_positive`) enforces amount > 0, so this
     # is declared explicitly with min_value, same as RecordPaymentForm.amount.
-    #
-    # `method` is declared too: it has no model-level `default`, so Django's
-    # ModelForm machinery inserts an English "---------"-style blank choice
-    # for it even though the field is required (Field.get_choices() adds a
-    # blank entry whenever a required choices-field has neither a default
-    # nor an initial). Cash is overwhelmingly the common case, so it is the
-    # initial value and the blank choice never appears at all.
-    method = forms.ChoiceField(
-        choices=SalesPaymentEntry.Method.choices,
-        initial=SalesPaymentEntry.Method.CASH,
-        label="روش",
-        widget=forms.Select(attrs={"class": "field__control"}),
-    )
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
@@ -258,31 +284,12 @@ class SalesPaymentEntryForm(forms.ModelForm):
 
     class Meta:
         model = SalesPaymentEntry
-        fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "due_date")
+        fields = ("method", "amount", "bank_account", "cheque_number", "bank_name", "issuer", "due_date")
         widgets = {
-            "bank_account": forms.Select(attrs={"class": "field__control"}),
             "cheque_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr"}),
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
+            "issuer": forms.TextInput(attrs={"class": "field__control"}),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["bank_account"].queryset = BankAccount.objects.filter(is_active=True)
-        self.fields["bank_account"].empty_label = "نقدی"
-        self.fields["bank_account"].required = False
-        self.fields["cheque_number"].required = False
-        self.fields["bank_name"].required = False
-
-    def clean(self):
-        cleaned = super().clean()
-        # Only a cheque has a number, an issuing bank and a due date; the
-        # page hides those fields for the other methods, so whatever a
-        # switched-away row still holds must not be saved.
-        if cleaned.get("method") != SalesPaymentEntry.Method.CHEQUE:
-            cleaned["cheque_number"] = ""
-            cleaned["bank_name"] = ""
-            cleaned["due_date"] = None
-        return cleaned
 
 
 SalesPaymentEntryFormSet = forms.formset_factory(SalesPaymentEntryForm, extra=0)

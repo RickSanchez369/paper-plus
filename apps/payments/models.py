@@ -25,6 +25,13 @@ from .validators import validate_receipt
 class BankAccount(BaseModel):
     """A bank account of the business, used to record where money moved."""
 
+    class AccountType(models.TextChoices):
+        # Two kinds only (D-067): a card reader (POS) receives card
+        # payments; a current account receives transfers and cheques and
+        # pays suppliers/expenses. Cash has no account (D-069).
+        POS = "pos", "کارت‌خوان"
+        CURRENT = "current", "حساب جاری"
+
     name = models.CharField(
         max_length=100,
         verbose_name="نام حساب",
@@ -37,6 +44,12 @@ class BankAccount(BaseModel):
     account_number = models.CharField(
         max_length=50,
         verbose_name="شماره حساب",
+    )
+    account_type = models.CharField(
+        max_length=10,
+        choices=AccountType.choices,
+        default=AccountType.CURRENT,  # every account that existed before D-067 is a normal current account
+        verbose_name="نوع حساب",
     )
     is_active = models.BooleanField(
         default=True,
@@ -306,6 +319,11 @@ class Cheque(BaseModel):
         blank=True,
         verbose_name="نام بانک صادرکننده",
     )
+    issuer = models.CharField(
+        max_length=150,
+        blank=True,  # who signed the cheque; may differ from the customer/supplier (D-068)
+        verbose_name="صادرکنندهٔ چک",
+    )
     due_date = models.DateField(
         null=True,
         blank=True,  # a cheque entered from an invoice may still be incomplete (4.3b)
@@ -344,6 +362,14 @@ class Cheque(BaseModel):
         related_name="cheques",
         verbose_name="فاکتور خرید",
     )
+    expense = models.ForeignKey(
+        "payments.Expense",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set when the cheque pays an expense (D-072); such a cheque has no customer/supplier
+        related_name="cheques",
+        verbose_name="هزینه",
+    )
     note = models.TextField(
         blank=True,
         verbose_name="توضیح",
@@ -362,6 +388,11 @@ class Cheque(BaseModel):
                 condition=(
                     models.Q(direction=Payment.Direction.IN, customer__isnull=False, supplier__isnull=True)
                     | models.Q(direction=Payment.Direction.OUT, supplier__isnull=False, customer__isnull=True)
+                    # An expense cheque (D-072) is ours going out, to nobody in particular.
+                    | models.Q(
+                        direction=Payment.Direction.OUT, supplier__isnull=True, customer__isnull=True,
+                        expense__isnull=False,
+                    )
                 ),
                 name="cheque_direction_matches_party",
             ),
@@ -403,8 +434,33 @@ class Expense(BaseModel):
     which books an opposite Payment and flags this row cancelled.
     """
 
+    class PaymentMethod(models.TextChoices):
+        # How the expense is (or will be) paid (D-072). Cash does not exist (D-069).
+        TRANSFER = "transfer", "حواله بانکی"
+        CHEQUE = "cheque", "چک"
+        CREDIT = "credit", "نسیه"
+
     expense_date = models.DateField(
         verbose_name="تاریخ",
+    )
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.TRANSFER,  # every expense that existed before D-072 was paid on the spot
+        verbose_name="روش پرداخت",
+    )
+    due_date = models.DateField(
+        null=True,
+        blank=True,  # the date an unpaid (نسیه) expense must be paid by; cheques carry their own
+        verbose_name="سررسید پرداخت",
+    )
+    recurring = models.ForeignKey(
+        "payments.RecurringExpense",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # set when this expense is one instalment of a fixed, repeating cost (D-073)
+        related_name="expenses",
+        verbose_name="هزینهٔ ثابت",
     )
     amount = models.BigIntegerField(
         verbose_name="مبلغ (تومان)",
@@ -435,8 +491,10 @@ class Expense(BaseModel):
     payment = models.OneToOneField(
         Payment,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # empty while a cheque is pending or a نسیه expense is unpaid (D-072)
         related_name="expense",
-        verbose_name="پرداخت",  # created with the expense by record_expense
+        verbose_name="پرداخت",  # created by record_expense / pay_expense / clear_cheque
     )
     cancelled_at = models.DateTimeField(
         null=True,
@@ -480,11 +538,11 @@ class Expense(BaseModel):
                 name="expense_amount_positive",
             ),
             models.CheckConstraint(
-                # A cancelled expense always has both its timestamp and the
-                # payment that reversed it; neither is meaningful alone.
+                # A cancelled expense always has its timestamp and who did it; the
+                # reversing payment exists only when money had actually left (D-072).
                 condition=(
                     models.Q(cancelled_at__isnull=True, reversal_payment__isnull=True, cancelled_by__isnull=True)
-                    | models.Q(cancelled_at__isnull=False, reversal_payment__isnull=False, cancelled_by__isnull=False)
+                    | models.Q(cancelled_at__isnull=False, cancelled_by__isnull=False)
                 ),
                 name="expense_cancellation_is_complete",
             ),
@@ -498,6 +556,11 @@ class Expense(BaseModel):
         return self.cancelled_at is not None
 
     @property
+    def is_paid(self):
+        """True once money has left for it: a bank payment exists (derived, never typed, D-025)."""
+        return self.payment_id is not None
+
+    @property
     def counts_toward_totals(self):
         """
         False once cancelled, so no card, report or statement counts it.
@@ -506,3 +569,76 @@ class Expense(BaseModel):
         place that totals money has to agree.
         """
         return not self.is_cancelled
+
+
+class RecurringExpense(BaseModel):
+    """
+    A fixed cost that comes round again: shop rent, electricity, water --
+    every month, every 45 days, every few months (D-073).
+
+    It is a reminder plus a shortcut, not a ledger: nothing is booked until
+    someone records the instalment as an ordinary Expense (which then advances
+    `next_due_date`). The page and the dashboard remind from
+    `remind_days_before` days ahead of the due date until it is dealt with.
+    """
+
+    class Unit(models.TextChoices):
+        DAY = "day", "روز"
+        MONTH = "month", "ماه"
+
+    reason = models.CharField(
+        max_length=255,
+        verbose_name="بابت",
+    )
+    amount = models.BigIntegerField(
+        verbose_name="مبلغ (تومان)",
+        help_text="مبلغ معمول؛ هنگام ثبت پرداخت می‌توان آن را تغییر داد.",
+    )
+    repeat_every = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name="تکرار هر",
+    )
+    repeat_unit = models.CharField(
+        max_length=10,
+        choices=Unit.choices,
+        default=Unit.MONTH,
+        verbose_name="واحد تکرار",
+    )
+    next_due_date = models.DateField(
+        verbose_name="سررسید بعدی",
+    )
+    remind_days_before = models.PositiveSmallIntegerField(
+        default=7,
+        verbose_name="یادآوری از چند روز قبل",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="فعال",
+    )
+    note = models.TextField(
+        blank=True,
+        verbose_name="توضیح",
+    )
+
+    class Meta:
+        verbose_name = "هزینهٔ ثابت"
+        verbose_name_plural = "هزینه‌های ثابت"
+        ordering = ["next_due_date", "reason"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="recurring_expense_amount_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(repeat_every__gte=1),
+                name="recurring_expense_repeat_positive",
+            ),
+        ]
+
+    def __str__(self):
+        return self.reason
+
+    @property
+    def interval_label(self):
+        """"هر ۱ ماه" style text for lists."""
+        return f"هر {self.repeat_every} {self.get_repeat_unit_display()}"

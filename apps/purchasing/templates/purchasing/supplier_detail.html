@@ -90,7 +90,7 @@ flattened, so it stays clear which payment settled which purchase.
         <thead>
           <tr>
             <th>شماره چک</th>
-            <th>بانک</th>
+            <th>صادرکننده</th><th>بانک</th>
             <th>سررسید</th>
             <th>مبلغ</th>
             <th>وضعیت</th>
@@ -100,7 +100,7 @@ flattened, so it stays clear which payment settled which purchase.
           {% for cheque in cheques %}
             <tr>
               <td>{{ cheque.cheque_number|default:"—" }}</td>
-              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>

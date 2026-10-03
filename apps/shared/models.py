@@ -56,6 +56,8 @@ class AuditLog(BaseModel):
         REVERSE_PAYMENT = "reverse_payment", "برگشت پرداخت بابت لغو فاکتور"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
+        PAY_EXPENSE = "pay_expense", "پرداخت هزینه"
+        SKIP_RECURRING_EXPENSE = "skip_recurring_expense", "رد کردن نوبت هزینهٔ ثابت"
         # No longer written (manual adjustment removed, D-044); kept so
         # rows logged before that still show a label instead of a raw key.
         RECORD_ADJUSTMENT = "record_adjustment", "ثبت اصلاح موجودی"

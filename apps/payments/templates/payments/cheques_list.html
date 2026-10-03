@@ -34,7 +34,7 @@ status, direction and due-date range.
               <th>جهت</th>
               <th>شماره چک</th>
               <th>طرف حساب</th>
-              <th>بانک</th>
+              <th>صادرکننده</th><th>بانک</th>
               <th>سررسید</th>
               <th>مبلغ</th>
               <th>فاکتور</th>
@@ -48,7 +48,7 @@ status, direction and due-date range.
                 <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a>
                   {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}<span class="badge badge--pending">ناقص</span>{% endif %}</td>
                 <td>{{ cheque.customer|default:cheque.supplier|default:"—" }}</td>
-                <td>{{ cheque.bank_name|default:"—" }}</td>
+                <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
                 <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
                 <td class="num">{{ cheque.amount|toman }}</td>
                 <td>

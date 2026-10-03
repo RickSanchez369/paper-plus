@@ -68,6 +68,49 @@ the latest global feed (row 4).
 
 <div class="card">
   <div class="card__body">
+    <div class="page-head__row">
+      <h2>پرداخت‌های هفتهٔ آینده</h2>
+      <span class="field__hint">جمع: <strong class="num">{{ upcoming_payments.total|toman }}</strong></span>
+    </div>
+    <p class="field__hint">چک‌های پرداختی، هزینه‌های سررسیدشونده، هزینه‌های ثابت و نسیهٔ تأمین‌کنندگان تا {{ upcoming_payments.days|fa_number }} روز آینده (و موارد عقب‌افتاده).</p>
+    {% if upcoming_payments.items %}
+      <table class="data-table">
+        <thead><tr><th>سررسید</th><th>نوع</th><th>بابت</th><th>مبلغ</th><th></th></tr></thead>
+        <tbody>
+          {% for item in upcoming_payments.items %}
+            <tr>
+              <td class="num">
+                {{ item.due_date|jalali }}
+                {% if item.overdue %}<span class="badge badge--pending">سررسید گذشته</span>
+                {% elif item.days_left == 0 %}<span class="badge badge--pending">امروز</span>
+                {% else %}<span class="field__hint">{{ item.days_left|fa_number }} روز دیگر</span>{% endif %}
+              </td>
+              <td>
+                {% if item.kind == "cheque" %}چک پرداختی
+                {% elif item.kind == "recurring" %}هزینهٔ ثابت
+                {% elif item.kind == "expense" %}هزینه (نسیه)
+                {% else %}نسیهٔ تأمین‌کننده{% endif %}
+              </td>
+              <td>{{ item.label }}</td>
+              <td class="num">{{ item.amount|toman }}</td>
+              <td>
+                {% if item.kind == "cheque" %}<a class="btn btn--quiet" href="{% url 'cheques:detail' item.obj.pk %}">مشاهده</a>
+                {% elif item.kind == "recurring" %}<a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">ثبت پرداخت</a>
+                {% elif item.kind == "expense" %}<a class="btn btn--quiet" href="{% url 'expenses:list' %}#expense-{{ item.obj.pk }}">پرداخت</a>
+                {% else %}<a class="btn btn--quiet" href="{% url 'payables:list' %}">بدهی‌ها</a>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="field__hint">پرداختی برای هفتهٔ آینده در برنامه نیست.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
     <h2>نیازمند توجه</h2>
 
     <h3>چک‌های سررسیدشده یا سررسید تا ۷ روز آینده</h3>
@@ -156,38 +199,6 @@ the latest global feed (row 4).
           {% endfor %}
         </tbody>
       </table>
-    {% endif %}
-  </div>
-</div>
-
-<div class="card">
-  <div class="card__body">
-    <div class="page-head__row">
-      <h2>آخرین فعالیت‌ها</h2>
-      <a href="{% url 'user_activity:index' %}" class="btn btn--quiet">مشاهدهٔ همه</a>
-    </div>
-    {% if recent_activity %}
-      <table class="data-table">
-        <thead><tr><th>زمان</th><th>کاربر</th><th>رویداد</th><th>هدف</th></tr></thead>
-        <tbody>
-          {% for row in recent_activity %}
-            <tr>
-              <td class="num">{{ row.entry.created_at|jalali_at }}</td>
-              <td>{{ row.entry.actor }}</td>
-              <td>{{ row.entry.get_event_type_display }}</td>
-              <td>
-                {% if row.target_url %}
-                  <a href="{{ row.target_url }}">{{ row.entry.target_type }}</a>
-                {% else %}
-                  {{ row.entry.target_type }}
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="field__hint">هنوز فعالیتی ثبت نشده است.</p>
     {% endif %}
   </div>
 </div>

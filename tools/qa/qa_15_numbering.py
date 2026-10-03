@@ -19,15 +19,15 @@ def scenarios(h):
     p = h.product(stock=30)
     cust, sup = h.customer(), h.supplier()
 
-    h.post_sale(cust, [(p, 1, 1000)], account="cash")
-    h.post_sale(cust, [(p, 1, 1000)], account="cash")
+    h.post_sale(cust, [(p, 1, 1000)], account=h.account())
+    h.post_sale(cust, [(p, 1, 1000)], account=h.account())
     a, b = SalesInvoice.objects.filter(customer=cust).order_by("confirmed_at")
     ma, mb = PATTERN.match(a.invoice_number), PATTERN.match(b.invoice_number)
     check("N01 sale numbers look like 1405/0001", bool(ma and mb), (a.invoice_number, b.invoice_number))
     check("N02 the year part is the current Jalali year", ma and int(ma.group(1)) == year)
     check("N03 running number goes up by one", ma and mb and int(mb.group(2)) == int(ma.group(2)) + 1)
 
-    h.post_purchase(sup, [(p, 2, 400)], account="cash")
+    h.post_purchase(sup, [(p, 2, 400)], account=h.account())
     pur = PurchaseInvoice.objects.get(supplier=sup)
     mp = PATTERN.match(pur.invoice_number)
     check("N04 purchases use the same shape", bool(mp) and int(mp.group(1)) == year)

@@ -31,10 +31,13 @@ changes through purchase and sales invoices only (D-044).
     <span class="stat-card__label">ارزش کل موجودی (به بهای خرید)</span>
     <span class="stat-card__value num">{{ total_value|toman }}</span>
   </div>
+  {% for group in groups %}
   <div class="stat-card">
-    <span class="stat-card__label">تعداد اقلام</span>
-    <span class="stat-card__value num">{{ item_count|fa_number }}</span>
+    <span class="stat-card__label">موجودی {{ group.unit }}</span>
+    <span class="stat-card__value num">{{ group.stock_total|fa_number }} {{ group.unit }}</span>
+    <span class="field__hint">{{ group.rows|length|fa_number }} کالا</span>
   </div>
+  {% endfor %}
   <div class="stat-card">
     <span class="stat-card__label">موجودی منفی</span>
     <span class="stat-card__value num">{{ negative_count|fa_number }}</span>
@@ -45,45 +48,59 @@ changes through purchase and sales invoices only (D-044).
   </div>
 </div>
 
+{% for group in groups %}
 <div class="card">
   <div class="card__body">
-    {% if rows %}
+    <h2>کالاهای {{ group.unit }}‌ای <span class="field__hint">— جمع موجودی: {{ group.stock_total|fa_number }} {{ group.unit }} · ارزش: {{ group.value_total|toman }}</span></h2>
+    {% if group.rows %}
       <div class="table-card">
         <table class="data-table">
           <thead>
             <tr>
               <th>کالا</th>
-              <th>موجودی</th>
+              <th>موجودی ({{ group.unit }})</th>
               <th>بهای خرید جاری (FIFO)</th>
               <th>آخرین قیمت خرید</th>
-              <th>قیمت فروش فعلی</th>
+              <th>قیمت فروش خرد</th>
+              <th>قیمت فروش عمده</th>
               <th>ارزش موجودی (به بهای خرید)</th>
               <th>سهم از کل</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {% for row in rows %}
+            {% for row in group.rows %}
               <tr>
                 <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }} ({{ row.product.sku }})</a></td>
                 <td class="num{% if row.stock < 0 %} field__error{% endif %}">{{ row.stock|fa_number }}</td>
                 <td class="num">{% if row.current_cost is not None %}{{ row.current_cost|toman }}{% else %}—{% endif %}</td>
                 <td class="num">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
                 <td class="num">{{ row.product.default_selling_price|toman }}</td>
+                <td class="num">{{ row.product.wholesale_selling_price|toman }}{% if row.product.wholesale_is_unset %} <span class="badge badge--pending" title="قیمت عمده هنوز با قیمت خرد فرقی ندارد">تعیین نشده</span>{% endif %}</td>
                 <td class="num">{{ row.value|toman }}</td>
                 <td class="num">{{ row.share|fa_number }}٪</td>
-                <td><a href="{% url 'inventory:detail' row.product.pk %}#selling-price" class="btn btn--quiet">تغییر قیمت فروش</a></td>
+                <td><a href="{% url 'inventory:detail' row.product.pk %}#selling-price" class="btn btn--quiet">تغییر قیمت‌ها</a></td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     {% else %}
-      <div class="placeholder">
-        <p>هنوز کالایی ثبت نشده است.</p>
-        <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
-      </div>
+      <p class="field__hint">کالایی با واحد {{ group.unit }} ثبت نشده است.</p>
     {% endif %}
   </div>
 </div>
+{% empty %}
+{% endfor %}
+
+{% if not rows %}
+<div class="card">
+  <div class="card__body">
+    <div class="placeholder">
+      <p>هنوز کالایی ثبت نشده است.</p>
+      <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

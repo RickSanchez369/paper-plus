@@ -15,6 +15,7 @@ from apps.payments.urls import (
     bank_accounts_patterns,
     cheques_patterns,
     expenses_patterns,
+    recurring_expenses_patterns,
     payables_patterns,
     receivables_patterns,
 )
@@ -29,6 +30,7 @@ urlpatterns = [
     path("payables/", include(payables_patterns)),
     path("cheques/", include(cheques_patterns)),
     path("bank-accounts/", include(bank_accounts_patterns)),
+    path("expenses/recurring/", include(recurring_expenses_patterns)),
     path("expenses/", include(expenses_patterns)),
     path("customers/", include("apps.partners.urls")),
     path("reports/", include(reports_patterns)),

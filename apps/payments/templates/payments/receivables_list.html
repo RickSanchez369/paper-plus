@@ -2,10 +2,9 @@
 {% load paper %}
 
 {% comment %}
-Receivables: customers with an open balance, each
-row carrying its own ready-to-open "ثبت پرداخت" disclosure -- the party is
-already fixed by the row, so no second page is needed. Rows with a zero
-balance are simply absent, not shown as "settled".
+Receivables (D-071): what customers owe, split into pending cheques and
+credit on account, each with its due date and its own settle buttons. The
+shared body is payments/_dues_page.html.
 {% endcomment %}
 
 {% block title %}مطالبات{% endblock %}
@@ -14,44 +13,7 @@ balance are simply absent, not shown as "settled".
 {% block content %}
 <div class="page-head">
   <h1>مطالبات از مشتریان</h1>
-  <p class="page-head__lede">فقط مشتریانی که حساب باز دارند.</p>
+  <p class="page-head__lede">چک‌های در انتظار وصول و نسیه‌های باز، با تاریخ سررسید.</p>
 </div>
-
-<div class="card">
-  <div class="card__body">
-    {% if rows %}
-      <div class="table-card">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>مشتری</th>
-              <th>تلفن</th>
-              <th>مانده بدهی</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in rows %}
-              <tr>
-                <td>{{ row.customer.name }}</td>
-                <td class="num">{{ row.customer.phone|default:"—" }}</td>
-                <td class="num">{{ row.outstanding|toman }}</td>
-                <td>
-                  <details class="quick-party-disclosure">
-                    <summary class="btn btn--quiet">ثبت پرداخت</summary>
-                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
-                  </details>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="placeholder">
-        <p>هیچ مشتری‌ای حساب باز ندارد.</p>
-      </div>
-    {% endif %}
-  </div>
-</div>
+{% include "payments/_dues_page.html" with party_word="مشتری" party_header="مشتری" clear_label="وصول شد" pay_label="دریافت" %}
 {% endblock %}

@@ -20,23 +20,30 @@ last week/last month), all read from the Payment ledger. No independent
 </div>
 
 {% if rows %}
-  <div class="stats">
-    {% for row in rows %}
-      <div class="stat-card">
-        <span class="stat-card__label">{{ row.account.name }}{% if row.account.owner %} — {{ row.account.owner }}{% endif %}</span>
-        <span class="field__hint">شماره حساب: {{ row.account.account_number }}</span>
-        <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__value num">{{ row.balance|toman }}</a>
-        <div class="stat-card__deltas">
-          {% for delta in row.deltas %}
-            <span class="stat-card__delta{% if delta.value > 0 %} stat-card__delta--up{% elif delta.value < 0 %} stat-card__delta--down{% endif %}">
-              {{ delta.label }}:
-              {% if delta.value > 0 %}+{% endif %}{{ delta.value|toman }}
-            </span>
-          {% endfor %}
+  {% for group in groups %}
+    <h2 class="section-title">{{ group.title }}</h2>
+    {% if group.rows %}
+    <div class="stats">
+      {% for row in group.rows %}
+        <div class="stat-card">
+          <span class="stat-card__label">{{ row.account.name }}{% if row.account.owner %} — {{ row.account.owner }}{% endif %}</span>
+          <span class="field__hint">شماره حساب: {{ row.account.account_number }}</span>
+          <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__value num">{{ row.balance|toman }}</a>
+          <div class="stat-card__deltas">
+            {% for delta in row.deltas %}
+              <span class="stat-card__delta{% if delta.value > 0 %} stat-card__delta--up{% elif delta.value < 0 %} stat-card__delta--down{% endif %}">
+                {{ delta.label }}:
+                {% if delta.value > 0 %}+{% endif %}{{ delta.value|toman }}
+              </span>
+            {% endfor %}
+          </div>
         </div>
-      </div>
-    {% endfor %}
-  </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <p class="field__hint">حسابی از این نوع ثبت نشده است.</p>
+    {% endif %}
+  {% endfor %}
 {% else %}
   <div class="placeholder">
     <p>هنوز حساب بانکی فعالی ثبت نشده است.</p>

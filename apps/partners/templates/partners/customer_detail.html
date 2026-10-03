@@ -150,7 +150,7 @@ component reused as-is from Receivables.
         <thead>
           <tr>
             <th>شماره چک</th>
-            <th>بانک</th>
+            <th>صادرکننده</th><th>بانک</th>
             <th>سررسید</th>
             <th>مبلغ</th>
             <th>وضعیت</th>
@@ -160,7 +160,7 @@ component reused as-is from Receivables.
           {% for cheque in cheques %}
             <tr>
               <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"—" }}</a></td>
-              <td>{{ cheque.bank_name|default:"—" }}</td>
+              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>

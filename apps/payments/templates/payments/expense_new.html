@@ -1,16 +1,21 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static paper %}
 
 {% comment %}
-New expense (D-045): one-shot form -- date, reason,
-amount, the account it was paid from (cash only as an explicit choice),
-optional receipt, note -- feeds record_expense, which creates the matching
-Payment(OUT) atomically. No edit afterward; a mistake is corrected with
+New expense (D-045, D-072): one-shot form -- date, reason, amount and HOW it
+is paid: bank transfer (from a current account), cheque, or credit (نسیه, due
+by a date). Only the fields of the chosen method are shown (expense_form.js);
+the form validates the rest. Feeds record_expense, which books the Payment /
+pending Cheque atomically. No edit afterward; a mistake is corrected with
 cancel_expense instead.
 {% endcomment %}
 
 {% block title %}هزینهٔ جدید{% endblock %}
 {% block header %}هزینهٔ جدید{% endblock %}
+
+{% block head %}
+  <script src="{% static_v 'shared/js/expense_form.js' %}" defer></script>
+{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'expenses:list' %}">هزینه‌ها</a> / هزینهٔ جدید</p>
@@ -18,16 +23,50 @@ cancel_expense instead.
 <div class="card">
   <div class="card__body">
     <h1>ثبت هزینهٔ جدید</h1>
-    <form method="post" enctype="multipart/form-data" novalidate>
+    {% if recurring %}
+      <p class="field__hint">این هزینه نوبت «{{ recurring.reason }}» (هزینهٔ ثابت، {{ recurring.interval_label }}) را تسویه می‌کند و پس از ثبت، سررسید بعدی خودکار جلو می‌رود.</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" novalidate id="expense-form">
       {% csrf_token %}
       {% include "shared/_form_errors.html" with form=form %}
-      {% for field in form %}
-        {% include "shared/_field.html" with field=field %}
-      {% endfor %}
-      <p class="field__hint">
-        حساب مورد نظر در فهرست نیست؟
-        <a href="{% url 'bank_accounts:new' %}">ثبت حساب بانکی جدید</a>
-      </p>
+      {{ form.recurring }}
+      {% include "shared/_field.html" with field=form.expense_date %}
+      {% include "shared/_field.html" with field=form.reason %}
+      {% include "shared/_field.html" with field=form.amount %}
+
+      <div class="field">
+        <span class="field__label">{{ form.payment_method.label }}</span>
+        <div class="payment-mode" role="radiogroup" aria-label="{{ form.payment_method.label }}">
+          {% for radio in form.payment_method %}
+            <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+          {% endfor %}
+        </div>
+        {% for error in form.payment_method.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+      </div>
+
+      <div data-expense-panel="transfer cheque">
+        {% include "shared/_field.html" with field=form.bank_account %}
+        <p class="field__hint">
+          حساب مورد نظر در فهرست نیست؟
+          <a href="{% url 'bank_accounts:new' %}">ثبت حساب بانکی جدید</a>
+        </p>
+      </div>
+
+      <div data-expense-panel="credit" hidden>
+        <p class="field__hint">هزینه ثبت می‌شود ولی پولی خارج نمی‌شود؛ تا سررسید یادآوری می‌گیرید و بعداً از صفحهٔ هزینه‌ها «پرداخت» می‌کنید.</p>
+        {% include "shared/_field.html" with field=form.due_date %}
+      </div>
+
+      <div data-expense-panel="cheque" hidden>
+        <p class="field__hint">چک در وضعیت «در انتظار وصول» ثبت می‌شود و تا پاس‌شدن، پولی از حساب کم نمی‌شود.</p>
+        {% include "shared/_field.html" with field=form.cheque_number %}
+        {% include "shared/_field.html" with field=form.issuer %}
+        {% include "shared/_field.html" with field=form.bank_name %}
+        {% include "shared/_field.html" with field=form.cheque_due_date %}
+      </div>
+
+      {% include "shared/_field.html" with field=form.document %}
+      {% include "shared/_field.html" with field=form.note %}
       <button type="submit" class="btn">ثبت هزینه</button>
     </form>
   </div>

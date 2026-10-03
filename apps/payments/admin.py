@@ -17,7 +17,7 @@ from django.core.exceptions import ValidationError
 
 from apps.shared.utils import format_toman
 
-from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation
+from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation, RecurringExpense
 from .selectors import get_bank_account_balance
 from .services import (
     allocate_payment,
@@ -33,8 +33,8 @@ from .services import (
 
 @admin.register(BankAccount)
 class BankAccountAdmin(admin.ModelAdmin):
-    list_display = ("name", "owner", "account_number", "balance_display", "is_active")
-    list_filter = ("is_active",)
+    list_display = ("name", "account_type", "owner", "account_number", "balance_display", "is_active")
+    list_filter = ("account_type", "is_active")
     search_fields = ("name", "account_number")
 
     @admin.display(description="موجودی")
@@ -191,7 +191,7 @@ class ChequeForm(forms.ModelForm):
         model = Cheque
         fields = (
             "direction", "customer", "supplier", "bank_account",
-            "cheque_number", "bank_name", "due_date", "amount",
+            "cheque_number", "bank_name", "issuer", "due_date", "amount",
             "sales_invoice", "purchase_invoice", "note",
         )
 
@@ -357,6 +357,26 @@ class ExpenseForm(forms.ModelForm):
             raise forms.ValidationError("مبلغ هزینه باید بزرگ‌تر از صفر باشد.")
         return amount
 
+    def clean_bank_account(self):
+        # The admin books a plain transfer (D-072): cash is gone, so a
+        # current account is required here instead of failing in save_model.
+        account = self.cleaned_data.get("bank_account")
+        if account is None or account.account_type != BankAccount.AccountType.CURRENT:
+            raise forms.ValidationError("یک «حساب جاری» انتخاب کنید.")
+        return account
+
+
+@admin.register(RecurringExpense)
+class RecurringExpenseAdmin(admin.ModelAdmin):
+    """Fixed costs are managed on the Expenses > هزینه‌های ثابت page; this is the technical backstop."""
+
+    list_display = ("reason", "amount", "repeat_every", "repeat_unit", "next_due_date", "is_active")
+    list_filter = ("is_active", "repeat_unit")
+    search_fields = ("reason",)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
@@ -392,7 +412,7 @@ class ExpenseAdmin(admin.ModelAdmin):
         # No account means it came out of the till, same rule as Payment (2.6).
         if obj is None:
             return "-"
-        return obj.bank_account or "نقدی"
+        return (obj.payment.bank_account if obj.payment_id else None) or obj.bank_account or "—"
 
     @admin.display(description="سند", boolean=True)
     def document_display(self, obj):

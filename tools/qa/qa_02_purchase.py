@@ -37,16 +37,20 @@ def scenarios(h):
     check("P01 sequence advanced by 1", seq() == s0 + 1)
     check("P01 supplier outstanding 0", get_supplier_outstanding(sup) == 0)
 
-    r = h.post_purchase(sup, [(b, 5, 300)], account="cash")
-    check("P02 full settlement in cash redirects", r.status_code == 302)
+    pos = h.account(kind="pos")
+    n0 = n_inv()
+    r = h.post_purchase(sup, [(b, 5, 300)], account=pos)
+    check("P02 a card-reader account cannot pay a supplier (rejected, nothing saved)", r.status_code == 200 and n_inv() == n0)
+    r = h.post_purchase(sup, [(b, 5, 300)], account=acct)
+    check("P02 full settlement by bank transfer redirects", r.status_code == 302)
     inv2 = PurchaseInvoice.objects.filter(supplier=sup).latest("created_at")
-    check("P02 cash payment has no bank account", Payment.objects.filter(supplier=sup, amount=1500, bank_account__isnull=True).exists())
+    check("P02 transfer payment is out of the account", Payment.objects.filter(supplier=sup, amount=1500, bank_account=acct).exists())
     check("P02 numbers strictly increase", inv2.invoice_number.split("/")[0] == inv.invoice_number.split("/")[0] and int(inv2.invoice_number.split("/")[1]) == int(inv.invoice_number.split("/")[1]) + 1)
 
     n1, s1 = n_inv(), seq()
     r = h.post_purchase(sup, [(a, 1, 100)], account=None)
     check("P03 full settlement without an account is rejected", r.status_code == 200 and n_inv() == n1)
-    check("P03 error is shown on the page", has(r, "حساب پرداخت"))
+    check("P03 error is shown on the page", has(r, "حداقل یک روش"))
     check("P03 sequence untouched", seq() == s1)
 
     # ---------------------------------------------------------------- split mode
@@ -56,21 +60,22 @@ def scenarios(h):
     check("P04 status unpaid, outstanding = total", i4.payment_status == "unpaid" and get_supplier_outstanding(sup2) == 4000)
     check("P04 no payment written", not Payment.objects.filter(supplier=sup2).exists())
 
-    r = h.post_purchase(sup2, [(b, 10, 100)], mode="split", payments=[{"method": "cash", "amount": "300"}])
+    r = h.post_purchase(sup2, [(b, 10, 100)], mode="split", payments=[{"method": "bank_transfer", "amount": "300", "bank_account": str(acct.pk)}])
     i5 = PurchaseInvoice.objects.filter(supplier=sup2).latest("created_at")
-    check("P05 split cash row books a cash payment", r.status_code == 302 and i5.payment_status == "partial" and
-          Payment.objects.filter(supplier=sup2, amount=300, bank_account__isnull=True).exists())
+    check("P05 split transfer row books a payment from the account", r.status_code == 302 and i5.payment_status == "partial" and
+          Payment.objects.filter(supplier=sup2, amount=300, bank_account=acct).exists())
     check("P05 outstanding = 4000 + (1000-300)", get_supplier_outstanding(sup2) == 4700)
 
-    r = h.post_purchase(sup2, [(a, 1, 500)], mode="split", payments=[{"method": "card", "amount": "200", "bank_account": str(acct.pk)}])
-    check("P06 split card row with an account", r.status_code == 302 and Payment.objects.filter(supplier=sup2, amount=200, bank_account=acct).exists())
+    n6 = n_inv()
+    r = h.post_purchase(sup2, [(a, 1, 500)], mode="split", payments=[{"method": "card", "amount": "200", "bank_account": str(pos.pk)}])
+    check("P06 a card row is refused when paying a supplier", r.status_code == 200 and n_inv() == n6)
     r = h.post_purchase(sup2, [(a, 1, 500)], mode="split", payments=[{"method": "bank_transfer", "amount": "500", "bank_account": str(acct.pk)}])
     i7 = PurchaseInvoice.objects.filter(supplier=sup2).latest("created_at")
     check("P07 split transfer row paying it all = paid", r.status_code == 302 and i7.payment_status == "paid")
 
     r = h.post_purchase(sup2, [(a, 2, 500)], mode="split", payments=[
         {"method": "cheque", "amount": "700", "bank_account": str(acct.pk), "cheque_number": "CH1", "bank_name": "Melli", "due_date": "1405/08/01"},
-        {"method": "cash", "amount": "300"}])
+        {"method": "bank_transfer", "amount": "300", "bank_account": str(acct.pk)}])
     i8 = PurchaseInvoice.objects.filter(supplier=sup2).latest("created_at")
     chq = Cheque.objects.get(purchase_invoice=i8)
     check("P08 cheque row becomes a PENDING OUT cheque", chq.status == "pending" and chq.direction == "out" and chq.amount == 700 and chq.supplier_id == sup2.pk)
@@ -83,12 +88,12 @@ def scenarios(h):
 
     n2, s2 = n_inv(), seq()
     st2 = h.stock(a)
-    r = h.post_purchase(sup2, [(a, 1, 100)], mode="split", payments=[{"method": "cash", "amount": "101"}])
+    r = h.post_purchase(sup2, [(a, 1, 100)], mode="split", payments=[{"method": "bank_transfer", "amount": "101", "bank_account": str(acct.pk)}])
     check("P10 payment rows above the total are rejected", r.status_code == 200 and n_inv() == n2)
     check("P10 nothing leaked: stock, sequence, payments", h.stock(a) == st2 and seq() == s2 and not Payment.objects.filter(supplier=sup2, amount=101).exists())
-    r = h.post_purchase(sup2, [(a, 1, 100)], mode="split", payments=[{"method": "cash", "amount": "60"}, {"method": "cash", "amount": "41"}])
+    r = h.post_purchase(sup2, [(a, 1, 100)], mode="split", payments=[{"method": "bank_transfer", "amount": "60", "bank_account": str(acct.pk)}, {"method": "bank_transfer", "amount": "41", "bank_account": str(acct.pk)}])
     check("P10b two rows that sum above the total are rejected", r.status_code == 200 and n_inv() == n2)
-    r = h.post_purchase(sup2, [(a, 1, 100)], mode="split", payments=[{"method": "cash", "amount": "60"}, {"method": "cash", "amount": "40"}])
+    r = h.post_purchase(sup2, [(a, 1, 100)], mode="split", payments=[{"method": "bank_transfer", "amount": "60", "bank_account": str(acct.pk)}, {"method": "bank_transfer", "amount": "40", "bank_account": str(acct.pk)}])
     check("P11 rows summing exactly to the total = paid", r.status_code == 302 and PurchaseInvoice.objects.filter(supplier=sup2).latest("created_at").payment_status == "paid")
 
     # ---------------------------------------------------------------- item validation
@@ -97,7 +102,7 @@ def scenarios(h):
     check("P12 same product twice is rejected", r.status_code == 200 and n_inv() == n3)
     r = h.post_purchase(sup, [], account=acct)
     check("P13 no items is rejected", r.status_code == 200 and n_inv() == n3)
-    d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "paid_from": str(acct.pk)}
+    d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk)}
     d.update(h._rows("items", [{"product": "", "quantity": "", "unit_price": ""}, {"product": str(b.pk), "quantity": "2", "unit_price": "10"}]))
     d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
@@ -131,7 +136,7 @@ def scenarios(h):
     for label, s in (("missing", None), ("inactive", inactive)):
         r = h.post_purchase(s, [(a, 1, 10)], account=acct)
         check(f"P17 {label} supplier rejected", r.status_code == 200 and n_inv() == c0)
-    d = {"supplier": "not-a-uuid", "invoice_date": TODAY_J, "payment_mode": "full", "paid_from": str(acct.pk)}
+    d = {"supplier": "not-a-uuid", "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk)}
     d.update(h._rows("items", [{"product": str(a.pk), "quantity": "1", "unit_price": "1"}])); d.update(h._rows("payments", []))
     r = h.c.post("/purchasing/new/", d)
     check("P17 malformed supplier id rejected (no 500)", r.status_code == 200 and n_inv() == c0, r.status_code)
@@ -173,7 +178,7 @@ def scenarios(h):
 
     # tampered management form
     for total in ("-1", "abc", "100000", ""):
-        d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "paid_from": str(acct.pk),
+        d = {"supplier": str(sup.pk), "invoice_date": TODAY_J, "payment_mode": "full", "transfer_account": str(acct.pk),
              "items-TOTAL_FORMS": total, "items-INITIAL_FORMS": 0, "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0}
         r = h.c.post("/purchasing/new/", d)
         check(f"P23 tampered TOTAL_FORMS='{total}' does not crash", r.status_code in (200, 400), r.status_code)

@@ -21,6 +21,7 @@ appear only when chosen.
 
 {% block head %}
   <script src="{% static_v 'sales/js/sale_form.js' %}" defer></script>
+  <script src="{% static_v 'shared/js/invoice_payment.js' %}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -45,6 +46,19 @@ right there, so every field after it stopped belonging to any form at
 all (found by actually submitting, not by review: nothing in the item or
 payment rows ever reached the server).
 {% endcomment %}
+<div class="card">
+  <div class="card__body">
+    <h2>نوع فروش</h2>
+    <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.price_tier.label }}" data-tier-switch>
+      {% for radio in invoice_form.price_tier %}
+        <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+      {% endfor %}
+    </div>
+    <p class="field__hint">قیمت کالاها بر اساس نوع فروش (عمده یا خرد) پیشنهاد می‌شود؛ هر قیمت را می‌توانید دستی تغییر دهید.</p>
+    <p class="field__hint" id="tier-note" hidden></p>
+  </div>
+</div>
+
 <div class="card">
   <div class="card__body">
     <h2>مشتری</h2>
@@ -103,61 +117,30 @@ payment rows ever reached the server).
       <div class="sale-form__totals">
         <div><span>جمع اقلام</span><span class="num" id="sale-subtotal">۰</span></div>
         <div class="sale-form__totals-discount">
-          <label for="{{ invoice_form.discount_amount.id_for_label }}">تخفیف (تومان) −</label>
+          <span>تخفیف −</span>
+          <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.discount_mode.label }}">
+            {% for radio in invoice_form.discount_mode %}
+              <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="sale-form__totals-discount" data-discount-panel="amount"{% if invoice_form.discount_mode.value == "percent" %} hidden{% endif %}>
+          <label for="{{ invoice_form.discount_amount.id_for_label }}">مبلغ تخفیف (تومان)</label>
           {{ invoice_form.discount_amount }}
         </div>
+        <div class="sale-form__totals-discount" data-discount-panel="percent"{% if invoice_form.discount_mode.value != "percent" %} hidden{% endif %}>
+          <label for="{{ invoice_form.discount_percent.id_for_label }}">درصد تخفیف</label>
+          {{ invoice_form.discount_percent }}
+          <span class="field__hint">معادل <span class="num" id="sale-discount-preview">۰</span> تومان</span>
+        </div>
         {% for error in invoice_form.discount_amount.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+        {% for error in invoice_form.discount_percent.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
         <div class="sale-form__totals-final"><span>مبلغ نهایی فاکتور</span><span class="num" id="sale-total">۰</span></div>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card__body">
-      <h2>پرداخت</h2>
-      <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.payment_mode.label }}">
-        {% for radio in invoice_form.payment_mode %}
-          <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
-        {% endfor %}
-      </div>
-      {% for error in invoice_form.payment_mode.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
-
-      <div data-payment-panel="full"{% if invoice_form.payment_mode.value == "split" %} hidden{% endif %}>
-        <p class="field__hint">
-          مشتری کل مبلغ فاکتور (<span class="num" id="sale-full-amount">۰</span> تومان) را پرداخت کرده است؛
-          فقط حساب دریافت‌کننده را انتخاب کنید.
-        </p>
-        {% include "shared/_field.html" with field=invoice_form.received_into %}
-      </div>
-
-      <div data-payment-panel="split"{% if invoice_form.payment_mode.value != "split" %} hidden{% endif %}>
-        <p class="field__hint">
-          برای چک، نسیه یا چند روش پرداخت: ردیف‌ها را وارد کنید. هر مبلغی که در ردیف‌ها نیاید
-          به‌صورت نسیه روی حساب مشتری می‌ماند (بدون هیچ ردیف = کاملاً نسیه).
-        </p>
-        {% if payment_formset.non_form_errors %}
-          <div class="form-error">{% for e in payment_formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}</div>
-        {% endif %}
-        {{ payment_formset.management_form }}
-
-        <div id="payment-rows">
-          {% for form in payment_formset %}
-            {% include "sales/_payment_entry_row.html" %}
-          {% endfor %}
-        </div>
-
-        <template id="payment-row-template">
-          {% include "sales/_payment_entry_row.html" with form=payment_formset.empty_form %}
-        </template>
-
-        <button type="button" class="btn btn--quiet" id="add-payment-row">+ افزودن ردیف پرداخت</button>
-
-        <p class="sale-form__remaining">
-          باقیماندهٔ نسیه: <span class="num" id="sale-remaining">۰</span> تومان
-        </p>
-      </div>
-    </div>
-  </div>
+  {% include "payments/_invoice_payment_card.html" with entry_row="sales/_payment_entry_row.html" party_word="مشتری" show_pos=True %}
 
   <div class="sale-form__submit">
     <a href="{% url 'sales:list' %}" class="btn btn--quiet">انصراف</a>

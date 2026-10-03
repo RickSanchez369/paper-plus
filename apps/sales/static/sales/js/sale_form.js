@@ -59,8 +59,7 @@
       subtotal += lineTotal;
     });
 
-    var discountInput = document.getElementById("id_discount_amount");
-    var discount = intVal(discountInput);
+    var discount = currentDiscount(subtotal);
     var total = Math.max(subtotal - discount, 0);
 
     validateStock();
@@ -70,6 +69,32 @@
     setText("sale-full-amount", formatToman(total));
 
     recomputeRemaining(total);
+    document.dispatchEvent(new CustomEvent("invoice:recomputed"));
+  }
+
+  // Discount typed as Toman or as a percent of the subtotal (D-070); the
+  // server recomputes the percent itself, this is only the live preview.
+  function currentDiscountMode() {
+    var checked = document.querySelector('input[name="discount_mode"]:checked');
+    return checked ? checked.value : "amount";
+  }
+
+  function currentDiscount(subtotal) {
+    var discount;
+    if (currentDiscountMode() === "percent") {
+      var pct = parseFloat((document.getElementById("id_discount_percent") || {}).value);
+      discount = isNaN(pct) ? 0 : Math.floor((subtotal * Math.min(Math.max(pct, 0), 100)) / 100);
+      setText("sale-discount-preview", formatToman(discount));
+    } else {
+      discount = intVal(document.getElementById("id_discount_amount"));
+    }
+    return discount;
+  }
+
+  function showDiscountPanel(mode) {
+    document.querySelectorAll("[data-discount-panel]").forEach(function (panel) {
+      panel.hidden = panel.dataset.discountPanel !== mode;
+    });
   }
 
   function recomputeRemaining(total) {
@@ -125,6 +150,49 @@
     if (submit) submit.disabled = blocked;
   }
 
+  // ---- retail / wholesale (D-075)
+  function currentTier() {
+    var checked = document.querySelector('input[name="price_tier"]:checked');
+    return checked ? checked.value : "retail";
+  }
+
+  function tierPrice(row, tier) {
+    var raw = tier === "wholesale" ? row.dataset.priceWholesale : row.dataset.priceRetail;
+    var n = parseInt(raw, 10);
+    return isNaN(n) ? "" : n;
+  }
+
+  // A line is "manual" once its price differs from the current tier's price;
+  // derived from the numbers themselves, so it survives a re-rendered page.
+  function refreshManualFlag(row) {
+    var input = row.querySelector('input[name$="-unit_price"]');
+    if (!input || row.dataset.priceRetail === undefined) return;
+    if (String(input.value) === String(tierPrice(row, currentTier()))) delete row.dataset.manual;
+    else row.dataset.manual = "1";
+    row.classList.toggle("item-row--manual", row.dataset.manual === "1");
+  }
+
+  // Switching the sale type reprices the lines still on a tier price and
+  // leaves the ones the cashier typed over, saying how many (never silent).
+  function applyTier(tier) {
+    var kept = 0;
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
+      var input = row.querySelector('input[name$="-unit_price"]');
+      if (!input || row.dataset.priceRetail === undefined || !row.querySelector('input[name$="-product"]').value) return;
+      if (row.dataset.manual === "1") {
+        kept += 1;
+      } else {
+        input.value = tierPrice(row, tier);
+      }
+    });
+    var note = document.getElementById("tier-note");
+    if (note) {
+      note.hidden = kept === 0;
+      note.textContent = kept ? kept + " ردیف با قیمت دستی تغییر نکرد." : "";
+    }
+    recomputeInvoice();
+  }
+
   function pickProduct(button) {
     var row = button.closest("[data-item-row]");
     if (!row) return;
@@ -135,9 +203,15 @@
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = button.dataset.name;
 
+    // Both tier prices ride on the row (D-075): switching retail/wholesale
+    // later needs no request. The price field is filled from the current
+    // tier unless the cashier already typed one.
+    row.dataset.priceRetail = button.dataset.priceRetail || button.dataset.price || "0";
+    row.dataset.priceWholesale = button.dataset.priceWholesale || button.dataset.price || "0";
     var priceInput = row.querySelector('input[name$="-unit_price"]');
-    if (priceInput && !priceInput.value) {
-      priceInput.value = button.dataset.price;
+    if (priceInput && (!priceInput.value || row.dataset.manual !== "1")) {
+      priceInput.value = tierPrice(row, currentTier());
+      delete row.dataset.manual;
     }
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
@@ -234,6 +308,13 @@
     if (event.target.matches('input[name="payment_mode"]')) {
       showPaymentPanel(currentPaymentMode());
     }
+    if (event.target.matches('input[name="price_tier"]')) {
+      applyTier(currentTier());
+    }
+    if (event.target.matches('input[name="discount_mode"]')) {
+      showDiscountPanel(currentDiscountMode());
+      recomputeInvoice();
+    }
     if (event.target.matches('select[name$="-method"]')) {
       syncPaymentRow(event.target.closest("[data-payment-row]"));
     }
@@ -248,11 +329,16 @@
   }
 
   document.addEventListener("input", function (event) {
+    if (event.target.matches('input[name$="-unit_price"]')) {
+      var priceRow = event.target.closest("[data-item-row]");
+      if (priceRow) refreshManualFlag(priceRow);
+    }
     if (
       event.target.matches('input[name$="-quantity"]') ||
       event.target.matches('input[name$="-unit_price"]') ||
       event.target.matches('input[name$="-amount"]') ||
-      event.target.id === "id_discount_amount"
+      event.target.id === "id_discount_amount" ||
+      event.target.id === "id_discount_percent"
     ) {
       recomputeInvoice();
     }
@@ -270,6 +356,8 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
+    showDiscountPanel(currentDiscountMode());
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(refreshManualFlag);
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
   });
