@@ -22,6 +22,7 @@ from apps.payments.services import (
     validate_entry_account,
 )
 from apps.shared.audit import log_event
+from apps.shared.exchange import latest_valid_rate
 from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
 
@@ -98,8 +99,10 @@ def confirm_purchase(invoice, user):
 
     locked_invoice.status = PurchaseInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
+    # Freeze today's USD rate on the invoice (D-080); None while no rate was ever read.
+    locked_invoice.usd_rate = latest_valid_rate()
     locked_invoice.save(
-        update_fields=["status", "confirmed_at", "invoice_number", "updated_at"]
+        update_fields=["status", "confirmed_at", "invoice_number", "usd_rate", "updated_at"]
     )
 
     # Payment entries drafted on the invoice (mirrors confirm_sale, 4.3b):

@@ -86,6 +86,16 @@ class SalesInvoice(BaseModel):
         blank=True,  # only meaningful when part of the invoice is left unpaid (نسیه), D-069
         verbose_name="تاریخ سررسید نسیه",
     )
+    # The USD rate in force when the invoice was confirmed (D-080); null on older invoices.
+    usd_rate = models.ForeignKey(
+        "shared.ExchangeRate",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name="+",
+        verbose_name="نرخ دلار هنگام تأیید",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

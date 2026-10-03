@@ -137,3 +137,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-077 Scheduled host backup: cron `backup_db --keep 14` daily; copy a zip off the host weekly.
 - D-078 Full-settlement methods are ticked (`use_pos`/`use_transfer`); unticked = ignored; a lone active card reader is the default account.
 - D-079 Dashboard has one dues card: receivables and payables, each split cheques/credit, window 10 days plus overdue; settled-by-card/transfer never listed.
+- D-080 USD rate: append-only `ExchangeRate` (failed read = no number), fetched by `fetch_usd_rate`/button, frozen on the invoice at confirmation; confirmation never calls the network.

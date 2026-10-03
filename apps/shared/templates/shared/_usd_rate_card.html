@@ -1,0 +1,22 @@
+{% load paper %}
+{% comment %}
+The «نرخ دلار» stat card (D-080): newest successful rate, when it was read and from
+where. A stale rate or a failed last attempt is flagged, never hidden; the button reads
+the rate now.
+{% endcomment %}
+<div class="stat-card">
+  <span class="stat-card__label">نرخ دلار</span>
+  {% if row %}
+    <span class="stat-card__value num">{{ row.rate|toman }}</span>
+    <span class="field__hint">{{ row.fetched_at|jalali_at }} · منبع: {{ row.source }}</span>
+    {% if stale %}<span class="badge badge--pending">قدیمی</span>{% endif %}
+  {% else %}
+    <span class="stat-card__value">هنوز دریافت نشده</span>
+  {% endif %}
+  {% if last_failed %}<span class="field__hint">آخرین دریافت ناموفق بود؛ نرخ بالا همان آخرین نرخ معتبر است.</span>{% endif %}
+  <form method="post" action="{% url 'usd_rate_refresh' %}">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn btn--quiet">بروزرسانی نرخ</button>
+  </form>
+</div>

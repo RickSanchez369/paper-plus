@@ -21,6 +21,23 @@ from apps.shared.words import number_to_words
 register = template.Library()
 
 
+@register.inclusion_tag("shared/_usd_rate_card.html", takes_context=True)
+def usd_rate_card(context):
+    """The «نرخ دلار» stat card: newest valid rate, its age, and a failed-last-try warning (D-080)."""
+    from apps.shared import exchange
+
+    row = exchange.latest_valid_rate()
+    attempt = exchange.latest_attempt()
+    request = context.get("request")
+    return {
+        "row": row,
+        "stale": exchange.is_stale(row),
+        "last_failed": bool(attempt and attempt.status == "failed"),
+        "csrf_token": context.get("csrf_token"),
+        "next": request.get_full_path() if request else "",
+    }
+
+
 @register.simple_tag
 def parent_url(path):
     """The page one level up from `path`: drop the last URL segment, and keep

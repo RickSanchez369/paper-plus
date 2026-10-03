@@ -27,6 +27,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
         {% if invoice.supplier_invoice_number %} · شماره فاکتور تأمین‌کننده: {{ invoice.supplier_invoice_number }}{% endif %}
         · ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}
       </p>
+      <p class="page-head__lede">{% include "shared/_usd_rate_note.html" with rate=invoice.usd_rate %}</p>
     </div>
     <div class="sale-detail__actions">
       <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% else %} badge--good{% endif %}">

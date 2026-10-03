@@ -42,10 +42,7 @@ changes through purchase and sales invoices only (D-044).
     <span class="stat-card__label">موجودی منفی</span>
     <span class="stat-card__value num">{{ negative_count|fa_number }}</span>
   </div>
-  <div class="stat-card">
-    <span class="stat-card__label">نرخ دلار</span>
-    <span class="stat-card__value">پیکربندی نشده</span>
-  </div>
+  {% usd_rate_card %}
 </div>
 
 {% for group in groups %}

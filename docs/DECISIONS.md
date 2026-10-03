@@ -1184,3 +1184,21 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   with group, column and overdue totals. Money settled by card reader or transfer is not owed and never shown.
   Cheques missing a number or due date stay a one-line notice (they have no date to place them); the
   negative-stock block is gone with D-052. `get_upcoming_receivables` mirrors `get_upcoming_payments`.
+
+### D-080: USD rate history, read from an Iranian price site, frozen on each invoice
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (the need; the source and the moment were left to the implementer)
+- Decision: `shared.ExchangeRate` is an append-only log of rate reads (`rate` in Toman or NULL, `rate_date`,
+  `fetched_at`, `source`, `status` ok/failed, `error`); a DB check makes ok ⇒ rate > 0 and failed ⇒ no rate, so
+  a broken source cannot put a made-up or zero number anywhere, and old rows are never edited. Source: the live
+  price on tgju.org's dollar page (Rial ÷ 10), with tgju's JSON history table as fallback; both are tried in order
+  starting from `USD_RATE_SOURCE` (`USD_RATE_URL` overrides its address). A read far from the last valid rate
+  (over 2x either way) is stored as a failure, not a rate. stdlib `urllib` only, 8 s timeout.
+- Reading: `manage.py fetch_usd_rate` from a cron job every few hours, and a «بروزرسانی نرخ» button on the Inventory
+  and Reports cards. Invoice confirmation never makes a network call.
+- Snapshot: `confirm_sale` / `confirm_purchase` store the latest valid row in `SalesInvoice.usd_rate` /
+  `PurchaseInvoice.usd_rate` (null for older invoices and when no rate was ever read). Detail and print pages show
+  the rate with the time it was read; a later rate never changes a confirmed invoice.
+- Cards show the newest valid rate with its age, flag it «قدیمی» after `USD_RATE_STALE_HOURS` (12), and say when the
+  last attempt failed. Unknown: whether the shared host allows outbound HTTPS; test from the host before relying on it.

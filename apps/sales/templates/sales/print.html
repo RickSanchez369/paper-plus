@@ -37,6 +37,7 @@ Who issues it comes from settings.COMPANY (filled from .env, see
         <div><dt>شمارهٔ فاکتور</dt><dd>{{ invoice.invoice_number|fa_digits|default:"—" }}</dd></div>
         <div><dt>تاریخ</dt><dd>{{ invoice.invoice_date|jalali }}</dd></div>
         <div><dt>نوع فروش</dt><dd>{{ invoice.get_price_tier_display }}</dd></div>
+        {% if invoice.usd_rate %}<div><dt>نرخ دلار</dt><dd>{{ invoice.usd_rate.rate|toman }} · {{ invoice.usd_rate.fetched_at|jalali_at }}</dd></div>{% endif %}
       </dl>
     </header>
 

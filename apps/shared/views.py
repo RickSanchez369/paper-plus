@@ -9,15 +9,19 @@ Views never write (the rule that used to say "Admin never writes" — money
 and stock still go through `apps/*/services.py` inside `transaction.atomic`).
 """
 
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils import timezone
-from django.views.generic import TemplateView
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.generic import TemplateView, View
 
-from . import backup, dashboard, dates, reports, user_activity
+from . import backup, dashboard, dates, exchange, reports, user_activity
 from .forms import DateRangeForm, UserActivityFilterForm
+from .models import ExchangeRate
 
 
 class DateRangeMixin:
@@ -60,6 +64,26 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
             "dues": dashboard.dues_overview(),
         })
         return context
+
+
+class UsdRateRefreshView(LoginRequiredMixin, View):
+    """
+    «بروزرسانی نرخ»: read the USD rate now instead of waiting for the cron job (D-080).
+    The attempt (success or failure) is stored by `fetch_usd_rate`; this only reports it.
+    """
+
+    http_method_names = ["post"]
+
+    def post(self, request):
+        row = exchange.fetch_usd_rate()
+        if row.status == ExchangeRate.Status.OK:
+            messages.success(request, f"نرخ دلار بروز شد: {row.rate:,} تومان.")
+        else:
+            messages.error(request, "دریافت نرخ دلار ناموفق بود؛ آخرین نرخ معتبر همچنان در استفاده است.")
+        target = request.POST.get("next", "")
+        if not url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
+            target = reverse("dashboard")
+        return redirect(target)
 
 
 class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
