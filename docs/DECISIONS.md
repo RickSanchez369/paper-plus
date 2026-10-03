@@ -1173,3 +1173,14 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   active card-reader account exists the account is not asked for: the page shows its name, and the form falls back
   to it if none is posted; with several the choice stays. Card rows in split mode preselect a lone card reader too.
   Purchase invoices still have no card option (D-069: a card reader only receives money).
+
+### D-079: One dashboard card for receivables and payables
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: «پرداخت‌های هفتهٔ آینده» (D-074) and «نیازمند توجه» are replaced by one card, «مطالبات و بدهی‌ها», with two
+  columns. Receivables: cheques we hold (IN) and customer credit (نسیه). Payables: cheques we issued, and credit
+  (supplier credit, credit expenses, fixed costs). Each group lists what is overdue or due within 10 days, soonest first,
+  with group, column and overdue totals. Money settled by card reader or transfer is not owed and never shown.
+  Cheques missing a number or due date stay a one-line notice (they have no date to place them); the
+  negative-stock block is gone with D-052. `get_upcoming_receivables` mirrors `get_upcoming_payments`.

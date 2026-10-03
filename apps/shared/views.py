@@ -52,24 +52,12 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        try:
-            overdue_days = int(self.request.GET.get("overdue_days", 30))
-        except (TypeError, ValueError):
-            overdue_days = 30
-        # An absurd threshold (?overdue_days=99999999999) overflowed the date
-        # arithmetic: keep it to something a business could mean.
-        overdue_days = max(1, min(overdue_days, 3650))
-
         context.update({
             "today": timezone.localdate(),
             "kpi": dashboard.kpi_cards(),
             "totals": dashboard.totals_now(),
-            "cheques_due_soon": dashboard.cheques_due_soon(),
             "cheques_incomplete": dashboard.cheques_needing_completion(),
-            "overdue_days": overdue_days,
-            "overdue_invoices": dashboard.overdue_credit_invoices(threshold_days=overdue_days),
-            "negative_stock": dashboard.negative_stock(),
-            "upcoming_payments": dashboard.upcoming_payments(),
+            "dues": dashboard.dues_overview(),
         })
         return context
 

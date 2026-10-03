@@ -1468,3 +1468,23 @@ body.nav-open {
   margin: 0 0 var(--space-2);
   font-size: 1rem;
 }
+
+/* Dashboard dues card: receivables and payables side by side, stacked on narrow screens (D-079). */
+.dues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-5, 1.5rem);
+}
+
+.dues-col h4 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 0.95rem;
+}
+
+.payment-full__tick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}

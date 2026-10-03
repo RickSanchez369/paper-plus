@@ -247,3 +247,44 @@ def get_upcoming_payments(today=None, window_days=7):
 
     items.sort(key=lambda i: i["due_date"])
     return items
+
+
+def get_upcoming_receivables(today=None, window_days=10):
+    """
+    Everything customers owe the business that falls due within
+    ``window_days`` days, plus whatever is already late (D-079): cheques we
+    hold (direction IN) and sale credit (نسیه). The mirror of
+    `get_upcoming_payments`, same row shape, ``kind`` is cheque / customer_credit.
+    Settled invoices never appear: money taken by card or transfer is not owed.
+    """
+    from apps.sales.models import SalesInvoice
+
+    from .models import Cheque
+
+    today = today or datetime.date.today()
+    horizon = today + datetime.timedelta(days=window_days)
+    items = []
+
+    for cheque in Cheque.objects.filter(
+        status=Cheque.Status.PENDING, direction=Payment.Direction.IN,
+        due_date__isnull=False, due_date__lte=horizon,
+    ).select_related("customer"):
+        who = cheque.customer.name if cheque.customer_id else ""
+        items.append({
+            "kind": "cheque", "label": f"چک {cheque.cheque_number or '(بدون شماره)'} — {who}",
+            "amount": cheque.amount, "due_date": cheque.due_date,
+            "days_left": (cheque.due_date - today).days, "overdue": cheque.due_date < today, "obj": cheque,
+        })
+
+    for item in get_credit_items(SalesInvoice):
+        due = item["due_date"]
+        if due is not None and due <= horizon:
+            items.append({
+                "kind": "customer_credit",
+                "label": f"نسیهٔ فاکتور {item['invoice'].invoice_number} — {item['invoice'].customer.name}",
+                "amount": item["amount"], "due_date": due,
+                "days_left": (due - today).days, "overdue": due < today, "obj": item["invoice"],
+            })
+
+    items.sort(key=lambda i: i["due_date"])
+    return items
