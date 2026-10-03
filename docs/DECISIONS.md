@@ -1121,3 +1121,36 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Decision: «پرداخت‌های هفتهٔ آینده» lists, soonest first and including anything overdue: cheques we issued
   (supplier or expense), credit expenses, fixed costs whose reminder window opened, supplier credit due.
   The activity feed leaves the dashboard (its own page stays).
+
+### D-075: Wholesale and retail prices, chosen once on the sales invoice
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina (the idea); design chosen after comparing 12 independent proposals judged on owner fit,
+  live-data safety, correctness/tests, extensibility and counter UX.
+- Decision: `Product.default_selling_price` keeps its name and now means the RETAIL price;
+  `Product.wholesale_selling_price` is new (0 = unset, then retail is suggested). `SalesInvoice.price_tier`
+  (`retail` default / `wholesale`) is picked at the top of the form and frozen with the invoice (D-014); old
+  invoices read as retail (there was only one price). `SaleItem.unit_price` stays the only stored line price
+  (a snapshot). One service, `update_selling_prices(product, user, retail=None, wholesale=None)` (None = leave
+  alone), logs one `change_selling_price` row per changed tier (payload has `tier`); `update_selling_price`
+  remains as the retail-only wrapper. `Product.price_for(tier)` is the single reader.
+- Counter behaviour: both prices ride on each search result (`data-price-retail/-wholesale`), so switching
+  the sale type needs no request. Switching reprices lines still on a tier price and never overwrites a
+  price the cashier typed (a line is "manual" when its price differs from the tier price — derived from the
+  numbers, no stored flag); the page says how many lines were kept. A blank price is filled server-side from
+  the invoice's own tier. Inventory edits both prices on the product page (with history); a product whose
+  wholesale price is unset or equal to retail is flagged.
+- Reports: «فروش عمده و خرد» card (invoices, net sales, discount, profit, margin per type) that adds up to
+  `sales_total`/`gross_profit` exactly.
+- Rejected: a price-list table or append-only price ledger (heavier than two fixed prices), a customer-level
+  default tier, per-line tier, quantity breaks, renaming the retail column (rebuilds the table on SQLite).
+
+### D-076: A product is counted in pack or carton; the two are separate products
+- Status: Final
+- Date: 2026-10-03
+- Decided by: Sina
+- Decision: `Product.unit` is one of `بسته` / `کارتن` (the stored value is the Persian word, so every page that
+  prints it is unchanged; existing free-text units were normalised in migration `products.0007`). The same
+  goods sold in both units are two products with their own stock, FIFO layers, costs and prices — no
+  pack-per-carton ratio exists or is needed. Inventory shows the pack and carton products in two sections,
+  each with its own stock total (never added together).

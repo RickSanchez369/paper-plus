@@ -132,3 +132,5 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-072 Expenses are paid by transfer, cheque or credit; `Expense.payment` is nullable.
 - D-073 Fixed repeating costs (`RecurringExpense`) remind and advance; they book nothing themselves.
 - D-074 Dashboard shows the coming week's payments instead of recent activity.
+- D-075 Retail price = `default_selling_price`, wholesale = `wholesale_selling_price`; the invoice's `price_tier` is picked once and frozen; typed prices are never overwritten.
+- D-076 Product unit is pack or carton; pack and carton are separate products with separate stock; no conversion ratio.

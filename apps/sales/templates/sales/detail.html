@@ -24,6 +24,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
       <h1>فاکتور {{ invoice.invoice_number|fa_digits }}</h1>
       <p class="page-head__lede">
         مشتری: {{ invoice.customer.name }} ·
+        نوع فروش: {{ invoice.get_price_tier_display }} ·
         تاریخ: {{ invoice.invoice_date|jalali_long }} ·
         ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}
       </p>

@@ -11,7 +11,9 @@ request.
             data-id="{{ row.product.pk }}"
             data-name="{{ row.product.name }}"
             data-stock="{{ row.stock }}"
-            data-price="{{ row.product.default_selling_price }}">
+            data-price="{{ row.price_retail }}"
+            data-price-retail="{{ row.price_retail }}"
+            data-price-wholesale="{{ row.price_wholesale }}">
       <span>{{ row.product.name }}</span>
       <span class="num item-row__result-stock">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|fa_number }}{% endif %}</span>
     </button>

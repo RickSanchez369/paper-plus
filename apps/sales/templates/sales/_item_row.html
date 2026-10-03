@@ -6,7 +6,7 @@ wrapped in a <template> by new.html, as what "افزودن ردیف" clones --
 `form` is `item_formset.empty_form` there, prefixed `form-__prefix__`,
 which sale_form.js swaps for a real index before inserting it.
 {% endcomment %}
-<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}"{% endif %}>
+<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}" data-price-retail="{{ form.selected_prices.0 }}" data-price-wholesale="{{ form.selected_prices.1 }}"{% endif %}>
   {{ form.product }}
   <div class="item-row__search">
     <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"

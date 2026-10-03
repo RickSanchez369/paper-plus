@@ -5,7 +5,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Customer
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.shared.models import BaseModel
 
 
@@ -36,6 +36,12 @@ class SalesInvoice(BaseModel):
         on_delete=models.PROTECT,
         related_name="sales_invoices",
         verbose_name="مشتری",
+    )
+    price_tier = models.CharField(
+        max_length=10,
+        choices=PriceTier.choices,
+        default=PriceTier.RETAIL,  # every invoice before D-075 was sold at the one price there was
+        verbose_name="نوع فروش",
     )
     invoice_number = models.CharField(
         max_length=50,
@@ -269,7 +275,10 @@ class SaleItem(BaseModel):
         never touch it (it's a snapshot, not a live reference).
         """
         if self.unit_price is None and self.product_id:
-            self.unit_price = self.product.default_selling_price
+            # The tier of the invoice this line belongs to (D-075). A form
+            # validating the line before the invoice exists passes it as a hint.
+            tier = getattr(self, "_tier_hint", None) or (self.invoice.price_tier if self.invoice_id else PriceTier.RETAIL)
+            self.unit_price = self.product.price_for(tier)
         super().clean_fields(exclude=exclude)
 
     def __str__(self):

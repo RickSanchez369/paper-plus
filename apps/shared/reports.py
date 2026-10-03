@@ -131,6 +131,33 @@ def sales_by_product(start, end):
     return sorted(rows.values(), key=lambda row: -row["quantity"])
 
 
+def sales_by_tier(start, end):
+    """
+    Wholesale vs retail (D-075): invoices, net sales, discount given and
+    profit per sale type over the range -- the answer to "which kind of sale
+    makes money". Derived from the same invoices as `sales_total` and
+    `gross_profit`, so the two rows add up to exactly those figures.
+    """
+    from apps.products.models import PriceTier
+
+    rows = {
+        tier: {"label": label, "invoices": 0, "sales": 0, "discount": 0, "profit": 0}
+        for tier, label in PriceTier.choices
+    }
+    invoices = SalesInvoice.objects.filter(
+        status=SalesInvoice.Status.CONFIRMED, invoice_date__gte=start, invoice_date__lte=end,
+    ).prefetch_related("items__consumptions__layer")
+    for invoice in invoices:
+        row = rows[invoice.price_tier]
+        row["invoices"] += 1
+        row["sales"] += invoice.total
+        row["discount"] += invoice.discount_amount
+        row["profit"] += invoice.profit
+    for row in rows.values():
+        row["margin"] = (row["profit"] * 100 // row["sales"]) if row["sales"] else None
+    return list(rows.values())
+
+
 def purchases_by_product(start, end):
     """qty, amount per product -- no profit column, purchases have none."""
     items = (

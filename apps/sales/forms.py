@@ -27,12 +27,13 @@ job already; duplicating them here would be a second source of truth.
 """
 
 from django import forms
+from django.utils.functional import cached_property
 
 from apps.inventory.selectors import get_stock_map
 from apps.partners.models import Customer
 from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import SelectedProductMixin
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.shared.forms import JalaliDateField
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
@@ -120,8 +121,11 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
 
     class Meta:
         model = SalesInvoice
-        fields = ("customer", "invoice_date", "discount_amount", "credit_due_date")
+        fields = ("customer", "price_tier", "invoice_date", "discount_amount", "credit_due_date")
         widgets = {
+            # Wholesale or retail, chosen once at the top (D-075). Same `form`
+            # trick as the customer select: it is rendered above the <form>.
+            "price_tier": forms.RadioSelect(attrs={"form": "sale-form"}),
             # `form="sale-form"` because new.html renders this field (and
             # its "+ مشتری جدید" disclosure) outside the <form> tag on
             # purpose: the disclosure is itself a <form> (see
@@ -139,8 +143,14 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["price_tier"].required = False  # absent = retail, the original single price
+        self.fields["price_tier"].choices = PriceTier.choices
+        self.fields["price_tier"].initial = PriceTier.RETAIL
         self.fields["customer"].queryset = Customer.objects.filter(is_active=True).order_by("name")
         self.fields["customer"].empty_label = "— انتخاب مشتری —"
+
+    def clean_price_tier(self):
+        return self.cleaned_data.get("price_tier") or PriceTier.RETAIL
 
     def clean_discount_mode(self):
         return self.cleaned_data.get("discount_mode") or DISCOUNT_MODE_AMOUNT
@@ -185,6 +195,25 @@ class SaleItemForm(SelectedProductMixin, forms.ModelForm):
         widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric", "aria-label": "قیمت واحد (تومان)"}),
         error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
     )
+
+    def __init__(self, *args, price_tier=None, **kwargs):
+        # The invoice's sale type (D-075), known to the formset before the
+        # invoice exists: a blank price is filled from the right column.
+        super().__init__(*args, **kwargs)
+        self.price_tier = price_tier or PriceTier.RETAIL
+
+    def _post_clean(self):
+        self.instance._tier_hint = self.price_tier
+        super()._post_clean()
+
+    @cached_property
+    def selected_prices(self):
+        """(retail, wholesale) of the product this row already holds, so a
+        re-rendered row keeps both for the sale-type switch (D-075)."""
+        product = self.selected_product
+        if product is None:
+            return None
+        return product.default_selling_price, product.price_for(PriceTier.WHOLESALE)
 
     class Meta:
         model = SaleItem

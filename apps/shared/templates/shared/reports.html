@@ -101,6 +101,30 @@ this range alone.
 
 <div class="card">
   <div class="card__body">
+    <h2>فروش عمده و خرد</h2>
+    <p class="field__hint">همان فاکتورهای بالا، به‌تفکیک نوع فروش؛ جمع دو ردیف برابر جمع فروش و سود ناخالص است.</p>
+    <table class="data-table data-table--figures">
+      <thead>
+        <tr><th>نوع فروش</th><th>تعداد فاکتور</th><th>فروش (پس از تخفیف)</th><th>تخفیف داده‌شده</th><th>سود</th><th>حاشیهٔ سود</th></tr>
+      </thead>
+      <tbody>
+        {% for row in sales_by_tier %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td class="num">{{ row.invoices|fa_number }}</td>
+            <td class="num">{{ row.sales|toman }}</td>
+            <td class="num">{{ row.discount|toman }}</td>
+            <td class="num">{{ row.profit|toman }}</td>
+            <td class="num">{% if row.margin is not None %}{{ row.margin|fa_number }}٪{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
     <h2>فروش به تفکیک کالا</h2>
     {% if sales_by_product %}
       <p class="field__hint">مبلغ و سود پس از تخفیف فاکتورها است؛ تخفیف هر فاکتور به نسبت مبلغ ردیف‌ها بین کالاهای آن سرشکن شده است.</p>

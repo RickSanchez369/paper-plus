@@ -48,6 +48,19 @@ payment rows ever reached the server).
 {% endcomment %}
 <div class="card">
   <div class="card__body">
+    <h2>نوع فروش</h2>
+    <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.price_tier.label }}" data-tier-switch>
+      {% for radio in invoice_form.price_tier %}
+        <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+      {% endfor %}
+    </div>
+    <p class="field__hint">قیمت کالاها بر اساس نوع فروش (عمده یا خرد) پیشنهاد می‌شود؛ هر قیمت را می‌توانید دستی تغییر دهید.</p>
+    <p class="field__hint" id="tier-note" hidden></p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
     <h2>مشتری</h2>
     <div class="sale-form__customer">
       {% include "shared/_field.html" with field=invoice_form.customer %}

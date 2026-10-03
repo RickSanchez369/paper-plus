@@ -94,6 +94,7 @@ class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
         context.update({
             "cards": reports.summary_cards(start, end),
             "sales_by_product": reports.sales_by_product(start, end),
+            "sales_by_tier": reports.sales_by_tier(start, end),
             "purchases_by_product": reports.purchases_by_product(start, end),
             "top_sellers": reports.top_sellers(start, end),
             "inventory": reports.inventory_snapshot(start, end),
