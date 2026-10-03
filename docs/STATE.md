@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-10-01 (second batch: D-064 numbering, D-065 drawer menu). Per-module build history was dropped from this file on
+Updated 2026-10-03 (third batch: D-067..D-076 — payments rework, pricing tiers, units). Per-module build history was dropped from this file on
 purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
 `DECISIONS.md` the why.
 
@@ -39,6 +39,21 @@ box is a placeholder), hostiran.net visual identity, hosting-ready update path
 (`deploy/UPDATING.md`). A fresh-database `migrate` bug was fixed on the way. Sina has
 not picked a host yet: ask the host for Python >= 3.12 and PostgreSQL first.
 
+**Batch 2026-10-03 (D-067..D-076), from Sina's list of ten:** bank accounts are card reader or current
+account; cheques carry an issuer; sales discount can be a percent; cash is gone — card reader / bank transfer /
+cheque, unpaid remainder is نسیه with a due date (full settlement = card, transfer or both); Receivables and
+Payables split into cheques and credit with pass/bounce and pay-part actions; expenses by transfer, cheque or
+credit; fixed repeating costs with reminders; the dashboard shows next week's payments; products are pack or
+carton (separate products, separate stock); wholesale + retail prices with the sale type chosen on the
+invoice. Checks: `tools/qa/qa_16_payment_rework.py` (66) and `qa_17_pricing_units.py` (30) plus the older
+scripts all pass on PostgreSQL; the migrations were rehearsed on SQLite with data. Browser-checked on a
+throwaway SQLite database (`tools/qa/run_qa_server.py` + `seed_qa_db.py`, port 8001): percent discount,
+card+transfer settlement, split rows with account filtering, credit due date, receivables page + pass
+cheque, expense method panels, fixed costs, dashboard list, sale-type switch keeping typed prices.
+Live host: deploy with `manage.py update` (it backs up first); lessons learned on hostiran (nameservers set
+at the registrar, cPanel shared IP differs from `hostname -i`, Secure cookies need https, certificate from the
+SSL/TLS Wizard) belong in `deploy/HOSTIRAN.md` on the `deploy` branch.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
@@ -50,6 +65,8 @@ open on purpose. Source comments no longer cite `REDESIGN_VISION` or
   card. Do not invent a source.
 - **ROADMAP 4.6 returns (sales/purchase returns)** — explicitly out of scope
   (Sina, 2026-09-24). Do not design around it.
+- **No scheduled backup on the host** (Critical): the live database is one SQLite file; until a cron job
+  runs `manage.py backup_db`, backups are manual. HSTS is not set yet (Major).
 - **No write-off path** for physical loss/breakage since D-044 removed manual
   adjustment; would need a new decision (e.g. a write-off document).
 - **Old `HistoricalProduct`/AuditLog rows** written before D-043 hold Rial
