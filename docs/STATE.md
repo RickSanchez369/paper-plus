@@ -19,6 +19,23 @@ purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
   `1405/0001`-style (D-064). Teardown scripts must never delete a used
   `DocumentSequence` row.
 
+## TODO for the next session (start here, in this order)
+1. **Daily backup cron on the host (Critical)** -- the whole business is one SQLite file. cPanel → Cron Jobs → daily 03:00:
+   `cd /home/kaghazpl/paper-plus && <venv python> manage.py backup_db --keep 14`. The venv python path = the `source .../activate`
+   line shown in «Setup Python App» with `activate` replaced by `python` (ask Sina for that line). Then: copy one backup off the
+   host every week.
+2. **USD rate on the host** -- run `python manage.py fetch_usd_rate` once in the cPanel terminal; if it reads a rate, add a cron
+   every 3 hours (`0 */3 * * *`, same `cd` + venv python + `manage.py fetch_usd_rate`). If outbound HTTPS is blocked, keep the
+   in-app «بروزرسانی نرخ» button only and record that here.
+3. **HSTS ramp** (only once https is final): `.env` `HSTS_SECONDS=300` → restart → a few days → `86400` → weeks → `31536000`.
+4. **Data entry by Sina** (after the 2026-10-05 reset): products with all four prices, customers with «نوع مشتری»
+   (wholesale ones = عمده).
+5. **Optional company details** in `.env`: `COMPANY_INSTAGRAM/TELEGRAM/WHATSAPP`, address, economic code, `COMPANY_TERMS`
+   (Sina said "later").
+6. **Drop `Product.unit`** -- no products left on the host after the reset, so it is safe once Sina agrees (new decision + migration).
+7. **64 deferred UI items** in `docs/UI_AUDIT_200_DEFERRED.md` -- need Sina's choices.
+8. Minor: a customer quick-created on the new-sale page does not preset the sale type until reload.
+
 ## Next
 **Phase D is done (D-050):** IBM Carbon-inspired identity applied app-wide by
 swapping the `app.css` tokens; three unchosen reference systems deleted, the
