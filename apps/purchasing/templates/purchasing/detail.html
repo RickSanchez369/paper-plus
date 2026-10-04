@@ -34,9 +34,9 @@ stricter -- blocked once any of this purchase's stock has been sold).
       <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ فاکتور</a>
       {% if can_cancel %}
         <form method="post" action="{% url 'purchasing:cancel' invoice.pk %}"
-              onsubmit="return confirm('این فاکتور لغو شود؟ موجودی برگردانده می‌شود و این عملیات بازگشت‌ناپذیر است.');">
+              onsubmit="return confirm('این فاکتور خرید لغو شود؟ کالاهای آن از موجودی کم می‌شود و این عملیات بازگشت‌ناپذیر است.');">
           {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">لغو فاکتور</button>
+          <button type="submit" class="btn btn--danger">لغو فاکتور</button>
         </form>
       {% endif %}
     </div>

@@ -35,8 +35,24 @@ changes through purchase and sales invoices only (D-044).
     <span class="stat-card__label">تعداد کالا</span>
     <span class="stat-card__value num">{{ item_count|fa_number }}</span>
   </div>
+  <div class="stat-card">
+    <span class="stat-card__label">کالاهای ناموجود</span>
+    <span class="stat-card__value num">{{ out_of_stock_count|fa_number }}</span>
+  </div>
   {% usd_rate_card %}
 </div>
+
+<form method="get" class="toolbar">
+  <div class="filters">
+    <div class="field">
+      <label for="q">جستجوی کالا</label>
+      <input id="q" type="search" name="q" value="{{ q }}" placeholder="نام یا کد کالا">
+    </div>
+    <label class="check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> فقط کالاهای موجود</label>
+    <button class="btn btn--quiet">اعمال فیلتر</button>
+    {% if q or in_stock %}<a href="{% url 'inventory:list' %}" class="btn btn--quiet">پاک‌کردن</a>{% endif %}
+  </div>
+</form>
 
 {% if rows %}
 <div class="card">
@@ -58,9 +74,15 @@ changes through purchase and sales invoices only (D-044).
         </thead>
         <tbody>
           {% for row in rows %}
-            <tr>
-              <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }} ({{ row.product.sku }})</a></td>
-              <td class="num">{{ row.stock|units:row.product.pack_per_carton }}</td>
+            <tr{% if row.stock <= 0 %} class="is-void"{% endif %}>
+              <td>
+                <a href="{% url 'inventory:detail' row.product.pk %}"><strong>{{ row.product.name }}</strong></a>
+                <small class="cell-sub num">{{ row.product.sku }}</small>
+              </td>
+              <td class="num">
+                {% if row.stock <= 0 %}<span class="badge badge--bad">{% if row.stock < 0 %}منفی{% else %}ناموجود{% endif %}</span>{% endif %}
+                {{ row.stock|units:row.product.pack_per_carton }}
+              </td>
               <td class="num">{% if row.average_cost is not None %}{{ row.average_cost|toman }}{% else %}—{% endif %}</td>
               <td class="num">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
               <td class="num">{{ row.product.default_selling_price|toman }}</td>
@@ -82,8 +104,13 @@ changes through purchase and sales invoices only (D-044).
 <div class="card">
   <div class="card__body">
     <div class="placeholder">
-      <p>هنوز کالایی ثبت نشده است.</p>
-      <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
+      {% if q or in_stock %}
+        <p>کالایی با این فیلتر پیدا نشد.</p>
+        <a href="{% url 'inventory:list' %}" class="btn btn--quiet">پاک‌کردن فیلتر</a>
+      {% else %}
+        <p>هنوز کالایی ثبت نشده است.</p>
+        <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
+      {% endif %}
     </div>
   </div>
 </div>

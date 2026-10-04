@@ -146,7 +146,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
                     <form method="post" action="{% url 'expenses:cancel' expense.pk %}"
                           onsubmit="return confirm('این هزینه لغو شود؟ اگر پرداخت شده باشد، یک پرداخت برگشتی ثبت می‌شود.');">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn--quiet">لغو</button>
+                      <button type="submit" class="btn btn--danger">لغو</button>
                     </form>
                   {% endif %}
                 </td>

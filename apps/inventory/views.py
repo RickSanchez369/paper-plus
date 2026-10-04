@@ -75,6 +75,16 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
                 "share": (value * 100 // total_value) if total_value else 0,
             })
 
+        # Presentation filter only: the totals above stay over every product.
+        q = self.request.GET.get("q", "").strip()
+        in_stock = self.request.GET.get("in_stock") == "1"
+        out_of_stock = sum(1 for r in rows if r["stock"] <= 0)
+        if q:
+            needle = q.lower()
+            rows = [r for r in rows if needle in r["product"].name.lower() or needle in r["product"].sku.lower()]
+        if in_stock:
+            rows = [r for r in rows if r["stock"] > 0]
+
         rows, sort_key, sort_dir = sort_rows(self.request, rows, {
             "name": lambda r: r["product"].name,
             "stock": lambda r: r["stock"],
@@ -89,6 +99,9 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
             "sort_dir": sort_dir,
             "total_value": total_value,
             "item_count": len(products),
+            "out_of_stock_count": out_of_stock,
+            "q": q,
+            "in_stock": in_stock,
         })
         return context
 

@@ -164,7 +164,7 @@ def dict_get(mapping, key):
 # changes look between a list, a detail page and the dashboard.
 _STATUS_TONES = {
     "payment": {"paid": "good", "partial": "pending", "unpaid": "bad"},
-    "invoice": {"active": "neutral", "cancelled": "muted"},
+    "invoice": {"draft": "pending", "confirmed": "neutral", "cancelled": "muted"},
     "cheque": {"pending": "info", "cleared": "good", "bounced": "bad-solid", "cancelled": "muted"},
     "direction": {"in": "good", "out": "neutral"},
 }

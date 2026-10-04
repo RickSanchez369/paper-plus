@@ -14,6 +14,8 @@ selling price after this moment.
 import uuid
 
 from django import forms
+
+from apps.shared.widgets import NumericInput
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.utils.functional import cached_property
@@ -24,13 +26,13 @@ from .units import to_packs
 _WIDGETS = {
     "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
     "sku": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
-    "pack_per_carton": forms.NumberInput(
+    "pack_per_carton": NumericInput(
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric", "min": "1"}
     ),
-    "default_selling_price": forms.NumberInput(
+    "default_selling_price": NumericInput(
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
-    "wholesale_selling_price": forms.NumberInput(
+    "wholesale_selling_price": NumericInput(
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
 }
@@ -124,28 +126,28 @@ class CartonPackItemFormMixin(forms.Form):
         required=False,
         min_value=0,
         label="کارتن",
-        widget=forms.NumberInput(attrs={**_COUNT_ATTRS, "class": "field__control item-row__cartons", "aria-label": "تعداد کارتن"}),
+        widget=NumericInput(attrs={**_COUNT_ATTRS, "class": "field__control item-row__cartons", "aria-label": "تعداد کارتن"}),
         error_messages={"min_value": "تعداد کارتن نمی‌تواند منفی باشد."},
     )
     packs = forms.IntegerField(
         required=False,
         min_value=0,
         label="بسته",
-        widget=forms.NumberInput(attrs={**_COUNT_ATTRS, "class": "field__control item-row__packs", "aria-label": "تعداد بسته"}),
+        widget=NumericInput(attrs={**_COUNT_ATTRS, "class": "field__control item-row__packs", "aria-label": "تعداد بسته"}),
         error_messages={"min_value": "تعداد بسته نمی‌تواند منفی باشد."},
     )
     carton_price = forms.IntegerField(
         required=False,
         min_value=0,
         label="قیمت هر کارتن (تومان)",
-        widget=forms.NumberInput(attrs={**_PRICE_ATTRS, "class": "field__control item-row__carton-price", "aria-label": "قیمت هر کارتن (تومان)"}),
+        widget=NumericInput(attrs={**_PRICE_ATTRS, "class": "field__control item-row__carton-price", "aria-label": "قیمت هر کارتن (تومان)"}),
         error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
     )
     unit_price = forms.IntegerField(
         required=False,
         min_value=0,
         label="قیمت هر بسته (تومان)",
-        widget=forms.NumberInput(attrs={**_PRICE_ATTRS, "aria-label": "قیمت هر بسته (تومان)"}),
+        widget=NumericInput(attrs={**_PRICE_ATTRS, "aria-label": "قیمت هر بسته (تومان)"}),
         error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
     )
 
@@ -248,14 +250,14 @@ class SellingPriceForm(forms.Form):
         required=False,
         min_value=0,
         label="قیمت فروش خرد - هر بسته (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
     )
     wholesale_selling_price = forms.IntegerField(
         required=False,
         min_value=0,
         label="قیمت فروش عمده - هر کارتن (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
     )
 

@@ -12,7 +12,7 @@
 
   function formatToman(value) {
     var n = Math.max(0, Math.round(value || 0));
-    var withCommas = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    var withCommas = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u066c");
     return withCommas.replace(/[0-9]/g, function (digit) {
       return String.fromCharCode(0x06f0 + Number(digit));
     });
@@ -108,15 +108,16 @@
     row.querySelector('input[name$="-product"]').value = source.dataset.id;
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = source.dataset.name;
+    row.dataset.pickedName = source.dataset.name;
 
     row.dataset.stock = source.dataset.stock || "0";
     row.dataset.ratio = source.dataset.ratio || "1";
     // The last known cost per pack is only a hint; a carton hint is that times the ratio.
     var lastCost = parseInt(source.dataset.lastCost, 10);
     var priceInput = row.querySelector('input[name$="-unit_price"]');
-    if (priceInput) priceInput.placeholder = isNaN(lastCost) ? "" : String(lastCost);
+    if (priceInput) priceInput.placeholder = isNaN(lastCost) ? "" : formatToman(lastCost);
     var cartonInput = row.querySelector('input[name$="-carton_price"]');
-    if (cartonInput) cartonInput.placeholder = isNaN(lastCost) ? "" : String(lastCost * parseInt(row.dataset.ratio, 10));
+    if (cartonInput) cartonInput.placeholder = isNaN(lastCost) ? "" : formatToman(lastCost * parseInt(row.dataset.ratio, 10));
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
     if (stockLabel) stockLabel.textContent = "موجودی: " + window.PaperUnits.phrase(row.dataset.stock, row.dataset.ratio);
@@ -142,6 +143,11 @@
     var row = button.closest("[data-item-row]");
     if (!row || chosenProductIds(row).indexOf(button.dataset.id) !== -1) return;
     fillRow(row, button);
+    var cartons = row.querySelector('input[name$="-cartons"]');
+    if (cartons) {
+      cartons.focus();
+      cartons.select();
+    }
   }
 
   // Products already on the invoice never come back in the results: the
@@ -233,6 +239,32 @@
     }
   });
 
+  // Editing the name after a pick must not leave the OLD product id and stock behind.
+  document.addEventListener("input", function (event) {
+    var search = event.target.closest && event.target.closest("[data-item-row-search]");
+    if (!search) return;
+    var row = search.closest("[data-item-row]");
+    if (!row || search.value === (row.dataset.pickedName || "")) return;
+    var id = row.querySelector('input[name$="-product"]');
+    if (id && id.value) {
+      id.value = "";
+      delete row.dataset.stock;
+      var label = row.querySelector("[data-item-row-stock]");
+      if (label) label.textContent = "";
+      recomputeInvoice();
+    }
+  });
+
+  // The result list closes on Esc and on a click anywhere else.
+  function closeResults(except) {
+    document.querySelectorAll(".item-row__results").forEach(function (box) {
+      if (box !== except && !(except && box.parentNode.contains(except))) box.innerHTML = "";
+    });
+  }
+  document.addEventListener("click", function (event) {
+    closeResults(event.target.closest(".item-row__search"));
+  });
+
   document.addEventListener("click", function (event) {
     var pick = event.target.closest("[data-item-row-pick]");
     if (pick) {
@@ -271,7 +303,9 @@
     }
 
     if (event.target.id === "add-item-row") {
-      addRow("item-rows", "item-row-template", "items");
+      var added = addRow("item-rows", "item-row-template", "items");
+      var addedSearch = added && added.querySelector("[data-item-row-search]");
+      if (addedSearch) addedSearch.focus();
       return;
     }
 
@@ -319,14 +353,42 @@
   // creates and confirms a financial document in one go, and Enter is how
   // people finish typing a number, not how they mean to submit.
   document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeResults();
     if (event.key !== "Enter") return;
     var t = event.target;
+    // Enter in the product box picks the first result instead of doing nothing.
+    if (t.matches && t.matches("[data-item-row-search]")) {
+      var first = t.closest("[data-item-row]").querySelector("[data-item-row-pick]:not(:disabled)");
+      if (first) pickProduct(first);
+      event.preventDefault();
+      return;
+    }
     if (t.matches && t.matches("#purchase-form input:not([type=submit]):not([type=button]):not([type=radio]):not([type=checkbox])")) {
       event.preventDefault();
     }
   });
 
+  // This form creates and confirms a financial document: a second click must not post it twice.
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (form.id !== "purchase-form") return;
+    if (form.dataset.busy) {
+      event.preventDefault();
+      return;
+    }
+    form.dataset.busy = "1";
+  });
+  window.addEventListener("pageshow", function (event) {
+    var form = document.getElementById("purchase-form");
+    if (form) delete form.dataset.busy;
+    if (event.persisted) recomputeInvoice();
+  });
+
   document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-item-row]").forEach(function (row) {
+      var s = row.querySelector("[data-item-row-search]");
+      if (s && s.value) row.dataset.pickedName = s.value;
+    });
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
   });

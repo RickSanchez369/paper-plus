@@ -53,9 +53,11 @@
   --warning-700: #865b00;
 
   --surface: var(--white);
-  --surface-sunken: #f2f5fb;
+  --surface-sunken: #eaeff7;
   --surface-tint: var(--ink-100);
-  --border: var(--ink-200);
+  --border: #d3dbe8;
+  /* Control edges need 3:1 (WCAG 1.4.11); --border stays for decorative dividers. */
+  --control-border: #7a869c;
   --text: var(--ink-900);
   --text-muted: var(--ink-500);
 
@@ -74,8 +76,8 @@
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  /* Flat by default; only overlays (dropdowns, dialogs, date picker) lift. */
-  --shadow-sm: none;
+  /* Cards get a hairline lift so layers read; only overlays (dropdowns, dialogs, date picker) lift more. */
+  --shadow-sm: 0 1px 2px rgb(10 31 68 / 7%);
   --shadow-md: 0 10px 30px rgb(10 31 68 / 14%);
 
   /* The dark gradient used by the sidebar and the sign-in page. */
@@ -106,6 +108,9 @@ body {
   color: var(--text);
   background: var(--surface-sunken);
   -webkit-font-smoothing: antialiased;
+  /* Persian digits are proportional; dates, numbers and quantities must line up. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 a {
@@ -125,7 +130,7 @@ h3 {
   line-height: 1.35;
 }
 
-h1 { font-size: 22px; font-weight: 500; }
+h1 { font-size: 22px; font-weight: 700; }
 h2 { font-size: 16px; }
 
 /*
@@ -280,9 +285,8 @@ body.nav-open {
 
 .nav-group__label {
   padding: var(--space-2) var(--space-3);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
   color: var(--ink-400);
   text-transform: none;
 }
@@ -418,6 +422,19 @@ body.nav-open {
   padding: var(--space-5);
 }
 
+/* Stacked cards need a gap, and a heading needs air above the table or hint under it. */
+.card + .card {
+  margin-top: var(--space-5);
+}
+
+.card__body > h2 {
+  margin-bottom: var(--space-3);
+}
+
+.card__body > * + h2 {
+  margin-top: var(--space-5);
+}
+
 .page-head {
   margin-bottom: var(--space-5);
 }
@@ -450,6 +467,19 @@ body.nav-open {
   text-decoration: none;
 }
 
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* A dead button must look dead (the invoice submit is disabled while stock is short). */
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  background: var(--ink-100);
+  border-color: var(--ink-300);
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
+
 /* Every interactive element gets a visible ring (3:1 against white); .btn keeps its own. */
 a:focus-visible,
 button:focus-visible,
@@ -459,9 +489,10 @@ summary:focus-visible,
   outline-offset: 2px;
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--accent-500);
-  outline-offset: 2px;
+/* accent-500 is 2.7:1 on white; it is only legible on the navy chrome. */
+.sidebar .btn:focus-visible,
+.auth .btn:focus-visible {
+  outline-color: var(--accent-500);
 }
 
 .btn--lg {
@@ -483,6 +514,19 @@ summary:focus-visible,
 
 .btn--block {
   width: 100%;
+}
+
+/* Irreversible actions (cancel, bounce) must not look like Print. */
+.btn--danger {
+  background: var(--surface);
+  border-color: var(--negative-700);
+  color: var(--negative-700);
+}
+
+.btn--danger:hover {
+  background: var(--negative-100);
+  border-color: var(--negative-700);
+  color: var(--negative-700);
 }
 
 .badge {
@@ -541,7 +585,7 @@ summary:focus-visible,
 .field > textarea {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--ink-300);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 14px;
@@ -556,6 +600,21 @@ summary:focus-visible,
   outline: 3px solid rgb(0 119 255 / 18%);
   outline-offset: 0;
   border-color: var(--accent-600);
+}
+
+.field__control::placeholder,
+.field > input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* A field with an error must look different, not only add a line below it. */
+.field--invalid .field__control,
+.field--invalid > input,
+.field--invalid > select,
+.field--invalid > textarea {
+  border-color: var(--negative-700);
+  box-shadow: inset 0 0 0 1px var(--negative-700);
 }
 
 .field__error {
@@ -720,7 +779,7 @@ summary:focus-visible,
   display: grid;
   place-items: center;
   height: 26px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -757,7 +816,7 @@ summary:focus-visible,
 }
 
 .jdp__cell.is-selected {
-  background: var(--accent-600);
+  background: var(--accent-700);
   color: var(--white);
   font-weight: 600;
 }
@@ -831,7 +890,7 @@ summary:focus-visible,
 }
 
 .daterange__preset.is-active {
-  background: var(--accent-600);
+  background: var(--accent-700);
   color: var(--white);
 }
 
@@ -1012,8 +1071,7 @@ summary:focus-visible,
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border-top: 3px solid var(--accent-500);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-sm);
 }
 
 .stat-card__label {
@@ -1429,10 +1487,24 @@ summary:focus-visible,
   color: var(--text-muted);
 }
 
+/* Sticky: on a long invoice the confirm button must not live 1200px below the first row. */
 .sale-form__submit {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 -4px 12px rgb(10 31 68 / 8%);
+}
+
+.card + form,
+form + .card {
   margin-top: var(--space-5);
 }
 
@@ -1574,13 +1646,15 @@ summary:focus-visible,
 /* Dashboard dues card: receivables and payables side by side, stacked on narrow screens (D-079). */
 .dues-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
   gap: var(--space-5, 1.5rem);
 }
 
 .dues-col h4 {
   margin: var(--space-4) 0 var(--space-2);
-  font-size: 0.95rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .payment-full__tick {
@@ -1635,3 +1709,166 @@ summary:focus-visible,
 
 .sort-link:hover { color: var(--accent-700); text-decoration: none; }
 .sort-link--active { color: var(--action); }
+
+/* ------------------------------------------------------- UI audit batch 2 */
+
+/* A voided document stays in history but must not read as a live debt. */
+.data-table tr.is-void td {
+  color: var(--text-muted);
+}
+
+.data-table tr.is-void td:first-child a {
+  color: inherit;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.section-title:first-child {
+  margin-top: 0;
+}
+
+/* A sortable header must announce itself before it is the active one. */
+.sort-link:not(.sort-link--active)::after {
+  content: "⇅";
+  margin-inline-start: var(--space-1);
+  opacity: 0.35;
+}
+
+.toast {
+  position: fixed;
+  inset-inline: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 60;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+  font-size: 13.5px;
+}
+
+.toast a {
+  color: var(--accent-500);
+}
+
+/* A message needs a cue besides colour, and a stripe makes it findable. */
+.message {
+  border-inline-start: 4px solid var(--ink-300);
+}
+
+.message--success { border-inline-start-color: var(--positive-600); }
+.message--warning { border-inline-start-color: var(--warning-600); }
+.message--error { border-inline-start-color: var(--negative-600); }
+.message--info { border-inline-start-color: var(--accent-600); }
+
+.error-page {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  max-width: 560px;
+}
+
+/* Fingers need bigger date cells than a mouse does. */
+@media (pointer: coarse) {
+  .jdp { width: min(320px, calc(100vw - 16px)); }
+  .jdp__cell { height: 40px; font-size: 15px; }
+  .jdp__nav { width: 40px; height: 40px; }
+}
+
+/* ---------------------------------------------------------- dashboard */
+
+.section-label {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.alert-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border-inline-start: 4px solid var(--negative-600);
+  background: var(--negative-100);
+  color: var(--negative-700);
+  font-weight: 500;
+}
+
+.alert-strip:hover {
+  text-decoration: none;
+  filter: brightness(0.97);
+}
+
+/* The number the owner reads first gets the weight; a loss is red, never a quiet number. */
+.stat-card--primary {
+  background: var(--chrome);
+  color: var(--white);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-sm);
+}
+
+.stat-card--primary .stat-card__label,
+.stat-card--primary .field__hint {
+  color: var(--ink-200);
+}
+
+.stat-card--primary .stat-card__value {
+  font-size: 22px;
+}
+
+.stat-card__value.is-loss {
+  color: #ffb3ae;
+}
+
+.stat-card--link {
+  color: inherit;
+}
+
+.stat-card--link:hover {
+  text-decoration: none;
+  border-color: var(--accent-600);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-md);
+}
+
+.dues-overdue {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--negative-100);
+  color: var(--negative-700);
+  font-size: 13px;
+}
+
+h3 { font-size: 15px; }
+
+.stat-card > .badge,
+.stat-card > .btn {
+  justify-self: start;
+}
+
+.cell-sub {
+  display: block;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 41px;
+  font-size: 13.5px;
+}

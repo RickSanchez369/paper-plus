@@ -23,51 +23,62 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
   </div>
 </section>
 
+{% if dues.receivable.overdue_total or dues.payable.overdue_total or cheques_incomplete.total_count %}
+  {# The one thing an owner must act on today goes first, not under eight tiles. #}
+  <a class="alert-strip" href="#dues">
+    {% if dues.receivable.overdue_total %}<span>مطالبات سررسیدگذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></span>{% endif %}
+    {% if dues.payable.overdue_total %}<span>بدهی سررسیدگذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></span>{% endif %}
+    {% if cheques_incomplete.total_count %}<span>{{ cheques_incomplete.total_count|fa_number }} چک نیازمند تکمیل</span>{% endif %}
+  </a>
+{% endif %}
+
+<h2 class="section-label">عملکرد · این ماه و امروز</h2>
 <div class="stats">
   <div class="stat-card">
-    <span class="stat-card__label">فروش</span>
-    <span class="stat-card__value num">{{ kpi.today.sales|toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.sales|toman }}</span>
+    <span class="stat-card__label">فروش این ماه</span>
+    <span class="stat-card__value num">{{ kpi.month.sales|toman }}</span>
+    <span class="field__hint">امروز: <strong class="num">{{ kpi.today.sales|toman }}</strong></span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">خرید</span>
-    <span class="stat-card__value num">{{ kpi.today.purchases|toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.purchases|toman }}</span>
+    <span class="stat-card__label">خرید این ماه</span>
+    <span class="stat-card__value num">{{ kpi.month.purchases|toman }}</span>
+    <span class="field__hint">امروز: <strong class="num">{{ kpi.today.purchases|toman }}</strong></span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">هزینه‌ها</span>
-    <span class="stat-card__value num">{{ kpi.today.expenses|toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.expenses|toman }}</span>
+    <span class="stat-card__label">هزینه‌های این ماه</span>
+    <span class="stat-card__value num">{{ kpi.month.expenses|toman }}</span>
+    <span class="field__hint">امروز: <strong class="num">{{ kpi.today.expenses|toman }}</strong></span>
   </div>
-  <div class="stat-card">
-    <span class="stat-card__label">سود خالص</span>
-    <span class="stat-card__value num">{{ kpi.today.net_profit|toman }}</span>
-    <span class="field__hint">امروز · این ماه: {{ kpi.month.net_profit|toman }}</span>
+  <div class="stat-card stat-card--primary">
+    <span class="stat-card__label">سود خالص این ماه</span>
+    <span class="stat-card__value num{% if kpi.month.net_profit < 0 %} is-loss{% endif %}">{{ kpi.month.net_profit|toman }}</span>
+    <span class="field__hint">امروز: <strong class="num">{{ kpi.today.net_profit|toman }}</strong></span>
   </div>
 </div>
 
-<div class="stats">
-  <div class="stat-card">
-    <span class="stat-card__label">مطالبات باز</span>
-    <a href="{{ totals.receivables.url }}" class="stat-card__value num">{{ totals.receivables.value|toman }}</a>
-  </div>
-  <div class="stat-card">
-    <span class="stat-card__label">بدهی باز</span>
-    <a href="{{ totals.payables.url }}" class="stat-card__value num">{{ totals.payables.value|toman }}</a>
-  </div>
-  <div class="stat-card">
+<h2 class="section-label">وضعیت فعلی</h2>
+<div class="stats stats--position">
+  <a class="stat-card stat-card--link" href="{{ totals.receivables.url }}">
+    <span class="stat-card__label">کل مطالبات باز</span>
+    <span class="stat-card__value num">{{ totals.receivables.value|toman }}</span>
+  </a>
+  <a class="stat-card stat-card--link" href="{{ totals.payables.url }}">
+    <span class="stat-card__label">کل بدهی باز</span>
+    <span class="stat-card__value num">{{ totals.payables.value|toman }}</span>
+  </a>
+  <a class="stat-card stat-card--link" href="{{ totals.bank_balance.url }}">
     <span class="stat-card__label">جمع مانده حساب‌های بانکی</span>
-    <a href="{{ totals.bank_balance.url }}" class="stat-card__value num">{{ totals.bank_balance.value|toman }}</a>
-  </div>
-  <div class="stat-card">
+    <span class="stat-card__value num">{{ totals.bank_balance.value|toman }}</span>
+  </a>
+  <a class="stat-card stat-card--link" href="{{ totals.inventory_value.url }}">
     <span class="stat-card__label">ارزش موجودی انبار</span>
-    <a href="{{ totals.inventory_value.url }}" class="stat-card__value num">{{ totals.inventory_value.value|toman }}</a>
-  </div>
+    <span class="stat-card__value num">{{ totals.inventory_value.value|toman }}</span>
+  </a>
 </div>
 
-<div class="card">
+<div class="card" id="dues">
   <div class="card__body">
-    <h2>مطالبات و بدهی‌ها</h2>
+    <h2>سررسیدهای {{ dues.days|fa_number }} روز آینده و معوق</h2>
     <p class="field__hint">سررسیدشده و سررسید تا {{ dues.days|fa_number }} روز آینده، به‌تفکیک چک و نسیه. مواردی که با کارت‌خوان یا حواله تسویه شده‌اند اینجا نیستند.</p>
     {% if cheques_incomplete.total_count %}
       <p class="form-error">
@@ -81,7 +92,7 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
           <h3>مطالبات (دریافتنی)</h3>
           <span class="field__hint">جمع: <strong class="num">{{ dues.receivable.total|toman }}</strong></span>
         </div>
-        {% if dues.receivable.overdue_total %}<p class="field__hint">سررسید گذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></p>{% endif %}
+        {% if dues.receivable.overdue_total %}<p class="dues-overdue">سررسید گذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></p>{% endif %}
         {% include "shared/_dues_group.html" with title="چک‌های دریافتنی" group=dues.receivable.cheques empty="چک دریافتنی نزدیک سررسید نیست." %}
         {% include "shared/_dues_group.html" with title="نسیهٔ مشتریان" group=dues.receivable.credit empty="نسیهٔ نزدیک سررسید نیست." %}
       </section>
@@ -90,7 +101,7 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
           <h3>بدهی‌ها (پرداختنی)</h3>
           <span class="field__hint">جمع: <strong class="num">{{ dues.payable.total|toman }}</strong></span>
         </div>
-        {% if dues.payable.overdue_total %}<p class="field__hint">سررسید گذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></p>{% endif %}
+        {% if dues.payable.overdue_total %}<p class="dues-overdue">سررسید گذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></p>{% endif %}
         {% include "shared/_dues_group.html" with title="چک‌های پرداختنی" group=dues.payable.cheques empty="چک پرداختنی نزدیک سررسید نیست." %}
         {% include "shared/_dues_group.html" with title="نسیه، هزینه‌های سررسیدشونده و ثابت" group=dues.payable.credit empty="نسیه یا هزینهٔ نزدیک سررسید نیست." %}
       </section>

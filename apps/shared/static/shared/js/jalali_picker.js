@@ -149,7 +149,10 @@
     function position() {
         if (!activeInput) return;
         var box = activeInput.getBoundingClientRect();
-        popup.style.top = window.scrollY + box.bottom + 4 + "px";
+        // Flip above the input when there is no room below (bottom of a long form, phone keyboard).
+        var below = window.innerHeight - box.bottom;
+        var flip = below < popup.offsetHeight + 8 && box.top > popup.offsetHeight + 8;
+        popup.style.top = window.scrollY + (flip ? box.top - popup.offsetHeight - 4 : box.bottom + 4) + "px";
         // RTL: align the popup's right edge with the input's right edge, then
         // pull it back inside the viewport if it would hang off the left.
         var left = window.scrollX + box.right - popup.offsetWidth;
@@ -184,14 +187,23 @@
     });
 
     document.addEventListener("click", function (event) {
+        // The input keeps focus after a pick or Esc, so focusin never fires again:
+        // a click on an already-focused date box must reopen the calendar.
+        if (isDateInput(event.target)) {
+            if (!popup || popup.hidden) open(event.target);
+            return;
+        }
         if (!popup || popup.hidden) return;
-        if (popup.contains(event.target) || isDateInput(event.target)) return;
+        if (popup.contains(event.target)) return;
         close();
     });
 
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape" && popup && !popup.hidden) {
             close();
+        } else if (event.key === "ArrowDown" && isDateInput(event.target) && (!popup || popup.hidden)) {
+            open(event.target);
+            event.preventDefault();
         }
     });
 

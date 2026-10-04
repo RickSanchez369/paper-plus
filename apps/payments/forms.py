@@ -15,6 +15,7 @@ or a view — the rule that used to say "Admin never writes" (D-035).
 
 from django import forms
 
+from apps.shared.widgets import NumericInput
 from apps.shared.forms import JalaliDateField
 
 from .models import BankAccount, Cheque, Expense, Payment, RecurringExpense
@@ -108,7 +109,7 @@ class InvoicePaymentFields(forms.Form):
         required=False,
         min_value=1,
         label="مبلغ کارت‌خوان (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
     transfer_account = current_account_field(required=False, label="حساب جاری (حواله بانکی)", empty_label="— انتخاب حساب —")
@@ -116,7 +117,7 @@ class InvoicePaymentFields(forms.Form):
         required=False,
         min_value=1,
         label="مبلغ حواله بانکی (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
     credit_due_date = JalaliDateField(required=False, label="تاریخ سررسید نسیه")
@@ -266,7 +267,7 @@ class RecordPaymentForm(forms.Form):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
     payment_date = JalaliDateField(label="تاریخ")
@@ -345,7 +346,7 @@ class PayInvoiceForm(forms.Form):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد.", "required": "مبلغ الزامی است."},
     )
     payment_date = JalaliDateField(label="تاریخ")
@@ -471,7 +472,7 @@ class ExpenseForm(forms.ModelForm):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
     payment_method = forms.ChoiceField(
@@ -562,7 +563,7 @@ class RecurringExpenseForm(forms.ModelForm):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
     )
 
@@ -571,9 +572,9 @@ class RecurringExpenseForm(forms.ModelForm):
         fields = ("reason", "amount", "repeat_every", "repeat_unit", "next_due_date", "remind_days_before", "note")
         widgets = {
             "reason": forms.TextInput(attrs={"class": "field__control"}),
-            "repeat_every": forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "min": 1}),
+            "repeat_every": NumericInput(attrs={"class": "field__control", "dir": "ltr", "min": 1}),
             "repeat_unit": forms.Select(attrs={"class": "field__control"}),
-            "remind_days_before": forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "min": 0}),
+            "remind_days_before": NumericInput(attrs={"class": "field__control", "dir": "ltr", "min": 0}),
             "note": forms.Textarea(attrs={"class": "field__control", "rows": 2}),
         }
         error_messages = {

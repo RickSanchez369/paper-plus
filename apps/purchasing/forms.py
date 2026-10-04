@@ -11,6 +11,7 @@ default to fall back to the way a sale has -- and cancel is stricter
 
 from django import forms
 
+from apps.shared.widgets import NumericInput
 from apps.partners.models import Supplier
 from apps.payments.forms import ENTRY_METHOD_CHOICES, InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
@@ -70,7 +71,7 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         required=False,
         min_value=0,
         label="مبلغ کرایه بار (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "کرایه بار نمی‌تواند منفی باشد."},
     )
 
@@ -171,7 +172,7 @@ class PurchasePaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(
+        widget=NumericInput(
             attrs={"class": "field__control payment-row__amount", "dir": "ltr", "inputmode": "numeric"}
         ),
         error_messages={"required": "مبلغ الزامی است.", "min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},

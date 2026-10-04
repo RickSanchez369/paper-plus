@@ -1,0 +1,21 @@
+{% load static %}<!DOCTYPE html>
+{% comment %} Standalone on purpose: an error page is also shown to signed-out visitors
+   and when the shell itself failed, so it must not depend on the signed-in layout. {% endcomment %}
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} | پیپر پلاس</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <link rel="stylesheet" href="{% static 'shared/css/app.css' %}">
+</head>
+<body>
+  <main class="content">
+    <div class="card"><div class="card__body error-page">
+      <h1>{% block title_h1 %}{% endblock %}</h1>
+      <p class="page-head__lede">{% block text %}{% endblock %}</p>
+      <a class="btn" href="/">بازگشت به صفحهٔ اصلی</a>
+    </div></div>
+  </main>
+</body>
+</html>

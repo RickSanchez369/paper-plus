@@ -75,7 +75,7 @@ Three blocks, by how the money will be settled:
                   <form method="post" action="{% url 'cheques:bounce' cheque.pk %}" class="inline-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ next_url }}">
-                    <button type="submit" class="btn btn--quiet" onclick="return confirm('چک برگشت‌خورده ثبت شود؟')">برگشت</button>
+                    <button type="submit" class="btn btn--danger" onclick="return confirm('چک برگشت‌خورده ثبت شود؟')">برگشت</button>
                   </form>
                 </td>
               </tr>

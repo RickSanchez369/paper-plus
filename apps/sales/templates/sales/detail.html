@@ -37,7 +37,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
         <form method="post" action="{% url 'sales:cancel' invoice.pk %}"
               onsubmit="return confirm('این فاکتور لغو شود؟ موجودی برگردانده می‌شود و این عملیات بازگشت‌ناپذیر است.');">
           {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">لغو فاکتور</button>
+          <button type="submit" class="btn btn--danger">لغو فاکتور</button>
         </form>
       {% endif %}
     </div>

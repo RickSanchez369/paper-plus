@@ -29,6 +29,7 @@ job already; duplicating them here would be a second source of truth.
 from django import forms
 from django.utils.functional import cached_property
 
+from apps.shared.widgets import NumericInput
 from apps.inventory.selectors import get_stock_map
 from apps.partners.models import Customer
 from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
@@ -92,7 +93,7 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         required=False,
         min_value=0,
         label="تخفیف (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "تخفیف نمی‌تواند منفی باشد."},
     )
     # The discount can be typed as a Toman amount or as a percent of the
@@ -112,7 +113,7 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         max_digits=5,
         decimal_places=2,
         label="تخفیف (درصد)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "decimal", "step": "any"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "decimal", "step": "any"}),
         error_messages={
             "min_value": "درصد تخفیف نمی‌تواند منفی باشد.",
             "max_value": "درصد تخفیف نمی‌تواند از ۱۰۰ بیشتر باشد.",
@@ -244,7 +245,7 @@ class SalesPaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(
+        widget=NumericInput(
             attrs={"class": "field__control payment-row__amount", "dir": "ltr", "inputmode": "numeric"}
         ),
         error_messages={"required": "مبلغ الزامی است.", "min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},

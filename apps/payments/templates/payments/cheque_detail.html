@@ -44,12 +44,12 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
         <form method="post" action="{% url 'cheques:bounce' cheque.pk %}"
               onsubmit="return confirm('این چک برگشت بخورد؟');">
           {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">برگشت خورد</button>
+          <button type="submit" class="btn btn--danger">برگشت خورد</button>
         </form>
         <form method="post" action="{% url 'cheques:cancel' cheque.pk %}"
               onsubmit="return confirm('این چک لغو شود؟ این چک هرگز پولی محسوب نشده بود.');">
           {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">لغو چک</button>
+          <button type="submit" class="btn btn--danger">لغو چک</button>
         </form>
       </div>
     </div>

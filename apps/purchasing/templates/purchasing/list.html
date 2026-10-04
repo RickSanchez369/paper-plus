@@ -59,22 +59,21 @@ profit card -- profit is sales-only.
               {% sort_th "تأمین‌کننده" "party" %}
               {% sort_th "مبلغ کل" "total" %}
               <th>وضعیت پرداخت</th>
-              <th>وضعیت سند</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for invoice in invoices %}
-              <tr>
-                <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
+              <tr{% if invoice.status == 'cancelled' %} class="is-void"{% endif %}>
+                <td>
+                  <a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a>
+                  {% if invoice.status != 'confirmed' %}{% status_badge "invoice" invoice.status invoice.get_status_display %}{% endif %}
+                </td>
                 <td class="num">{{ invoice.invoice_date|jalali }}</td>
                 <td>{{ invoice.supplier.name }}</td>
                 <td class="num">{{ invoice.total_amount|toman }}</td>
                 <td>
-                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
-                </td>
-                <td>
-                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
+                  {% if invoice.status == 'cancelled' %}—{% else %}{% status_badge "payment" invoice.payment_status invoice.payment_status.label %}{% endif %}
                 </td>
                 <td>
                   <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>
@@ -88,8 +87,13 @@ profit card -- profit is sales-only.
       {% pager page_obj %}
     {% else %}
       <div class="placeholder">
-        <p>فاکتوری با این فیلترها پیدا نشد.</p>
-        <a href="{% url 'purchasing:new' %}" class="btn">ثبت اولین فاکتور خرید</a>
+        {% if request.GET %}
+          <p>در این بازه یا با این فیلترها فاکتوری پیدا نشد.</p>
+          <a href="{% url 'purchasing:list' %}" class="btn btn--quiet">پاک‌کردن فیلترها</a>
+        {% else %}
+          <p>هنوز فاکتوری ثبت نشده است.</p>
+          <a href="{% url 'purchasing:new' %}" class="btn">ثبت اولین فاکتور خرید</a>
+        {% endif %}
       </div>
     {% endif %}
   </div>

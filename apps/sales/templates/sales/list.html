@@ -61,25 +61,25 @@ answer "how are we doing right now."
               {% sort_th "تاریخ" "date" %}
               {% sort_th "مشتری" "party" %}
               {% sort_th "مبلغ کل" "total" %}
-              <th>وضعیت پرداخت</th>
               <th>سود</th>
-              <th>وضعیت سند</th>
+              <th>وضعیت پرداخت</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for invoice in invoices %}
-              <tr>
-                <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
+              <tr{% if invoice.status == 'cancelled' %} class="is-void"{% endif %}>
+                <td>
+                  <a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a>
+                  {# The document status is only worth a chip when it is not the normal confirmed one. #}
+                  {% if invoice.status != 'confirmed' %}{% status_badge "invoice" invoice.status invoice.get_status_display %}{% endif %}
+                </td>
                 <td class="num">{{ invoice.invoice_date|jalali }}</td>
                 <td>{{ invoice.customer.name }}</td>
                 <td class="num">{{ invoice.total|toman }}</td>
-                <td>
-                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
-                </td>
                 <td class="num">{{ invoice.profit|toman }}</td>
                 <td>
-                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
+                  {% if invoice.status == 'cancelled' %}—{% else %}{% status_badge "payment" invoice.payment_status invoice.payment_status.label %}{% endif %}
                 </td>
                 <td>
                   <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>
@@ -93,8 +93,13 @@ answer "how are we doing right now."
       {% pager page_obj %}
     {% else %}
       <div class="placeholder">
-        <p>فاکتوری با این فیلترها پیدا نشد.</p>
-        <a href="{% url 'sales:new' %}" class="btn">ثبت اولین فاکتور فروش</a>
+        {% if request.GET %}
+          <p>در این بازه یا با این فیلترها فاکتوری پیدا نشد.</p>
+          <a href="{% url 'sales:list' %}" class="btn btn--quiet">پاک‌کردن فیلترها</a>
+        {% else %}
+          <p>هنوز فاکتوری ثبت نشده است.</p>
+          <a href="{% url 'sales:new' %}" class="btn">ثبت اولین فاکتور فروش</a>
+        {% endif %}
       </div>
     {% endif %}
   </div>

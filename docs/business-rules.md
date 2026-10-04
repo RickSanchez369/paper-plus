@@ -141,3 +141,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-081 One product with `pack_per_carton`; everything stored in packs; lines hold cartons + packs; retail = per pack, wholesale = per carton; average price is display-only, FIFO decides cost and profit; sale type is derived.
 - D-082 Purchase freight is part of the total owed to the supplier and is spread over the lines by packs into their landed FIFO cost (`freight_share`).
 - D-083 Data-UI audit fixes: RTL numbers with units, one status-badge map, AA contrast tokens, summary strip, shared pager + sort, search rows, mid-width invoice grid.
+- D-084 Fifty-critic UI audit, batch 1: card gaps and edge tokens, danger/disabled buttons, field error state, ui.js toast + Persian-digit numeric boxes, error pages, invoice-form keyboard flow, inventory search, dashboard attention strip.

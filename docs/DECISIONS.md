@@ -1267,3 +1267,29 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   separators, price, stock grade and a focus state. (7) The invoice line grid gets a mid-width two-row layout (721-1100px).
 - Not done on purpose: no change to money logic; the audit claim that numeric table columns are misaligned was rejected
   (right-aligned cells already stack the units digit).
+
+### D-084: Fifty-critic UI audit, batch 1 (global fixes)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (50 read-only critic agents, one angle each; findings verified, then applied in the browser)
+- Decision: identity and drawer menu (D-065) stay. Applied: (1) stacked `.card`s get a gap, card edge/surface tokens
+  darken one step and `--shadow-sm` is a hairline; form controls use `--control-border` (3:1); stat-card stripe is an inset
+  shadow (no crescent corners). (2) Tabular figures on the whole body (Persian digits are proportional), no letter-spacing
+  on Persian labels, h1 weight 700, nothing below 12px. (3) Buttons: real `:disabled`, `:active`, and `.btn--danger` on every
+  cancel/bounce; focus ring on `--accent-700` (accent-500 only on navy); selected date/preset on `--accent-700`. (4) Fields:
+  `.field--invalid` + `aria-invalid`, alerts have `role=alert`, flash messages are a live region with a side stripe. (5) New
+  `shared/js/ui.js`: failed htmx calls and an expired session show a toast instead of silence or a login card in a dropdown;
+  Persian/Arabic digits typed into numeric boxes become Latin. Numeric boxes are `NumericInput` (`type=text`,
+  `inputmode=numeric`): `type=number` silently dropped Persian digits. (6) Error pages 404/403/CSRF/500 exist, standalone,
+  Persian. (7) Invoice form: product search picks with Enter, focus moves to cartons then back to the next row's search,
+  editing the name after a pick clears the stale product, results close on Esc/outside click, double submit is blocked,
+  confirm bar is sticky, live totals use the same thousands separator as the server. (8) Date picker reopens on click and
+  ArrowDown, flips above the input when low, bigger cells on touch. (9) `_STATUS_TONES["invoice"]` was keyed `active`
+  (a dead key; real values are draft/confirmed/cancelled): fixed. Lists show the document status only when it is not
+  confirmed, a cancelled row is dimmed with no payment badge, and an empty filtered list offers "clear filters" instead of
+  "register your first invoice". (10) Inventory list: search (`q`), in-stock filter, out-of-stock count and badge, name and
+  code on two lines. (11) Dashboard: an attention strip for overdue/incomplete first, month figure leads each tile with
+  today beneath, net profit tile is primary and red on loss, tiles that are links are whole-tile links, dues card retitled.
+- Not done on purpose (needs Sina): desktop permanent sidebar (contradicts D-065); merging the customer and date cards on
+  the sale form; one anatomy for all detail pages; a keyboard-navigable calendar; thousands separators inside inputs;
+  required-field markers; admin theming.
