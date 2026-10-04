@@ -43,6 +43,10 @@ stricter -- blocked once any of this purchase's stock has been sold).
   </div>
 </div>
 
+{% if invoice.status != "cancelled" %}
+  {% include "shared/_invoice_summary.html" with total=invoice.total_amount paid=invoice.paid_amount outstanding=invoice.outstanding payment_status=invoice.payment_status %}
+{% endif %}
+
 <div class="card">
   <div class="card__body">
     <h2>اقلام فاکتور</h2>

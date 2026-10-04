@@ -1540,3 +1540,39 @@ summary:focus-visible,
   font-weight: 600;
   margin-bottom: var(--space-2);
 }
+
+/* ------------------------------------------------- invoice summary strip */
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.summary-strip__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+}
+
+.summary-strip__label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.summary-strip__value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.summary-strip__item--owed { border-color: var(--negative-700); }
+.summary-strip__item--owed .summary-strip__value { color: var(--negative-700); }
+.summary-strip__item--settled .summary-strip__value { color: var(--positive-700); }
+
+@media (max-width: 720px) {
+  .summary-strip { grid-template-columns: repeat(2, 1fr); }
+}
