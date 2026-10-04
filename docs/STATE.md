@@ -67,6 +67,8 @@ cartons + packs row with stock left, over-stock block, freight tick, detail page
 (see `deploy/UPDATING.md`); until then carton-counted products read wrongly. Not changed on purpose: purchase invoices
 still offer no card-reader option (a card reader only receives money, D-069).
 
+**Batch 2026-10-04 UI audit (D-083):** ten read-only agents audited the data-dense UI; accepted fixes are in: RTL numbers with units, one `status_badge`/`flag_badge` map, AA contrast tokens + focus ring, invoice summary strip, shared pager + column sort on the growing lists, two-level product search rows, mid-width invoice line layout. Checked: `qa_02..08`, `qa_14`, `qa_19`, `qa_21` pass; browser-checked at 768/1024/1440 on `paper-plus-qa`. Not done: dues boards, bank cards and fixed costs stay unpaged; `--ink-400` 11px sidebar label and input focus ring contrast not touched; Python/template changes need a restart of the `--noreload` QA server.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
