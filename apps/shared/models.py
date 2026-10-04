@@ -55,6 +55,8 @@ class AuditLog(BaseModel):
         CANCEL_CHEQUE = "cancel_cheque", "لغو چک"
         REVERSE_PAYMENT = "reverse_payment", "برگشت پرداخت بابت لغو فاکتور"
         APPLY_CREDIT = "apply_credit", "کسر بستانکاری از فاکتور"
+        SALES_RETURN = "sales_return", "ثبت مرجوعی فروش"
+        PURCHASE_RETURN = "purchase_return", "ثبت مرجوعی خرید"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
         PAY_EXPENSE = "pay_expense", "پرداخت هزینه"
@@ -117,6 +119,8 @@ class DocumentSequence(BaseModel):
     class DocType(models.TextChoices):
         SALE = "sale", "فاکتور فروش"
         PURCHASE = "purchase", "فاکتور خرید"
+        SALES_RETURN = "sales_return", "مرجوعی فروش"
+        PURCHASE_RETURN = "purchase_return", "مرجوعی خرید"
 
     doc_type = models.CharField(
         max_length=20,

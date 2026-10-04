@@ -32,6 +32,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
     </div>
     <div class="sale-detail__actions">
       {% status_badge "invoice" invoice.status invoice.get_status_display %}
+      {% if invoice.status == "confirmed" %}<a href="{% url 'returns:purchase_new' invoice.pk %}" class="btn btn--quiet">ثبت مرجوعی</a>{% endif %}
       <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ فاکتور</a>
       {% if can_cancel %}
         <form method="post" action="{% url 'purchasing:cancel' invoice.pk %}"
@@ -49,7 +50,21 @@ stricter -- blocked once any of this purchase's stock has been sold).
 {% endif %}
 
 <div class="card">
+  {% if invoice.returns.all %}
+{# D-089: goods and money that came back on this invoice. #}
+<div class="card">
   <div class="card__body">
+    <h2>مرجوعی‌های این فاکتور</h2>
+    <ul class="ret-list">
+      {% for doc in invoice.returns.all %}
+        <li><a href="{% url 'returns:purchase_detail' doc.pk %}">مرجوعی {{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span> {% include "returns/_settle_chips.html" with purchase=True %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="card__body">
     <h2>اقلام فاکتور</h2>
     <div class="table-card"><table class="data-table">
       <thead>
@@ -117,6 +132,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
               <td>
                 {% if allocation.payment.cheque %}چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}
                 {% elif allocation.payment.bank_account %}{{ allocation.payment.bank_account.name }}
+                {% elif allocation.payment.is_credit_note %}{{ allocation.payment.note }}
                 {% else %}نقدی{% endif %}
                 {% if allocation.reversal_payment %}
                   <span class="badge badge--bad">برگشت داده شد {{ allocation.reversal_payment.payment_date|jalali }}</span>

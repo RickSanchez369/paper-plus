@@ -241,7 +241,7 @@ each row touched and a link back to its source invoice; and a
               </td>
               <td data-label="فاکتور">
                 {% if row.invoice %}
-                  {% if row.movement.movement_type == 'purchase' %}
+                  {% if row.movement.movement_type == 'purchase' or row.movement.movement_type == 'purchase_return' %}
                     <a href="{% url 'purchasing:detail' row.invoice.pk %}">{{ row.invoice.invoice_number|fa_digits|default:"(تأیید نشده)" }}</a>
                   {% else %}
                     <a href="{% url 'sales:detail' row.invoice.pk %}">{{ row.invoice.invoice_number|fa_digits|default:"(تأیید نشده)" }}</a>

@@ -1,0 +1,4 @@
+{% load paper %}{# How a return's money was settled (D-089); context: doc, purchase (bool) or kind. #}
+{% if doc.applied_amount %}<span class="badge badge--good">کسر از فاکتور <span class="num">{{ doc.applied_amount|toman }}</span></span>{% endif %}
+{% if doc.refund_amount %}<span class="badge badge--pending">برگشت وجه <span class="num">{{ doc.refund_amount|toman }}</span></span>{% endif %}
+{% if doc.credit_amount %}<span class="badge badge--info">{% if purchase or kind == 'purchase' %}پیش‌پرداخت{% else %}بستانکاری{% endif %} <span class="num">{{ doc.credit_amount|toman }}</span></span>{% endif %}

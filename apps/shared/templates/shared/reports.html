@@ -96,6 +96,15 @@ this range alone.
       <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
+  {% if cards.sales_returns.value or cards.purchase_returns.value %}
+  {# D-089: returns are shown beside sales/purchases, booked on their own date. #}
+  <div class="stat-card">
+    <span class="stat-card__label">مرجوعی‌ها</span>
+    <span class="stat-card__value num">{{ cards.sales_returns.value|toman_split }}</span>
+    <span class="field__hint">مرجوعی فروش · سود برگشتی <span class="num">{{ cards.returns_profit.value|toman }}</span>{% if cards.purchase_returns.value %} · مرجوعی خرید <span class="num">{{ cards.purchase_returns.value|toman }}</span>{% endif %}</span>
+    <a class="stat-card__more no-print" href="{% url 'returns:list' %}">دیدن مرجوعی‌ها ‹</a>
+  </div>
+  {% endif %}
   {% usd_rate_card %}
 </div>
 

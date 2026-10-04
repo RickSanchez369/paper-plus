@@ -236,7 +236,8 @@ def scenarios(h):
     from apps.shared import reports
     s0, s1 = datetime.date.today() - datetime.timedelta(days=400), datetime.date.today() + datetime.timedelta(days=400)
     cards = reports.summary_cards(s0, s1)
-    check("Z18 report: net = gross − expenses", cards["net_profit"]["value"] == cards["gross_profit"]["value"] - cards["expenses"]["value"])
+    check("Z18 report: net = gross − returns profit − expenses (D-089)", cards["net_profit"]["value"] ==
+          cards["gross_profit"]["value"] - cards["returns_profit"]["value"] - cards["expenses"]["value"])
     check("Z18 report: product rows add up to the cards", sum(r["amount"] for r in reports.sales_by_product(s0, s1)) == cards["sales"]["value"])
     check("Z19 receivables total = Σ customers' outstanding (all customers)", get_total_receivables_as_of(datetime.date.today()) == sum(get_customer_outstanding(c) for c in Customer.objects.all()))
     for url in ("/", "/reports/", "/receivables/", "/payables/", "/cheques/", "/bank-accounts/", "/inventory/", "/sales/", "/purchasing/", "/expenses/", "/user-activity/"):

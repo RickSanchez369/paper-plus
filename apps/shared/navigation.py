@@ -50,6 +50,7 @@ NAVIGATION = (
     NavGroup(label="فروش", icon="sale", url_name="sales:list", prefix="sales"),
     NavGroup(label="خرید", icon="purchase", url_name="purchasing:list", prefix="purchasing"),
     NavGroup(label="انبار", icon="inventory", url_name="inventory:list", prefix="inventory"),
+    NavGroup(label="مرجوعی", icon="return", url_name="returns:list", prefix="returns"),
     NavGroup(
         label="مطالبات و بدهی",
         icon="ledger",

@@ -108,9 +108,10 @@ def record_payment(payment, user):
     # otherwise surface as a raw IntegrityError.
     if payment.customer_id and payment.supplier_id:
         raise ValidationError("یک پرداخت نمی‌تواند هم‌زمان مشتری و تأمین‌کننده داشته باشد.")
-    if payment.customer_id and payment.direction != Payment.Direction.IN:
+    # A refund (D-055, D-089 returns) runs against the party's usual direction on purpose.
+    if payment.customer_id and payment.direction != Payment.Direction.IN and not payment.is_reversal:
         raise ValidationError("فقط دریافتی می‌تواند به مشتری نسبت داده شود.")
-    if payment.supplier_id and payment.direction != Payment.Direction.OUT:
+    if payment.supplier_id and payment.direction != Payment.Direction.OUT and not payment.is_reversal:
         raise ValidationError("فقط پرداختی می‌تواند به تأمین‌کننده نسبت داده شود.")
     payment.created_by = user
     payment.save()

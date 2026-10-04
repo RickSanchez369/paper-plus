@@ -74,7 +74,9 @@ def settlement_rows(invoice):
     for allocation in allocations:
         payment = allocation.payment
         cheque = getattr(payment, "cheque", None)
-        if cheque is not None:
+        if payment.is_credit_note:  # value of goods brought back (D-089)
+            label, detail = "مرجوعی", payment.note.rsplit(" ", 1)[-1]
+        elif cheque is not None:
             label, detail = "چک", " · ".join(x for x in (cheque.cheque_number, cheque.bank_name) if x)
         elif invoice.confirmed_at and payment.created_at < invoice.confirmed_at:
             label, detail = "از بستانکاری قبلی", ""

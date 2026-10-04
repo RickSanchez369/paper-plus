@@ -1377,3 +1377,30 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   `COMPANY_TELEGRAM`, `COMPANY_WHATSAPP`, `COMPANY_TERMS` ("|"-separated lines).
 - The USD rate (D-080) stays frozen on every invoice and visible on the sales and purchase detail pages, but is no longer
   printed on either invoice: it is for the owner, not the customer.
+
+### D-089: Sales and purchase returns
+- Status: Final (ROADMAP 4.6, out of scope since 2026-09-24, brought in by Sina)
+- Date: 2026-10-04
+- Decided by: Sina (returns linked to an invoice, money first off the invoice, the rest refunded or kept as credit, chosen
+  on each return)
+- Decision: new app `apps.returns` with `SalesReturn`/`SalesReturnItem` and `PurchaseReturn`/`PurchaseReturnItem`, written
+  only by `record_sales_return` / `record_purchase_return` (one transaction each) and never edited. A return is started from
+  a confirmed invoice («ثبت مرجوعی»); each line can give back at most what that line sold/bought minus earlier returns
+  (cartons + packs typed, stored in packs). Numbers: own yearly series per kind (`1405/0001`, `DocumentSequence` types
+  `sales_return` / `purchase_return`). Menu item «مرجوعی» lists both kinds in two tabs.
+- Value: a line's share of what it really brought in (sales: net of the invoice discount, D-048; purchases: the goods price,
+  freight is not refunded), taken on the running total so returning a line in pieces adds up to exactly the whole line.
+- Stock (FIFO stays exact, D-036): a sales return puts the packs back as a NEW layer (source `sales_return`) at that line's
+  own FIFO cost per pack; a purchase return draws that purchase line's own layer down with a consumption row (so only what
+  is still on the shelf from that purchase can go back). Movements `sales_return` (in) / `purchase_return` (out). The
+  original invoice, its consumptions and its profit are never touched (D-014).
+- Money: the value first comes off what is still open on the invoice outside pending cheques (a pending cheque's part stays
+  open so the cheque can still clear) through a credit-note `Payment` (`is_credit_note`, no bank account, allocated to the
+  invoice; kept out of statements, the return itself is the statement line). The surplus is either refunded through a
+  current account (a reversal payment; a card reader never pays out, D-069) or left as the party's credit (the unallocated
+  rest of the credit note), which D-087 then shows everywhere and uses on the next invoice.
+- Reports: returns are booked on their own date and shown beside sales/purchases, not netted into them: «مرجوعی‌ها» card,
+  and net profit = gross profit - profit given back by sales returns (value - cost back on the shelf) - expenses.
+- An invoice with a return can no longer be cancelled (the return already moved part of its goods and money).
+- Schema: `returns.0001`, `inventory.0007/0008` (layer source + `sales_return_item`, nullable `sale_item` + `purchase_return_item`
+  on consumptions, new movement types and constraints), `payments.0013` (`is_credit_note` + check), `shared.0021`.

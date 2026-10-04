@@ -25,12 +25,15 @@ class InventoryMovement(BaseModel):
         SALE = "sale", "فروش"
         ADJUSTMENT_IN = "adjustment_in", "برگشت لغو فاکتور - افزایش"  # cancel_sale only (D-044)
         ADJUSTMENT_OUT = "adjustment_out", "برگشت لغو فاکتور - کاهش"  # cancel_purchase only (D-044)
+        SALES_RETURN = "sales_return", "مرجوعی فروش"          # D-089: back in, on the sold line
+        PURCHASE_RETURN = "purchase_return", "مرجوعی خرید"     # D-089: back out, on the bought line
 
     # movement types that increase stock; everything else decreases it
     INFLOW_TYPES = (
         MovementType.OPENING,
         MovementType.PURCHASE,
         MovementType.ADJUSTMENT_IN,
+        MovementType.SALES_RETURN,
     )
 
     product = models.ForeignKey(
@@ -109,8 +112,8 @@ class InventoryMovement(BaseModel):
                 # Each row's item reference must match its own movement_type;
                 # opening/adjustment rows carry neither (R 13, ROADMAP 2.9).
                 condition=(
-                    models.Q(movement_type="purchase", purchase_item__isnull=False, sale_item__isnull=True)
-                    | models.Q(movement_type="sale", sale_item__isnull=False, purchase_item__isnull=True)
+                    models.Q(movement_type__in=["purchase", "purchase_return"], purchase_item__isnull=False, sale_item__isnull=True)
+                    | models.Q(movement_type__in=["sale", "sales_return"], sale_item__isnull=False, purchase_item__isnull=True)
                     | models.Q(
                         movement_type__in=["opening", "adjustment_in", "adjustment_out"],
                         purchase_item__isnull=True,
@@ -153,6 +156,7 @@ class InventoryLayer(BaseModel):
     class Source(models.TextChoices):
         OPENING = "opening_stock", "موجودی اولیه"
         PURCHASE = "purchase_item", "قلم فاکتور خرید"
+        SALES_RETURN = "sales_return", "مرجوعی فروش"  # goods a customer brought back (D-089)
 
     product = models.ForeignKey(
         Product,
@@ -172,6 +176,14 @@ class InventoryLayer(BaseModel):
         blank=True,  # null for an opening-stock layer; see the CHECK below
         related_name="layer",
         verbose_name="ردیف فاکتور خرید",
+    )
+    sales_return_item = models.OneToOneField(
+        "returns.SalesReturnItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # only for goods that came back on a sales return (D-089)
+        related_name="layer",
+        verbose_name="ردیف مرجوعی فروش",
     )
     quantity = models.PositiveIntegerField(
         verbose_name="مقدار اولیه",  # never changes; the cancellation guard compares against it
@@ -223,8 +235,9 @@ class InventoryLayer(BaseModel):
                 # InventoryMovement's own item-reference CHECK. An opening-stock
                 # layer has no invoice line to point at.
                 condition=(
-                    models.Q(source="purchase_item", purchase_item__isnull=False)
-                    | models.Q(source="opening_stock", purchase_item__isnull=True)
+                    models.Q(source="purchase_item", purchase_item__isnull=False, sales_return_item__isnull=True)
+                    | models.Q(source="opening_stock", purchase_item__isnull=True, sales_return_item__isnull=True)
+                    | models.Q(source="sales_return", purchase_item__isnull=True, sales_return_item__isnull=False)
                 ),
                 name="inventory_layer_source_matches_item",
             ),
@@ -246,9 +259,9 @@ class InventoryLayer(BaseModel):
 
 class InventoryConsumption(BaseModel):
     """
-    Exactly how much of one layer one sale item took (D-036). A sale is the
-    only thing that draws FIFO layers down -- the manual adjustment_out
-    that once did too is gone (D-044).
+    Exactly how much of one layer one sale item took (D-036). A sale, and
+    since D-089 a purchase return, are the only things that draw FIFO layers
+    down -- the manual adjustment_out that once did too is gone (D-044).
 
     Append-only, like every other ledger here (D-012): a cancellation does
     not delete or edit these rows, it adds an opposite one with a negative
@@ -261,8 +274,18 @@ class InventoryConsumption(BaseModel):
     sale_item = models.ForeignKey(
         "sales.SaleItem",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,  # null only for goods sent back to a supplier (D-089)
         related_name="consumptions",
         verbose_name="ردیف فاکتور فروش",
+    )
+    purchase_return_item = models.ForeignKey(
+        "returns.PurchaseReturnItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consumptions",
+        verbose_name="ردیف مرجوعی خرید",
     )
     layer = models.ForeignKey(
         InventoryLayer,
@@ -298,6 +321,14 @@ class InventoryConsumption(BaseModel):
                 # the direction, exactly like InventoryMovement (D-012).
                 condition=~models.Q(quantity=0),
                 name="inventory_consumption_quantity_not_zero",
+            ),
+            models.CheckConstraint(
+                # A layer is drawn down by a sale, or by a purchase return (D-089): exactly one.
+                condition=(
+                    models.Q(sale_item__isnull=False, purchase_return_item__isnull=True)
+                    | models.Q(sale_item__isnull=True, purchase_return_item__isnull=False)
+                ),
+                name="inventory_consumption_exactly_one_source",
             ),
         ]
 

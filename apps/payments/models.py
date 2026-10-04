@@ -134,6 +134,12 @@ class Payment(BaseModel):
         verbose_name="برگشت پرداخت",
         help_text="پولی که بابت لغو یک فاکتور به مشتری/تأمین‌کننده برگشت داده شده است (D-055).",
     )
+    # D-089: the value of a return set against the party's account, not money that
+    # moved -- so no bank account, and kept out of statements (the return itself is listed).
+    is_credit_note = models.BooleanField(
+        default=False,
+        verbose_name="سند اعتبار مرجوعی",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -165,6 +171,12 @@ class Payment(BaseModel):
                     | models.Q(is_reversal=True, supplier__isnull=True)
                 ),
                 name="payment_party_matches_direction",
+            ),
+            models.CheckConstraint(
+                # A credit note moves no money (D-089): never a bank account, never a refund.
+                condition=models.Q(is_credit_note=False)
+                | models.Q(is_credit_note=True, bank_account__isnull=True, is_reversal=False),
+                name="payment_credit_note_moves_no_money",
             ),
         ]
 

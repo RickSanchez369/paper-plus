@@ -114,6 +114,11 @@ def _profit_bridge(cards):
         {"label": "− بهای تمام‌شدهٔ کالاهای فروخته‌شده", "note": "قیمت خرید همان کالا، قدیمی‌ترین موجودی اول (FIFO)",
          "value": cogs, "kind": "minus", "offset": pct(sales - cogs) if sales >= cogs else 0, "width": pct(cogs)},
         {"label": "= سود ناخالص", "value": gross, "kind": "sub", "offset": 0, "width": pct(gross)},
+    ] + ([
+        # D-089: profit the period's sales returns took back (their value minus the cost back on the shelf).
+        {"label": "− سود برگشتی مرجوعی‌ها", "note": "مبلغ مرجوعی فروش منهای بهای کالای برگشته به انبار",
+         "value": cards["returns_profit"]["value"], "kind": "minus", "offset": 0, "width": pct(cards["returns_profit"]["value"])},
+    ] if cards["returns_profit"]["value"] else []) + [
         {"label": "− هزینه‌ها", "value": expenses, "kind": "minus", "link": "expenses",
          "offset": pct(gross - expenses) if gross >= expenses else 0, "width": pct(expenses)},
         {"label": "= سود خالص", "value": net, "kind": "loss" if net < 0 else "result", "offset": 0, "width": pct(net)},

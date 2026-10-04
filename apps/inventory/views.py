@@ -278,4 +278,12 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         elif movement.movement_type == InventoryMovement.MovementType.SALE:
             layers = [c.layer for c in movement.sale_item.consumptions.all()]
             invoice = movement.sale_item.invoice
+        elif movement.movement_type == InventoryMovement.MovementType.SALES_RETURN:
+            # D-089: the returned packs came back as their own layer.
+            layers = [movement.layer] if movement.layer_id else []
+            invoice = movement.sale_item.invoice
+        elif movement.movement_type == InventoryMovement.MovementType.PURCHASE_RETURN:
+            layer = getattr(movement.purchase_item, "layer", None)
+            layers = [layer] if layer else []
+            invoice = movement.purchase_item.invoice
         return {"movement": movement, "layers": layers, "invoice": invoice}

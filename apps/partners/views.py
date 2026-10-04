@@ -23,6 +23,7 @@ from django.views.generic import DetailView, TemplateView
 from apps.payments.forms import RecordPaymentForm
 from apps.payments.models import Payment
 from apps.payments.selectors import get_customer_outstanding, get_open_invoices, get_party_credit
+from apps.returns.models import SalesReturn
 from apps.sales.models import SalesInvoice
 from apps.shared.listing import paginate, sort_rows
 
@@ -177,17 +178,23 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             .order_by("-invoice_date")
         )
         confirmed = [i for i in invoices if i.status == SalesInvoice.Status.CONFIRMED]
+        # A return's credit note is bookkeeping, not money (D-089): the return itself is the statement line.
         payments = list(
-            Payment.objects.filter(customer=customer)
+            Payment.objects.filter(customer=customer, is_credit_note=False)
             .select_related("bank_account")
             .order_by("-payment_date", "-created_at")
         )
+        returns = list(SalesReturn.objects.filter(invoice__customer=customer).select_related("invoice"))
         cheques = customer.cheques.order_by("-created_at")
 
         ledger = sorted(
             [
                 {"date": i.invoice_date, "kind": "debit", "label": f"فاکتور {i.invoice_number or '(تأیید نشده)'}", "amount": i.total, "url": reverse("sales:detail", args=[i.pk])}
                 for i in confirmed
+            ] + [
+                {"date": r.return_date, "kind": "credit", "label": f"مرجوعی فروش {r.return_number} (فاکتور {r.invoice.invoice_number})",
+                 "amount": r.total_amount, "url": reverse("returns:sales_detail", args=[r.pk])}
+                for r in returns
             ] + [
                 {
                     "date": p.payment_date,
@@ -200,6 +207,7 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
                 }
                 for p in payments
             ],
+            # Same day: invoices, then returns, then money (a return's refund follows the return).
             key=lambda row: row["date"],
         )
         balance = 0

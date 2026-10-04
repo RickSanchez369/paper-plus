@@ -271,6 +271,11 @@ def cancel_purchase(invoice, user):
     if not is_privileged(user):
         raise ValidationError("فقط ابرکاربر می‌تواند فاکتور را لغو کند.")
 
+    # A return already moved part of this invoice's goods and money (D-089); undoing
+    # the whole invoice on top of it would count those twice.
+    if locked_invoice.returns.exists():
+        raise ValidationError("این فاکتور مرجوعی دارد و قابل لغو نیست.")
+
     items = list(locked_invoice.items.select_related("product").all())
 
     # FIFO integrity guard, stricter than a sale's cancel rule: this stock
