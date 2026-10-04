@@ -1,0 +1,470 @@
+/*
+ * The printed sales invoice sheet (sales/print.html, D-088): one A4 page in the
+ * brand colours -- light green, navy, white -- with a black-and-white variant
+ * (.inv--mono) for printers without colour or to save ink. Loaded after app.css
+ * (font) and print_invoice.css (toolbar, notes, @page). Everything is scoped to
+ * .inv so nothing here leaks into the app.
+ */
+
+.inv {
+  --inv-navy: #13264f;
+  --inv-navy-soft: #2b3f6e;
+  --inv-green: #8cc152;
+  --inv-green-pale: #eaf5dc;
+  --inv-green-mid: #cfe8b0;
+  --inv-ink: #1a2333;
+  --inv-muted: #5b6577;
+  --inv-paper: #ffffff;
+  --inv-row-gap: 1.6mm;
+  --inv-row-pad: 2.1mm;
+
+  position: relative;
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto;
+  padding: 12mm 13mm 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--inv-paper);
+  color: var(--inv-ink);
+  font-family: var(--font);
+  font-size: 10pt;
+  line-height: 1.7;
+  box-shadow: var(--shadow-md);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.inv *,
+.inv *::before,
+.inv *::after {
+  box-sizing: border-box;
+}
+
+.inv .num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- decoration */
+.inv__blobs {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;          /* the left side in RTL, behind the brand */
+  width: 120mm;
+  height: 62mm;
+  fill: var(--inv-green-pale);
+  transform: scaleX(-1);
+  z-index: 0;
+}
+
+.inv__dot {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--inv-green-mid);
+  z-index: 0;
+}
+
+.inv__dot--a { width: 15mm; height: 13mm; inset-block-start: 15mm; inset-inline-start: 82mm; }
+.inv__dot--b { width: 7mm; height: 6mm; inset-block-start: 31mm; inset-inline-start: 97mm; }
+
+.inv > *:not(.inv__blobs):not(.inv__dot):not(.inv__watermark) {
+  position: relative;
+  z-index: 1;
+}
+
+.inv__watermark {
+  z-index: 3;
+}
+
+/* ---- head */
+.inv__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8mm;
+  min-height: 30mm;
+}
+
+.inv__title {
+  margin: 0;
+  font-size: 27pt;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--inv-navy);
+}
+
+.inv__subtitle {
+  margin: 1mm 0 0;
+  font-size: 10pt;
+  color: var(--inv-muted);
+}
+
+.inv__brand {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+}
+
+.inv__brand-name {
+  font-size: 21pt;
+  font-weight: 800;
+  color: var(--inv-navy);
+  white-space: nowrap;
+}
+
+.inv__logo {
+  width: 17mm;
+  height: 17mm;
+}
+
+.inv__logo-back { fill: var(--inv-green-mid); }
+.inv__logo-sheet { fill: var(--inv-paper); stroke: var(--inv-navy); stroke-width: 2.4; }
+.inv__logo-fold { fill: var(--inv-green-pale); stroke: var(--inv-navy); stroke-width: 2.4; stroke-linejoin: round; }
+.inv__logo-line { fill: none; stroke: var(--inv-navy); stroke-width: 2.4; stroke-linecap: round; }
+.inv__logo-plus-bg { fill: var(--inv-green); }
+.inv__logo-plus { fill: none; stroke: var(--inv-paper); stroke-width: 3; stroke-linecap: round; }
+
+/* ---- invoice details and buyer */
+.inv__info {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 6mm;
+  margin: 4mm 0 5mm;
+}
+
+.inv__meta,
+.inv__buyer {
+  display: grid;
+  gap: 1mm 4mm;
+  margin: 0;
+  align-content: start;
+}
+
+.inv__buyer {
+  grid-template-columns: 1fr 1fr;
+}
+
+.inv__meta div,
+.inv__buyer div {
+  display: flex;
+  gap: 2mm;
+  align-items: baseline;
+}
+
+.inv__wide {
+  grid-column: 1 / -1;
+}
+
+.inv dt {
+  font-weight: 700;
+  color: var(--inv-navy);
+  white-space: nowrap;
+}
+
+.inv dt::after {
+  content: ":";
+}
+
+.inv dd {
+  margin: 0;
+}
+
+/* ---- lines: a navy pill header and pale green pill rows */
+.inv__lines {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 var(--inv-row-gap);
+  margin-block: -1mm 2mm;
+}
+
+.inv__lines th {
+  padding: 2.4mm 3mm;
+  background: var(--inv-navy);
+  color: var(--inv-paper);
+  font-size: 10.5pt;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 1.2mm 0 var(--inv-green);
+}
+
+.inv__lines th:first-child { border-start-start-radius: 6mm; border-end-start-radius: 6mm; }
+.inv__lines th:last-child { border-start-end-radius: 6mm; border-end-end-radius: 6mm; }
+
+.inv__lines td {
+  padding: var(--inv-row-pad) 3mm;
+  background: var(--inv-green-pale);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.inv__lines td:first-child { border-start-start-radius: 5mm; border-end-start-radius: 5mm; }
+.inv__lines td:last-child { border-start-end-radius: 5mm; border-end-end-radius: 5mm; }
+
+.inv__lines .inv__c-name { text-align: start; font-weight: 600; }
+.inv__lines .inv__c-row { width: 11mm; }
+.inv__lines .inv__c-sum { font-weight: 700; }
+
+.inv__lines tr { break-inside: avoid; }
+
+/* Long invoices: tighter rows and type, so the page stays one sheet. */
+.inv--compact { --inv-row-gap: 0.9mm; --inv-row-pad: 1.2mm; }
+.inv--compact .inv__lines td { font-size: 9pt; line-height: 1.45; }
+.inv--dense { --inv-row-gap: 0.4mm; --inv-row-pad: 0.4mm; }
+.inv--dense .inv__lines td { font-size: 8pt; line-height: 1.3; }
+.inv--dense .inv__head { min-height: 17mm; }
+.inv--dense .inv__title { font-size: 20pt; }
+.inv--dense .inv__brand-name { font-size: 17pt; }
+.inv--dense .inv__logo { width: 13mm; height: 13mm; }
+.inv--dense .inv__info { margin: 2mm 0 3mm; font-size: 9pt; line-height: 1.5; }
+.inv--dense .inv__lines th { padding-block: 1.6mm; }
+.inv--dense .inv__middle { font-size: 9pt; }
+.inv--dense .inv__totals div { font-size: 9.5pt; }
+.inv--dense .inv__totals .inv__grand { font-size: 11.5pt; padding-block: 1.4mm; }
+.inv--dense .inv__words { font-size: 8pt; }
+.inv--dense .inv__terms { line-height: 1.45; }
+.inv--dense .inv__bottom { padding-top: 2mm; }
+.inv--dense .inv__sign-box { height: 13mm; }
+.inv--dense .inv__thanks { margin: 2mm 0; font-size: 13pt; }
+.inv--dense .inv__foot { padding-block: 2.5mm 3mm; }
+/* Very long invoices (> 30 lines): the smallest legible rows. */
+.inv--tiny .inv__lines td { font-size: var(--inv-line-font, 7pt); line-height: 1.2; }
+.inv--tiny { --inv-row-gap: 0.2mm; --inv-row-pad: 0.2mm; }
+
+/* ---- payment, terms, totals */
+.inv__middle {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 7mm;
+  margin-top: 1mm;
+}
+
+.inv__h {
+  margin: 0 0 1mm;
+  font-size: 11pt;
+  font-weight: 800;
+  color: var(--inv-navy);
+}
+
+.inv__h + * {
+  margin-bottom: 3mm;
+}
+
+.inv__pay {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.8pt;
+}
+
+.inv__pay td {
+  padding: 0.6mm 1.5mm;
+  border-bottom: 0.25mm dashed var(--inv-green-mid);
+}
+
+.inv__pay td:nth-child(2) { text-align: end; font-weight: 700; white-space: nowrap; }
+.inv__pay td:nth-child(3) { color: var(--inv-muted); white-space: nowrap; }
+
+.inv__terms {
+  margin: 0;
+  padding-inline-start: 5mm;
+  font-size: 8pt;
+  line-height: 1.65;
+  color: var(--inv-muted);
+}
+
+.inv__small {
+  margin: 0 0 2mm;
+  font-size: 8.5pt;
+  color: var(--inv-muted);
+}
+
+.inv__totals {
+  margin: 0;
+  display: grid;
+  gap: 1mm;
+}
+
+.inv__totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+  font-size: 10.5pt;
+}
+
+.inv__totals dt { font-weight: 700; }
+
+.inv__totals .inv__grand {
+  margin-block: 1mm;
+  padding: 2mm 3mm;
+  border-radius: 4mm;
+  background: var(--inv-navy);
+  color: var(--inv-paper);
+  font-size: 13pt;
+  font-weight: 800;
+}
+
+.inv__totals .inv__grand dt { color: var(--inv-paper); }
+.inv__totals .inv__grand small { font-size: 8.5pt; font-weight: 500; }
+
+.inv__words {
+  margin: 2mm 0 0;
+  padding: 1.5mm 3mm;
+  border-inline-start: 1mm solid var(--inv-green);
+  background: var(--inv-green-pale);
+  font-size: 9pt;
+}
+
+/* ---- signatures and thanks: pushed to the bottom of the sheet */
+.inv__bottom {
+  margin-top: auto;
+  padding-top: 4mm;
+}
+
+.inv__signs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10mm;
+}
+
+.inv__sign span {
+  display: block;
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--inv-navy);
+  text-align: center;
+}
+
+.inv__sign-box {
+  height: 19mm;
+  margin-top: 1mm;
+  border: 0.3mm dashed var(--inv-navy-soft);
+  border-radius: 3mm;
+}
+
+.inv__thanks {
+  margin: 4mm 0 3mm;
+  text-align: center;
+  font-size: 17pt;
+  font-weight: 900;
+  color: var(--inv-navy);
+}
+
+.inv__thanks::before,
+.inv__thanks::after {
+  content: "";
+  display: inline-block;
+  width: 10mm;
+  height: 1mm;
+  margin-inline: 3mm;
+  vertical-align: middle;
+  border-radius: 1mm;
+  background: var(--inv-green);
+}
+
+.inv__footnote {
+  margin: 0 0 2mm;
+  text-align: center;
+  font-size: 8pt;
+  color: var(--inv-muted);
+}
+
+/* ---- footer band */
+.inv__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4mm;
+  margin: 0 -13mm;
+  padding: 4mm 13mm 5mm;
+  border-start-start-radius: 9mm;
+  border-start-end-radius: 9mm;
+  background: var(--inv-navy);
+  color: var(--inv-paper);
+  font-size: 9.5pt;
+}
+
+.inv__contacts,
+.inv__social {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2mm 5mm;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inv__contacts li,
+.inv__social li {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+}
+
+.inv__contacts small { opacity: 0.85; }
+
+.inv__address { flex-basis: 100%; font-size: 8.5pt; opacity: 0.9; }
+
+.inv__icon {
+  width: 7mm;
+  height: 7mm;
+  padding: 1.3mm;
+  border-radius: 50%;
+  background: var(--inv-paper);
+  fill: none;
+  stroke: var(--inv-navy);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* ---- black and white */
+.inv--mono {
+  --inv-navy: #000000;
+  --inv-navy-soft: #444444;
+  --inv-green: #000000;
+  --inv-green-pale: #ffffff;
+  --inv-green-mid: #bdbdbd;
+  --inv-ink: #000000;
+  --inv-muted: #333333;
+}
+
+.inv--mono .inv__blobs,
+.inv--mono .inv__dot { display: none; }
+
+.inv--mono .inv__lines th { background: #ffffff; color: #000000; border-block: 0.4mm solid #000000; box-shadow: none; }
+.inv--mono .inv__lines th:first-child { border-inline-start: 0.4mm solid #000000; }
+.inv--mono .inv__lines th:last-child { border-inline-end: 0.4mm solid #000000; }
+.inv--mono .inv__lines td { border-block: 0.25mm solid #9e9e9e; }
+.inv--mono .inv__lines td:first-child { border-inline-start: 0.25mm solid #9e9e9e; }
+.inv--mono .inv__lines td:last-child { border-inline-end: 0.25mm solid #9e9e9e; }
+.inv--mono .inv__totals .inv__grand { background: #ffffff; color: #000000; border: 0.5mm solid #000000; }
+.inv--mono .inv__totals .inv__grand dt { color: #000000; }
+.inv--mono .inv__words { border-inline-start-color: #000000; }
+.inv--mono .inv__foot { background: #ffffff; color: #000000; border-top: 0.5mm solid #000000; }
+.inv--mono .inv__icon { border: 0.3mm solid #000000; }
+.inv--mono .inv__logo-back { fill: #e0e0e0; }
+.inv--mono .inv__logo-plus-bg { fill: #000000; }
+.inv--mono .inv__logo-fold { fill: #ffffff; }
+
+.inv-mono-switch {
+  margin: 0;
+}
+
+@media print {
+  .inv {
+    margin: 0;
+    box-shadow: none;
+  }
+  /* Overflow that could not be avoided goes to a second sheet instead of being cut. */
+  .inv.inv--overflow { height: auto; overflow: visible; }
+}
+
+@media screen and (max-width: 840px) {
+  /* A phone shows the sheet scaled, not reflowed: it is a picture of the paper. */
+  .inv {
+    zoom: 0.46;
+  }
+}

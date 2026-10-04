@@ -145,3 +145,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-085 Two-hundred-critic UI audit: 147 presentation fixes applied, 64 deferred entries in docs/UI_AUDIT_200_DEFERRED.md need Sina.
 - D-086 Sales invoice number = Persian letter + "/" + Jalali yyyymmdd of the invoice date (الف/14050712, ب/...; after ی: الف2); purchases keep year/running.
 - D-087 Unticked payments settle open invoices oldest first; money beyond them is party credit only when ticked; credit shows on party pages/lists/dues and pays the next invoice first (amends D-042).
+- D-088 Printed sales invoice = one A4 brand sheet (کاغذ پلاس, green/navy/white, B&W switch, settlement box, terms, thank-you line, contacts); USD rate shown on detail pages only, never printed.

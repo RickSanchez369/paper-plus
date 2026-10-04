@@ -1,162 +1,237 @@
 {% load static paper %}<!DOCTYPE html>
 {% comment %}
-The printed sales invoice, laid out as a company "صورت‌حساب فروش" on A4 with
-boxes for the seller's and buyer's stamp and signature. Not a generated
-file (no PDF, RULES.md): the browser's print dialog is the whole mechanism.
-Deliberately outside shared/base.html -- no sidebar or header may print.
+The printed sales invoice (D-088, replaces D-061's layout): one A4 sheet in the
+brand colours (light green, navy, white) with a black-and-white switch for
+printers without colour. Not a generated file (no PDF, RULES.md): the browser's
+print dialog is the whole mechanism. Deliberately outside shared/base.html.
 
-Who issues it comes from settings.COMPANY (filled from .env, see
-.env.example); a blank value drops that line from the paper.
+Brand, phones, email, social handles and the small print come from
+settings.COMPANY (COMPANY_* in .env) through apps/sales/printing.py; a blank
+key falls back to the owner's defaults or drops the line. The USD rate is
+deliberately not printed (D-088): it is for the owner, on the detail page.
 {% endcomment %}
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>فاکتور {{ invoice.invoice_number|fa_digits }} | {{ company.name }}</title>
+  <title>فاکتور {{ invoice.invoice_number|fa_digits }} | {{ company.brand }}</title>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
+  <link rel="stylesheet" href="{% static_v 'sales/css/invoice_print.css' %}">
 </head>
 <body class="print-page">
   <div class="print-toolbar no-print">
     <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn--quiet">بازگشت</a>
     <button type="button" class="btn" id="print-go">چاپ فاکتور</button>
+    <label class="check inv-mono-switch"><input type="checkbox" id="mono-toggle"> سیاه‌وسفید</label>
     <p class="print-toolbar__what" id="print-what">
       چاپ می‌شود: فاکتور <b>{{ invoice.invoice_number|fa_digits|default:"—" }}</b> · {{ invoice.customer.name }} ·
       <span class="num">{{ invoice.total|toman }}</span> · یک برگ A4 عمودی
     </p>
   </div>
-  {# What the paper will carry that the owner might not expect (watermark, missing seller lines). #}
   <div class="print-notes no-print">
     {% if invoice.status == "draft" %}
       <p class="print-note">این فاکتور هنوز پیش‌نویس است؛ نشان «پیش‌نویس» روی کاغذ هم چاپ می‌شود.</p>
     {% elif invoice.status == "cancelled" %}
       <p class="print-note print-note--danger">این فاکتور لغو شده؛ نشان «باطل شده» روی کاغذ چاپ می‌شود.</p>
     {% endif %}
-    {% if not company.address or not company.phone or not company.economic_code %}
-      <p class="print-note">مشخصات فروشنده کامل نیست و این موارد روی کاغذ نمی‌آید:
-        {% if not company.address %}<b class="print-note__miss">نشانی</b>{% endif %}
-        {% if not company.phone %}<b class="print-note__miss">تلفن</b>{% endif %}
-        {% if not company.economic_code %}<b class="print-note__miss">شمارهٔ اقتصادی</b>{% endif %}
-        — در تنظیمات شرکت (فایل .env) پر شود.</p>
+    {% if "dense" in density %}
+      <p class="print-note">ردیف‌های این فاکتور زیاد است؛ برای جا شدن در یک برگ، ردیف‌ها فشرده‌تر چاپ می‌شوند.</p>
     {% endif %}
+    <p class="print-note print-note--danger" id="overflow-note" hidden>این فاکتور حتی با فشرده‌ترین حالت در یک برگ جا نمی‌شود؛ بخشی از آن روی برگ دوم می‌رود.</p>
     <details class="print-tip">
       <summary>روی کاغذ تاریخ یا نشانی سایت چاپ شد؟</summary>
-      <p>در پنجرهٔ چاپ مرورگر، گزینهٔ «سرصفحه و پاصفحه» (Headers and footers) را خاموش کنید.</p>
+      <p>در پنجرهٔ چاپ مرورگر، گزینهٔ «سرصفحه و پاصفحه» (Headers and footers) را خاموش و «گرافیک پس‌زمینه» (Background graphics) را روشن کنید.</p>
     </details>
   </div>
 
-  <article class="sheet">
-    {% if invoice.status == "cancelled" %}<div class="sheet__watermark">باطل شده</div>
-    {% elif invoice.status == "draft" %}<div class="sheet__watermark sheet__watermark--draft">پیش‌نویس</div>{% endif %}
+  <article class="inv{% if density %} inv--{{ density }}{% endif %}" id="invoice-sheet">
+    {% if invoice.status == "cancelled" %}<div class="sheet__watermark inv__watermark">باطل شده</div>
+    {% elif invoice.status == "draft" %}<div class="sheet__watermark inv__watermark">پیش‌نویس</div>{% endif %}
 
-    <header class="sheet__head">
-      <div class="sheet__logo" aria-hidden="true">{{ company.name|slice:":1" }}</div>
-      <div class="sheet__title">
-        <h1>صورت‌حساب فروش کالا</h1>
-        <p class="sheet__company">{{ company.legal_name|default:company.name }}</p>
+    {# Soft paper-sheet shapes behind the head, like the reference design. #}
+    <svg class="inv__blobs" viewBox="0 0 400 210" aria-hidden="true" preserveAspectRatio="none">
+      <path d="M0 0H400V120C330 120 300 70 240 82C170 96 150 190 70 186C35 184 12 170 0 160Z"/>
+    </svg>
+    <span class="inv__dot inv__dot--a" aria-hidden="true"></span>
+    <span class="inv__dot inv__dot--b" aria-hidden="true"></span>
+
+    <header class="inv__head">
+      <div class="inv__titles">
+        <h1 class="inv__title">صورت‌حساب فروش</h1>
+        <p class="inv__subtitle">فروش {{ invoice.get_price_tier_display }}{% if company.legal_name %} · {{ company.legal_name }}{% endif %}</p>
       </div>
-      <dl class="sheet__meta">
-        <div><dt>شمارهٔ فاکتور</dt><dd>{{ invoice.invoice_number|fa_digits|default:"—" }}</dd></div>
-        <div><dt>تاریخ</dt><dd>{{ invoice.invoice_date|jalali }}</dd></div>
-        <div><dt>نوع فروش</dt><dd>{{ invoice.get_price_tier_display }}</dd></div>
-        {% if invoice.usd_rate %}<div><dt>نرخ دلار</dt><dd>{{ invoice.usd_rate.rate|toman }} · {{ invoice.usd_rate.fetched_at|jalali_at }}</dd></div>{% endif %}
-      </dl>
+      <div class="inv__brand">
+        {# The paper logo: two stacked sheets with a folded corner and a plus. #}
+        <svg class="inv__logo" viewBox="0 0 64 64" aria-hidden="true">
+          <rect class="inv__logo-back" x="14" y="6" width="36" height="46" rx="4" transform="rotate(-8 32 29)"/>
+          <path class="inv__logo-sheet" d="M18 12h22l10 10v32a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z"/>
+          <path class="inv__logo-fold" d="M40 12v8a2 2 0 0 0 2 2h8z"/>
+          <path class="inv__logo-line" d="M21 30h16M21 37h20M21 44h12"/>
+          <circle class="inv__logo-plus-bg" cx="46" cy="48" r="10"/>
+          <path class="inv__logo-plus" d="M46 42.5v11M40.5 48h11"/>
+        </svg>
+        <span class="inv__brand-name">{{ company.brand }}</span>
+      </div>
     </header>
 
-    <section class="parties">
-      <div class="party">
-        <h2 class="party__title">مشخصات فروشنده</h2>
-        <dl class="party__grid">
-          <div><dt>نام</dt><dd>{{ company.legal_name|default:company.name }}</dd></div>
-          {% if company.economic_code %}<div><dt>شمارهٔ اقتصادی</dt><dd class="num">{{ company.economic_code|fa_digits }}</dd></div>{% endif %}
-          {% if company.registration_no %}<div><dt>شمارهٔ ثبت</dt><dd class="num">{{ company.registration_no|fa_digits }}</dd></div>{% endif %}
-          {% if company.national_id %}<div><dt>شناسهٔ ملی</dt><dd class="num">{{ company.national_id|fa_digits }}</dd></div>{% endif %}
-          {% if company.postal_code %}<div><dt>کد پستی</dt><dd class="num">{{ company.postal_code|fa_digits }}</dd></div>{% endif %}
-          {% if company.phone %}<div><dt>تلفن</dt><dd class="num">{{ company.phone|fa_digits }}</dd></div>{% endif %}
-          {% if company.address %}<div class="party__wide"><dt>نشانی</dt><dd>{{ company.address }}</dd></div>{% endif %}
-        </dl>
-      </div>
-      <div class="party">
-        <h2 class="party__title">مشخصات خریدار</h2>
-        <dl class="party__grid">
-          <div><dt>نام</dt><dd>{{ invoice.customer.name }}</dd></div>
-          {% if invoice.customer.phone %}<div><dt>تلفن</dt><dd class="num">{{ invoice.customer.phone|fa_digits }}</dd></div>{% endif %}
-          {% if invoice.customer.address %}<div class="party__wide"><dt>نشانی</dt><dd>{{ invoice.customer.address }}</dd></div>{% endif %}
-        </dl>
-      </div>
+    <section class="inv__info">
+      <dl class="inv__meta">
+        <div><dt>شمارهٔ فاکتور</dt><dd>{{ invoice.invoice_number|fa_digits|default:"—" }}</dd></div>
+        <div><dt>تاریخ فاکتور</dt><dd class="num">{{ invoice.invoice_date|jalali }}</dd></div>
+        {% if invoice.credit_due_date %}<div><dt>سررسید نسیه</dt><dd class="num">{{ invoice.credit_due_date|jalali }}</dd></div>{% endif %}
+        <div><dt>تاریخ چاپ</dt><dd class="num">{{ printed_on|jalali }}</dd></div>
+      </dl>
+      <dl class="inv__buyer">
+        <div><dt>نام مشتری</dt><dd>{{ invoice.customer.name }}</dd></div>
+        {% if invoice.customer.phone %}<div><dt>تلفن</dt><dd class="num">{{ invoice.customer.phone|fa_digits }}</dd></div>{% endif %}
+        {% if invoice.customer.address %}<div class="inv__wide"><dt>نشانی</dt><dd>{{ invoice.customer.address }}</dd></div>{% endif %}
+        {% if company.economic_code %}<div><dt>شمارهٔ اقتصادی فروشنده</dt><dd class="num">{{ company.economic_code|fa_digits }}</dd></div>{% endif %}
+      </dl>
     </section>
 
-    <table class="lines">
+    <table class="inv__lines">
       <thead>
-        {# Repeats on every printed page, so a loose continuation sheet can be tied back to its invoice. #}
-        <tr class="lines__ident">
-          <th colspan="5">فاکتور {{ invoice.invoice_number|fa_digits|default:"—" }} · {{ invoice.customer.name }} · {{ invoice.invoice_date|jalali }}</th>
-        </tr>
         <tr>
-          <th class="lines__row">ردیف</th>
-          <th class="lines__name">شرح کالا</th>
-          <th>مقدار</th>
+          <th class="inv__c-row">ردیف</th>
+          <th class="inv__c-name">محصولات</th>
+          <th>تعداد</th>
           <th>قیمت (تومان)</th>
-          <th>مبلغ کل (تومان)</th>
+          <th>جمع (تومان)</th>
         </tr>
       </thead>
       <tbody>
-        {% for item in invoice.items.all %}
+        {% for item in items %}
           <tr>
-            <td class="lines__row">{{ forloop.counter|fa_number }}</td>
-            <td class="lines__name">{{ item.product.name }}</td>
+            <td class="inv__c-row num">{{ forloop.counter|fa_number }}</td>
+            <td class="inv__c-name">{{ item.product.name }}</td>
             <td class="num">{{ item|line_units }}</td>
             <td class="num">
               {% if item.cartons %}<div>کارتن: {{ item.carton_price|fa_number }}</div>{% endif %}
               {% if item.loose_packs %}<div>بسته: {{ item.unit_price|fa_number }}</div>{% endif %}
             </td>
-            <td class="num">{{ item.line_total|fa_number }}</td>
+            <td class="num inv__c-sum">{{ item.line_total|fa_number }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
-    <section class="summary">
-      <div class="summary__words">
-        <span class="summary__label">مبلغ نهایی به حروف</span>
-        <p>{{ invoice.total|toman_words }}</p>
-        {% if invoice.note %}
-          <span class="summary__label">توضیحات</span>
-          <p>{{ invoice.note }}</p>
+    <section class="inv__middle">
+      <div class="inv__side">
+        <h2 class="inv__h">روش پرداخت و تسویه</h2>
+        {% if settlement %}
+          <table class="inv__pay">
+            <tbody>
+              {% for row in settlement %}
+                <tr>
+                  <td>{{ row.label }}{% if row.detail %} <small class="num">({{ row.detail|fa_digits }})</small>{% endif %}</td>
+                  <td class="num">{{ row.amount|fa_number }}</td>
+                  <td class="num">{% if row.date %}{{ row.state }} {{ row.date|jalali }}{% else %}{{ row.state }}{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="inv__small">پرداختی ثبت نشده است.</p>
         {% endif %}
+
+        <h2 class="inv__h">شرایط و ضوابط</h2>
+        <ol class="inv__terms">
+          {% for term in company.term_list %}<li>{{ term }}</li>{% endfor %}
+        </ol>
+        {% if invoice.note %}<p class="inv__small"><b>توضیحات:</b> {{ invoice.note }}</p>{% endif %}
       </div>
-      <dl class="totals">
-        <div><dt>جمع اقلام</dt><dd><span class="num">{{ invoice.subtotal|fa_number }}</span> تومان</dd></div>
-        {% if invoice.discount_amount %}
-          <div><dt>تخفیف</dt><dd><span class="num">{{ invoice.discount_amount|fa_number }}</span> تومان</dd></div>
-        {% endif %}
-        <div class="totals__final"><dt>مبلغ قابل پرداخت</dt><dd><span class="num">{{ invoice.total|fa_number }}</span> تومان</dd></div>
-        {% if invoice.status == "confirmed" %}
-          <div><dt>پرداخت‌شده</dt><dd><span class="num">{{ invoice.paid_amount|fa_number }}</span> تومان</dd></div>
-          <div><dt>مانده</dt><dd><span class="num">{{ invoice.outstanding|fa_number }}</span> تومان</dd></div>
-        {% endif %}
-      </dl>
+
+      <div class="inv__totals-box">
+        <dl class="inv__totals">
+          <div><dt>جمع اقلام</dt><dd class="num">{{ invoice.subtotal|fa_number }}</dd></div>
+          {% if invoice.discount_amount %}<div><dt>تخفیف</dt><dd class="num">{{ invoice.discount_amount|fa_number }}</dd></div>{% endif %}
+          <div class="inv__grand"><dt>جمع کل</dt><dd class="num">{{ invoice.total|fa_number }} <small>تومان</small></dd></div>
+          {% if invoice.status == "confirmed" %}
+            <div><dt>پرداخت‌شده</dt><dd class="num">{{ invoice.paid_amount|fa_number }}</dd></div>
+            <div><dt>مانده</dt><dd class="num">{{ invoice.outstanding|fa_number }}</dd></div>
+          {% endif %}
+        </dl>
+        <p class="inv__words">{{ invoice.total|toman_words }}</p>
+      </div>
     </section>
 
-    <section class="signatures">
-      <div class="signature">
-        <span class="signature__label">مهر و امضای فروشنده</span>
-        <div class="signature__box"></div>
+    <section class="inv__bottom">
+      <div class="inv__signs">
+        <div class="inv__sign"><span>مهر و امضای فروشنده</span><div class="inv__sign-box"></div></div>
+        <div class="inv__sign"><span>مهر و امضای خریدار</span><div class="inv__sign-box"></div></div>
       </div>
-      <div class="signature">
-        <span class="signature__label">مهر و امضای خریدار</span>
-        <div class="signature__box"></div>
-      </div>
+      <p class="inv__thanks">{{ thank_you }}</p>
     </section>
 
-    <footer class="sheet__foot">
-      {% if company.footer_note %}<p>{{ company.footer_note }}</p>{% endif %}
-      <p>ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone|fa_digits }}</p>
+    {% if company.footer_note %}<p class="inv__footnote">{{ company.footer_note }}</p>{% endif %}
+
+    <footer class="inv__foot">
+      <ul class="inv__contacts">
+        {% for phone in company.phone_list %}
+          <li>
+            <svg class="inv__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.5h3l1.5 4-2 1.3a11 11 0 0 0 6.1 6.1l1.3-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/></svg>
+            <span class="num">{{ phone.number|fa_digits }}</span>{% if phone.name %} <small>({{ phone.name }})</small>{% endif %}
+          </li>
+        {% endfor %}
+        {% if company.phone %}<li><span class="num">{{ company.phone|fa_digits }}</span></li>{% endif %}
+        <li>
+          <svg class="inv__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+          <span dir="ltr">{{ company.email }}</span>
+        </li>
+        {% if company.address %}<li class="inv__address">{{ company.address }}</li>{% endif %}
+      </ul>
+      {# Social glyphs (generic shapes, not trademark artwork); a handle prints when it is set in .env. #}
+      <ul class="inv__social" aria-label="شبکه‌های اجتماعی">
+        <li title="اینستاگرام">
+          <svg class="inv__icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="0.6"/></svg>
+          {% if company.instagram %}<span dir="ltr">{{ company.instagram }}</span>{% endif %}
+        </li>
+        <li title="تلگرام">
+          <svg class="inv__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11.2l6 2.3L19 7l-7.7 8.1.2 5L14.6 16l4 3z"/></svg>
+          {% if company.telegram %}<span dir="ltr">{{ company.telegram }}</span>{% endif %}
+        </li>
+        <li title="واتس‌اپ">
+          <svg class="inv__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20.5 5.3 16A8.5 8.5 0 1 1 8.3 19z"/><path d="M9 8.5c0 3.5 2.8 6.5 6.5 6.5l1-1.6-2-1-1 1a5 5 0 0 1-2.5-2.5l1-1-1-2z"/></svg>
+          {% if company.whatsapp %}<span dir="ltr">{{ company.whatsapp }}</span>{% endif %}
+        </li>
+      </ul>
     </footer>
   </article>
 
   <script>
     (function () {
+      var sheet = document.getElementById("invoice-sheet");
+      var mono = document.getElementById("mono-toggle");
+      // The colour choice is a per-printer convenience: remembered in this browser only.
+      try { mono.checked = window.localStorage.getItem("invoice-print-mono") === "1"; } catch (e) {}
+      function applyMono() {
+        sheet.classList.toggle("inv--mono", mono.checked);
+        try { window.localStorage.setItem("invoice-print-mono", mono.checked ? "1" : "0"); } catch (e) {}
+      }
+      mono.addEventListener("change", applyMono);
+      applyMono();
+
+      // One sheet, always (D-088): the server picks a density from the line count; if the
+      // sheet still overflows, step to tighter rows, then shrink the line text until it fits.
+      function fits() { return sheet.scrollHeight <= sheet.clientHeight + 1; }
+      function fit() {
+        var steps = ["inv--compact", "inv--dense", "inv--tiny"];
+        for (var i = 0; i < steps.length && !fits(); i++) {
+          if (!sheet.classList.contains(steps[i])) sheet.classList.add(steps[i]);
+        }
+        var size = 7;
+        while (!fits() && size > 5) {
+          size -= 0.5;
+          sheet.style.setProperty("--inv-line-font", size + "pt");
+        }
+        var over = !fits();
+        sheet.classList.toggle("inv--overflow", over);
+        var warn = document.getElementById("overflow-note");
+        if (warn) warn.hidden = !over;
+      }
+      (document.fonts ? document.fonts.ready : Promise.resolve()).then(fit);
+
       var go = document.getElementById("print-go");
       if (go) {
         go.addEventListener("click", function () {

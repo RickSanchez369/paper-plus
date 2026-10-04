@@ -1357,3 +1357,23 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
     full-settlement amount.
   - Cancelling an invoice paid from credit refunds that part like any payment (D-055), not back into credit.
 - Schema: migration `shared.0020` (audit event choice only).
+
+### D-088: The printed sales invoice is a one-page brand sheet; the USD rate is not printed
+- Status: Final (replaces D-061's layout; its stamp boxes, words, watermark and COMPANY_* source stay)
+- Date: 2026-10-04
+- Decided by: Sina (reference picture, brand «کاغذ پلاس», phones, email, colours light green + navy + white)
+- Decision: `sales/print.html` + `sales/css/invoice_print.css`: brand head with a drawn paper logo (inline SVG, no file
+  needed), invoice details (number, invoice date, credit due date, print date) and buyer, a navy pill header over pale
+  green pill rows, a «روش پرداخت و تسویه» box (money received by method and date, earlier credit used, pending cheques
+  with due dates, open نسیه with its due date: `apps/sales/printing.settlement_rows`), short terms, totals with the
+  amount in words, seller/buyer stamp boxes, a thank-you line picked from 12 by the invoice id (varied across invoices,
+  the same on a reprint), and a navy footer band with phones (name + number), email and social glyphs (a handle prints
+  only when set). A «سیاه‌وسفید» switch (remembered per browser) turns it into an ink-saving black-and-white sheet.
+- One page: the sheet is exactly A4; the server picks a row density from the line count (>10 compact, >18 dense, >30
+  tiny) and a small script steps tighter until the sheet fits; checked in the browser with 1, 22 and 38 lines.
+  Only if even the smallest rows overflow does it flow onto a second sheet, with a notice on screen.
+- New `.env` keys (blank = the owner's defaults): `COMPANY_BRAND` (کاغذ پلاس), `COMPANY_PHONES`
+  ("خندانی:09145572511,حقگو:09145589832"), `COMPANY_EMAIL` (kaghazplus1@gmail.com), `COMPANY_INSTAGRAM`,
+  `COMPANY_TELEGRAM`, `COMPANY_WHATSAPP`, `COMPANY_TERMS` ("|"-separated lines).
+- The USD rate (D-080) stays frozen on every invoice and visible on the sales and purchase detail pages, but is no longer
+  printed on either invoice: it is for the owner, not the customer.

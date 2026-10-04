@@ -160,6 +160,16 @@ COMPANY = {
     "phone": env.str("COMPANY_PHONE", default=""),
     "address": env.str("COMPANY_ADDRESS", default=""),
     "footer_note": env.str("COMPANY_FOOTER_NOTE", default=""),
+    # The printed sales invoice (D-088): brand, contacts and small print.
+    "brand": env.str("COMPANY_BRAND", default="کاغذ پلاس"),
+    # "name:phone" pairs separated by commas.
+    "phones": env.str("COMPANY_PHONES", default="خندانی:09145572511,حقگو:09145589832"),
+    "email": env.str("COMPANY_EMAIL", default="kaghazplus1@gmail.com"),
+    "instagram": env.str("COMPANY_INSTAGRAM", default=""),
+    "telegram": env.str("COMPANY_TELEGRAM", default=""),
+    "whatsapp": env.str("COMPANY_WHATSAPP", default=""),
+    # Lines separated by "|"; empty = the built-in three lines.
+    "terms": env.str("COMPANY_TERMS", default=""),
 }
 
 if not DEBUG:

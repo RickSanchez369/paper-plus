@@ -37,6 +37,7 @@ from apps.shared.utils import format_toman
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
 from .models import SalesInvoice
+from .printing import company_print_info, settlement_rows, thank_you_line
 from .services import cancel_sale, confirm_sale, percent_to_amount, plan_full_payment
 
 
@@ -357,3 +358,18 @@ class SalesPrintView(LoginRequiredMixin, DetailView):
         return SalesInvoice.objects.select_related("customer", "created_by").prefetch_related(
             "items__product", "items__consumptions__layer",
         )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        invoice = self.object
+        items = list(invoice.items.all())
+        context.update({
+            "company": company_print_info(),
+            "items": items,
+            # Long invoices shrink their rows so the paper stays one A4 sheet (D-088).
+            "density": "dense inv--tiny" if len(items) > 30 else "dense" if len(items) > 18 else "compact" if len(items) > 10 else "",
+            "settlement": settlement_rows(invoice),
+            "thank_you": thank_you_line(invoice),
+            "printed_on": timezone.localdate(),
+        })
+        return context

@@ -148,9 +148,9 @@ def scenarios(h):
         r = h.c.get(f"/purchasing/{pi.pk}/")
         check("EX22 purchase detail shows the rate", r.status_code == 200 and shown(r, newest.rate))
         r = h.c.get(f"/sales/{s.pk}/print/")
-        check("EX23 sale print shows the rate", r.status_code == 200 and shown(r, newest.rate), r.status_code)
+        check("EX23 sale print does NOT show the rate (owner-only, D-088)", r.status_code == 200 and not shown(r, newest.rate) and not has(r, "نرخ دلار"), r.status_code)
         r = h.c.get(f"/purchasing/{pi.pk}/print/")
-        check("EX24 purchase print shows the rate", r.status_code == 200 and shown(r, newest.rate), r.status_code)
+        check("EX24 purchase print does NOT show the rate (D-088)", r.status_code == 200 and not has(r, "نرخ دلار"), r.status_code)
 
         # ---- no rate at all: the invoice still goes through, the page says so
         SalesInvoice.objects.update(usd_rate=None)
