@@ -42,13 +42,13 @@ expense. Nothing is booked here -- this page only reminds.
             {% for row in rows %}
               {% with item=row.item %}
               <tr{% if not item.is_active %} class="is-muted"{% endif %}>
-                <td>{{ item.reason }}{% if not item.is_active %} <span class="badge">غیرفعال</span>{% endif %}</td>
+                <td>{{ item.reason }}{% if not item.is_active %} {% flag_badge "neutral" "غیرفعال" %}{% endif %}</td>
                 <td class="num">{{ item.amount|toman }}</td>
                 <td>{{ item.interval_label }}</td>
                 <td class="num">
                   {{ item.next_due_date|jalali }}
                   {% if item.is_active %}
-                    {% if row.overdue %}<span class="badge badge--pending">سررسید گذشته</span>
+                    {% if row.overdue %}{% flag_badge "bad" "سررسید گذشته" %}
                     {% elif row.due_soon %}<span class="badge badge--pending">{{ row.days_left|fa_number }} روز دیگر</span>{% endif %}
                   {% endif %}
                 </td>

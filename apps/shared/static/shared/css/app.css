@@ -47,6 +47,10 @@
   --negative-100: #fdebea;
   --warning-600: #9a6a00;
   --warning-100: #fff3d1;
+  /* -700 is for small text on the tints above (>= 4.5:1); -600 stays for fills and icons. */
+  --positive-700: #0e6f40;
+  --negative-700: #c9302c;
+  --warning-700: #865b00;
 
   --surface: var(--white);
   --surface-sunken: #f2f5fb;
@@ -105,7 +109,7 @@ body {
 }
 
 a {
-  color: var(--accent-600);
+  color: var(--accent-700);
   text-decoration: none;
 }
 
@@ -125,11 +129,13 @@ h1 { font-size: 22px; font-weight: 500; }
 h2 { font-size: 16px; }
 
 /*
- * Numbers stay left-to-right inside right-to-left text, and use tabular
- * figures so columns of Rial amounts line up digit for digit.
+ * Persian digits already run left-to-right inside an RTL run, so the whole
+ * «number + unit» string stays RTL (the unit sits on the left of the figure,
+ * as it reads); forcing LTR here put the unit on the wrong side. Tabular
+ * figures keep columns of amounts digit for digit.
  */
 .num {
-  direction: ltr;
+  direction: rtl;
   unicode-bidi: isolate;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -444,6 +450,15 @@ body.nav-open {
   text-decoration: none;
 }
 
+/* Every interactive element gets a visible ring (3:1 against white); .btn keeps its own. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
 .btn:focus-visible {
   outline: 2px solid var(--accent-500);
   outline-offset: 2px;
@@ -481,9 +496,29 @@ body.nav-open {
   color: var(--ink-700);
 }
 
-.badge--pending { background: var(--warning-100); color: var(--warning-600); }
-.badge--good { background: var(--positive-100); color: var(--positive-600); }
-.badge--bad { background: var(--negative-100); color: var(--negative-600); }
+.badge--pending { background: var(--warning-100); color: var(--warning-700); }
+.badge--good { background: var(--positive-100); color: var(--positive-700); }
+.badge--bad { background: var(--negative-100); color: var(--negative-700); }
+
+/* A leading dot gives every tone a second cue besides colour. Tones:
+   pending = needs attention, good = settled, bad = problem, bad-solid =
+   failed for good (bounced), info = in progress, muted = voided. */
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-inline-end: var(--space-1);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge--info { background: var(--accent-100); color: var(--accent-700); }
+.badge--bad-solid { background: var(--negative-700); color: var(--white); }
+.badge--muted {
+  background: var(--ink-100);
+  color: var(--ink-500);
+  text-decoration: line-through;
+}
 
 /* ---------------------------------------------------------------- forms */
 
@@ -525,7 +560,7 @@ body.nav-open {
 
 .field__error {
   margin: var(--space-2) 0 0;
-  color: var(--negative-600);
+  color: var(--negative-700);
   font-size: 12.5px;
 }
 
@@ -534,7 +569,7 @@ body.nav-open {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--negative-100);
-  color: var(--negative-600);
+  color: var(--negative-700);
   font-size: 13px;
 }
 
@@ -554,9 +589,9 @@ body.nav-open {
   font-size: 13.5px;
 }
 
-.message--success { background: var(--positive-100); border-color: transparent; color: var(--positive-600); }
-.message--warning { background: var(--warning-100); border-color: transparent; color: var(--warning-600); }
-.message--error { background: var(--negative-100); border-color: transparent; color: var(--negative-600); }
+.message--success { background: var(--positive-100); border-color: transparent; color: var(--positive-700); }
+.message--warning { background: var(--warning-100); border-color: transparent; color: var(--warning-700); }
+.message--error { background: var(--negative-100); border-color: transparent; color: var(--negative-700); }
 
 /* ----------------------------------------------------------- auth page */
 
@@ -1003,11 +1038,11 @@ body.nav-open {
 }
 
 .stat-card__delta--up {
-  color: var(--positive-600);
+  color: var(--positive-700);
 }
 
 .stat-card__delta--down {
-  color: var(--negative-600);
+  color: var(--negative-700);
 }
 
 .toolbar {
@@ -1061,12 +1096,12 @@ body.nav-open {
   font-size: 12px;
 }
 
-/* Numbers keep their digit order (.num is left-to-right) but their cell
-   must not flip sides: a left-to-right cell put figures at the opposite
-   edge from their right-to-left header, so nothing lined up. */
+/* Numeric header and cells share one edge and never wrap, so the figure
+   sits right under its header. */
+.data-table th.num,
 .data-table td.num {
-  direction: rtl;
   text-align: start;
+  white-space: nowrap;
 }
 
 /* Report tables: the name column takes the slack, every figure column is
@@ -1303,7 +1338,7 @@ body.nav-open {
 }
 
 .sale-form__totals-profit {
-  color: var(--positive-600);
+  color: var(--positive-700);
   border-top: 0;
   padding-top: 0;
 }

@@ -71,14 +71,10 @@ profit card -- profit is sales-only.
                 <td>{{ invoice.supplier.name }}</td>
                 <td class="num">{{ invoice.total_amount|toman }}</td>
                 <td>
-                  <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
-                    {{ invoice.payment_status.label }}
-                  </span>
+                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
                 </td>
                 <td>
-                  <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">
-                    {{ invoice.get_status_display }}
-                  </span>
+                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
                 </td>
                 <td>
                   <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>

@@ -49,7 +49,7 @@ read from later.
             {% for row in rows %}
               <tr>
                 <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a>
-                  {% if not row.supplier.is_active %}<span class="badge">غیرفعال</span>{% endif %}</td>
+                  {% if not row.supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}</td>
                 <td class="num">{{ row.supplier.phone|default:"—" }}</td>
                 <td class="num">{{ row.total_purchased|toman }}</td>
                 <td class="num">{{ row.outstanding|toman }}</td>

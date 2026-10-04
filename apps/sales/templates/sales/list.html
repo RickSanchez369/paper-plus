@@ -75,15 +75,11 @@ answer "how are we doing right now."
                 <td>{{ invoice.customer.name }}</td>
                 <td class="num">{{ invoice.total|toman }}</td>
                 <td>
-                  <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
-                    {{ invoice.payment_status.label }}
-                  </span>
+                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
                 </td>
                 <td class="num">{{ invoice.profit|toman }}</td>
                 <td>
-                  <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">
-                    {{ invoice.get_status_display }}
-                  </span>
+                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
                 </td>
                 <td>
                   <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>

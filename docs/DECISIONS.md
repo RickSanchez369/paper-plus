@@ -1249,3 +1249,19 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   (line goods + freight share) / packs, rounded to the nearest Toman (`PurchaseItem.unit_cost`; `carton_cost` = the same
   per carton). The invoice detail shows items total, freight, total and the landed cost per pack and per carton; the
   print shows the freight line. Cancelling keeps working because it reads the stored layer. Unticked = the amount is ignored.
+
+### D-083: Data-UI audit fixes (identity unchanged)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (audit by ten read-only agents, then verified in the browser)
+- Decision: palette, fonts and card style stay. Fixes: (1) `.num` is RTL, so «number + unit» reads with the unit on the
+  left of the figure everywhere; a negative figure keeps its minus on the left of the digits (`_keep_sign_left`);
+  numeric cells never wrap. (2) One status vocabulary: `{% status_badge kind value label %}` and `{% flag_badge tone label %}`
+  in `paper.py` hold the status-to-tone map (paid green, partial amber, unpaid red, cancelled muted/struck, bounced solid red,
+  pending cheque blue, overdue red); badges carry a dot besides colour; no template maps a status to a class itself.
+  (3) Small text uses `--*-700` tokens (>= 4.5:1), links use `--accent-700`, one global `:focus-visible` ring.
+  (4) Invoice detail pages open with a summary strip: total, paid, remaining, status. (5) Every list paginates with one shared
+  pager (25 per page) and key columns sort through a whitelisted `sort`/`dir`. (6) Product search rows have two levels,
+  separators, price, stock grade and a focus state. (7) The invoice line grid gets a mid-width two-row layout (721-1100px).
+- Not done on purpose: no change to money logic; the audit claim that numeric table columns are misaligned was rejected
+  (right-aligned cells already stack the units digit).

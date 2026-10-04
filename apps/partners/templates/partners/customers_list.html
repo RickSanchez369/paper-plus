@@ -54,9 +54,7 @@ this page, which is harmless).
                 <td><a href="{% url 'customers:detail' row.customer.pk %}">{{ row.customer.name }}</a></td>
                 <td class="num">{{ row.customer.phone|default:"—" }}</td>
                 <td>
-                  <span class="badge badge--{% if row.owes %}bad{% else %}good{% endif %}">
-                    {% if row.owes %}بدهکار{% else %}تسویه‌شده{% endif %}
-                  </span>
+                  {% if row.owes %}{% flag_badge "bad" "بدهکار" %}{% else %}{% flag_badge "good" "تسویه‌شده" %}{% endif %}
                 </td>
                 <td class="num">{{ row.outstanding|toman }}</td>
                 <td class="num">{{ row.invoice_count|fa_number }}</td>

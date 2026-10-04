@@ -9,7 +9,7 @@ the rate now.
   {% if row %}
     <span class="stat-card__value num">{{ row.rate|toman }}</span>
     <span class="field__hint">{{ row.fetched_at|jalali_at }} · منبع: {{ row.source }}</span>
-    {% if stale %}<span class="badge badge--pending">قدیمی</span>{% endif %}
+    {% if stale %}{% flag_badge "pending" "قدیمی" %}{% endif %}
   {% else %}
     <span class="stat-card__value">هنوز دریافت نشده</span>
   {% endif %}

@@ -13,6 +13,7 @@ from django import template
 from django.contrib.staticfiles import finders
 from django.templatetags.static import static
 from django.urls import Resolver404, resolve
+from django.utils.html import format_html
 
 from apps.products.units import split_units, units_phrase
 from apps.shared import dates
@@ -86,12 +87,20 @@ def jalali_at(value):
     return dates.format_datetime(value)
 
 
+def _keep_sign_left(text):
+    """Isolate a leading minus with its digits so an RTL run keeps «-۵۰» and not «۵۰-»."""
+    if text.startswith("-"):
+        figure, _, rest = text.partition(" ")
+        return f"⁦{figure}⁩ {rest}".rstrip()
+    return text
+
+
 @register.filter(name="toman")
 def toman(value):
     """"۲۵۰٬۰۰۰ تومان" with Persian digits -- the one money filter (D-043)."""
     if value is None:
         return ""
-    return dates.to_persian_digits(format_toman(value)).replace(",", "٬")
+    return _keep_sign_left(dates.to_persian_digits(format_toman(value)).replace(",", "٬"))
 
 
 @register.filter(name="toman_words")
@@ -107,7 +116,7 @@ def fa_number(value):
     """A plain count in Persian digits: quantities, invoice counts, page numbers."""
     if value is None:
         return ""
-    return dates.to_persian_digits(format_number(value)).replace(",", "٬")
+    return _keep_sign_left(dates.to_persian_digits(format_number(value)).replace(",", "٬"))
 
 
 @register.filter(name="units")
@@ -149,3 +158,26 @@ def dict_get(mapping, key):
     per-bucket columns are built from one shared `bucket_order` loop, so
     this is the one place that needs it."""
     return mapping.get(key)
+
+
+# One place decides which colour a business state wears, so a status never
+# changes look between a list, a detail page and the dashboard.
+_STATUS_TONES = {
+    "payment": {"paid": "good", "partial": "pending", "unpaid": "bad"},
+    "invoice": {"active": "neutral", "cancelled": "muted"},
+    "cheque": {"pending": "info", "cleared": "good", "bounced": "bad-solid", "cancelled": "muted"},
+    "direction": {"in": "good", "out": "neutral"},
+}
+
+
+@register.simple_tag
+def status_badge(kind, value, label):
+    """A status chip whose tone comes from `_STATUS_TONES`; unknown values stay neutral."""
+    tone = _STATUS_TONES.get(kind, {}).get(str(value), "neutral")
+    return format_html('<span class="badge badge--{}">{}</span>', tone, label)
+
+
+@register.simple_tag
+def flag_badge(tone, label):
+    """A chip for a flag that is not a document status (overdue, stale rate, inactive...)."""
+    return format_html('<span class="badge badge--{}">{}</span>', tone, label)

@@ -47,9 +47,7 @@ Expense.payment, resolved once per row in views._describe_payment.
             <tr>
               <td class="num">{{ row.payment.payment_date|jalali }}</td>
               <td>
-                <span class="badge{% if row.payment.direction == 'in' %} badge--good{% else %} badge--bad{% endif %}">
-                  {{ row.payment.get_direction_display }}
-                </span>
+                {% status_badge "direction" row.payment.direction row.payment.get_direction_display %}
               </td>
               <td class="num">{{ row.payment.amount|toman }}</td>
               <td>
