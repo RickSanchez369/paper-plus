@@ -16,7 +16,6 @@ getting Django's own English blank option.
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
@@ -35,6 +34,7 @@ from apps.products.forms import QuickProductForm, excluded_product_ids
 from apps.products.models import Product
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
+from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
 from apps.shared.utils import format_toman
 
@@ -88,14 +88,21 @@ class PurchasingListView(LoginRequiredMixin, TemplateView):
             if hi is not None:
                 invoices = [i for i in invoices if i.total_amount <= hi]
 
-        paginator = Paginator(invoices, self.paginate_by)
-        page_obj = paginator.get_page(self.request.GET.get("page"))
+        invoices, sort_key, sort_dir = sort_rows(self.request, invoices, {
+            "number": lambda i: i.invoice_number,
+            "date": lambda i: (i.invoice_date, i.created_at),
+            "party": lambda i: i.supplier.name,
+            "total": lambda i: i.total_amount,
+        })
+        page_obj = paginate(self.request, invoices)
 
         context.update({
             "range_form": range_form,
             "date_range": date_range,
             "filter_form": filter_form,
             "page_obj": page_obj,
+            "sort_key": sort_key,
+            "sort_dir": sort_dir,
             "invoices": page_obj.object_list,
             "cards": self._cards(),
         })
@@ -374,17 +381,34 @@ class SupplierListView(LoginRequiredMixin, TemplateView):
         if filter_form.is_valid() and filter_form.cleaned_data.get("q"):
             q = filter_form.cleaned_data["q"]
             suppliers = suppliers.filter(Q(name__icontains=q) | Q(phone__icontains=q))
-        rows = []
-        for supplier in suppliers.order_by("name"):
+        sort = self.request.GET.get("sort")
+        direction = "desc" if self.request.GET.get("dir") == "desc" else "asc"
+
+        def build_row(supplier):
             confirmed = PurchaseInvoice.objects.filter(
                 supplier=supplier, status=PurchaseInvoice.Status.CONFIRMED,
             )
-            total_purchased = sum(i.total_amount for i in confirmed)
-            rows.append({
+            return {
                 "supplier": supplier,
-                "total_purchased": total_purchased,
+                "total_purchased": sum(i.total_amount for i in confirmed),
                 "outstanding": get_supplier_outstanding(supplier),
+            }
+
+        # Row figures cost queries: only the page is computed unless the sort
+        # needs a figure for every supplier.
+        if sort in ("total_purchased", "outstanding"):
+            rows = [build_row(s) for s in suppliers.order_by("name")]
+            rows, sort_key, sort_dir = sort_rows(self.request, rows, {
+                "total_purchased": lambda r: r["total_purchased"],
+                "outstanding": lambda r: r["outstanding"],
             })
+            page_obj = paginate(self.request, rows)
+            rows = page_obj.object_list
+        else:
+            sort_key, sort_dir = ("name", direction) if sort == "name" else (None, "asc")
+            page_obj = paginate(self.request, suppliers.order_by("-name" if sort_key and direction == "desc" else "name"))
+            rows = [build_row(s) for s in page_obj.object_list]
+        context.update({"page_obj": page_obj, "sort_key": sort_key, "sort_dir": sort_dir})
         context["rows"] = rows
         context["filter_form"] = filter_form
         return context

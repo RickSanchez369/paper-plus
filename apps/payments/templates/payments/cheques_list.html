@@ -35,8 +35,8 @@ status, direction and due-date range.
               <th>شماره چک</th>
               <th>طرف حساب</th>
               <th>صادرکننده</th><th>بانک</th>
-              <th>سررسید</th>
-              <th>مبلغ</th>
+              {% sort_th "سررسید" "due" %}
+              {% sort_th "مبلغ" "amount" %}
               <th>فاکتور</th>
               <th>وضعیت</th>
             </tr>
@@ -66,6 +66,7 @@ status, direction and due-date range.
           </tbody>
         </table>
       </div>
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>چکی با این فیلترها پیدا نشد.</p>

@@ -1576,3 +1576,12 @@ summary:focus-visible,
 @media (max-width: 720px) {
   .summary-strip { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ------------------------------------------------------ sortable headers */
+.sort-link {
+  color: inherit;
+  white-space: nowrap;
+}
+
+.sort-link:hover { color: var(--accent-700); text-decoration: none; }
+.sort-link--active { color: var(--action); }

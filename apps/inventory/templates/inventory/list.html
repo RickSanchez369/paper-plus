@@ -45,13 +45,13 @@ changes through purchase and sales invoices only (D-044).
       <table class="data-table">
         <thead>
           <tr>
-            <th>کالا</th>
-            <th>موجودی</th>
+            {% sort_th "کالا" "name" %}
+            {% sort_th "موجودی" "stock" %}
             <th>میانگین قیمت خرید (هر بسته)</th>
             <th>آخرین قیمت خرید</th>
             <th>قیمت فروش خرد (هر بسته)</th>
             <th>قیمت فروش عمده (هر کارتن)</th>
-            <th>ارزش موجودی (به بهای خرید)</th>
+            {% sort_th "ارزش موجودی (به بهای خرید)" "value" %}
             <th>سهم از کل</th>
             <th></th>
           </tr>
@@ -73,6 +73,7 @@ changes through purchase and sales invoices only (D-044).
         </tbody>
       </table>
     </div>
+    {% pager page_obj %}
   </div>
 </div>
 {% endif %}

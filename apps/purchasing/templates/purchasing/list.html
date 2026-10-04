@@ -54,10 +54,10 @@ profit card -- profit is sales-only.
         <table class="data-table">
           <thead>
             <tr>
-              <th>شماره فاکتور</th>
-              <th>تاریخ</th>
-              <th>تأمین‌کننده</th>
-              <th>مبلغ کل</th>
+              {% sort_th "شماره فاکتور" "number" %}
+              {% sort_th "تاریخ" "date" %}
+              {% sort_th "تأمین‌کننده" "party" %}
+              {% sort_th "مبلغ کل" "total" %}
               <th>وضعیت پرداخت</th>
               <th>وضعیت سند</th>
               <th></th>
@@ -85,17 +85,7 @@ profit card -- profit is sales-only.
         </table>
       </div>
 
-      {% if page_obj.paginator.num_pages > 1 %}
-        <div class="pagination">
-          {% if page_obj.has_previous %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.previous_page_number }}">قبلی</a>
-          {% endif %}
-          <span class="field__hint">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
-          {% if page_obj.has_next %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.next_page_number }}">بعدی</a>
-          {% endif %}
-        </div>
-      {% endif %}
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>فاکتوری با این فیلترها پیدا نشد.</p>

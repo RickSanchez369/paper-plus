@@ -20,6 +20,7 @@ from django.views.generic import DetailView, TemplateView
 from apps.products.forms import SellingPriceForm
 from apps.products.models import Product
 from apps.products.services import update_selling_prices
+from apps.shared.listing import paginate, sort_rows
 
 from .forms import InventoryProductForm
 from .models import InventoryMovement
@@ -74,8 +75,18 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
                 "share": (value * 100 // total_value) if total_value else 0,
             })
 
+        rows, sort_key, sort_dir = sort_rows(self.request, rows, {
+            "name": lambda r: r["product"].name,
+            "stock": lambda r: r["stock"],
+            "value": lambda r: r["value"],
+        })
+        page_obj = paginate(self.request, rows)
+
         context.update({
-            "rows": rows,
+            "rows": page_obj.object_list,
+            "page_obj": page_obj,
+            "sort_key": sort_key,
+            "sort_dir": sort_dir,
             "total_value": total_value,
             "item_count": len(products),
         })

@@ -181,3 +181,31 @@ def status_badge(kind, value, label):
 def flag_badge(tone, label):
     """A chip for a flag that is not a document status (overdue, stale rate, inactive...)."""
     return format_html('<span class="badge badge--{}">{}</span>', tone, label)
+
+
+def _query_without(request, *drop):
+    """The current query string minus `drop`, ending in "&" when not empty."""
+    params = request.GET.copy()
+    for name in drop:
+        params.pop(name, None)
+    encoded = params.urlencode()
+    return f"{encoded}&" if encoded else ""
+
+
+@register.inclusion_tag("shared/_pagination.html", takes_context=True)
+def pager(context, page_obj):
+    """The shared pager; keeps every active filter and sort in its links."""
+    return {"page_obj": page_obj, "query": _query_without(context["request"], "page")}
+
+
+@register.inclusion_tag("shared/_sort_th.html", takes_context=True)
+def sort_th(context, label, key):
+    """A sortable column header: click toggles asc/desc and returns to page 1."""
+    request = context["request"]
+    active = context.get("sort_key") == key
+    direction = context.get("sort_dir", "asc")
+    return {
+        "label": label, "key": key, "active": active, "direction": direction,
+        "next_dir": "desc" if active and direction == "asc" else "asc",
+        "query": _query_without(request, "sort", "dir", "page"),
+    }

@@ -39,10 +39,10 @@ read from later.
         <table class="data-table">
           <thead>
             <tr>
-              <th>نام</th>
+              {% sort_th "نام" "name" %}
               <th>تلفن</th>
-              <th>جمع خرید</th>
-              <th>بدهی باز</th>
+              {% sort_th "جمع خرید" "total_purchased" %}
+              {% sort_th "بدهی باز" "outstanding" %}
             </tr>
           </thead>
           <tbody>
@@ -58,6 +58,7 @@ read from later.
           </tbody>
         </table>
       </div>
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>تأمین‌کننده‌ای با این شرایط پیدا نشد.</p>

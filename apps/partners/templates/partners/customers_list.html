@@ -40,10 +40,10 @@ this page, which is harmless).
         <table class="data-table">
           <thead>
             <tr>
-              <th>نام</th>
+              {% sort_th "نام" "name" %}
               <th>تلفن</th>
               <th>وضعیت حساب</th>
-              <th>مانده باز</th>
+              {% sort_th "مانده باز" "outstanding" %}
               <th>تعداد فاکتور</th>
               <th>آخرین خرید</th>
             </tr>
@@ -64,6 +64,7 @@ this page, which is harmless).
           </tbody>
         </table>
       </div>
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>مشتری‌ای با این فیلترها پیدا نشد.</p>

@@ -157,17 +157,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
         </table>
       </div>
 
-      {% if page_obj.paginator.num_pages > 1 %}
-        <div class="pagination">
-          {% if page_obj.has_previous %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.previous_page_number }}">قبلی</a>
-          {% endif %}
-          <span class="field__hint">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
-          {% if page_obj.has_next %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.next_page_number }}">بعدی</a>
-          {% endif %}
-        </div>
-      {% endif %}
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>هزینه‌ای با این فیلترها پیدا نشد.</p>

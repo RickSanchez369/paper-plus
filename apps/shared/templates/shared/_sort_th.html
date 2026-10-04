@@ -1,0 +1,3 @@
+<th{% if active %} aria-sort="{% if direction == 'desc' %}descending{% else %}ascending{% endif %}"{% endif %}>
+  <a class="sort-link{% if active %} sort-link--active{% endif %}" href="?{{ query }}sort={{ key }}&amp;dir={{ next_dir }}">{{ label }}{% if active %} <span aria-hidden="true">{% if direction == 'desc' %}▼{% else %}▲{% endif %}</span>{% endif %}</a>
+</th>
