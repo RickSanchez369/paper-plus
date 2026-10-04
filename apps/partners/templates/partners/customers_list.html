@@ -39,28 +39,36 @@ this page, which is harmless).
 
     {% if rows %}
       <div class="table-card">
-        <table class="data-table">
+        <table class="data-table data-table--ledger">
           <thead>
             <tr>
-              {% sort_th "نام" "name" %}
-              <th>تلفن</th>
-              <th>وضعیت حساب</th>
-              {% sort_th "مانده باز" "outstanding" %}
+              {% sort_th "مشتری (نام و تلفن)" "name" %}
+              {% sort_th "مانده باز و وضعیت حساب" "outstanding" %}
               <th>تعداد فاکتور</th>
               <th>آخرین خرید</th>
             </tr>
           </thead>
           <tbody>
             {% for row in rows %}
-              <tr>
-                <td><a href="{% url 'customers:detail' row.customer.pk %}">{{ row.customer.name }}</a></td>
-                <td class="num">{{ row.customer.phone|default:"—" }}</td>
+              <tr{% if row.owes %} class="is-owing"{% endif %}>
                 <td>
-                  {% if row.owes %}{% flag_badge "bad" "بدهکار" %}{% else %}{% flag_badge "good" "تسویه‌شده" %}{% endif %}
+                  <div class="party-cell">
+                    <span class="party-avatar" aria-hidden="true">{{ row.customer.name|slice:":1" }}</span>
+                    <div>
+                      <a class="party-cell__name" href="{% url 'customers:detail' row.customer.pk %}">{{ row.customer.name }}</a>
+                      <div class="party-cell__sub num">{{ row.customer.phone|ident|dash }}</div>
+                    </div>
+                  </div>
                 </td>
-                <td class="num">{{ row.outstanding|toman }}</td>
+                <td>
+                  {# The balance links straight to the statement card. #}
+                  <div class="balance-cell">
+                    <a class="balance-cell__amount num" href="{% url 'customers:detail' row.customer.pk %}#statement">{{ row.outstanding|toman }}</a>
+                    {% if row.owes %}{% flag_badge "bad" "بدهکار" %}{% else %}{% flag_badge "good" "تسویه‌شده" %}{% endif %}
+                  </div>
+                </td>
                 <td class="num">{{ row.invoice_count|fa_number }}</td>
-                <td class="num">{{ row.last_purchase|jalali|default:"—" }}</td>
+                <td class="num">{{ row.last_purchase|jalali|dash }}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -68,9 +76,7 @@ this page, which is harmless).
       </div>
       {% pager page_obj %}
     {% else %}
-      <div class="placeholder">
-        <p>مشتری‌ای با این فیلترها پیدا نشد.</p>
-      </div>
+      {% include "shared/_empty_state.html" with icon="customer" title="مشتری‌ای با این فیلترها پیدا نشد." hint="عبارت جست‌وجو یا فیلتر را تغییر دهید." %}
     {% endif %}
   </div>
 </div>

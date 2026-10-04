@@ -206,6 +206,16 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             balance += row["amount"] if row["kind"] == "debit" else -row["amount"]
             row["balance"] = balance
 
+        # Display-only footer/verdict for the statement; the ledger's own
+        # running balance, so the footer always equals the last row.
+        statement = {
+            "debit": sum(r["amount"] for r in ledger if r["kind"] == "debit"),
+            "credit": sum(r["amount"] for r in ledger if r["kind"] == "credit"),
+            "closing": ledger[-1]["balance"] if ledger else 0,
+            "closing_abs": abs(ledger[-1]["balance"]) if ledger else 0,
+            "as_of": ledger[-1]["date"] if ledger else None,
+        }
+
         outstanding = get_customer_outstanding(customer)
         open_invoices = get_open_invoices(SalesInvoice, customer=customer)
         context.update({
@@ -213,6 +223,7 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             "payments": payments,
             "cheques": cheques,
             "ledger": ledger,
+            "statement": statement,
             "outstanding": outstanding,
             "cards": {
                 "lifetime_purchases": sum(i.total for i in confirmed),

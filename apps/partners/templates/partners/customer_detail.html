@@ -9,47 +9,61 @@ became a Payment by the time it gets here), and the shared "record payment"
 component reused as-is from Receivables.
 {% endcomment %}
 
+{% block head %}<script src="{% static_v 'partners/js/customer_detail.js' %}" defer></script>{% endblock %}
+
 {% block title %}{{ customer.name }}{% endblock %}
 {% block header %}مشتری: {{ customer.name }}{% endblock %}
 
 {% block content %}
-<p class="breadcrumbs">
+<p class="breadcrumbs no-print">
   <a href="{% url 'customers:list' %}">مشتریان</a> / {{ customer.name }}
 </p>
 
-<div class="page-head">
+{# One hero: identity left, one action cluster, panels open full-width below so the buttons never jump. #}
+<div class="page-head page-head--hero">
   <div class="page-head__row">
     <div>
       <h1>{{ customer.name }}</h1>
       <p class="page-head__lede">
-        {% if customer.phone %}تلفن: {{ customer.phone }} · {% endif %}
-        {% if not customer.is_active %}{% flag_badge "neutral" "غیرفعال" %} · {% endif %}
-        مانده باز: <strong class="num">{{ outstanding|toman }}</strong>
+        {% if customer.phone %}تلفن: {{ customer.phone|ident }}{% endif %}
+        {% if customer.phone and not customer.is_active %} · {% endif %}
+        {% if not customer.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}
       </p>
     </div>
-    <a href="{% url 'sales:new' %}?customer={{ customer.pk }}" class="btn">فاکتور فروش جدید</a>
-    <details class="quick-party-disclosure">
-      <summary class="btn btn--quiet">ویرایش</summary>
-      <form method="post" action="{% url 'customers:edit' customer.pk %}" class="quick-party">
-        {% csrf_token %}
-        {% include "shared/_form_errors.html" with form=edit_form %}
-        {% for field in edit_form %}
-          {% include "shared/_field.html" with field=field %}
-        {% endfor %}
-        <button type="submit" class="btn btn--block">ذخیره</button>
-      </form>
-    </details>
+    <div class="page-head__actions no-print">
+      <a href="{% url 'sales:new' %}?customer={{ customer.pk }}" class="btn">فاکتور فروش جدید</a>
+      <button type="button" class="btn btn--quiet" data-open-panel="pay-panel" aria-controls="pay-panel" aria-expanded="false">دریافت پرداخت</button>
+      <button type="button" class="btn btn--quiet" data-open-panel="edit-panel" aria-controls="edit-panel" aria-expanded="false">ویرایش</button>
+      <a href="#statement" class="btn btn--quiet">صورت‌حساب</a>
+    </div>
   </div>
+  <details id="pay-panel" class="quick-party-disclosure head-panel no-print">
+    <summary>دریافت پرداخت جدید</summary>
+    {% include "payments/_record_payment_form.html" with form=payment_form post_url=payment_form_post_url %}
+  </details>
+  <details id="edit-panel" class="quick-party-disclosure head-panel no-print">
+    <summary>ویرایش مشتری</summary>
+    <form method="post" action="{% url 'customers:edit' customer.pk %}" class="quick-party">
+      {% csrf_token %}
+      {% include "shared/_form_errors.html" with form=edit_form %}
+      {% for field in edit_form %}
+        {% include "shared/_field.html" with field=field %}
+      {% endfor %}
+      <button type="submit" class="btn btn--block">ذخیره</button>
+    </form>
+  </details>
 </div>
 
-<div class="stats">
-  <div class="stat-card">
-    <span class="stat-card__label">جمع خرید عمر مشتری</span>
-    <span class="stat-card__value num">{{ cards.lifetime_purchases|toman }}</span>
+{# Balance leads the row (it is the one number this screen exists for). #}
+<div class="stats stats--hero no-print">
+  <div class="stat-card stat-card--primary{% if cards.outstanding %} stat-card--owed{% endif %}">
+    <span class="stat-card__label">مانده باز</span>
+    <span class="stat-card__value num{% if cards.outstanding %} is-loss{% endif %}">{{ cards.outstanding|toman_split }}</span>
+    <span class="field__hint">{% if cards.outstanding %}بدهکار به شرکت{% else %}تسویه‌شده{% endif %}</span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">مانده باز</span>
-    <span class="stat-card__value num">{{ cards.outstanding|toman }}</span>
+    <span class="stat-card__label">جمع خرید عمر مشتری</span>
+    <span class="stat-card__value num">{{ cards.lifetime_purchases|toman_split }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">تعداد فاکتور</span>
@@ -57,23 +71,64 @@ component reused as-is from Receivables.
   </div>
   <div class="stat-card">
     <span class="stat-card__label">آخرین خرید</span>
-    <span class="stat-card__value num">{{ cards.last_purchase|jalali|default:"—" }}</span>
+    <span class="stat-card__value num">{{ cards.last_purchase|jalali|dash }}</span>
   </div>
 </div>
 
-<div class="card">
+{# The statement is what this page is opened for, so it comes first; the raw lists below are the detail. #}
+<div class="card statement-card" id="statement">
   <div class="card__body">
-    <div class="page-head__row">
-      <h2>ثبت پرداخت</h2>
+    <div class="page-head__row statement__head">
+      <h2>صورت‌حساب (بدهکار/بستانکار)</h2>
+      <div class="statement__tools no-print">
+        <button type="button" class="btn btn--quiet" data-print-statement>چاپ صورت‌حساب</button>
+        <a href="#payments-section" class="btn btn--quiet">فاکتورها، پرداخت‌ها و چک‌ها ↓</a>
+      </div>
     </div>
-    <details class="quick-party-disclosure">
-      <summary class="btn btn--quiet">دریافت پرداخت جدید</summary>
-      {% include "payments/_record_payment_form.html" with form=payment_form post_url=payment_form_post_url %}
-    </details>
+    {% if ledger %}
+      <p class="statement__verdict{% if statement.closing > 0 %} is-owes{% elif statement.closing < 0 %} is-credit{% endif %}">
+        {% if statement.closing > 0 %}الان این مشتری <strong class="num">{{ statement.closing_abs|toman }}</strong> به شما بدهکار است
+        {% elif statement.closing < 0 %}شما <strong class="num">{{ statement.closing_abs|toman }}</strong> به این مشتری بدهکارید (بستانکار است)
+        {% else %}حساب تسویه است{% endif %}
+        <span class="field__hint"> · تا {{ statement.as_of|jalali }}</span>
+      </p>
+      <div class="table-card"><table class="data-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>شرح</th>
+            <th title="فاکتور فروش؛ مشتری بدهکار می‌شود">بدهکار</th>
+            <th title="پرداخت دریافتی؛ از بدهی کم می‌شود">بستانکار</th>
+            <th>مانده</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ledger %}
+            <tr>
+              <td class="num">{{ row.date|jalali }}</td>
+              <td>{% if row.url %}<a href="{{ row.url }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}</td>
+              <td class="num">{% if row.kind == 'debit' %}{{ row.amount|toman }}{% else %}—{% endif %}</td>
+              <td class="num">{% if row.kind == 'credit' %}{{ row.amount|toman }}{% else %}—{% endif %}</td>
+              <td class="num">{{ row.balance|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="data-table__total">
+            <td colspan="2">جمع / مانده نهایی</td>
+            <td class="num">{{ statement.debit|toman }}</td>
+            <td class="num">{{ statement.credit|toman }}</td>
+            <td class="num"><strong>{{ statement.closing|toman }}</strong></td>
+          </tr>
+        </tfoot>
+      </table></div>
+    {% else %}
+      <p class="field__hint">هنوز تراکنشی برای این مشتری ثبت نشده است.</p>
+    {% endif %}
   </div>
 </div>
 
-<div class="card">
+<div class="card no-print" id="payments-section">
   <div class="card__body">
     <h2>فاکتورهای فروش</h2>
     {% if invoices %}
@@ -111,7 +166,7 @@ component reused as-is from Receivables.
   </div>
 </div>
 
-<div class="card">
+<div class="card no-print">
   <div class="card__body">
     <h2>پرداخت‌ها</h2>
     {% if payments %}
@@ -130,7 +185,7 @@ component reused as-is from Receivables.
               <td class="num">{{ payment.payment_date|jalali }}</td>
               <td class="num">{{ payment.amount|toman }}</td>
               <td>{{ payment.bank_account|default:"نقدی" }}</td>
-              <td>{{ payment.note|default:"—" }}</td>
+              <td>{{ payment.note|dash }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -141,7 +196,7 @@ component reused as-is from Receivables.
   </div>
 </div>
 
-<div class="card">
+<div class="card no-print">
   <div class="card__body">
     <h2>چک‌ها</h2>
     {% if cheques %}
@@ -158,9 +213,9 @@ component reused as-is from Receivables.
         <tbody>
           {% for cheque in cheques %}
             <tr>
-              <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"—" }}</a></td>
-              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
-              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|ident|dash }}</a></td>
+              <td>{{ cheque.issuer|dash }}</td><td>{{ cheque.bank_name|dash }}</td>
+              <td class="num">{{ cheque.due_date|jalali|dash }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>
                 {% status_badge "cheque" cheque.status cheque.get_status_display %}
@@ -171,38 +226,6 @@ component reused as-is from Receivables.
       </table></div>
     {% else %}
       <p class="field__hint">چکی برای این مشتری ثبت نشده است.</p>
-    {% endif %}
-  </div>
-</div>
-
-<div class="card">
-  <div class="card__body">
-    <h2>صورت‌حساب (بدهکار/بستانکار)</h2>
-    {% if ledger %}
-      <div class="table-card"><table class="data-table">
-        <thead>
-          <tr>
-            <th>تاریخ</th>
-            <th>شرح</th>
-            <th>بدهکار</th>
-            <th>بستانکار</th>
-            <th>مانده</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in ledger %}
-            <tr>
-              <td class="num">{{ row.date|jalali }}</td>
-              <td>{% if row.url %}<a href="{{ row.url }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}</td>
-              <td class="num">{% if row.kind == 'debit' %}{{ row.amount|toman }}{% else %}—{% endif %}</td>
-              <td class="num">{% if row.kind == 'credit' %}{{ row.amount|toman }}{% else %}—{% endif %}</td>
-              <td class="num">{{ row.balance|toman }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table></div>
-    {% else %}
-      <p class="field__hint">هنوز تراکنشی برای این مشتری ثبت نشده است.</p>
     {% endif %}
   </div>
 </div>
