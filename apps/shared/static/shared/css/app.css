@@ -2022,3 +2022,11 @@ h3 { font-size: 15px; }
     white-space: nowrap;
   }
 }
+
+.card__body > h1 {
+  margin-bottom: var(--space-4);
+}
+
+.dues-grid {
+  margin-top: var(--space-4);
+}

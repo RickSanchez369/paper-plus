@@ -73,7 +73,7 @@ still offer no card-reader option (a card reader only receives money, D-069).
 ones are applied in two commits (see D-084 for the list and for what was left to Sina). Checked: `qa_02..24` pass on a throwaway
 SQLite except `qa_13` BK12, which also fails on the commit before this batch (SQLite only, not investigated); `qa_24_ui_audit`
 is new; browser-checked the invoice keyboard flow and the date picker with Playwright. QA scripts need `DEBUG=True` when run on
-SQLite (empty `ALLOWED_HOSTS` otherwise gives 400). **Not checked:** phone-width screenshots, print preview.
+SQLite (empty `ALLOWED_HOSTS` otherwise gives 400). Phone width (390px) checked on dashboard and inventory; **not checked:** other pages at phone width, print preview.
 
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
