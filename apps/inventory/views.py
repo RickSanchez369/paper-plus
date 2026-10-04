@@ -14,6 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views import View
 from django.views.generic import DetailView, TemplateView
 
@@ -34,6 +35,9 @@ from .selectors import (
     get_total_inventory_value,
 )
 from .services import set_opening_stock
+
+# Viewer-side "running low" lens: at most this many cartons' worth of packs. Display only.
+DEFAULT_LOW_CARTONS = 3
 
 
 class InventoryListView(LoginRequiredMixin, TemplateView):
@@ -79,17 +83,32 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
         q = self.request.GET.get("q", "").strip()
         in_stock = self.request.GET.get("in_stock") == "1"
         out_of_stock = sum(1 for r in rows if r["stock"] <= 0)
+        # "Running low" lens (?stock=low&low=N cartons, ?stock=out): a view over the same rows,
+        # the threshold is the viewer's own choice and nothing is stored.
+        stock_filter = self.request.GET.get("stock", "")
+        if stock_filter not in ("low", "out"):
+            stock_filter = ""
+        low_raw = self.request.GET.get("low", "")
+        low_cartons = int(low_raw) if low_raw.isascii() and low_raw.isdigit() and 1 <= int(low_raw) <= 999 else DEFAULT_LOW_CARTONS
+        for r in rows:
+            r["is_low"] = 0 < r["stock"] <= low_cartons * r["product"].pack_per_carton
+        low_count = sum(1 for r in rows if r["stock"] <= low_cartons * r["product"].pack_per_carton)
         if q:
             needle = q.lower()
             rows = [r for r in rows if needle in r["product"].name.lower() or needle in r["product"].sku.lower()]
         if in_stock:
             rows = [r for r in rows if r["stock"] > 0]
+        if stock_filter == "out":
+            rows = [r for r in rows if r["stock"] <= 0]
+        elif stock_filter == "low":
+            rows = [r for r in rows if r["stock"] <= low_cartons * r["product"].pack_per_carton]
 
+        # The lens answers "what is closest to empty": lowest stock first unless a sort is chosen.
         rows, sort_key, sort_dir = sort_rows(self.request, rows, {
             "name": lambda r: r["product"].name,
             "stock": lambda r: r["stock"],
             "value": lambda r: r["value"],
-        })
+        }, default="stock" if stock_filter else None)
         page_obj = paginate(self.request, rows)
 
         context.update({
@@ -102,6 +121,9 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
             "out_of_stock_count": out_of_stock,
             "q": q,
             "in_stock": in_stock,
+            "stock_filter": stock_filter,
+            "low_cartons": low_cartons,
+            "low_count": low_count,
         })
         return context
 
@@ -115,7 +137,13 @@ class ProductCreateView(LoginRequiredMixin, View):
     template_name = "inventory/product_new.html"
 
     def get(self, request):
-        return render(request, self.template_name, {"form": InventoryProductForm()})
+        initial = {}
+        pack = request.GET.get("pack", "")
+        # After "ثبت و کالای بعدی" the ratio just used is the best guess for the next
+        # product (runs of same-size cartons); it stays an editable default.
+        if pack.isascii() and pack.isdigit() and 1 <= int(pack) <= 32767:
+            initial["pack_per_carton"] = int(pack)
+        return render(request, self.template_name, {"form": InventoryProductForm(initial=initial)})
 
     def post(self, request):
         form = InventoryProductForm(request.POST)
@@ -130,6 +158,8 @@ class ProductCreateView(LoginRequiredMixin, View):
                 form.add_error(None, "؛ ".join(exc.messages))
             else:
                 messages.success(request, f"کالای «{product.name}» ثبت شد.")
+                if request.POST.get("again"):
+                    return redirect(f"{reverse('inventory:product_new')}?pack={product.pack_per_carton}")
                 return redirect("inventory:detail", pk=product.pk)
         return render(request, self.template_name, {"form": form})
 
@@ -155,7 +185,8 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
                 messages.success(request, "قیمت فروش بروزرسانی شد.")
         else:
             messages.error(request, "؛ ".join(error for errors in form.errors.values() for error in errors))
-        return redirect("inventory:detail", pk=pk)
+        # Back to the form itself, so the new price is read in context (the card has an anchor).
+        return redirect(reverse("inventory:detail", args=[pk]) + "#selling-price")
 
 
 class InventoryDetailView(LoginRequiredMixin, DetailView):
@@ -199,7 +230,34 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         )
         context["movement_rows"] = [self._movement_row(m) for m in movements]
         context["price_history"] = product.history.all()
+        context["price_rows"], context["last_price_change"] = self._price_rows(context["price_history"])
         return context
+
+    @staticmethod
+    def _price_rows(history):
+        """Price history newest-first, each row with its change against the
+        record before it (display only). Rows that did not touch a price (a
+        name or SKU edit) are flagged so they do not read as price changes."""
+        records = list(history.select_related("history_user"))
+
+        def change(new, old):
+            if old in (None, 0) or new == old:
+                return None
+            diff = new - old
+            return {"up": diff > 0, "pct": abs(round(diff * 100 / old))}
+
+        rows = []
+        for i, record in enumerate(records):
+            prev = records[i + 1] if i + 1 < len(records) else None
+            retail = change(record.default_selling_price, prev.default_selling_price) if prev else None
+            wholesale = change(record.wholesale_selling_price, prev.wholesale_selling_price) if prev else None
+            changed = prev is None or (
+                record.default_selling_price != prev.default_selling_price
+                or record.wholesale_selling_price != prev.wholesale_selling_price
+            )
+            rows.append({"record": record, "retail": retail, "wholesale": wholesale, "price_changed": changed})
+        last = next((r for r in rows if r["price_changed"] and r["record"].history_type == "~"), None)
+        return rows, last
 
     @staticmethod
     def _movement_row(movement):

@@ -32,7 +32,7 @@ class InventoryProductForm(QuickProductForm):
     opening_cartons = forms.IntegerField(
         required=False,
         min_value=0,
-        label="موجودی فعلی - کارتن (اختیاری)",
+        label="موجودی فعلی - کارتن",
         help_text="فقط برای کالایی که همین حالا در انبار موجود است؛ بعداً فقط با فاکتور خرید/فروش تغییر می‌کند.",
         widget=NumericInput(attrs=_NUMBER),
         error_messages={"min_value": "مقدار نمی‌تواند منفی باشد."},
@@ -40,7 +40,7 @@ class InventoryProductForm(QuickProductForm):
     opening_packs = forms.IntegerField(
         required=False,
         min_value=0,
-        label="موجودی فعلی - بسته (اختیاری)",
+        label="موجودی فعلی - بسته",
         widget=NumericInput(attrs=_NUMBER),
         error_messages={"min_value": "مقدار نمی‌تواند منفی باشد."},
     )
@@ -48,10 +48,16 @@ class InventoryProductForm(QuickProductForm):
         required=False,
         min_value=0,
         label="بهای خرید هر بسته (تومان)",
-        help_text="بهای تمام‌شدهٔ همین موجودی؛ مبنای ارزش انبار است، نه قیمت فروش.",
+        help_text="بهای تمام‌شدهٔ همین موجودی؛ مبنای ارزش انبار است، نه قیمت فروش. اگر موجودی وارد کرده‌اید، این مورد الزامی است.",
         widget=NumericInput(attrs=_NUMBER),
         error_messages={"min_value": "بها نمی‌تواند منفی باشد."},
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Typing starts on the name; skipped on a re-render so an error is not buried by a focus jump.
+        if not self.is_bound:
+            self.fields["name"].widget.attrs["autofocus"] = True
 
     def clean(self):
         cleaned = super().clean()

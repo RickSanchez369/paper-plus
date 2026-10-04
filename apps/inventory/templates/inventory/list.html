@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static l10n paper %}
 
 {% comment %}
 Inventory list: cards (total value from active
@@ -12,6 +12,10 @@ changes through purchase and sales invoices only (D-044).
 
 {% block title %}انبار{% endblock %}
 {% block header %}انبار{% endblock %}
+
+{% block head %}
+  <script src="{% static_v 'inventory/js/list.js' %}" defer></script>
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -26,39 +30,56 @@ changes through purchase and sales invoices only (D-044).
   </p>
 </div>
 
-<div class="stats">
-  <div class="stat-card">
+<form method="get" class="toolbar" id="inv-filter"
+      hx-get="{% url 'inventory:list' %}"
+      hx-trigger="input changed delay:250ms from:#q, change"
+      hx-target="#inv-results" hx-select="#inv-results" hx-swap="outerHTML" hx-push-url="true" hx-sync="this:replace">
+  {# Live filtering is an enhancement: the button below stays the no-JS path (and Enter still submits). #}
+  <div class="filters">
+    <div class="field">
+      <label for="q">جستجوی کالا</label>
+      <input id="q" type="search" name="q" value="{{ q }}" placeholder="نام یا کد کالا" inputmode="search" enterkeyhint="search" autocomplete="off">
+    </div>
+    <label class="check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> فقط کالاهای موجود</label>
+    {% if stock_filter %}<input type="hidden" name="stock" value="{{ stock_filter }}">{% endif %}
+    {% if stock_filter == "low" %}
+      <label class="inv-low-field">کمتر از
+        <input type="text" name="low" value="{{ low_cartons }}" class="field__control num" dir="ltr" inputmode="numeric" autocomplete="off" aria-label="آستانهٔ کم‌موجودی به کارتن"> کارتن
+      </label>
+    {% endif %}
+    <button class="btn btn--quiet">اعمال فیلتر</button>
+    {% if q or in_stock or stock_filter %}<a href="{% url 'inventory:list' %}" class="btn btn--quiet">پاک‌کردن</a>{% endif %}
+  </div>
+  {# A viewer-side lens over the same rows: the threshold is remembered in the browser only (list.js). #}
+  <div class="inv-chips" role="group" aria-label="نمای موجودی">
+    <a class="inv-chip{% if not stock_filter %} is-active{% endif %}" href="{% url 'inventory:list' %}">همه</a>
+    <a class="inv-chip inv-chip--warn{% if stock_filter == 'low' %} is-active{% endif %}" href="?stock=low&amp;low={{ low_cartons }}" data-low-link>رو به اتمام{% if stock_filter == "low" %} <span class="num">{{ low_count|fa_number }}</span>{% endif %}</a>
+    <a class="inv-chip inv-chip--bad{% if stock_filter == 'out' %} is-active{% endif %}" href="?stock=out">ناموجود <span class="num">{{ out_of_stock_count|fa_number }}</span></a>
+  </div>
+</form>
+
+<div class="stats stats--inventory">
+  <div class="stat-card stat-card--primary">
     <span class="stat-card__label">ارزش کل موجودی (به بهای خرید)</span>
-    <span class="stat-card__value num">{{ total_value|toman }}</span>
+    <span class="stat-card__value num">{{ total_value|toman_split }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">تعداد کالا</span>
     <span class="stat-card__value num">{{ item_count|fa_number }}</span>
   </div>
-  <div class="stat-card">
+  <a class="stat-card stat-card--link" href="?stock=out" title="فقط کالاهای ناموجود را نشان بده">
     <span class="stat-card__label">کالاهای ناموجود</span>
     <span class="stat-card__value num">{{ out_of_stock_count|fa_number }}</span>
-  </div>
+  </a>
   {% usd_rate_card %}
 </div>
 
-<form method="get" class="toolbar">
-  <div class="filters">
-    <div class="field">
-      <label for="q">جستجوی کالا</label>
-      <input id="q" type="search" name="q" value="{{ q }}" placeholder="نام یا کد کالا">
-    </div>
-    <label class="check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> فقط کالاهای موجود</label>
-    <button class="btn btn--quiet">اعمال فیلتر</button>
-    {% if q or in_stock %}<a href="{% url 'inventory:list' %}" class="btn btn--quiet">پاک‌کردن</a>{% endif %}
-  </div>
-</form>
-
+<div id="inv-results">
 {% if rows %}
 <div class="card">
   <div class="card__body">
     <div class="table-card">
-      <table class="data-table">
+      <table class="data-table data-table--inventory data-table--stack">
         <thead>
           <tr>
             {% sort_th "کالا" "name" %}
@@ -75,21 +96,29 @@ changes through purchase and sales invoices only (D-044).
         <tbody>
           {% for row in rows %}
             <tr{% if row.stock <= 0 %} class="is-void"{% endif %}>
-              <td>
-                <a href="{% url 'inventory:detail' row.product.pk %}"><strong>{{ row.product.name }}</strong></a>
-                <small class="cell-sub num">{{ row.product.sku }}</small>
+              <td class="cell-product stack-name">
+                <a href="{% url 'inventory:detail' row.product.pk %}"><strong class="name-clip" title="{{ row.product.name }}">{{ row.product.name }}</strong></a>
+                <small class="cell-sub">{{ row.product.sku|ident }}</small>
               </td>
-              <td class="num">
-                {% if row.stock <= 0 %}<span class="badge badge--bad">{% if row.stock < 0 %}منفی{% else %}ناموجود{% endif %}</span>{% endif %}
+              <td class="num stack-stock">
+                {% if row.stock <= 0 %}<span class="badge badge--bad">{% if row.stock < 0 %}منفی{% else %}ناموجود{% endif %}</span>{% elif stock_filter == "low" and row.is_low %}<span class="badge badge--pending">رو به اتمام</span>{% endif %}
                 {{ row.stock|units:row.product.pack_per_carton }}
               </td>
-              <td class="num">{% if row.average_cost is not None %}{{ row.average_cost|toman }}{% else %}—{% endif %}</td>
-              <td class="num">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
-              <td class="num">{{ row.product.default_selling_price|toman }}</td>
-              <td class="num">{{ row.product.carton_price|toman }}{% if row.product.wholesale_is_unset %} <span class="badge badge--pending" title="قیمت کارتن هنوز جدا تعیین نشده و از قیمت بسته × تعداد بسته در کارتن محاسبه می‌شود">تعیین نشده</span>{% endif %}</td>
-              <td class="num">{{ row.value|toman }}</td>
-              <td class="num">{{ row.share|fa_number }}٪</td>
-              <td><a href="{% url 'inventory:detail' row.product.pk %}#selling-price" class="btn btn--quiet">تغییر قیمت‌ها</a></td>
+              <td class="num" data-label="میانگین خرید (هر بسته)">{% if row.average_cost is not None %}{{ row.average_cost|toman }}{% else %}—{% endif %}</td>
+              <td class="num" data-label="آخرین قیمت خرید">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
+              <td class="num" data-label="فروش خرد (هر بسته)">{{ row.product.default_selling_price|toman }}</td>
+              <td class="num" data-label="فروش عمده (هر کارتن)">{{ row.product.carton_price|toman }}{% if row.product.wholesale_is_unset %} <span class="badge badge--pending" title="قیمت کارتن هنوز جدا تعیین نشده و از قیمت بسته × تعداد بسته در کارتن محاسبه می‌شود">تعیین نشده</span>{% endif %}</td>
+              <td class="num" data-label="ارزش موجودی">{{ row.value|toman }}</td>
+              <td class="num" data-label="سهم از کل">
+                <span class="inv-share">
+                  <span>{{ row.share|fa_number }}٪</span>
+                  <span class="inv-share__bar" aria-hidden="true"><i style="--share: {{ row.share|unlocalize }}%"></i></span>
+                </span>
+              </td>
+              <td class="cell-action stack-action">
+                <a href="{% url 'inventory:detail' row.product.pk %}#fifo-layers" class="btn btn--quiet">لایه‌ها و تاریخچه</a>
+                <a href="{% url 'inventory:detail' row.product.pk %}#selling-price" class="btn btn--quiet">تغییر قیمت‌ها</a>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -103,16 +132,15 @@ changes through purchase and sales invoices only (D-044).
 {% if not rows %}
 <div class="card">
   <div class="card__body">
-    <div class="placeholder">
-      {% if q or in_stock %}
-        <p>کالایی با این فیلتر پیدا نشد.</p>
-        <a href="{% url 'inventory:list' %}" class="btn btn--quiet">پاک‌کردن فیلتر</a>
-      {% else %}
-        <p>هنوز کالایی ثبت نشده است.</p>
-        <a href="{% url 'inventory:product_new' %}" class="btn">ثبت اولین کالا</a>
-      {% endif %}
-    </div>
+    {% if q or in_stock or stock_filter %}
+      {% url 'inventory:list' as clear_url %}
+      {% include "shared/_empty_state.html" with icon="inventory" title="کالایی با این فیلتر پیدا نشد." cta_url=clear_url cta_label="پاک‌کردن فیلتر" cta_quiet=True %}
+    {% else %}
+      {% url 'inventory:product_new' as new_url %}
+      {% include "shared/_empty_state.html" with icon="inventory" title="هنوز کالایی ثبت نشده است." hint="کالا را با قیمت بسته و تعداد در کارتن ثبت کنید؛ موجودی از روی فاکتورهای خرید و فروش خودکار به‌روز می‌شود." cta_url=new_url cta_label="ثبت اولین کالا" %}
+    {% endif %}
   </div>
 </div>
 {% endif %}
+</div>
 {% endblock %}

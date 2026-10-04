@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static l10n paper %}
 
 {% comment %}
 Per-product detail: purchase cost vs. current
@@ -13,13 +13,18 @@ each row touched and a link back to its source invoice; and a
 {% block title %}{{ product.name }}{% endblock %}
 {% block header %}کالا: {{ product.name }}{% endblock %}
 
+{% block head %}
+  <script src="{% static_v 'inventory/js/price_form.js' %}" defer></script>
+  <script src="{% static_v 'inventory/js/detail.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / {{ product.name }}</p>
 
 <div class="page-head">
   <div class="page-head__row">
     <div>
-      <h1>{{ product.name }} ({{ product.sku }})</h1>
+      <h1>{{ product.name }} <bdi dir="ltr" class="ident">({{ product.sku }})</bdi></h1>
       <p class="page-head__lede">
         هر کارتن: {{ product.pack_per_carton|fa_number }} بسته ·
         موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|units:product.pack_per_carton }}</strong>
@@ -28,57 +33,156 @@ each row touched and a link back to its source invoice; and a
   </div>
 </div>
 
-<div class="stats">
-  <div class="stat-card">
-    <span class="stat-card__label">میانگین قیمت خرید (هر بسته)</span>
-    <span class="stat-card__value num">{% if average_cost is not None %}{{ average_cost|toman }}{% else %}—{% endif %}</span>
-    <span class="field__hint">فقط بر اساس موجودی باقی‌مانده؛ برای نمایش است و در سود نقشی ندارد.</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-card__label">بهای لایهٔ بعدی (FIFO)</span>
-    <span class="stat-card__value num">{% if fifo_cost is not None %}{{ fifo_cost|toman }}{% else %}—{% endif %}</span>
-    <span class="field__hint">بهای قدیمی‌ترین لایهٔ فعال؛ فروش بعدی و سود از همین حساب می‌شود.</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-card__label">آخرین قیمت خرید</span>
-    <span class="stat-card__value num">{% if last_cost is not None %}{{ last_cost|toman }}{% else %}—{% endif %}</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-card__label">قیمت فروش خرد (هر بسته)</span>
-    <span class="stat-card__value num">{{ product.default_selling_price|toman }}</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-card__label">قیمت فروش عمده (هر کارتن)</span>
-    <span class="stat-card__value num">{{ product.carton_price|toman }}</span>
-    {% if product.wholesale_is_unset %}<span class="field__hint">هنوز جدا تعیین نشده؛ قیمت بسته × {{ product.pack_per_carton|fa_number }}.</span>{% endif %}
-  </div>
-  <div class="stat-card">
+<nav class="inv-jump" aria-label="پرش به بخش">
+  <a class="btn btn--quiet" href="#selling-price">تغییر قیمت‌ها</a>
+  <a class="btn btn--quiet" href="#price-history">تاریخچهٔ قیمت</a>
+  <a class="btn btn--quiet" href="#fifo-layers">لایه‌های FIFO</a>
+  <a class="btn btn--quiet" href="#movements">تراکنش‌ها</a>
+</nav>
+
+{# Cost vs. selling price in two groups, one hero number; every figure links to the section that explains it. #}
+<section class="price-board">
+  <div class="stat-card stat-card--primary price-board__hero">
     <span class="stat-card__label">ارزش موجودی (به بهای خرید)</span>
-    <span class="stat-card__value num">{{ value|toman }}</span>
+    <span class="stat-card__value num">{{ value|toman_split }}</span>
+    <span class="field__hint">موجودی: {{ stock|units:product.pack_per_carton }}</span>
   </div>
-</div>
 
-<div class="card" id="selling-price">
+  <div class="price-board__group">
+    <h2 class="price-board__title">بهای خرید</h2>
+    <dl class="price-board__list">
+      <div>
+        <dt><a href="#movements">آخرین قیمت خرید</a></dt>
+        <dd class="num">{% if last_cost is not None %}{{ last_cost|toman }}{% else %}—{% endif %}</dd>
+      </div>
+      <div>
+        <dt><a href="#fifo-layers">بهای لایهٔ بعدی (FIFO)</a></dt>
+        <dd class="num">{% if fifo_cost is not None %}{{ fifo_cost|toman }}{% else %}—{% endif %}</dd>
+        <small class="field__hint">بهای قدیمی‌ترین لایهٔ فعال؛ فروش بعدی و سود از همین حساب می‌شود.</small>
+      </div>
+      <div>
+        <dt><a href="#fifo-layers">میانگین قیمت خرید (هر بسته)</a></dt>
+        <dd class="num">{% if average_cost is not None %}{{ average_cost|toman }}{% else %}—{% endif %}</dd>
+        <small class="field__hint">فقط بر اساس موجودی باقی‌مانده؛ برای نمایش است و در سود نقشی ندارد.</small>
+      </div>
+    </dl>
+  </div>
+
+  <div class="price-board__group price-board__group--sell" id="selling-price">
+    <h2 class="price-board__title">قیمت فروش</h2>
+    <dl class="price-board__list">
+      <div>
+        <dt><a href="#price-history">قیمت فروش خرد (هر بسته)</a></dt>
+        <dd class="num">{{ product.default_selling_price|toman }}</dd>
+      </div>
+      <div>
+        <dt><a href="#price-history">قیمت فروش عمده (هر کارتن)</a></dt>
+        <dd class="num">{{ product.carton_price|toman }}</dd>
+        {% if product.wholesale_is_unset %}<small class="field__hint">هنوز جدا تعیین نشده؛ قیمت بسته × {{ product.pack_per_carton|fa_number }}.</small>{% endif %}
+      </div>
+    </dl>
+
+    <div class="price-board__edit">
+      <h3 class="price-board__subtitle">تغییر قیمت‌های فروش (خرد و عمده)</h3>
+      <p class="field__hint">
+        فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
+      </p>
+      {# The data-* attributes feed price_form.js (display only); the POST and its blank / 0 rules are unchanged. #}
+      <form method="post" action="{% url 'inventory:selling_price' product.pk %}" novalidate id="price-form"
+            data-pack="{{ product.pack_per_carton|unlocalize }}"
+            data-cost="{% if fifo_cost is not None %}{{ fifo_cost|unlocalize }}{% endif %}"
+            data-old-retail="{{ product.default_selling_price|unlocalize }}"
+            data-old-carton="{{ product.carton_price|unlocalize }}"
+            data-wholesale-unset="{% if product.wholesale_is_unset %}1{% endif %}">
+        {% csrf_token %}
+        {% include "shared/_form_errors.html" with form=price_form %}
+        <div class="price-chips" role="group" aria-label="تغییر درصدی هر دو قیمت" hidden>
+          <span class="field__hint">تغییر سریع هر دو قیمت:</span>
+          <button type="button" class="btn btn--quiet" data-pct="-5">−۵٪</button>
+          <button type="button" class="btn btn--quiet" data-pct="5">+۵٪</button>
+          <button type="button" class="btn btn--quiet" data-pct="10">+۱۰٪</button>
+          <button type="button" class="btn btn--quiet" data-pct="20">+۲۰٪</button>
+        </div>
+        <div class="price-board__fields">
+          {% include "shared/_field.html" with field=price_form.default_selling_price %}
+          {% include "shared/_field.html" with field=price_form.wholesale_selling_price %}
+        </div>
+        <label class="price-auto" hidden><input type="checkbox" id="wholesale-auto"{% if product.wholesale_is_unset %} checked{% endif %}>
+          قیمت کارتن خودکار: قیمت بسته × {{ product.pack_per_carton|fa_number }}</label>
+        <p class="field__hint">خالی بگذارید = بدون تغییر · ۰ در قیمت عمده = جدا تعیین نشود (قیمت بسته × {{ product.pack_per_carton|fa_number }}).</p>
+
+        <div class="price-preview" id="price-preview" aria-live="polite" hidden>
+          <div class="price-preview__row" data-row="retail">
+            <span class="price-preview__label">خرد (هر بسته)</span>
+            <span class="price-preview__old num"></span><span aria-hidden="true">←</span>
+            <strong class="price-preview__new num"></strong>
+            <span class="price-preview__delta num"></span>
+          </div>
+          <div class="price-preview__row" data-row="carton">
+            <span class="price-preview__label">عمده (هر کارتن)</span>
+            <span class="price-preview__old num"></span><span aria-hidden="true">←</span>
+            <strong class="price-preview__new num"></strong>
+            <span class="price-preview__delta num"></span>
+          </div>
+          <p class="price-preview__note" id="price-note"></p>
+          <p class="price-preview__warn" id="price-warn" role="alert" hidden></p>
+        </div>
+        <button type="submit" class="btn" id="price-save">ذخیرهٔ قیمت‌ها</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<div class="card" id="price-history">
   <div class="card__body">
-    <h2>تغییر قیمت‌های فروش (خرد و عمده)</h2>
-    <p class="field__hint">
-      فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
-    </p>
-    <form method="post" action="{% url 'inventory:selling_price' product.pk %}" novalidate>
-      {% csrf_token %}
-      {% include "shared/_form_errors.html" with form=price_form %}
-      {% include "shared/_field.html" with field=price_form.default_selling_price %}
-      {% include "shared/_field.html" with field=price_form.wholesale_selling_price %}
-      <button type="submit" class="btn">ذخیرهٔ قیمت‌ها</button>
-    </form>
+    <details class="price-history" open>
+      <summary class="price-history__summary">
+        <h2>تاریخچهٔ قیمت <span class="badge badge--muted">{{ price_rows|length|fa_number }} رکورد</span></h2>
+        {% if last_price_change %}
+          <span class="field__hint">آخرین تغییر {{ last_price_change.record.history_date|jalali }}:
+            خرد {{ last_price_change.record.default_selling_price|toman }}
+            {% if last_price_change.retail %}<span class="inv-delta {% if last_price_change.retail.up %}inv-delta--up{% else %}inv-delta--down{% endif %}">{% if last_price_change.retail.up %}▲{% else %}▼{% endif %} {{ last_price_change.retail.pct|fa_number }}٪</span>{% endif %}
+          </span>
+        {% endif %}
+      </summary>
+      {% if price_rows %}
+        <div class="table-card"><table class="data-table">
+          <thead>
+            <tr>
+              <th>تاریخ</th>
+              <th>قیمت فروش خرد</th>
+              <th>قیمت فروش عمده</th>
+              <th>نوع تغییر</th>
+              <th>کاربر</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in price_rows %}
+              <tr{% if not row.price_changed %} class="inv-row--muted"{% endif %}>
+                <td class="num">{{ row.record.history_date|jalali_at }}</td>
+                <td class="num">{{ row.record.default_selling_price|toman }}{% if row.retail %} <span class="inv-delta {% if row.retail.up %}inv-delta--up{% else %}inv-delta--down{% endif %}">{% if row.retail.up %}▲{% else %}▼{% endif %} {{ row.retail.pct|fa_number }}٪</span>{% endif %}</td>
+                <td class="num">{{ row.record.wholesale_selling_price|toman }}{% if row.wholesale %} <span class="inv-delta {% if row.wholesale.up %}inv-delta--up{% else %}inv-delta--down{% endif %}">{% if row.wholesale.up %}▲{% else %}▼{% endif %} {{ row.wholesale.pct|fa_number }}٪</span>{% endif %}</td>
+                <td>{{ row.record.get_history_type_display }}{% if not row.price_changed %} <small class="cell-sub">قیمت تغییری نکرد</small>{% endif %}</td>
+                <td>
+                  {% if row.record.history_user %}{{ row.record.history_user.get_full_name|default:row.record.history_user.phone }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      {% else %}
+        <p class="field__hint">تاریخچه‌ای ثبت نشده است.</p>
+      {% endif %}
+    </details>
   </div>
 </div>
 
-<div class="card">
+<div class="card" id="fifo-layers">
   <div class="card__body">
     <h2>لایه‌های فعال</h2>
+    <p class="field__hint">لایه‌ها به ترتیب مصرف FIFO مرتب‌اند؛ فروش بعدی از ردیف اول برداشته می‌شود.</p>
     {% if active_layers %}
-      <div class="table-card"><table class="data-table">
+      <div class="table-card"><table class="data-table data-table--stack">
         <thead>
           <tr>
             <th>منشأ</th>
@@ -90,12 +194,12 @@ each row touched and a link back to its source invoice; and a
         </thead>
         <tbody>
           {% for layer in active_layers %}
-            <tr>
-              <td>{{ layer.get_source_display }}</td>
+            <tr{% if forloop.first %} class="inv-fifo-next"{% endif %}>
+              <td>{{ layer.get_source_display }}{% if forloop.first %} <span class="badge badge--info" title="فروش بعدی از همین لایه کم می‌شود">اول مصرف می‌شود</span>{% endif %}</td>
               <td class="num">{{ layer.created_at|jalali }}</td>
-              <td class="num">{{ layer.unit_cost|toman }}</td>
-              <td class="num">{{ layer.quantity_remaining|units:product.pack_per_carton }}</td>
-              <td class="num">{{ layer.remaining_value|toman }}</td>
+              <td class="num" data-label="بهای هر بسته">{{ layer.unit_cost|toman }}</td>
+              <td class="num stack-stock" data-label="مانده">{{ layer.quantity_remaining|units:product.pack_per_carton }}</td>
+              <td class="num" data-label="ارزش مانده">{{ layer.remaining_value|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -106,11 +210,11 @@ each row touched and a link back to its source invoice; and a
   </div>
 </div>
 
-<div class="card">
+<div class="card" id="movements">
   <div class="card__body">
     <h2>تاریخچهٔ تراکنش‌ها</h2>
     {% if movement_rows %}
-      <div class="table-card"><table class="data-table">
+      <div class="table-card"><table class="data-table data-table--stack">
         <thead>
           <tr>
             <th>تاریخ</th>
@@ -128,14 +232,14 @@ each row touched and a link back to its source invoice; and a
             <tr>
               <td class="num">{{ row.movement.created_at|jalali_at }}</td>
               <td>{{ row.movement.get_movement_type_display }}</td>
-              <td class="num">{{ row.movement.signed_quantity|units:product.pack_per_carton }}</td>
-              <td class="num">{{ row.movement.unit_price|toman|default:"—" }}</td>
-              <td class="num">
+              <td class="num stack-stock" data-label="مقدار">{{ row.movement.signed_quantity|units:product.pack_per_carton }}</td>
+              <td class="num" data-label="قیمت هر بسته">{{ row.movement.unit_price|toman|dash }}</td>
+              <td class="num" data-label="لایه(های) مرتبط">
                 {% if row.layers %}
                   {% for layer in row.layers %}{{ layer.unit_cost|toman }}{% if not forloop.last %}، {% endif %}{% endfor %}
                 {% else %}—{% endif %}
               </td>
-              <td>
+              <td data-label="فاکتور">
                 {% if row.invoice %}
                   {% if row.movement.movement_type == 'purchase' %}
                     <a href="{% url 'purchasing:detail' row.invoice.pk %}">{{ row.invoice.invoice_number|fa_digits|default:"(تأیید نشده)" }}</a>
@@ -144,8 +248,8 @@ each row touched and a link back to its source invoice; and a
                   {% endif %}
                 {% else %}—{% endif %}
               </td>
-              <td>{{ row.movement.created_by.get_full_name|default:row.movement.created_by.phone }}</td>
-              <td>{{ row.movement.note|default:"—" }}</td>
+              <td data-label="ثبت‌کننده">{{ row.movement.created_by.get_full_name|default:row.movement.created_by.phone }}</td>
+              <td data-label="توضیح">{{ row.movement.note|dash }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -153,42 +257,6 @@ each row touched and a link back to its source invoice; and a
     {% else %}
       <p class="field__hint">هنوز حرکتی برای این کالا ثبت نشده است.</p>
     {% endif %}
-  </div>
-</div>
-
-<div class="card">
-  <div class="card__body">
-    <details>
-      <summary class="btn btn--quiet">تاریخچهٔ قیمت</summary>
-      {% if price_history %}
-        <div class="table-card"><table class="data-table">
-          <thead>
-            <tr>
-              <th>تاریخ</th>
-              <th>قیمت فروش خرد</th>
-              <th>قیمت فروش عمده</th>
-              <th>نوع تغییر</th>
-              <th>کاربر</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for record in price_history %}
-              <tr>
-                <td class="num">{{ record.history_date|jalali_at }}</td>
-                <td class="num">{{ record.default_selling_price|toman }}</td>
-                <td class="num">{{ record.wholesale_selling_price|toman }}</td>
-                <td>{{ record.get_history_type_display }}</td>
-                <td>
-                  {% if record.history_user %}{{ record.history_user.get_full_name|default:record.history_user.phone }}{% else %}—{% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table></div>
-      {% else %}
-        <p class="field__hint">تاریخچه‌ای ثبت نشده است.</p>
-      {% endif %}
-    </details>
   </div>
 </div>
 {% endblock %}
