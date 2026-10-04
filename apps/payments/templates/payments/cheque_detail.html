@@ -25,9 +25,7 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
       </p>
     </div>
     <div class="sale-detail__actions">
-      <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
-        {{ cheque.get_status_display }}
-      </span>
+      {% status_badge "cheque" cheque.status cheque.get_status_display %}
     </div>
   </div>
 </div>

@@ -39,17 +39,17 @@ read from later.
         <table class="data-table">
           <thead>
             <tr>
-              <th>نام</th>
+              {% sort_th "نام" "name" %}
               <th>تلفن</th>
-              <th>جمع خرید</th>
-              <th>بدهی باز</th>
+              {% sort_th "جمع خرید" "total_purchased" %}
+              {% sort_th "بدهی باز" "outstanding" %}
             </tr>
           </thead>
           <tbody>
             {% for row in rows %}
               <tr>
                 <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a>
-                  {% if not row.supplier.is_active %}<span class="badge">غیرفعال</span>{% endif %}</td>
+                  {% if not row.supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}</td>
                 <td class="num">{{ row.supplier.phone|default:"—" }}</td>
                 <td class="num">{{ row.total_purchased|toman }}</td>
                 <td class="num">{{ row.outstanding|toman }}</td>
@@ -58,6 +58,7 @@ read from later.
           </tbody>
         </table>
       </div>
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>تأمین‌کننده‌ای با این شرایط پیدا نشد.</p>

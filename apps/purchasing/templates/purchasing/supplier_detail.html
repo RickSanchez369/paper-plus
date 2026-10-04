@@ -24,7 +24,7 @@ flattened, so it stays clear which payment settled which purchase.
       <h1>{{ supplier.name }}</h1>
       <p class="page-head__lede">
         {% if supplier.phone %}تلفن: {{ supplier.phone }} · {% endif %}
-        {% if not supplier.is_active %}<span class="badge badge--bad">غیرفعال</span> · {% endif %}
+        {% if not supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %} · {% endif %}
         بدهی باز: <strong class="num">{{ outstanding|toman }}</strong>
       </p>
     </div>
@@ -65,12 +65,10 @@ flattened, so it stays clear which payment settled which purchase.
               <td class="num">{{ invoice.total_amount|toman }}</td>
               <td class="num">{{ invoice.paid_amount|toman }}</td>
               <td>
-                <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
-                  {{ invoice.payment_status.label }}
-                </span>
+                {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
               </td>
               <td>
-                <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">{{ invoice.get_status_display }}</span>
+                {% status_badge "invoice" invoice.status invoice.get_status_display %}
               </td>
             </tr>
           {% endfor %}
@@ -104,9 +102,7 @@ flattened, so it stays clear which payment settled which purchase.
               <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>
-                <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
-                  {{ cheque.get_status_display }}
-                </span>
+                {% status_badge "cheque" cheque.status cheque.get_status_display %}
               </td>
             </tr>
           {% endfor %}

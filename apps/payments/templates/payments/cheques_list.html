@@ -35,8 +35,8 @@ status, direction and due-date range.
               <th>شماره چک</th>
               <th>طرف حساب</th>
               <th>صادرکننده</th><th>بانک</th>
-              <th>سررسید</th>
-              <th>مبلغ</th>
+              {% sort_th "سررسید" "due" %}
+              {% sort_th "مبلغ" "amount" %}
               <th>فاکتور</th>
               <th>وضعیت</th>
             </tr>
@@ -46,7 +46,7 @@ status, direction and due-date range.
               <tr>
                 <td>{{ cheque.get_direction_display }}</td>
                 <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a>
-                  {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}<span class="badge badge--pending">ناقص</span>{% endif %}</td>
+                  {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}{% flag_badge "pending" "ناقص" %}{% endif %}</td>
                 <td>{{ cheque.customer|default:cheque.supplier|default:"—" }}</td>
                 <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
                 <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
@@ -59,15 +59,14 @@ status, direction and due-date range.
                   {% else %}عمومی{% endif %}
                 </td>
                 <td>
-                  <span class="badge{% if cheque.status == 'bounced' or cheque.status == 'cancelled' %} badge--bad{% elif cheque.status == 'cleared' %} badge--good{% else %} badge--pending{% endif %}">
-                    {{ cheque.get_status_display }}
-                  </span>
+                  {% status_badge "cheque" cheque.status cheque.get_status_display %}
                 </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>چکی با این فیلترها پیدا نشد.</p>

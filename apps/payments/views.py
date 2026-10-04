@@ -30,6 +30,7 @@ from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
+from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
 from apps.shared.utils import format_toman
 
@@ -343,8 +344,19 @@ class ChequesListView(LoginRequiredMixin, TemplateView):
             if data.get("due_end"):
                 qs = qs.filter(due_date__lte=data["due_end"])
 
-        context["filter_form"] = filter_form
-        context["cheques"] = qs
+        # Sorted in the database: the whitelist maps the query key to an ORDER BY.
+        order = {"due": "due_date", "amount": "amount"}.get(self.request.GET.get("sort"))
+        direction = "desc" if self.request.GET.get("dir") == "desc" else "asc"
+        if order:
+            qs = qs.order_by(("-" if direction == "desc" else "") + order, "due_date")
+        page_obj = paginate(self.request, qs)
+        context.update({
+            "filter_form": filter_form,
+            "cheques": page_obj.object_list,
+            "page_obj": page_obj,
+            "sort_key": self.request.GET.get("sort") if order else None,
+            "sort_dir": direction,
+        })
         return context
 
 

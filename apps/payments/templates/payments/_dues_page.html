@@ -48,7 +48,7 @@ Three blocks, by how the money will be settled:
               <tr>
                 <td class="num">
                   {% if cheque.due_date %}{{ cheque.due_date|jalali }}{% else %}—{% endif %}
-                  {% if row.overdue %}<span class="badge badge--pending">سررسید گذشته</span>{% endif %}
+                  {% if row.overdue %}{% flag_badge "bad" "سررسید گذشته" %}{% endif %}
                 </td>
                 <td>{{ row.party }}</td>
                 <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a></td>
@@ -112,7 +112,7 @@ Three blocks, by how the money will be settled:
               <tr>
                 <td class="num">
                   {% if item.due_date %}{{ item.due_date|jalali }}{% else %}—{% endif %}
-                  {% if item.overdue %}<span class="badge badge--pending">سررسید گذشته</span>{% endif %}
+                  {% if item.overdue %}{% flag_badge "bad" "سررسید گذشته" %}{% endif %}
                 </td>
                 <td>{{ item.party }}</td>
                 <td>

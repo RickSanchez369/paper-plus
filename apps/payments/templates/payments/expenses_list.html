@@ -37,8 +37,8 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
               <td>{{ item.label }}{% if item.kind == "recurring" %} <span class="field__hint">(هزینهٔ ثابت)</span>{% endif %}</td>
               <td class="num">
                 {{ item.due_date|jalali }}
-                {% if item.overdue %}<span class="badge badge--pending">سررسید گذشته</span>
-                {% elif item.days_left == 0 %}<span class="badge badge--pending">امروز</span>
+                {% if item.overdue %}{% flag_badge "bad" "سررسید گذشته" %}
+                {% elif item.days_left == 0 %}{% flag_badge "pending" "امروز" %}
                 {% else %}<span class="field__hint">{{ item.days_left|fa_number }} روز دیگر</span>{% endif %}
               </td>
               <td class="num">{{ item.amount|toman }}</td>
@@ -121,13 +121,13 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
                 <td>{% if expense.document %}📎{% else %}—{% endif %}</td>
                 <td>
                   {% if expense.is_cancelled %}
-                    <span class="badge badge--bad">لغو شده</span>
+                    {% flag_badge "muted" "لغو شده" %}
                   {% elif expense.is_paid %}
-                    <span class="badge badge--good">پرداخت‌شده</span>
+                    {% flag_badge "good" "پرداخت‌شده" %}
                   {% elif expense.payment_method == "cheque" %}
-                    <span class="badge badge--pending">چک در انتظار</span>
+                    {% flag_badge "info" "چک در انتظار" %}
                   {% else %}
-                    <span class="badge badge--pending">پرداخت‌نشده</span>
+                    {% flag_badge "pending" "پرداخت‌نشده" %}
                   {% endif %}
                 </td>
                 <td>
@@ -157,17 +157,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
         </table>
       </div>
 
-      {% if page_obj.paginator.num_pages > 1 %}
-        <div class="pagination">
-          {% if page_obj.has_previous %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.previous_page_number }}">قبلی</a>
-          {% endif %}
-          <span class="field__hint">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
-          {% if page_obj.has_next %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.next_page_number }}">بعدی</a>
-          {% endif %}
-        </div>
-      {% endif %}
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>هزینه‌ای با این فیلترها پیدا نشد.</p>

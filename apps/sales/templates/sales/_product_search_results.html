@@ -14,8 +14,11 @@ one needs no second request.
             data-ratio="{{ row.product.pack_per_carton }}"
             data-pack-price="{{ row.pack_price }}"
             data-carton-price="{{ row.carton_price }}">
-      <span>{{ row.product.name }}</span>
-      <span class="num item-row__result-stock">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|units:row.product.pack_per_carton }}{% endif %}</span>
+      <span class="item-row__result-name">{{ row.product.name }}</span>
+      <span class="item-row__result-meta">
+        <span class="num item-row__result-stock{% if row.stock <= 0 %} item-row__result-stock--out{% endif %}">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|units:row.product.pack_per_carton }}{% endif %}</span>
+        {% if row.pack_price %}<span class="num item-row__result-price">هر بسته: {{ row.pack_price|toman }}</span>{% endif %}
+      </span>
     </button>
   {% endfor %}
 {% else %}

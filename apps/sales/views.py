@@ -12,7 +12,6 @@ These views only assemble forms, call the service, and render.
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -27,6 +26,7 @@ from apps.products.forms import excluded_product_ids
 from apps.products.models import Product
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
+from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
 from apps.shared.utils import format_toman
 
@@ -86,14 +86,21 @@ class SalesListView(LoginRequiredMixin, TemplateView):
             if hi is not None:
                 invoices = [i for i in invoices if i.total <= hi]
 
-        paginator = Paginator(invoices, self.paginate_by)
-        page_obj = paginator.get_page(self.request.GET.get("page"))
+        invoices, sort_key, sort_dir = sort_rows(self.request, invoices, {
+            "number": lambda i: i.invoice_number,
+            "date": lambda i: (i.invoice_date, i.created_at),
+            "party": lambda i: i.customer.name,
+            "total": lambda i: i.total,
+        })
+        page_obj = paginate(self.request, invoices)
 
         context.update({
             "range_form": range_form,
             "date_range": date_range,
             "filter_form": filter_form,
             "page_obj": page_obj,
+            "sort_key": sort_key,
+            "sort_dir": sort_dir,
             "invoices": page_obj.object_list,
             "cards": self._cards(),
         })

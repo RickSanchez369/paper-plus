@@ -24,6 +24,7 @@ from apps.payments.forms import RecordPaymentForm
 from apps.payments.models import Payment
 from apps.payments.selectors import get_customer_outstanding, get_open_invoices
 from apps.sales.models import SalesInvoice
+from apps.shared.listing import paginate, sort_rows
 
 from .forms import CustomerForm, CustomerFilterForm, QuickCustomerForm
 from .models import Customer
@@ -117,17 +118,33 @@ class CustomerListView(LoginRequiredMixin, TemplateView):
         elif is_active == "false":
             qs = qs.filter(is_active=False)
 
-        rows = [_customer_row(customer) for customer in qs.order_by("name")]
-        if filter_form.is_valid():
-            status = filter_form.cleaned_data.get("account_status")
+        # Per-row aggregates cost queries, so they are computed for the page
+        # only, unless the filter or the sort needs every row's balance.
+        status = filter_form.cleaned_data.get("account_status") if filter_form.is_valid() else None
+        sort = self.request.GET.get("sort")
+        direction = "desc" if self.request.GET.get("dir") == "desc" else "asc"
+        if status in ("owes", "settled") or sort == "outstanding":
+            rows = [_customer_row(customer) for customer in qs.order_by("name")]
             if status == "owes":
                 rows = [row for row in rows if row["owes"]]
             elif status == "settled":
                 rows = [row for row in rows if not row["owes"]]
+            rows, sort_key, sort_dir = sort_rows(self.request, rows, {
+                "outstanding": lambda r: r["outstanding"],
+            })
+            page_obj = paginate(self.request, rows)
+            rows = page_obj.object_list
+        else:
+            sort_key, sort_dir = ("name", direction) if sort == "name" else (None, "asc")
+            page_obj = paginate(self.request, qs.order_by("-name" if sort_key and direction == "desc" else "name"))
+            rows = [_customer_row(customer) for customer in page_obj.object_list]
 
         context.update({
             "filter_form": filter_form,
             "rows": rows,
+            "page_obj": page_obj,
+            "sort_key": sort_key,
+            "sort_dir": sort_dir,
             "quick_customer_form": QuickCustomerForm(),
             "quick_customer_url": reverse("customers:quick_new"),
         })

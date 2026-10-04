@@ -57,10 +57,10 @@ answer "how are we doing right now."
         <table class="data-table">
           <thead>
             <tr>
-              <th>شماره فاکتور</th>
-              <th>تاریخ</th>
-              <th>مشتری</th>
-              <th>مبلغ کل</th>
+              {% sort_th "شماره فاکتور" "number" %}
+              {% sort_th "تاریخ" "date" %}
+              {% sort_th "مشتری" "party" %}
+              {% sort_th "مبلغ کل" "total" %}
               <th>وضعیت پرداخت</th>
               <th>سود</th>
               <th>وضعیت سند</th>
@@ -75,15 +75,11 @@ answer "how are we doing right now."
                 <td>{{ invoice.customer.name }}</td>
                 <td class="num">{{ invoice.total|toman }}</td>
                 <td>
-                  <span class="badge badge--{% if invoice.payment_status == 'paid' %}good{% elif invoice.payment_status == 'partial' %}pending{% else %}bad{% endif %}">
-                    {{ invoice.payment_status.label }}
-                  </span>
+                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
                 </td>
                 <td class="num">{{ invoice.profit|toman }}</td>
                 <td>
-                  <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% endif %}">
-                    {{ invoice.get_status_display }}
-                  </span>
+                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
                 </td>
                 <td>
                   <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>
@@ -94,17 +90,7 @@ answer "how are we doing right now."
         </table>
       </div>
 
-      {% if page_obj.paginator.num_pages > 1 %}
-        <div class="pagination">
-          {% if page_obj.has_previous %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.previous_page_number }}">قبلی</a>
-          {% endif %}
-          <span class="field__hint">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
-          {% if page_obj.has_next %}
-            <a class="btn btn--quiet" href="?{{ request.GET.urlencode }}&amp;page={{ page_obj.next_page_number }}">بعدی</a>
-          {% endif %}
-        </div>
-      {% endif %}
+      {% pager page_obj %}
     {% else %}
       <div class="placeholder">
         <p>فاکتوری با این فیلترها پیدا نشد.</p>

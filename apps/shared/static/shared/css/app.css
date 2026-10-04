@@ -47,6 +47,10 @@
   --negative-100: #fdebea;
   --warning-600: #9a6a00;
   --warning-100: #fff3d1;
+  /* -700 is for small text on the tints above (>= 4.5:1); -600 stays for fills and icons. */
+  --positive-700: #0e6f40;
+  --negative-700: #c9302c;
+  --warning-700: #865b00;
 
   --surface: var(--white);
   --surface-sunken: #f2f5fb;
@@ -105,7 +109,7 @@ body {
 }
 
 a {
-  color: var(--accent-600);
+  color: var(--accent-700);
   text-decoration: none;
 }
 
@@ -125,11 +129,13 @@ h1 { font-size: 22px; font-weight: 500; }
 h2 { font-size: 16px; }
 
 /*
- * Numbers stay left-to-right inside right-to-left text, and use tabular
- * figures so columns of Rial amounts line up digit for digit.
+ * Persian digits already run left-to-right inside an RTL run, so the whole
+ * «number + unit» string stays RTL (the unit sits on the left of the figure,
+ * as it reads); forcing LTR here put the unit on the wrong side. Tabular
+ * figures keep columns of amounts digit for digit.
  */
 .num {
-  direction: ltr;
+  direction: rtl;
   unicode-bidi: isolate;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -444,6 +450,15 @@ body.nav-open {
   text-decoration: none;
 }
 
+/* Every interactive element gets a visible ring (3:1 against white); .btn keeps its own. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
 .btn:focus-visible {
   outline: 2px solid var(--accent-500);
   outline-offset: 2px;
@@ -481,9 +496,29 @@ body.nav-open {
   color: var(--ink-700);
 }
 
-.badge--pending { background: var(--warning-100); color: var(--warning-600); }
-.badge--good { background: var(--positive-100); color: var(--positive-600); }
-.badge--bad { background: var(--negative-100); color: var(--negative-600); }
+.badge--pending { background: var(--warning-100); color: var(--warning-700); }
+.badge--good { background: var(--positive-100); color: var(--positive-700); }
+.badge--bad { background: var(--negative-100); color: var(--negative-700); }
+
+/* A leading dot gives every tone a second cue besides colour. Tones:
+   pending = needs attention, good = settled, bad = problem, bad-solid =
+   failed for good (bounced), info = in progress, muted = voided. */
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-inline-end: var(--space-1);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge--info { background: var(--accent-100); color: var(--accent-700); }
+.badge--bad-solid { background: var(--negative-700); color: var(--white); }
+.badge--muted {
+  background: var(--ink-100);
+  color: var(--ink-500);
+  text-decoration: line-through;
+}
 
 /* ---------------------------------------------------------------- forms */
 
@@ -525,7 +560,7 @@ body.nav-open {
 
 .field__error {
   margin: var(--space-2) 0 0;
-  color: var(--negative-600);
+  color: var(--negative-700);
   font-size: 12.5px;
 }
 
@@ -534,7 +569,7 @@ body.nav-open {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--negative-100);
-  color: var(--negative-600);
+  color: var(--negative-700);
   font-size: 13px;
 }
 
@@ -554,9 +589,9 @@ body.nav-open {
   font-size: 13.5px;
 }
 
-.message--success { background: var(--positive-100); border-color: transparent; color: var(--positive-600); }
-.message--warning { background: var(--warning-100); border-color: transparent; color: var(--warning-600); }
-.message--error { background: var(--negative-100); border-color: transparent; color: var(--negative-600); }
+.message--success { background: var(--positive-100); border-color: transparent; color: var(--positive-700); }
+.message--warning { background: var(--warning-100); border-color: transparent; color: var(--warning-700); }
+.message--error { background: var(--negative-100); border-color: transparent; color: var(--negative-700); }
 
 /* ----------------------------------------------------------- auth page */
 
@@ -1003,11 +1038,11 @@ body.nav-open {
 }
 
 .stat-card__delta--up {
-  color: var(--positive-600);
+  color: var(--positive-700);
 }
 
 .stat-card__delta--down {
-  color: var(--negative-600);
+  color: var(--negative-700);
 }
 
 .toolbar {
@@ -1061,12 +1096,12 @@ body.nav-open {
   font-size: 12px;
 }
 
-/* Numbers keep their digit order (.num is left-to-right) but their cell
-   must not flip sides: a left-to-right cell put figures at the opposite
-   edge from their right-to-left header, so nothing lined up. */
+/* Numeric header and cells share one edge and never wrap, so the figure
+   sits right under its header. */
+.data-table th.num,
 .data-table td.num {
-  direction: rtl;
   text-align: start;
+  white-space: nowrap;
 }
 
 /* Report tables: the name column takes the slack, every figure column is
@@ -1100,7 +1135,7 @@ body.nav-open {
 .item-row {
   display: grid;
   /* product, stock, cartons, packs, carton price, pack price, total, remove (D-081) */
-  grid-template-columns: 2fr 1.3fr 80px 80px 130px 130px 110px 64px;
+  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) 80px 80px 130px 130px 110px 64px;
   gap: var(--space-3);
   align-items: start;
   padding: var(--space-3) 0;
@@ -1130,7 +1165,7 @@ body.nav-open {
 }
 
 .item-row__results:not(:empty) {
-  min-width: 240px;
+  min-width: 280px;
   position: absolute;
   z-index: 30;
   inset-inline: 0;
@@ -1140,7 +1175,7 @@ body.nav-open {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  max-height: 220px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -1159,8 +1194,34 @@ body.nav-open {
   cursor: pointer;
 }
 
-.item-row__result:hover {
+/* Hairline between rows, one accent bar marks hover/keyboard focus; a
+   disabled (out of stock) row is dimmed and never takes the hover tint. */
+.item-row__result + .item-row__result {
+  border-top: 1px solid var(--border);
+}
+
+.item-row__result:hover:not(:disabled),
+.item-row__result:focus-visible {
   background: var(--ink-100);
+  box-shadow: inset 3px 0 0 var(--accent-700);
+  outline: none;
+}
+
+.item-row__result-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.item-row__result-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.item-row__result-price {
+  font-size: 12px;
+  color: var(--ink-700);
 }
 
 .item-row__result--empty {
@@ -1171,6 +1232,11 @@ body.nav-open {
 .item-row__result-stock {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.item-row__result-stock--out {
+  color: var(--negative-700);
+  font-weight: 600;
 }
 
 .item-row__stock {
@@ -1303,7 +1369,7 @@ body.nav-open {
 }
 
 .sale-form__totals-profit {
-  color: var(--positive-600);
+  color: var(--positive-700);
   border-top: 0;
   padding-top: 0;
 }
@@ -1371,9 +1437,8 @@ body.nav-open {
 }
 
 .item-row__result:disabled {
-  color: var(--text-muted);
+  opacity: 0.6;
   cursor: not-allowed;
-  background: var(--ink-100);
 }
 
 .sale-detail__actions {
@@ -1385,6 +1450,40 @@ body.nav-open {
 /* Phones: nothing may push the page wider than the screen. Tables scroll
    inside themselves, the invoice rows stack into a small grid (their cell
    labels come from data-label, since the column header row is hidden). */
+/* The 8-column line row needs ~1100px; below that it becomes two rows of
+   labelled fields (product + stock on top, then four inputs, total, remove)
+   so the product search never shrinks to a sliver on a tablet. */
+@media (max-width: 1100px) {
+  .item-row--head {
+    display: none;
+  }
+
+  .item-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .item-row__search,
+  .item-row__stock {
+    grid-column: 1 / -1;
+  }
+
+  .item-row__stock {
+    margin-top: 0;
+  }
+
+  .item-row__total,
+  .item-row__remove {
+    grid-column: span 2;
+  }
+
+  .item-row [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+}
+
 @media (max-width: 720px) {
   .data-table {
     display: block;
@@ -1406,27 +1505,13 @@ body.nav-open {
     grid-template-columns: 1fr;
   }
 
-  .item-row--head {
-    display: none;
-  }
-
   .item-row {
     grid-template-columns: 1fr 1fr;
   }
 
-  .item-row__stock {
-    grid-column: 1 / -1;
-  }
-
-  .item-row__search {
-    grid-column: 1 / -1;
-  }
-
-  .item-row [data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 12px;
-    color: var(--text-muted);
+  .item-row__total,
+  .item-row__remove {
+    grid-column: auto;
   }
 
   .daterange__panel {
@@ -1505,3 +1590,48 @@ body.nav-open {
   font-weight: 600;
   margin-bottom: var(--space-2);
 }
+
+/* ------------------------------------------------- invoice summary strip */
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.summary-strip__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+}
+
+.summary-strip__label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.summary-strip__value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.summary-strip__item--owed { border-color: var(--negative-700); }
+.summary-strip__item--owed .summary-strip__value { color: var(--negative-700); }
+.summary-strip__item--settled .summary-strip__value { color: var(--positive-700); }
+
+@media (max-width: 720px) {
+  .summary-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ------------------------------------------------------ sortable headers */
+.sort-link {
+  color: inherit;
+  white-space: nowrap;
+}
+
+.sort-link:hover { color: var(--accent-700); text-decoration: none; }
+.sort-link--active { color: var(--action); }

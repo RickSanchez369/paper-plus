@@ -1,0 +1,24 @@
+{% load paper %}
+{% comment %}
+The four figures an invoice page is opened for: total, paid, still owed,
+payment state. A cancelled invoice has nothing owed, so it shows no strip.
+Context: total, paid, outstanding, payment_status.
+{% endcomment %}
+<div class="summary-strip">
+  <div class="summary-strip__item">
+    <span class="summary-strip__label">جمع نهایی</span>
+    <span class="summary-strip__value num">{{ total|toman }}</span>
+  </div>
+  <div class="summary-strip__item">
+    <span class="summary-strip__label">پرداخت‌شده</span>
+    <span class="summary-strip__value num">{{ paid|toman }}</span>
+  </div>
+  <div class="summary-strip__item summary-strip__item--{% if outstanding %}owed{% else %}settled{% endif %}">
+    <span class="summary-strip__label">مانده</span>
+    <span class="summary-strip__value num">{{ outstanding|toman }}</span>
+  </div>
+  <div class="summary-strip__item">
+    <span class="summary-strip__label">وضعیت پرداخت</span>
+    <span class="summary-strip__status">{% status_badge "payment" payment_status payment_status.label %}</span>
+  </div>
+</div>
