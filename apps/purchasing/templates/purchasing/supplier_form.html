@@ -22,10 +22,12 @@ purchase form's inline quick-add uses, not a parallel path.
     <form method="post" novalidate>
       {% csrf_token %}
       {% include "shared/_form_errors.html" with form=form %}
-      {% for field in form %}
-        {% include "shared/_field.html" with field=field %}
-      {% endfor %}
-      <button type="submit" class="btn">ثبت تأمین‌کننده</button>
+      <div class="form-grid">
+        {% for field in form %}
+          {% include "shared/_field.html" with field=field %}
+        {% endfor %}
+        <div class="form-actions"><button type="submit" class="btn">ثبت تأمین‌کننده</button></div>
+      </div>
     </form>
   </div>
 </div>

@@ -17,5 +17,13 @@ any other method).
     {% include "shared/_field.html" with field=form.bank_name %}
     {% include "shared/_field.html" with field=form.issuer %}
     {% include "shared/_field.html" with field=form.due_date %}
+    {# Due-date shortcuts count from the invoice date (purchase_payment.js); the picker and typing still work. #}
+    <div class="pur-chips" role="group" aria-label="سررسید سریع چک">
+      <span class="pur-chips__label">سررسید چک:</span>
+      <button type="button" class="pur-chip" data-cheque-due-days="30" aria-pressed="false">۳۰ روز</button>
+      <button type="button" class="pur-chip" data-cheque-due-days="60" aria-pressed="false">۶۰ روز</button>
+      <button type="button" class="pur-chip" data-cheque-due-days="90" aria-pressed="false">۹۰ روز</button>
+    </div>
+    <p class="field__hint pur-cheque-summary" data-cheque-summary aria-live="polite"></p>
   </div>
 </div>

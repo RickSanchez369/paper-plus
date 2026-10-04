@@ -16,6 +16,7 @@ and STATE.md (commit 6d4521a).
   <script src="{% static_v 'shared/js/units.js' %}" defer></script>
   <script src="{% static_v 'purchasing/js/purchase_form.js' %}" defer></script>
   <script src="{% static_v 'shared/js/invoice_payment.js' %}" defer></script>
+  <script src="{% static_v 'purchasing/js/purchase_payment.js' %}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -102,9 +103,12 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
         <div><span>جمع اقلام</span><span class="num" id="sale-subtotal">۰</span></div>
         <div class="sale-form__totals-discount" data-freight>
           <label class="payment-full__tick" for="{{ invoice_form.has_freight.id_for_label }}">{{ invoice_form.has_freight }} کرایه بار</label>
-          <div data-freight-fields{% if not invoice_form.has_freight.value %} hidden{% endif %}>
+          {# Always visible: typing an amount ticks the box, so a typed freight is never silently ignored. #}
+          <div data-freight-fields>
             {{ invoice_form.freight_amount }}
+            <button type="button" class="btn btn--quiet btn--sm" data-freight-suggest hidden></button>
             <span class="field__hint">به جمع فاکتور اضافه می‌شود و به نسبت تعداد بسته بین اقلام در بهای تمام‌شده می‌رود.</span>
+            <p class="freight-summary" data-freight-summary aria-live="polite"></p>
           </div>
         </div>
         {% for error in invoice_form.freight_amount.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
@@ -116,6 +120,7 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
   {% include "payments/_invoice_payment_card.html" with entry_row="purchasing/_payment_entry_row.html" party_word="تأمین‌کننده" show_pos=False %}
 
   <div class="sale-form__submit">
+    <p class="sale-form__consequence" id="submit-consequence" aria-live="polite"></p>
     <a href="{% url 'purchasing:list' %}" class="btn btn--quiet">انصراف</a>
     <button type="submit" class="btn">ثبت و تأیید فاکتور</button>
   </div>
@@ -130,6 +135,10 @@ on success puts the new product straight into the row that asked for it
 {% endcomment %}
 <dialog class="quick-dialog" id="quick-product-dialog" aria-labelledby="quick-product-title">
   <h2 class="quick-dialog__title" id="quick-product-title">کالای جدید</h2>
+  <p class="field__hint quick-dialog__lead">
+    با ثبت، کالا همین‌جا در ردیف فاکتور می‌نشیند و مکان‌نما روی «کارتن» می‌رود؛ قیمت خرید را همان‌جا وارد می‌کنید.
+    قیمت فروش پایین فقط برای فروش‌های بعدی است.
+  </p>
   <div data-quick-product-body></div>
   <button type="button" class="btn btn--quiet btn--block" data-close-quick-product>بستن</button>
 </dialog>
