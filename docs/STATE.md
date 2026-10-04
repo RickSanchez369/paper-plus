@@ -94,7 +94,12 @@ migrations (`shared.0019..0021`, `payments.0013`, `returns.0001`, `inventory.000
 numbers, tiers, stock and balances unchanged, key scripts pass on the upgraded copy. Browser-checked (port 8002 throwaway server):
 credit tick refusal/acceptance, credit notice and reduced full-settlement amount, print at 1/22/38 lines and B&W, return form with
 live over-limit and refund account, wholesale/retail switch with kept manual price, below-cost hint, customer-type preset, phone width.
-**Not run:** PostgreSQL (not used on the host any more), real host. Not merged into `deploy` (deploy only on Sina's word).
+**Not run:** PostgreSQL (not used on the host any more), real host. Merged into `deploy` and deployed on 2026-10-05 (see below).
+
+**Deployed 2026-10-05:** `deploy` (`390f148`, D-086..D-092) is live on the host (SQLite). `update` ran after the D-092 fix,
+then `reset_business_data` emptied all business data at Sina's request (users kept); Sina confirmed everything works. The
+D-081 unit conversion is no longer needed on the host (no old products remain). Next on the host: cron jobs (`backup_db --keep 14`,
+`fetch_usd_rate`), HSTS ramp, then re-entering products with the four prices and customers with their type.
 
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
