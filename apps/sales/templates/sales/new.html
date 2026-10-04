@@ -74,8 +74,20 @@ payment rows ever reached the server).
       <h2>مشخصات فاکتور</h2>
       {% include "shared/_form_errors.html" with form=invoice_form %}
       <div class="sale-form__header">
+        {# D-090: wholesale or retail, once per invoice; preselected from the customer's type, still changeable. #}
+        <fieldset class="field tier-pick" data-tier-pick>
+          <legend class="field__label">{{ invoice_form.price_tier.label }}</legend>
+          <div class="tier-pick__opts">
+            {% for radio in invoice_form.price_tier %}
+              <label class="tier-pick__opt">{{ radio.tag }} <span>فروش {{ radio.choice_label }}</span></label>
+            {% endfor %}
+          </div>
+          {% for error in invoice_form.price_tier.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+          <p class="field__hint" id="tier-note" role="status" hidden></p>
+        </fieldset>
         {% include "shared/_field.html" with field=invoice_form.invoice_date %}
       </div>
+      {{ customer_tiers|json_script:"customer-tiers" }}
     </div>
   </div>
 

@@ -1404,3 +1404,30 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - An invoice with a return can no longer be cancelled (the return already moved part of its goods and money).
 - Schema: `returns.0001`, `inventory.0007/0008` (layer source + `sales_return_item`, nullable `sale_item` + `purchase_return_item`
   on consumptions, new movement types and constraints), `payments.0013` (`is_credit_note` + check), `shared.0021`.
+
+### D-090: Four selling prices and the sale type chosen on the invoice (amends D-075, D-081)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina asked for 10 independent proposals and took the recommended synthesis (all ten agreed on the core)
+- Decision:
+  - Each product has a 2x2 price grid: retail/wholesale x pack/carton. The two existing columns keep their names and
+    D-081 meanings (`default_selling_price` = retail pack, `wholesale_selling_price` = wholesale carton); new
+    `retail_carton_price` and `wholesale_pack_price` (0 = unset). `Product.price_for(tier, unit)` is the single reader;
+    an unset cell is derived only from cells that are set, never as a guessed discount: retail carton = retail pack x
+    ratio; wholesale carton = wholesale pack x ratio, else the retail carton; wholesale pack = wholesale carton / ratio
+    rounded up, else the retail pack. A product with any derived cell is flagged «قیمت ناقص» in Inventory.
+  - The sale type is chosen once per invoice again («فروش خرد / فروش عمده», D-075's switch) and `confirm_sale` keeps it
+    (D-081's "any carton = wholesale" is gone). Both line prices follow it: a retail customer buying a whole carton pays the
+    retail carton price, a wholesale buyer taking loose packs pays the wholesale pack price. One invoice, one type.
+  - `Customer.price_tier` («نوع مشتری», default retail) preselects the type when the customer is picked, until the cashier
+    touches the switch. A POST without a type takes the customer's type, then retail; an unknown value is refused.
+  - Switching type reprices the lines still on the old type's prices and keeps typed ones, saying how many (D-075 rule,
+    derived from the numbers). Blank prices are filled on the server from the invoice's type (form and admin paths).
+  - A line priced below the product's average purchase cost per pack shows a hint; it never blocks.
+  - Kept apart: sales list filter and badge by type, the existing «فروش عمده و خرد» report (still adds up to the totals),
+    print subtitle. One invoice number series for both (D-086).
+  - `update_selling_prices` takes `retail_carton` / `wholesale_pack` too; one audit row per changed cell; the product page
+    edits all four and the price history shows four columns.
+- Existing data: nothing is rewritten. Old invoices keep the type D-081 gave them; until the owner sets the two new cells,
+  a wholesale invoice prices exactly as before and a retail carton is pack x ratio.
+- Schema: `products.0010`, `partners.0003`.

@@ -70,20 +70,21 @@ each row touched and a link back to its source invoice; and a
 
   <div class="price-board__group price-board__group--sell" id="selling-price">
     <h2 class="price-board__title">قیمت فروش</h2>
-    <dl class="price-board__list">
-      <div>
-        <dt><a href="#price-history">قیمت فروش خرد (هر بسته)</a></dt>
-        <dd class="num">{{ product.default_selling_price|toman }}</dd>
-      </div>
-      <div>
-        <dt><a href="#price-history">قیمت فروش عمده (هر کارتن)</a></dt>
-        <dd class="num">{{ product.carton_price|toman }}</dd>
-        {% if product.wholesale_is_unset %}<small class="field__hint">هنوز جدا تعیین نشده؛ قیمت بسته × {{ product.pack_per_carton|fa_number }}.</small>{% endif %}
-      </div>
+    {# D-090: the four-cell grid; a derived cell says what it was worked out from. #}
+    <dl class="price-board__list price-grid">
+      {% with g=product.price_grid %}
+      <div><dt><a href="#price-history">خرد · هر بسته</a></dt><dd class="num">{{ g.retail_pack.price|toman }}</dd></div>
+      <div><dt><a href="#price-history">خرد · هر کارتن</a></dt><dd class="num">{{ g.retail_carton.price|toman }}</dd>
+        {% if not g.retail_carton.set %}<small class="field__hint">محاسبه‌شده: بسته × {{ product.pack_per_carton|fa_number }}</small>{% endif %}</div>
+      <div><dt><a href="#price-history">عمده · هر بسته</a></dt><dd class="num">{{ g.wholesale_pack.price|toman }}</dd>
+        {% if not g.wholesale_pack.set %}<small class="field__hint">محاسبه‌شده{% if product.wholesale_selling_price %}: کارتن عمده ÷ {{ product.pack_per_carton|fa_number }}{% else %}: همان قیمت بسته خرد{% endif %}</small>{% endif %}</div>
+      <div><dt><a href="#price-history">عمده · هر کارتن</a></dt><dd class="num">{{ g.wholesale_carton.price|toman }}</dd>
+        {% if not g.wholesale_carton.set %}<small class="field__hint">محاسبه‌شده</small>{% endif %}</div>
+      {% endwith %}
     </dl>
 
     <div class="price-board__edit">
-      <h3 class="price-board__subtitle">تغییر قیمت‌های فروش (خرد و عمده)</h3>
+      <h3 class="price-board__subtitle">تغییر قیمت‌های فروش (خرد و عمده، بسته و کارتن)</h3>
       <p class="field__hint">
         فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
       </p>
@@ -106,10 +107,12 @@ each row touched and a link back to its source invoice; and a
         <div class="price-board__fields">
           {% include "shared/_field.html" with field=price_form.default_selling_price %}
           {% include "shared/_field.html" with field=price_form.wholesale_selling_price %}
+          {% include "shared/_field.html" with field=price_form.retail_carton_price %}
+          {% include "shared/_field.html" with field=price_form.wholesale_pack_price %}
         </div>
         <label class="price-auto" hidden><input type="checkbox" id="wholesale-auto"{% if product.wholesale_is_unset %} checked{% endif %}>
           قیمت کارتن خودکار: قیمت بسته × {{ product.pack_per_carton|fa_number }}</label>
-        <p class="field__hint">خالی بگذارید = بدون تغییر · ۰ در قیمت عمده = جدا تعیین نشود (قیمت بسته × {{ product.pack_per_carton|fa_number }}).</p>
+        <p class="field__hint">خالی بگذارید = بدون تغییر · ۰ (به‌جز قیمت بسته خرد) = جدا تعیین نشود و از قیمت‌های دیگر محاسبه شود.</p>
 
         <div class="price-preview" id="price-preview" aria-live="polite" hidden>
           <div class="price-preview__row" data-row="retail">
@@ -150,8 +153,10 @@ each row touched and a link back to its source invoice; and a
           <thead>
             <tr>
               <th>تاریخ</th>
-              <th>قیمت فروش خرد</th>
-              <th>قیمت فروش عمده</th>
+              <th>خرد · بسته</th>
+              <th>خرد · کارتن</th>
+              <th>عمده · بسته</th>
+              <th>عمده · کارتن</th>
               <th>نوع تغییر</th>
               <th>کاربر</th>
             </tr>
@@ -160,8 +165,9 @@ each row touched and a link back to its source invoice; and a
             {% for row in price_rows %}
               <tr{% if not row.price_changed %} class="inv-row--muted"{% endif %}>
                 <td class="num">{{ row.record.history_date|jalali_at }}</td>
-                <td class="num">{{ row.record.default_selling_price|toman }}{% if row.retail %} <span class="inv-delta {% if row.retail.up %}inv-delta--up{% else %}inv-delta--down{% endif %}">{% if row.retail.up %}▲{% else %}▼{% endif %} {{ row.retail.pct|fa_number }}٪</span>{% endif %}</td>
-                <td class="num">{{ row.record.wholesale_selling_price|toman }}{% if row.wholesale %} <span class="inv-delta {% if row.wholesale.up %}inv-delta--up{% else %}inv-delta--down{% endif %}">{% if row.wholesale.up %}▲{% else %}▼{% endif %} {{ row.wholesale.pct|fa_number }}٪</span>{% endif %}</td>
+                {% for cell in row.cells %}
+                <td class="num">{% if cell.value %}{{ cell.value|toman }}{% else %}<span class="cell-sub">تعیین نشده</span>{% endif %}{% if cell.delta %} <span class="inv-delta {% if cell.delta.up %}inv-delta--up{% else %}inv-delta--down{% endif %}">{% if cell.delta.up %}▲{% else %}▼{% endif %} {{ cell.delta.pct|fa_number }}٪</span>{% endif %}</td>
+                {% endfor %}
                 <td>{{ row.record.get_history_type_display }}{% if not row.price_changed %} <small class="cell-sub">قیمت تغییری نکرد</small>{% endif %}</td>
                 <td>
                   {% if row.record.history_user %}{{ row.record.history_user.get_full_name|default:row.record.history_user.phone }}{% else %}—{% endif %}

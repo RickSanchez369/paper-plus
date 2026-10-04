@@ -22,11 +22,11 @@ from django.views import View
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, TemplateView
 
-from apps.inventory.selectors import get_stock_map
+from apps.inventory.selectors import get_average_cost_map, get_stock_map
 from apps.partners.forms import QuickCustomerForm
 from apps.partners.models import Customer
 from apps.products.forms import excluded_product_ids
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.payments.selectors import get_credit_map
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
@@ -75,6 +75,8 @@ class SalesListView(LoginRequiredMixin, TemplateView):
                 qs = qs.filter(Q(invoice_number__icontains=number) | Q(customer__name__icontains=data["q"]))
             if data.get("product"):
                 qs = qs.filter(items__product=data["product"]).distinct()
+            if data.get("price_tier"):
+                qs = qs.filter(price_tier=data["price_tier"])
             rows = list(qs.order_by("-invoice_date", "-created_at"))
 
             # payment_status/total are derived properties (D-025), not DB
@@ -174,14 +176,16 @@ class ProductSearchView(LoginRequiredMixin, View):
             products = products.filter(Q(name__icontains=q) | Q(sku__icontains=q))
         products = list(products.order_by("name")[:15])
         stock_map = get_stock_map([p.pk for p in products])
+        # Average purchase cost per pack: only for the below-cost warning on the line (D-090).
+        cost_map = get_average_cost_map([p.pk for p in products])
         rows = [
             {
                 "product": p,
                 "stock": stock_map.get(p.pk, 0),
-                # Both prices ride on the result so the row can price cartons and
-                # packs without a second request (D-081).
-                "pack_price": p.pack_price,
-                "carton_price": p.carton_price,
+                # All four prices ride on the result so the row can price cartons and packs
+                # on either sale type, and switch type, without a second request (D-081, D-090).
+                "prices": {key: cell["price"] for key, cell in p.price_grid.items()},
+                "cost": cost_map.get(p.pk),
             }
             for p in products
         ]
@@ -198,6 +202,21 @@ def _is_uuid(value):
     return True
 
 
+def _posted_tier(data):
+    """The sale type a posted sale form asks for: its radio, else the chosen customer's type, else retail."""
+    tier = data.get("price_tier")
+    if tier in PriceTier.values:
+        return tier
+    pk = data.get("customer", "")
+    customer = Customer.objects.filter(pk=pk).only("price_tier").first() if _is_uuid(pk) else None
+    return customer.price_tier if customer else PriceTier.RETAIL
+
+
+def _customer_tiers():
+    """{customer pk: default sale type} for the new-sale page: picking a customer preselects it (D-090)."""
+    return {str(pk): tier for pk, tier in Customer.objects.filter(is_active=True).values_list("pk", "price_tier")}
+
+
 def _empty_forms():
     return {
         # JalaliDateField stores/reads Gregorian (D-004); dates.today()
@@ -208,6 +227,7 @@ def _empty_forms():
         "quick_customer_form": QuickCustomerForm(),
         "quick_customer_url": reverse("customers:quick_new"),
         "party_credits": get_credit_map(Customer),
+        "customer_tiers": _customer_tiers(),
     }
 
 
@@ -241,7 +261,8 @@ class SalesCreateView(LoginRequiredMixin, View):
 
     def post(self, request):
         invoice_form = SaleInvoiceForm(request.POST)
-        item_formset = SaleItemFormSet(request.POST, prefix="items")
+        # Blank line prices are filled from the sale type (D-090): the posted one, else the customer's.
+        item_formset = SaleItemFormSet(request.POST, prefix="items", form_kwargs={"price_tier": _posted_tier(request.POST)})
         payment_formset = SalesPaymentEntryFormSet(request.POST, prefix="payments")
 
         forms_valid = invoice_form.is_valid() and item_formset.is_valid()
@@ -294,6 +315,7 @@ class SalesCreateView(LoginRequiredMixin, View):
             "quick_customer_form": QuickCustomerForm(),
             "quick_customer_url": reverse("customers:quick_new"),
             "party_credits": get_credit_map(Customer),
+            "customer_tiers": _customer_tiers(),
         }
         return render(request, self.template_name, context)
 

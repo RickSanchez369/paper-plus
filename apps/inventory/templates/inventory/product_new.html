@@ -38,8 +38,11 @@ entered here, at creation, or never -- afterwards only invoices move stock.{% en
           <legend class="pn-section__title">قیمت فروش</legend>
           <div class="pn-grid">
             {% include "shared/_field.html" with field=form.default_selling_price %}
+            {% include "shared/_field.html" with field=form.retail_carton_price %}
+            {% include "shared/_field.html" with field=form.wholesale_pack_price %}
             {% include "shared/_field.html" with field=form.wholesale_selling_price %}
           </div>
+          <p class="field__hint">قیمت بسته خرد الزامی است؛ هر قیمتی که خالی بماند از قیمت‌های واردشده محاسبه و در انبار با «قیمت ناقص» مشخص می‌شود (D-090).</p>
         </fieldset>
 
         <fieldset class="pn-section">

@@ -178,6 +178,8 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
                     product, request.user,
                     retail=form.cleaned_data.get("default_selling_price"),
                     wholesale=form.cleaned_data.get("wholesale_selling_price"),
+                    retail_carton=form.cleaned_data.get("retail_carton_price"),
+                    wholesale_pack=form.cleaned_data.get("wholesale_pack_price"),
                 )
             except ValidationError as exc:
                 messages.error(request, "؛ ".join(exc.messages))
@@ -219,6 +221,8 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
             initial={
                 "default_selling_price": product.default_selling_price,
                 "wholesale_selling_price": product.wholesale_selling_price,
+                "retail_carton_price": product.retail_carton_price,
+                "wholesale_pack_price": product.wholesale_pack_price,
             },
         )
 
@@ -249,13 +253,13 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         rows = []
         for i, record in enumerate(records):
             prev = records[i + 1] if i + 1 < len(records) else None
-            retail = change(record.default_selling_price, prev.default_selling_price) if prev else None
-            wholesale = change(record.wholesale_selling_price, prev.wholesale_selling_price) if prev else None
-            changed = prev is None or (
-                record.default_selling_price != prev.default_selling_price
-                or record.wholesale_selling_price != prev.wholesale_selling_price
-            )
-            rows.append({"record": record, "retail": retail, "wholesale": wholesale, "price_changed": changed})
+            fields = ("default_selling_price", "retail_carton_price", "wholesale_pack_price", "wholesale_selling_price")
+            cells = [
+                {"value": getattr(record, f), "delta": change(getattr(record, f), getattr(prev, f)) if prev else None}
+                for f in fields
+            ]
+            changed = prev is None or any(getattr(record, f) != getattr(prev, f) for f in fields)
+            rows.append({"record": record, "cells": cells, "price_changed": changed})
         last = next((r for r in rows if r["price_changed"] and r["record"].history_type == "~"), None)
         return rows, last
 

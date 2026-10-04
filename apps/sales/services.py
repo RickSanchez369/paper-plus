@@ -149,11 +149,10 @@ def confirm_sale(invoice, user):
             note=f"فاکتور فروش {locked_invoice.invoice_number}",
         )
 
-    # The sale type is no longer picked on the form (D-081): cartons sell at the carton
-    # (wholesale) price, so an invoice with any carton counts as wholesale for the reports.
-    locked_invoice.price_tier = (
-        PriceTier.WHOLESALE if any(i.cartons for i in items) else PriceTier.RETAIL
-    )
+    # The sale type is picked on the invoice again and kept as chosen (D-090, replacing
+    # D-081's "any carton = wholesale"); a value outside the two types is refused.
+    if locked_invoice.price_tier not in PriceTier.values:
+        raise ValidationError("نوع فروش (خرد/عمده) معتبر نیست.")
     locked_invoice.status = SalesInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
     # Freeze today's USD rate on the invoice (D-080); None while no rate was ever read.

@@ -8662,3 +8662,34 @@ html:has(#sales-by-product) {
 tr.is-over .ret-qty {
   border-color: var(--negative-600);
 }
+
+/* ---- D-090: sale type picker and the below-cost hint ---------------------------- */
+.tier-pick__opts {
+  display: inline-flex;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.tier-pick__opt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tier-pick__opt + .tier-pick__opt {
+  border-inline-start: 1px solid var(--control-border);
+}
+
+.tier-pick__opt:has(input:checked) {
+  background: var(--action);
+  color: var(--white);
+}
+
+.item-row__cost-warn {
+  font-size: 12px;
+  color: var(--warning-700);
+}

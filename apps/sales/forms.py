@@ -30,11 +30,11 @@ from django import forms
 from django.utils.functional import cached_property
 
 from apps.shared.widgets import NumericInput
-from apps.inventory.selectors import get_stock_map
+from apps.inventory.selectors import get_average_cost_map, get_stock_map
 from apps.partners.models import Customer
 from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
 from apps.products.units import split_units, units_phrase
 from apps.shared.forms import JalaliDateField
 
@@ -57,6 +57,12 @@ class SalesFilterForm(forms.Form):
         required=False,
         label="وضعیت پرداخت",
         choices=[("", "همه"), *SalesInvoice.PaymentStatus.choices],
+    )
+    # D-090: wholesale and retail sales kept apart on the list too.
+    price_tier = forms.ChoiceField(
+        required=False,
+        label="نوع فروش",
+        choices=[("", "همه"), *PriceTier.choices],
     )
     product = forms.ModelChoiceField(
         required=False,
@@ -123,7 +129,7 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
 
     class Meta:
         model = SalesInvoice
-        fields = ("customer", "invoice_date", "discount_amount", "credit_due_date")
+        fields = ("customer", "price_tier", "invoice_date", "discount_amount", "credit_due_date")
         widgets = {
             # `form="sale-form"` because new.html renders this field (and
             # its "+ مشتری جدید" disclosure) outside the <form> tag on
@@ -135,6 +141,8 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
             # form at all. The `form` attribute reattaches this one field
             # to #sale-form despite living outside its DOM subtree.
             "customer": forms.Select(attrs={"class": "field__control", "form": "sale-form"}),
+            # D-090: picked once per invoice; every price on it follows this choice.
+            "price_tier": forms.RadioSelect,
         }
         error_messages = {
             "customer": {"required": "انتخاب مشتری الزامی است."},
@@ -144,6 +152,17 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["customer"].queryset = Customer.objects.filter(is_active=True).order_by("name")
         self.fields["customer"].empty_label = "— انتخاب مشتری —"
+        self.fields["price_tier"].label = "نوع فروش"
+        # Not posted (an older page, a script): the customer's own type decides, then retail (D-090).
+        self.fields["price_tier"].required = False
+        self.fields["price_tier"].initial = PriceTier.RETAIL
+
+    def clean_price_tier(self):
+        tier = self.cleaned_data.get("price_tier")
+        if tier:
+            return tier
+        customer = self.cleaned_data.get("customer")
+        return customer.price_tier if customer else PriceTier.RETAIL
 
     def clean_discount_mode(self):
         return self.cleaned_data.get("discount_mode") or DISCOUNT_MODE_AMOUNT
@@ -171,14 +190,28 @@ class SaleItemForm(CartonPackItemFormMixin, SelectedProductMixin, forms.ModelFor
     pack price for packs, the carton price for cartons); a typed one wins.
     """
 
+    def __init__(self, *args, price_tier=PriceTier.RETAIL, **kwargs):
+        # The invoice's sale type (D-090): a blank price is filled from that tier's cell.
+        self.price_tier = price_tier if price_tier in PriceTier.values else PriceTier.RETAIL
+        super().__init__(*args, **kwargs)
+
+    def suggested_price(self, product, unit):
+        return product.price_for(self.price_tier, unit)
+
     @cached_property
     def selected_prices(self):
-        """(pack price, carton price) of the product this row already holds, so a
-        re-rendered row keeps both for the live total."""
+        """The four prices of the product this row already holds (D-090), so a re-rendered
+        row can still reprice on a tier switch and keep its live total."""
         product = self.selected_product
         if product is None:
             return None
-        return product.pack_price, product.carton_price
+        return {key: cell["price"] for key, cell in product.price_grid.items()}
+
+    @cached_property
+    def selected_cost(self):
+        """Average purchase cost per pack of the held product, for the below-cost hint (D-090)."""
+        product = self.selected_product
+        return get_average_cost_map([product.pk]).get(product.pk) if product else None
 
     class Meta:
         model = SaleItem

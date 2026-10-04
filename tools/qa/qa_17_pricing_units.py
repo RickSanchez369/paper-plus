@@ -61,11 +61,15 @@ def scenarios(h):
     check("PR14 detail shows both prices and the history columns", page.status_code == 200 and has(page, "قیمت فروش عمده") and has(page, "قیمت فروش خرد"))
 
     # ---------------------------------------------------- sales: blank prices come from the product (D-081)
-    r = h.post_sale(cust, [h.carton_row(p, 2)], account=acct)
+    r = h.post_sale(cust, [h.carton_row(p, 2)], account=acct, extra={"price_tier": "wholesale"})
     i = last_sale(cust)
     it = i.items.get()
-    check("PT01 blank carton price = the product's carton price, packs untouched", r.status_code == 302 and it.carton_price == 800 and it.cartons == 2 and it.quantity == 10, (r.status_code, it.carton_price))
-    check("PT02 an invoice with a carton counts as wholesale", i.price_tier == "wholesale" and i.total == 2 * 800)
+    check("PT01 wholesale invoice: blank carton price = the wholesale carton price, packs untouched", r.status_code == 302 and it.carton_price == 800 and it.cartons == 2 and it.quantity == 10, (r.status_code, it.carton_price))
+    check("PT02 the sale type is the one chosen (D-090)", i.price_tier == "wholesale" and i.total == 2 * 800)
+    r = h.post_sale(cust, [h.carton_row(p, 2)], account=acct, extra={"price_tier": "retail"})
+    i = last_sale(cust)
+    check("PT02b a retail invoice with cartons stays retail and prices the retail carton (pack x ratio)",
+          i.price_tier == "retail" and i.items.get().carton_price == 1200 * 5, (i.price_tier, i.items.get().carton_price))
     r = h.post_sale(cust, [h.carton_row(p, 0, packs=3)], account=acct)
     i = last_sale(cust)
     check("PT03 loose packs only: blank pack price = retail, invoice counts as retail", i.items.get().unit_price == 1200 and i.price_tier == "retail" and i.total == 3 * 1200)
@@ -84,9 +88,10 @@ def scenarios(h):
     # ---------------------------------------------------- search results carry both prices
     from django.urls import reverse
     r = h.c.get(reverse("sales:product_search"), {"q": p.name})
-    check("PT10 product search carries pack and carton price and the ratio", r.status_code == 200 and has(r, 'data-pack-price="1200"') and has(r, 'data-carton-price="800"') and has(r, 'data-ratio="5"'))
+    check("PT10 product search carries the four prices and the ratio", r.status_code == 200 and has(r, 'data-retail-pack="1200"')
+          and has(r, 'data-wholesale-carton="800"') and has(r, 'data-retail-carton="6000"') and has(r, 'data-ratio="5"'))
     page = h.c.get("/sales/new/")
-    check("PT11 the new-sale page has no sale type switch any more", page.status_code == 200 and not has(page, 'name="price_tier"'))
+    check("PT11 the new-sale page has the sale type switch again (D-090)", page.status_code == 200 and has(page, 'name="price_tier"'))
     check("PT12 invoice detail shows the derived sale type", has(h.c.get(f"/sales/{last_sale(cust).pk}/"), "نوع فروش"))
 
     # ---------------------------------------------------- report by tier

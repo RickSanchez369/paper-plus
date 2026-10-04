@@ -208,7 +208,7 @@ def scenarios(h):
     r = h.c.get("/sales/?q=" + cust.name + "&payment_status=unpaid")
     check("S35 filter + search combine", r.status_code == 200)
     r = h.c.get("/sales/product-search/?q=" + a.name)
-    check("S36 product search shows stock and price data", has(r, str(a.pk)) and has(r, "data-pack-price"))
+    check("S36 product search shows stock and price data", has(r, str(a.pk)) and has(r, "data-retail-pack"))
     r = h.c.get(f"/sales/product-search/?q={a.name}&exclude={a.pk}")
     check("S36 exclude hides a chosen product", not has(r, str(a.pk)))
     r = h.c.get("/sales/product-search/?q=" + zero.name)

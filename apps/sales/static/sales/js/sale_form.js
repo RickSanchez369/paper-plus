@@ -247,6 +247,85 @@
     if (recap) recap.hidden = blocked;
   }
 
+  // ---- wholesale / retail (D-090): four prices per product, the invoice's sale type picks two
+  function currentTier() {
+    var checked = document.querySelector('input[name="price_tier"]:checked');
+    return checked ? checked.value : "retail";
+  }
+
+  function tierPrice(row, unit, tier) {
+    var raw = row.dataset[(tier || currentTier()) + (unit === "carton" ? "Carton" : "Pack")];
+    var n = parseInt(raw, 10);
+    return isNaN(n) ? "" : n;
+  }
+
+  function priceInputs(row) {
+    return { pack: row.querySelector('input[name$="-unit_price"]'), carton: row.querySelector('input[name$="-carton_price"]') };
+  }
+
+  // A price box is "manual" when it no longer holds the given tier's price: derived from the
+  // numbers themselves (D-075's rule), so a re-rendered page keeps it without a stored flag.
+  function isManual(row, tier) {
+    var boxes = priceInputs(row);
+    return ["pack", "carton"].some(function (unit) {
+      var box = boxes[unit];
+      return box && box.value !== "" && String(intVal(box)) !== String(tierPrice(row, unit, tier));
+    });
+  }
+
+  // Switching the sale type reprices the lines still on the old type's prices and keeps the
+  // ones the cashier typed, saying how many (never silent).
+  var lastTier = null;
+  function applyTier(tier) {
+    var kept = 0;
+    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
+      if (row.dataset.retailPack === undefined || !row.querySelector('input[name$="-product"]').value) return;
+      if (isManual(row, lastTier || tier)) {
+        kept += 1;
+        return;
+      }
+      var boxes = priceInputs(row);
+      boxes.pack.value = tierPrice(row, "pack", tier);
+      boxes.carton.value = tierPrice(row, "carton", tier);
+    });
+    lastTier = tier;
+    var note = document.getElementById("tier-note");
+    if (note) {
+      note.hidden = kept === 0;
+      note.textContent = kept ? String(kept).replace(/[0-9]/g, function (d) { return String.fromCharCode(0x06f0 + Number(d)); }) + " ردیف با قیمت دستی تغییر نکرد." : "";
+    }
+    recomputeInvoice();
+  }
+
+  // The customer's type preselects the sale type, until the cashier picks one by hand.
+  var tierTouched = false;
+  function customerTier(id) {
+    var el = document.getElementById("customer-tiers");
+    try { return (JSON.parse(el ? el.textContent : "{}"))[id] || ""; } catch (e) { return ""; }
+  }
+
+  function setTier(tier) {
+    var radio = document.querySelector('input[name="price_tier"][value="' + tier + '"]');
+    if (radio && !radio.checked) {
+      radio.checked = true;
+      applyTier(tier);
+    }
+  }
+
+  // Below the average purchase cost per pack: a hint on the line, never a block (D-090).
+  function checkCost(row) {
+    var hint = row.querySelector("[data-cost-warn]");
+    var cost = parseInt(row.dataset.cost, 10);
+    if (!hint) return;
+    var boxes = priceInputs(row);
+    var ratio = parseInt(row.dataset.ratio, 10) || 1;
+    var low = !isNaN(cost) && cost > 0 && (
+      (boxes.pack && boxes.pack.value !== "" && intVal(boxes.pack) < cost) ||
+      (boxes.carton && boxes.carton.value !== "" && intVal(boxes.carton) < cost * ratio)
+    );
+    hint.hidden = !low;
+  }
+
   function pickProduct(button) {
     var row = button.closest("[data-item-row]");
     if (!row) return;
@@ -255,14 +334,17 @@
     row.querySelector('input[name$="-product"]').value = button.dataset.id;
     row.dataset.stock = button.dataset.stock;
     row.dataset.ratio = button.dataset.ratio || "1";
-    row.dataset.packPrice = button.dataset.packPrice || "0";
-    row.dataset.cartonPrice = button.dataset.cartonPrice || "0";
+    ["retailPack", "retailCarton", "wholesalePack", "wholesaleCarton"].forEach(function (key) {
+      row.dataset[key] = button.dataset[key] || "0";
+    });
+    row.dataset.cost = button.dataset.cost || "";
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = button.dataset.name;
 
-    // Both prices are suggested from the product (D-081); the cashier can type over either.
-    row.querySelector('input[name$="-unit_price"]').value = row.dataset.packPrice;
-    row.querySelector('input[name$="-carton_price"]').value = row.dataset.cartonPrice;
+    // Both prices come from the invoice's sale type (D-090); the cashier can type over either.
+    row.querySelector('input[name$="-unit_price"]').value = tierPrice(row, "pack");
+    row.querySelector('input[name$="-carton_price"]').value = tierPrice(row, "carton");
+    checkCost(row);
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
     if (stockLabel) stockLabel.textContent = "موجودی: " + window.PaperUnits.phrase(button.dataset.stock, row.dataset.ratio);
@@ -546,6 +628,12 @@
       document.querySelectorAll('#payment-rows input[name$="-issuer"][data-auto]').forEach(function (issuer) {
         issuer.value = customerName();
       });
+      var preset = customerTier(event.target.value);
+      if (preset && !tierTouched) setTier(preset);
+    }
+    if (event.target.matches('input[name="price_tier"]')) {
+      tierTouched = true;
+      applyTier(currentTier());
     }
   });
 
@@ -568,6 +656,10 @@
       event.target.id === "id_discount_percent"
     ) {
       recomputeInvoice();
+    }
+    if (event.target.matches('input[name$="-carton_price"]') || event.target.matches('input[name$="-unit_price"]')) {
+      var priceRow = event.target.closest("[data-item-row]");
+      if (priceRow) checkCost(priceRow);
     }
     if (event.target.matches('input[name$="-issuer"]')) delete event.target.dataset.auto;
   });
@@ -784,6 +876,15 @@
       percentRadio.checked = true;
     }
     showDiscountPanel(currentDiscountMode());
+    lastTier = currentTier();
+    // A customer already chosen (?customer=) presets the sale type on a fresh form only.
+    var customerSelect = document.getElementById("id_customer");
+    var isFresh = !document.querySelector(".form-error, .field--invalid") &&
+      !document.querySelector('#item-rows input[name$="-product"][value]:not([value=""])');
+    if (customerSelect && customerSelect.value && isFresh) {
+      var preset = customerTier(customerSelect.value);
+      if (preset) setTier(preset);
+    }
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
     focusStart();

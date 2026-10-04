@@ -7,7 +7,7 @@ clones -- `form` is `item_formset.empty_form` there, prefixed `form-__prefix__`,
 which sale_form.js swaps for a real index before inserting it.
 {% endcomment %}
 {% load paper %}
-<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}" data-ratio="{{ form.selected_product.pack_per_carton }}" data-pack-price="{{ form.selected_prices.0 }}" data-carton-price="{{ form.selected_prices.1 }}"{% endif %}>
+<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}" data-ratio="{{ form.selected_product.pack_per_carton }}" data-retail-pack="{{ form.selected_prices.retail_pack }}" data-retail-carton="{{ form.selected_prices.retail_carton }}" data-wholesale-pack="{{ form.selected_prices.wholesale_pack }}" data-wholesale-carton="{{ form.selected_prices.wholesale_carton }}" data-cost="{{ form.selected_cost|default_if_none:'' }}"{% endif %}>
   {{ form.product }}
   <div class="item-row__search">
     <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"
@@ -46,5 +46,7 @@ which sale_form.js swaps for a real index before inserting it.
   <div class="item-row__note">
     <span class="field__hint" data-item-row-after></span>
     <span class="field__error" data-item-row-warn></span>
+    {# D-090: a hint, never a block -- the price may be below cost on purpose. #}
+    <span class="item-row__cost-warn" data-cost-warn hidden>قیمت زیر میانگین قیمت خرید است.</span>
   </div>
 </div>

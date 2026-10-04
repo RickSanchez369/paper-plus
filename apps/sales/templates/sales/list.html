@@ -46,6 +46,7 @@ answer "how are we doing right now."
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.payment_status %}
+        {% include "shared/_field.html" with field=filter_form.price_tier %}
         {% include "shared/_field.html" with field=filter_form.product %}
         {% include "shared/_field.html" with field=filter_form.amount_min %}
         {% include "shared/_field.html" with field=filter_form.amount_max %}
@@ -78,7 +79,8 @@ answer "how are we doing right now."
                   {% if invoice.status != 'confirmed' %}{% status_badge "invoice" invoice.status invoice.get_status_display %}{% endif %}
                 </td>
                 <td class="num cell-soft">{{ invoice.invoice_date|jalali }}</td>
-                <td class="cell-grow"><span class="name-clip" title="{{ invoice.customer.name }}">{{ invoice.customer.name }}</span></td>
+                <td class="cell-grow"><span class="name-clip" title="{{ invoice.customer.name }}">{{ invoice.customer.name }}</span>
+                  {% if invoice.price_tier == "wholesale" %}<span class="badge badge--info">عمده</span>{% else %}<span class="badge badge--muted">خرد</span>{% endif %}</td>
                 <td class="num cell-money cell-money--total">{{ invoice.total|toman_bare }}</td>
                 <td>
                   {% if invoice.status == 'cancelled' %}—{% else %}{% status_badge "payment" invoice.payment_status invoice.payment_status.label %}{% endif %}
