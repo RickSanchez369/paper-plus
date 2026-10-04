@@ -1260,8 +1260,10 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   in `paper.py` hold the status-to-tone map (paid green, partial amber, unpaid red, cancelled muted/struck, bounced solid red,
   pending cheque blue, overdue red); badges carry a dot besides colour; no template maps a status to a class itself.
   (3) Small text uses `--*-700` tokens (>= 4.5:1), links use `--accent-700`, one global `:focus-visible` ring.
-  (4) Invoice detail pages open with a summary strip: total, paid, remaining, status. (5) Every list paginates with one shared
-  pager (25 per page) and key columns sort through a whitelisted `sort`/`dir`. (6) Product search rows have two levels,
+  (4) Invoice detail pages open with a summary strip: total, paid, remaining, status. (5) The growing lists (sales, purchases,
+  expenses, inventory, customers, suppliers, cheques) share one pager (25 per page, `{% pager %}`) and key columns sort
+  through a whitelisted `sort`/`dir` (`{% sort_th %}`); receivables/payables boards, bank-account cards and fixed costs
+  stay unpaged, being bounded action boards with inline forms. (6) Product search rows have two levels,
   separators, price, stock grade and a focus state. (7) The invoice line grid gets a mid-width two-row layout (721-1100px).
 - Not done on purpose: no change to money logic; the audit claim that numeric table columns are misaligned was rejected
   (right-aligned cells already stack the units digit).

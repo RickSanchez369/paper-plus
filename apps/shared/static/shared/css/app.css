@@ -1135,7 +1135,7 @@ summary:focus-visible,
 .item-row {
   display: grid;
   /* product, stock, cartons, packs, carton price, pack price, total, remove (D-081) */
-  grid-template-columns: 2fr 1.3fr 80px 80px 130px 130px 110px 64px;
+  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) 80px 80px 130px 130px 110px 64px;
   gap: var(--space-3);
   align-items: start;
   padding: var(--space-3) 0;
@@ -1165,7 +1165,7 @@ summary:focus-visible,
 }
 
 .item-row__results:not(:empty) {
-  min-width: 240px;
+  min-width: 280px;
   position: absolute;
   z-index: 30;
   inset-inline: 0;
@@ -1175,7 +1175,7 @@ summary:focus-visible,
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  max-height: 220px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -1194,8 +1194,34 @@ summary:focus-visible,
   cursor: pointer;
 }
 
-.item-row__result:hover {
+/* Hairline between rows, one accent bar marks hover/keyboard focus; a
+   disabled (out of stock) row is dimmed and never takes the hover tint. */
+.item-row__result + .item-row__result {
+  border-top: 1px solid var(--border);
+}
+
+.item-row__result:hover:not(:disabled),
+.item-row__result:focus-visible {
   background: var(--ink-100);
+  box-shadow: inset 3px 0 0 var(--accent-700);
+  outline: none;
+}
+
+.item-row__result-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.item-row__result-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.item-row__result-price {
+  font-size: 12px;
+  color: var(--ink-700);
 }
 
 .item-row__result--empty {
@@ -1206,6 +1232,11 @@ summary:focus-visible,
 .item-row__result-stock {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.item-row__result-stock--out {
+  color: var(--negative-700);
+  font-weight: 600;
 }
 
 .item-row__stock {
@@ -1406,9 +1437,8 @@ summary:focus-visible,
 }
 
 .item-row__result:disabled {
-  color: var(--text-muted);
+  opacity: 0.6;
   cursor: not-allowed;
-  background: var(--ink-100);
 }
 
 .sale-detail__actions {
@@ -1420,6 +1450,40 @@ summary:focus-visible,
 /* Phones: nothing may push the page wider than the screen. Tables scroll
    inside themselves, the invoice rows stack into a small grid (their cell
    labels come from data-label, since the column header row is hidden). */
+/* The 8-column line row needs ~1100px; below that it becomes two rows of
+   labelled fields (product + stock on top, then four inputs, total, remove)
+   so the product search never shrinks to a sliver on a tablet. */
+@media (max-width: 1100px) {
+  .item-row--head {
+    display: none;
+  }
+
+  .item-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .item-row__search,
+  .item-row__stock {
+    grid-column: 1 / -1;
+  }
+
+  .item-row__stock {
+    margin-top: 0;
+  }
+
+  .item-row__total,
+  .item-row__remove {
+    grid-column: span 2;
+  }
+
+  .item-row [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+}
+
 @media (max-width: 720px) {
   .data-table {
     display: block;
@@ -1441,27 +1505,13 @@ summary:focus-visible,
     grid-template-columns: 1fr;
   }
 
-  .item-row--head {
-    display: none;
-  }
-
   .item-row {
     grid-template-columns: 1fr 1fr;
   }
 
-  .item-row__stock {
-    grid-column: 1 / -1;
-  }
-
-  .item-row__search {
-    grid-column: 1 / -1;
-  }
-
-  .item-row [data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 12px;
-    color: var(--text-muted);
+  .item-row__total,
+  .item-row__remove {
+    grid-column: auto;
   }
 
   .daterange__panel {

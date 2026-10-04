@@ -11,10 +11,10 @@ the price field as a placeholder hint only, never a value: a purchase price is w
             data-stock="{{ row.stock }}"
             data-ratio="{{ row.product.pack_per_carton }}"
             data-last-cost="{{ row.last_cost|default_if_none:'' }}">
-      <span>{{ row.product.name }}</span>
-      <span class="num item-row__result-stock">
-        موجودی: {{ row.stock|units:row.product.pack_per_carton }}
-        {% if row.last_cost is not None %} · آخرین قیمت خرید (هر بسته): {{ row.last_cost|toman }}{% endif %}
+      <span class="item-row__result-name">{{ row.product.name }}</span>
+      <span class="item-row__result-meta">
+        <span class="num item-row__result-stock">موجودی: {{ row.stock|units:row.product.pack_per_carton }}</span>
+        {% if row.last_cost is not None %}<span class="num item-row__result-price">آخرین خرید (هر بسته): {{ row.last_cost|toman }}</span>{% endif %}
       </span>
     </button>
   {% endfor %}
