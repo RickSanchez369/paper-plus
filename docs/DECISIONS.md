@@ -1442,3 +1442,16 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   migrated with this code (numbers, sale types, stock and balances unchanged; an old unallocated payment became visible
   credit). PostgreSQL stays supported for development; no PostgreSQL-only feature may be used. `deploy/UPDATING.md` and
   `deploy/CHECKLIST.md` say so; the scheduled `backup_db` cron (D-077) is what protects the single file.
+
+### D-092: `update` backs up the SQLite file itself; `reset_business_data` starts the books from zero
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina (found on the host: `update` failed with "no such column: shared_documentsequence.day"; asked to wipe all
+  data except the user accounts)
+- Decision: on SQLite, `manage.py update` copies the database file through SQLite's online-backup API
+  (`backups/before-update-<time>.sqlite3`) before migrating. The JSON backup read the OLD schema through the NEW models and
+  failed on every release that adds a column to an existing table (Critical; nothing was changed on the host). PostgreSQL keeps
+  the JSON backup. New `manage.py reset_business_data` (typed `RESET` or `--yes`): copies the SQLite file first
+  (`before-reset-<time>.sqlite3`), then empties every table of the business apps (products, parties, invoices, payments,
+  cheques, expenses, returns, stock, audit log, counters; numbers restart) and keeps users, permissions and the schema.
+  Rehearsed on a SQLite copy built with the old `deploy` code: update, reset, then the QA scripts pass on the empty database.
