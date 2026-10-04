@@ -1319,3 +1319,19 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Not done on purpose: 64 deferred entries in `docs/UI_AUDIT_200_DEFERRED.md` (CSV export, reissue-invoice copy, remembered last
   backup, server-side global search, all-dates search default, two-column sale workbench, invoice-summary partial rewrite, and similar).
   Each needs Sina's decision before work starts.
+
+### D-086: Sales invoices are numbered by day and Persian letter
+- Status: Final (amends D-064 for sales; purchases keep D-064)
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: a sales invoice number is "<letter>/<Jalali yyyymmdd of the invoice date>": the first sale of 12 Mehr 1405 is
+  `الف/14050712`, the second `ب/14050712`, and so on through the 32 letters of the Persian alphabet. After «ی» the
+  alphabet starts again with a round number (Sina's choice): 33rd = `الف2/14050712`, 65th = `الف3/...`. The day is the
+  invoice's own date, so a backdated invoice takes its own day's next letter. `DocumentSequence` gains `day` (Jalali
+  MMDD; 0 = a whole-year counter) and is unique on (`doc_type`, `year`, `day`); one row per sales day, created and locked
+  exactly like D-064's rows. Purchases stay `1405/0001`.
+- Display: digits are stored ASCII and shown Persian (`fa_digits`). A lettered round needs an Arabic letter mark
+  (U+061C) between its digit and the slash, or the bidi algorithm glues the digit to the date; it is added on display
+  only (`display_document_number`), never stored. The sales list search accepts Persian digits.
+- Existing invoices keep their numbers (`1405/0001`, `9956001`): they are written into append-only ledger notes (D-014).
+- Schema: migration `shared.0019`.

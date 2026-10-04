@@ -202,7 +202,9 @@ def fa_digits(value):
     which are identifiers, not quantities -- 9956001, never 9,956,001."""
     if value in (None, ""):
         return ""
-    return dates.to_persian_digits(str(value))
+    from apps.shared.services import display_document_number
+
+    return display_document_number(str(value))
 
 
 @register.filter(name="ident")

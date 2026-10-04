@@ -82,8 +82,9 @@ def confirm_sale(invoice, user):
             "تخفیف نمی‌تواند از جمع اقلام فاکتور بیشتر باشد."
         )
 
-    # Number assigned only now, at confirmation (D-022) — never while draft.
-    locked_invoice.invoice_number = get_next_document_number("sale")
+    # Number assigned only now, at confirmation (D-022) — never while draft;
+    # built from the invoice's own date (D-086).
+    locked_invoice.invoice_number = get_next_document_number("sale", on_date=locked_invoice.invoice_date)
 
     # Lock the product rows before reading stock.
     # they act as a mutex so a second concurrent sale of the same products

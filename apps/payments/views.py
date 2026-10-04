@@ -148,7 +148,8 @@ class _DuesListView(LoginRequiredMixin, TemplateView):
             )
             cheques.append({
                 "cheque": cheque,
-                "party": cheque.customer or cheque.supplier,
+                # An expense cheque has no party (D-072); never print "None".
+                "party": cheque.customer or cheque.supplier or ("هزینه" if cheque.expense_id else "—"),
                 "overdue": cheque.due_date is not None and cheque.due_date < today,
                 "days_left": (cheque.due_date - today).days if cheque.due_date else None,
                 "clear_form": clear_form,

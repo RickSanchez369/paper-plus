@@ -52,7 +52,7 @@ def audit(tag, start, end):
         revenue += sum(it.line_total for it in i.items.all()) - i.discount_amount
     cogs = InventoryConsumption.objects.filter(sale_item__invoice__in=inv).aggregate(t=Sum(COST))["t"] or 0
     purchases = sum(
-        sum(it.line_total for it in p.items.all())
+        sum(it.line_total for it in p.items.all()) + p.freight_amount  # freight is owed too (D-082)
         for p in PurchaseInvoice.objects.filter(status="confirmed", invoice_date__gte=start, invoice_date__lte=end)
     )
     expenses = Expense.objects.filter(cancelled_at__isnull=True, expense_date__gte=start, expense_date__lte=end).aggregate(t=Sum("amount"))["t"] or 0

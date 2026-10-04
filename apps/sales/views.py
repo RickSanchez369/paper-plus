@@ -65,7 +65,10 @@ class SalesListView(LoginRequiredMixin, TemplateView):
         def run_filters(qs):
             """Apply the search/product filters in SQL and the derived-value filters in Python."""
             if data.get("q"):
-                qs = qs.filter(Q(invoice_number__icontains=data["q"]) | Q(customer__name__icontains=data["q"]))
+                # Numbers are stored with ASCII digits (D-086); a typed Persian
+                # "الف/۱۴۰۵۰۷۱۲" or a copied number with its bidi mark must still match.
+                number = dates.to_ascii_digits(data["q"]).replace("؜", "")
+                qs = qs.filter(Q(invoice_number__icontains=number) | Q(customer__name__icontains=data["q"]))
             if data.get("product"):
                 qs = qs.filter(items__product=data["product"]).distinct()
             rows = list(qs.order_by("-invoice_date", "-created_at"))

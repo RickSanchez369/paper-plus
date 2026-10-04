@@ -143,3 +143,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-083 Data-UI audit fixes: RTL numbers with units, one status-badge map, AA contrast tokens, summary strip, shared pager + sort, search rows, mid-width invoice grid.
 - D-084 Fifty-critic UI audit, batch 1: card gaps and edge tokens, danger/disabled buttons, field error state, ui.js toast + Persian-digit numeric boxes, error pages, invoice-form keyboard flow, inventory search, dashboard attention strip.
 - D-085 Two-hundred-critic UI audit: 147 presentation fixes applied, 64 deferred entries in docs/UI_AUDIT_200_DEFERRED.md need Sina.
+- D-086 Sales invoice number = Persian letter + "/" + Jalali yyyymmdd of the invoice date (الف/14050712, ب/...; after ی: الف2); purchases keep year/running.

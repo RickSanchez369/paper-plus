@@ -9,7 +9,8 @@ from apps.shared.models import DocumentSequence
 
 def seq():
     from apps.shared import dates
-    row = DocumentSequence.objects.filter(doc_type="sale", year=dates.today().year).first()
+    t = dates.today()  # sales count per invoice day (D-086)
+    row = DocumentSequence.objects.filter(doc_type="sale", year=t.year, day=t.month * 100 + t.day).first()
     return row.next_number if row else 1
 
 
