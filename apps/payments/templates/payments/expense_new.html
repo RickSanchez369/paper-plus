@@ -20,25 +20,58 @@ cancel_expense instead.
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'expenses:list' %}">هزینه‌ها</a> / هزینهٔ جدید</p>
 
-<div class="card form-narrow">
+<div class="card form-narrow exb-voucher">
   <div class="card__body">
     <h1>ثبت هزینهٔ جدید</h1>
     {% if recurring %}
-      <p class="field__hint">این هزینه نوبت «{{ recurring.reason }}» (هزینهٔ ثابت، {{ recurring.interval_label }}) را تسویه می‌کند و پس از ثبت، سررسید بعدی خودکار جلو می‌رود.</p>
+      {% comment %}Settling a fixed cost (D-073): what is due, the usual amount and where the reminder moves to.{% endcomment %}
+      <section class="exb-settle" aria-label="هزینهٔ ثابت در حال تسویه" data-usual="{{ recurring.amount }}" data-next-due="{{ settle.next_due|jalali }}">
+        <div class="exb-settle__head">
+          <strong>{{ recurring.reason }}</strong>
+          <span class="field__hint">هزینهٔ ثابت · {{ recurring.interval_label }}</span>
+        </div>
+        <dl class="exb-settle__facts">
+          <div>
+            <dt>سررسید این نوبت</dt>
+            <dd class="num">{{ recurring.next_due_date|jalali }}
+              {% if settle.overdue %}{% flag_badge "bad" "سررسید گذشته" %}
+              {% elif settle.days_left == 0 %}{% flag_badge "pending" "امروز" %}
+              {% else %}<span class="field__hint">{{ settle.days_left|fa_number }} روز دیگر</span>{% endif %}
+            </dd>
+          </div>
+          <div><dt>مبلغ معمول</dt><dd class="num">{{ recurring.amount|toman }}</dd></div>
+          <div><dt>سررسید بعدی پس از ثبت</dt><dd class="num">{{ settle.next_due|jalali }}</dd></div>
+        </dl>
+        <p class="field__hint">این هزینه نوبت «{{ recurring.reason }}» را تسویه می‌کند و پس از ثبت، سررسید بعدی خودکار جلو می‌رود.{% if account_from_last %} حساب پرداخت از نوبت قبلی همین هزینه انتخاب شد؛ مبلغ را در صورت تغییر اصلاح کنید.{% endif %}</p>
+      </section>
     {% endif %}
     <form method="post" enctype="multipart/form-data" novalidate id="expense-form">
       {% csrf_token %}
       {% include "shared/_form_errors.html" with form=form %}
       {{ form.recurring }}
-      {% include "shared/_field.html" with field=form.expense_date %}
-      {% include "shared/_field.html" with field=form.reason %}
-      {% include "shared/_field.html" with field=form.amount %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 
-      <div class="field">
+      <div class="exb-grid">
+        {% include "shared/_field.html" with field=form.expense_date %}
+        <div>
+          {% include "shared/_field.html" with field=form.reason %}
+          <p class="field__hint exb-note" id="expense-preset-note" hidden></p>
+        </div>
+        <div>
+          {% include "shared/_field.html" with field=form.amount %}
+          <p class="field__hint exb-amount-words" id="expense-amount-words" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="field exb-method">
         <span class="field__label">{{ form.payment_method.label }}</span>
         <div class="payment-mode" role="radiogroup" aria-label="{{ form.payment_method.label }}">
           {% for radio in form.payment_method %}
-            <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+            <label class="payment-mode__option">
+              {{ radio.tag }}
+              <span class="payment-mode__title">{{ radio.choice_label }}</span>
+              <span class="payment-mode__sub">{% if radio.data.value == "transfer" %}همین حالا از حساب جاری کم می‌شود{% elif radio.data.value == "cheque" %}در انتظار وصول؛ تا پاس‌شدن پولی کم نمی‌شود{% elif radio.data.value == "credit" %}پولی خارج نمی‌شود؛ تا سررسید یادآوری می‌گیرید{% endif %}</span>
+            </label>
           {% endfor %}
         </div>
         {% for error in form.payment_method.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
@@ -56,19 +89,38 @@ cancel_expense instead.
       <div data-expense-panel="credit" hidden>
         <p class="field__hint">هزینه ثبت می‌شود ولی پولی خارج نمی‌شود؛ تا سررسید یادآوری می‌گیرید و بعداً از صفحهٔ هزینه‌ها «پرداخت» می‌کنید.</p>
         {% include "shared/_field.html" with field=form.due_date %}
+        <div class="exb-chips" role="group" aria-label="میان‌بر سررسید" data-chip-target="{{ form.due_date.id_for_label }}">
+          {% for p in credit_presets %}<button type="button" class="exb-chip" data-value="{{ p.value }}">{{ p.label }}</button>{% endfor %}
+        </div>
       </div>
 
       <div data-expense-panel="cheque" hidden>
         <p class="field__hint">چک در وضعیت «در انتظار وصول» ثبت می‌شود و تا پاس‌شدن، پولی از حساب کم نمی‌شود.</p>
+        {% comment %}Due date first: the one value the owner really decides; the rest is suggested from the chosen account.{% endcomment %}
+        {% include "shared/_field.html" with field=form.cheque_due_date %}
+        <div class="exb-chips" role="group" aria-label="میان‌بر سررسید" data-chip-target="{{ form.cheque_due_date.id_for_label }}">
+          {% for p in cheque_presets %}<button type="button" class="exb-chip" data-value="{{ p.value }}">{{ p.label }}</button>{% endfor %}
+        </div>
         {% include "shared/_field.html" with field=form.cheque_number %}
         {% include "shared/_field.html" with field=form.issuer %}
         {% include "shared/_field.html" with field=form.bank_name %}
-        {% include "shared/_field.html" with field=form.cheque_due_date %}
+        <p class="field__hint" id="expense-autofill-note" hidden>صادرکننده، بانک و شمارهٔ بعدی از روی حساب انتخاب‌شده و آخرین چک آن پر شد؛ هر کدام را می‌توانید عوض کنید.</p>
       </div>
 
-      {% include "shared/_field.html" with field=form.document %}
-      {% include "shared/_field.html" with field=form.note %}
-      <button type="submit" class="btn">ثبت هزینه</button>
+      <div class="exb-grid exb-grid--optional">
+        {% include "shared/_field.html" with field=form.document %}
+        {% include "shared/_field.html" with field=form.note %}
+      </div>
+
+      {% comment %}Live restatement of what the button will do (filled by expense_form.js); no edit afterwards, so say it first.{% endcomment %}
+      <div class="exb-preview" id="expense-preview" aria-live="polite" hidden>
+        <p class="exb-preview__line" id="expense-preview-line"></p>
+        <p class="exb-preview__sub" id="expense-preview-sub"></p>
+      </div>
+      <button type="submit" class="btn">{% if recurring %}ثبت پرداخت «{{ recurring.reason }}»{% else %}ثبت هزینه{% endif %}</button>
+
+      <datalist id="expense-reasons">{% for p in expense_data.presets %}<option value="{{ p.reason }}">{% endfor %}</datalist>
+      {{ expense_data|json_script:"expense-data" }}
     </form>
   </div>
 </div>

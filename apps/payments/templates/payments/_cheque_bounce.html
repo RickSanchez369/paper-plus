@@ -1,0 +1,14 @@
+{% load paper %}
+{% comment %}
+"برگشت خورد" for one pending cheque. The confirmation names the cheque, its
+party and amount and says what bouncing does, because it cannot be undone;
+the text sits in an escaped data attribute (dues_cheques.js asks), never in
+inline JS where a quote in a party name would break the guard.
+Context: cheque, party, label, next_url (optional).
+{% endcomment %}
+<form method="post" action="{% url 'cheques:bounce' cheque.pk %}" class="inline-form dues-actions__bounce"
+      data-confirm="چک {{ cheque.cheque_number|default:'(بدون شماره)' }}{% if party %} ({{ party }}){% endif %} به مبلغ {{ cheque.amount|toman }} برگشت خورده ثبت شود؟ {% if cheque.sales_invoice %}مبلغ این چک دوباره روی فاکتور {{ cheque.sales_invoice.invoice_number|fa_digits }} به‌صورت نسیه باز می‌ماند.{% elif cheque.purchase_invoice %}مبلغ این چک دوباره روی فاکتور {{ cheque.purchase_invoice.invoice_number|fa_digits }} به‌صورت نسیه باز می‌ماند.{% else %}مبلغ این چک دیگر «در انتظار» حساب نمی‌شود.{% endif %} هیچ پرداختی ثبت نمی‌شود، چک در تاریخچه می‌ماند و این کار قابل بازگشت نیست.">
+  {% csrf_token %}
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button type="submit" class="btn btn--danger">{{ label|default:"برگشت" }}</button>
+</form>

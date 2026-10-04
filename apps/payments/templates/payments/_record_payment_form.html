@@ -1,4 +1,4 @@
-{% load paper %}
+{% load paper l10n %}
 {% comment %}
 "ثبت پرداخت", the one implementation.
 
@@ -9,11 +9,19 @@ customer mid-payment would be a way to pay the wrong person's invoice.
 
 Submitted over htmx so the page behind it does not reload; `hx-target`
 swaps this partial back in with errors, or the caller's success fragment.
+
+payment_form.js (loaded by the pages that own it) adds the live parts via the
+data-pay-* hooks: typing an amount ticks the oldest invoices it covers, the
+summary says what will be booked, the button names the amount. Without it
+the form is the plain form it always was.
 {% endcomment %}
 <form class="payment-form"
       hx-post="{{ post_url }}"
       hx-target="closest .payment-form"
-      hx-swap="outerHTML">
+      hx-swap="outerHTML"
+      data-pay-form
+      data-verb="{% if form.customer %}دریافت{% else %}پرداخت{% endif %}"
+      data-party="{{ form.customer|default:form.supplier }}">
   {% csrf_token %}
 
   {% include "shared/_form_errors.html" %}
@@ -24,6 +32,12 @@ swaps this partial back in with errors, or the caller's success fragment.
   </div>
 
   {% include "shared/_field.html" with field=form.amount %}
+  {% if form.open_invoices %}
+    <div class="pay-chips pay-js-only">
+      <button type="button" class="btn btn--quiet" data-pay-total>کل مانده</button>
+      <button type="button" class="btn btn--quiet" data-pay-oldest>تخصیص از قدیمی‌ترین</button>
+    </div>
+  {% endif %}
   {% include "shared/_field.html" with field=form.payment_date %}
   {% include "shared/_field.html" with field=form.bank_account %}
 
@@ -36,10 +50,16 @@ swaps this partial back in with errors, or the caller's success fragment.
       </p>
       <div class="invoice-picker">
         {% for choice in form.invoices %}
-          <label class="invoice-picker__row">
+          {% with invoice=choice.data.label %}
+          {% with due=invoice.outstanding %}
+          <label class="invoice-picker__row" data-outstanding="{{ due|unlocalize }}" data-name="{{ invoice.invoice_number|fa_digits }}">
             {{ choice.tag }}
-            <span class="invoice-picker__label">{{ choice.choice_label }}</span>
+            <span class="invoice-picker__label">فاکتور {{ invoice.invoice_number|fa_digits }}</span>
+            <span class="invoice-picker__date num">{{ invoice.invoice_date|jalali }}</span>
+            <span class="invoice-picker__due num">{{ due|toman }}</span>
           </label>
+          {% endwith %}
+          {% endwith %}
         {% endfor %}
       </div>
       {% for error in form.invoices.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
@@ -50,5 +70,6 @@ swaps this partial back in with errors, or the caller's success fragment.
 
   {% include "shared/_field.html" with field=form.note %}
 
-  <button type="submit" class="btn btn--block">ثبت پرداخت</button>
+  <div class="pay-summary" data-pay-summary aria-live="polite"></div>
+  <button type="submit" class="btn btn--block" data-pay-submit>ثبت پرداخت</button>
 </form>

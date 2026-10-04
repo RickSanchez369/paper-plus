@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static paper %}
 
 {% comment %}
 Payables (D-071): the exact mirror of Receivables -- what we owe suppliers,
@@ -8,11 +8,13 @@ split into pending cheques we issued and credit on account.
 
 {% block title %}بدهی‌ها{% endblock %}
 {% block header %}بدهی‌ها{% endblock %}
+{% block head %}<script src="{% static_v 'shared/js/dues_cheques.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <h1>بدهی به تأمین‌کنندگان</h1>
   <p class="page-head__lede">چک‌های پرداختی در انتظار پاس‌شدن و نسیه‌های باز، با تاریخ سررسید.</p>
 </div>
-{% include "payments/_dues_page.html" with party_word="تأمین‌کننده" party_header="تأمین‌کننده" clear_label="پاس شد" pay_label="پرداخت" %}
+{% url 'receivables:list' as other_url %}
+{% include "payments/_dues_page.html" with party_word="تأمین‌کننده" party_header="تأمین‌کننده" clear_label="پاس شد" pay_label="پرداخت" other_url=other_url other_label="مطالبات و چک‌های دریافتنی" %}
 {% endblock %}

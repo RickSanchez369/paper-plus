@@ -46,7 +46,16 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
                 {% if item.kind == "recurring" %}
                   <a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">ثبت پرداخت</a>
                 {% else %}
-                  <a class="btn btn--quiet" href="#expense-{{ item.obj.pk }}">پرداخت</a>
+                  {% comment %}Pays right here (same endpoint as the table's form): the row may sit outside the month filter.{% endcomment %}
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">پرداخت</summary>
+                    <form method="post" action="{% url 'expenses:pay' item.obj.pk %}" class="payment-form">
+                      {% csrf_token %}
+                      {% include "shared/_field.html" with field=item.pay_form.bank_account %}
+                      {% include "shared/_field.html" with field=item.pay_form.payment_date %}
+                      <button type="submit" class="btn btn--block">پرداخت {{ item.amount|toman }}</button>
+                    </form>
+                  </details>
                 {% endif %}
               </td>
             </tr>
@@ -57,18 +66,18 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
   </div>
 {% endif %}
 
-<div class="stats">
-  <div class="stat-card">
+<div class="stats exb-stats">
+  <div class="stat-card stat-card--out">
     <span class="stat-card__label">هزینهٔ امروز</span>
-    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman_split }}</span>
   </div>
-  <div class="stat-card">
+  <div class="stat-card stat-card--out">
     <span class="stat-card__label">هزینهٔ این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman_split }}</span>
   </div>
-  <div class="stat-card">
+  <div class="stat-card stat-card--out">
     <span class="stat-card__label">هنوز پرداخت‌نشده</span>
-    <span class="stat-card__value num">{{ cards.owed_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.owed_total|toman_split }}</span>
     <span class="field__hint">نسیه و چک‌های در انتظار</span>
   </div>
 </div>
@@ -78,12 +87,18 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
     <form method="get" class="toolbar">
       {% include "shared/_keep_sort.html" %}
       <div class="filters">
-        {% include "shared/_field.html" with field=filter_form.q %}
-        {% include "shared/_field.html" with field=filter_form.bank_account %}
-        {% include "shared/_field.html" with field=filter_form.status %}
-        {% include "shared/_field.html" with field=filter_form.amount_min %}
-        {% include "shared/_field.html" with field=filter_form.amount_max %}
+        <div class="filters__search">{% include "shared/_field.html" with field=filter_form.q %}</div>
+        <div class="filters__status">{% include "shared/_field.html" with field=filter_form.status %}</div>
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+        {% comment %}Rare filters sit one click away; the box opens by itself while one of them is applied, so nothing active is hidden.{% endcomment %}
+        <details class="filters__more"{% if request.GET.bank_account or request.GET.amount_min or request.GET.amount_max %} open{% endif %}>
+          <summary>فیلتر بیشتر: حساب بانکی و بازهٔ مبلغ</summary>
+          <div class="filters__more-grid">
+            {% include "shared/_field.html" with field=filter_form.bank_account %}
+            {% include "shared/_field.html" with field=filter_form.amount_min %}
+            {% include "shared/_field.html" with field=filter_form.amount_max %}
+          </div>
+        </details>
       </div>
       {% include "shared/_date_range.html" with form=range_form %}
     {% include "shared/_filter_reset.html" %}
@@ -118,7 +133,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
                     <span class="field__hint">تا {{ expense.due_date|jalali }}</span>
                   {% endif %}
                 </td>
-                <td>{{ expense.payment.bank_account|default:expense.bank_account|default:"—" }}</td>
+                <td>{{ expense.payment.bank_account|default:expense.bank_account|dash }}</td>
                 <td>{{ expense.created_by.get_full_name|default:expense.created_by.phone }}</td>
                 <td>{% if expense.document %}<a href="{{ expense.document.url }}" target="_blank" rel="noopener">مشاهدهٔ سند</a>{% else %}—{% endif %}</td>
                 <td>
@@ -161,7 +176,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
 
       {% pager page_obj %}
     {% else %}
-      <div class="placeholder">
+      <div class="placeholder placeholder--centered">
         <p>هزینه‌ای با این فیلترها پیدا نشد.</p>
         <a href="{% url 'expenses:new' %}" class="btn">ثبت اولین هزینه</a>
       </div>

@@ -231,7 +231,7 @@ class BankAccountForm(forms.ModelForm):
         fields = ("name", "account_type", "owner", "account_number")
         widgets = {
             "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
-            "account_type": forms.Select(attrs={"class": "field__control"}),
+            "account_type": forms.RadioSelect(),  # drawn as two explained cards by bank_account_form.html
             "owner": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
             "account_number": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
         }
@@ -507,7 +507,8 @@ class ExpenseForm(forms.ModelForm):
             "recurring", "document", "note",
         )
         widgets = {
-            "reason": forms.TextInput(attrs={"class": "field__control"}),
+            # `list` offers past reasons (datalist in the template); typing a new one stays free.
+            "reason": forms.TextInput(attrs={"class": "field__control", "list": "expense-reasons", "autocomplete": "off"}),
             "note": forms.Textarea(attrs={"class": "field__control", "rows": 2}),
         }
 
@@ -571,7 +572,7 @@ class RecurringExpenseForm(forms.ModelForm):
         model = RecurringExpense
         fields = ("reason", "amount", "repeat_every", "repeat_unit", "next_due_date", "remind_days_before", "note")
         widgets = {
-            "reason": forms.TextInput(attrs={"class": "field__control"}),
+            "reason": forms.TextInput(attrs={"class": "field__control", "list": "reason-history", "autocomplete": "off"}),
             "repeat_every": NumericInput(attrs={"class": "field__control", "dir": "ltr", "min": 1}),
             "repeat_unit": forms.Select(attrs={"class": "field__control"}),
             "remind_days_before": NumericInput(attrs={"class": "field__control", "dir": "ltr", "min": 0}),

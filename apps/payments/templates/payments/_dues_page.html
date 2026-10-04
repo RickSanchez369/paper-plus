@@ -1,32 +1,99 @@
-{% load paper %}
+{% load paper l10n dues_ui %}
 {% comment %}
 The body of Receivables and Payables (D-071), one template for both sides.
-Context: cheques, cheques_total, credit, credit_total, rows, next_url (from
+Context: cheques, cheques_total, credit, credit_total, rows, next_url, grand_total,
+overdue_total/overdue_count and the pct_* shares of the header bar (from
 _DuesListView) and, from the including page: party_word (مشتری/تأمین‌کننده),
-clear_label (وصول شد/پاس شد), pay_label (دریافت/پرداخت), party_header.
+clear_label (وصول شد/پاس شد), pay_label (دریافت/پرداخت), party_header,
+other_url/other_label (the mirror page).
 
-Three blocks, by how the money will be settled:
-  1. pending cheques -- due date, issuer, bank, and the pass / bounce buttons;
-  2. credit on account (نسیه) -- per invoice, due date, pay all or part;
-  3. the per-party summary with the general "ثبت پرداخت" form.
+A header, then three blocks. The per-party summary comes first because
+"he paid" is the commonest action; cheques are the exception:
+  0. header -- the total owed, split cheque/credit, and the overdue amount;
+  1. the per-party summary with the general "ثبت پرداخت" form;
+  2. pending cheques -- due date, issuer, bank, and the pass / bounce buttons;
+  3. credit on account (نسیه) -- per invoice, due date, pay all or part.
+Rows carry ids (chq-/inv-/party-) so the dashboard and a bounced cheque can
+link straight to one row; dues_cheques.js opens its form.
 {% endcomment %}
 
-<div class="stats">
-  <div class="stat-card">
-    <span class="stat-card__label">چک‌های در انتظار</span>
-    <span class="stat-card__value num">{{ cheques_total|toman }}</span>
-    <span class="field__hint">{{ cheques|length|fa_number }} چک</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-card__label">نسیه (روی حساب)</span>
-    <span class="stat-card__value num">{{ credit_total|toman }}</span>
-    <span class="field__hint">{{ credit|length|fa_number }} فاکتور</span>
+<div class="dues-hero">
+  <section class="stat-card stat-card--primary {% if pay_label == "دریافت" %}stat-card--in{% else %}stat-card--out{% endif %} dues-hero__total" aria-label="مجموع">
+    <span class="stat-card__label">{% if pay_label == "دریافت" %}مجموع مطالبات{% else %}مجموع بدهی‌ها{% endif %}</span>
+    <span class="stat-card__value num">{{ grand_total|toman_split }}</span>
+    {% if grand_total %}
+      <div class="dues-bar" role="img"
+           aria-label="سررسید گذشته {{ overdue_total|toman }}، چک {{ cheques_total|toman }}، نسیه {{ credit_total|toman }}">
+        <i class="dues-bar__seg dues-bar__seg--late" style="flex: {{ pct_late|unlocalize }}"></i>
+        <i class="dues-bar__seg dues-bar__seg--cheque" style="flex: {{ pct_cheque|unlocalize }}"></i>
+        <i class="dues-bar__seg dues-bar__seg--credit" style="flex: {{ pct_credit|unlocalize }}"></i>
+      </div>
+    {% endif %}
+    <ul class="dues-legend">
+      <li><a href="#dues-cheques"><b class="dues-dot dues-dot--cheque"></b>چک‌های در انتظار
+        <strong class="num">{{ cheques_total|toman }}</strong> <span class="field__hint">{{ cheques|length|fa_number }} چک</span></a></li>
+      <li><a href="#dues-credit"><b class="dues-dot dues-dot--credit"></b>نسیه (روی حساب)
+        <strong class="num">{{ credit_total|toman }}</strong> <span class="field__hint">{{ credit|length|fa_number }} فاکتور</span></a></li>
+    </ul>
+  </section>
+  {% if overdue_total %}
+    <a class="stat-card dues-hero__late" href="#first-overdue">
+      <span class="stat-card__label">سررسید گذشته</span>
+      <span class="stat-card__value num">{{ overdue_total|toman_split }}</span>
+      <span class="field__hint">{{ overdue_count|fa_number }} مورد؛ رفتن به اولین</span>
+    </a>
+  {% else %}
+    <div class="stat-card dues-hero__late is-clear">
+      <span class="stat-card__label">سررسید گذشته</span>
+      <span class="stat-card__value num">{{ overdue_total|toman_split }}</span>
+      <span class="field__hint">موردی سررسید گذشته نیست</span>
+    </div>
+  {% endif %}
+</div>
+{% if other_url %}<p class="dues-twin"><a href="{{ other_url }}">{{ other_label }} ←</a></p>{% endif %}
+
+<div class="card">
+  <div class="card__body">
+    <h2 id="dues-parties">{{ pay_label }} {% if pay_label == "دریافت" %}از{% else %}به{% endif %} {{ party_word }} <span class="field__hint">(جمع مانده هر {{ party_word }})</span></h2>
+    {% if rows %}
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ party_header }}</th>
+              <th>تلفن</th>
+              <th>جمع مانده</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr id="party-{{ row.party.pk }}">
+                <td><span class="name-clip" title="{{ row.party.name }}">{{ row.party.name }}</span></td>
+                <td>{{ row.party.phone|ident|dash }}</td>
+                <td class="num">{{ row.outstanding|toman }}</td>
+                <td>
+                  <details class="quick-party-disclosure">
+                    <summary class="btn btn--quiet">ثبت پرداخت کلی</summary>
+                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="placeholder">
+        <p>هیچ {{ party_word }}‌ای حساب باز ندارد.</p>
+      </div>
+    {% endif %}
   </div>
 </div>
 
 <div class="card">
   <div class="card__body">
-    <h2>چک‌ها</h2>
+    <h2 id="dues-cheques">چک‌ها</h2>
     {% if cheques %}
       <div class="table-card">
         <table class="data-table">
@@ -44,16 +111,16 @@ Three blocks, by how the money will be settled:
           </thead>
           <tbody>
             {% for row in cheques %}
-              {% with cheque=row.cheque %}
-              <tr{% if row.overdue %} class="is-overdue"{% endif %}>
+              {% with cheque=row.cheque tier=row.days_left|due_tier %}
+              <tr id="chq-{{ cheque.pk }}"{% if row.overdue %} class="is-overdue"{% elif tier == "today" %} class="is-today"{% elif tier == "soon" %} class="is-soon"{% endif %}>
                 <td class="num">
-                  {% if cheque.due_date %}{{ cheque.due_date|jalali }}{% else %}—{% endif %}
-                  {% if row.overdue %}{% flag_badge "bad" "سررسید گذشته" %}{% endif %}
+                  {% if row.first_overdue %}<span id="first-overdue"></span>{% endif %}
+                  {% if cheque.due_date %}{{ cheque.due_date|jalali }}{% due_chip row.days_left %}{% else %}—{% endif %}
                 </td>
                 <td>{{ row.party }}</td>
-                <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a></td>
-                <td>{{ cheque.issuer|default:"—" }}</td>
-                <td>{{ cheque.bank_name|default:"—" }}</td>
+                <td><a href="{% url 'cheques:detail' cheque.pk %}">{% if cheque.cheque_number %}{{ cheque.cheque_number|ident }}{% else %}(بدون شماره){% endif %}</a></td>
+                <td>{{ cheque.issuer|dash }}</td>
+                <td>{{ cheque.bank_name|dash }}</td>
                 <td>
                   {% if cheque.sales_invoice %}
                     <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
@@ -63,20 +130,10 @@ Three blocks, by how the money will be settled:
                 </td>
                 <td class="num">{{ cheque.amount|toman }}</td>
                 <td>
-                  <details class="quick-party-disclosure">
-                    <summary class="btn btn--quiet">{{ clear_label }}</summary>
-                    <form method="post" action="{% url 'cheques:clear' cheque.pk %}" class="payment-form">
-                      {% csrf_token %}
-                      <input type="hidden" name="next" value="{{ next_url }}">
-                      {% include "shared/_field.html" with field=row.clear_form.bank_account %}
-                      <button type="submit" class="btn btn--block">تأیید «{{ clear_label }}»</button>
-                    </form>
-                  </details>
-                  <form method="post" action="{% url 'cheques:bounce' cheque.pk %}" class="inline-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ next_url }}">
-                    <button type="submit" class="btn btn--danger" onclick="return confirm('چک برگشت‌خورده ثبت شود؟')">برگشت</button>
-                  </form>
+                  <div class="dues-actions">
+                    {% include "payments/_cheque_clear.html" with cheque=cheque clear_form=row.clear_form default_account=row.default_account party=row.party label=clear_label next_url=next_url compact=True %}
+                    {% include "payments/_cheque_bounce.html" with cheque=cheque party=row.party next_url=next_url %}
+                  </div>
                 </td>
               </tr>
               {% endwith %}
@@ -92,7 +149,7 @@ Three blocks, by how the money will be settled:
 
 <div class="card">
   <div class="card__body">
-    <h2>نسیه (روی حساب)</h2>
+    <h2 id="dues-credit">نسیه (روی حساب)</h2>
     <p class="field__hint">باقیماندهٔ هر فاکتور پس از کسر چک‌های در انتظار. هر مبلغی را می‌توان ثبت کرد؛ تسویهٔ کامل یعنی ثبت کل مبلغ.</p>
     {% if credit %}
       <div class="table-card">
@@ -109,10 +166,11 @@ Three blocks, by how the money will be settled:
           </thead>
           <tbody>
             {% for item in credit %}
-              <tr{% if item.overdue %} class="is-overdue"{% endif %}>
+              {% with tier=item.days_left|due_tier %}
+              <tr id="inv-{{ item.invoice.pk }}"{% if item.overdue %} class="is-overdue"{% elif tier == "today" %} class="is-today"{% elif tier == "soon" %} class="is-soon"{% endif %}>
                 <td class="num">
-                  {% if item.due_date %}{{ item.due_date|jalali }}{% else %}—{% endif %}
-                  {% if item.overdue %}{% flag_badge "bad" "سررسید گذشته" %}{% endif %}
+                  {% if item.first_overdue %}<span id="first-overdue"></span>{% endif %}
+                  {% if item.due_date %}{{ item.due_date|jalali }}{% due_chip item.days_left %}{% else %}—{% endif %}
                 </td>
                 <td>{{ item.party }}</td>
                 <td>
@@ -133,11 +191,12 @@ Three blocks, by how the money will be settled:
                       {% include "shared/_field.html" with field=item.form.payment_date %}
                       {% include "shared/_field.html" with field=item.form.bank_account %}
                       {% include "shared/_field.html" with field=item.form.note %}
-                      <button type="submit" class="btn btn--block">ثبت</button>
+                      <button type="submit" class="btn btn--block">ثبت {{ pay_label }}</button>
                     </form>
                   </details>
                 </td>
               </tr>
+              {% endwith %}
             {% endfor %}
           </tbody>
         </table>
@@ -148,41 +207,3 @@ Three blocks, by how the money will be settled:
   </div>
 </div>
 
-<div class="card">
-  <div class="card__body">
-    <h2>جمع به تفکیک {{ party_word }}</h2>
-    {% if rows %}
-      <div class="table-card">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>{{ party_header }}</th>
-              <th>تلفن</th>
-              <th>جمع مانده</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in rows %}
-              <tr>
-                <td>{{ row.party.name }}</td>
-                <td class="num">{{ row.party.phone|default:"—" }}</td>
-                <td class="num">{{ row.outstanding|toman }}</td>
-                <td>
-                  <details class="quick-party-disclosure">
-                    <summary class="btn btn--quiet">ثبت پرداخت کلی</summary>
-                    {% include "payments/_record_payment_form.html" with form=row.form post_url=row.post_url %}
-                  </details>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="placeholder">
-        <p>هیچ {{ party_word }}‌ای حساب باز ندارد.</p>
-      </div>
-    {% endif %}
-  </div>
-</div>

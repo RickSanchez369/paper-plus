@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static paper %}
 
 {% comment %}
 Receivables (D-071): what customers owe, split into pending cheques and
@@ -9,11 +9,13 @@ shared body is payments/_dues_page.html.
 
 {% block title %}مطالبات{% endblock %}
 {% block header %}مطالبات{% endblock %}
+{% block head %}<script src="{% static_v 'shared/js/dues_cheques.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <h1>مطالبات از مشتریان</h1>
   <p class="page-head__lede">چک‌های در انتظار وصول و نسیه‌های باز، با تاریخ سررسید.</p>
 </div>
-{% include "payments/_dues_page.html" with party_word="مشتری" party_header="مشتری" clear_label="وصول شد" pay_label="دریافت" %}
+{% url 'payables:list' as other_url %}
+{% include "payments/_dues_page.html" with party_word="مشتری" party_header="مشتری" clear_label="وصول شد" pay_label="دریافت" other_url=other_url other_label="بدهی‌ها و چک‌های پرداختنی" %}
 {% endblock %}

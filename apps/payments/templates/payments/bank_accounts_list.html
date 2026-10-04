@@ -21,20 +21,23 @@ last week/last month), all read from the Payment ledger. No independent
 
 {% if rows %}
   {% for group in groups %}
-    <h2 class="section-title">{{ group.title }} <span class="badge badge--info">{{ group.rows|length|fa_number }}</span></h2>
+    <h2 class="section-title">{{ group.title }} <span class="badge badge--count">{{ group.rows|length|fa_number }}</span></h2>
     {% if group.rows %}
     <div class="stats">
       {% for row in group.rows %}
         <div class="stat-card stat-card--account">
-          <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__name">{{ row.account.name }}{% if row.account.owner %} — {{ row.account.owner }}{% endif %}</a>
-          <span class="stat-card__meta">شماره حساب: <bdi dir="ltr" class="num">{{ row.account.account_number }}</bdi></span>
-          <span class="stat-card__value num{% if row.balance < 0 %} is-negative{% endif %}">{{ row.balance|toman }}</span>
-          <div class="stat-card__deltas">
+          <div class="acct__head">
+            <a href="{% url 'bank_accounts:detail' row.account.pk %}" class="stat-card__name">{{ row.account.name }}{% if row.account.owner %} <span class="acct__owner">— {{ row.account.owner }}</span>{% endif %}</a>
+            <span class="acct__no" title="شماره حساب"><span class="acct__no-label">شماره حساب: </span><bdi dir="ltr" class="num">{{ row.account.account_number }}</bdi></span>
+          </div>
+          <span class="stat-card__value num{% if row.balance < 0 %} is-negative{% endif %}">{{ row.balance|toman_split }}</span>
+          {% comment %}Three captioned cells; the arrow carries the direction so colour is not the only cue.{% endcomment %}
+          <div class="acct__deltas">
             {% for delta in row.deltas %}
-              <span class="stat-card__delta{% if delta.value > 0 %} stat-card__delta--up{% elif delta.value < 0 %} stat-card__delta--down{% endif %}">
-                {{ delta.label }}:
-                {% if delta.value > 0 %}+{% endif %}{{ delta.value|toman }}
-              </span>
+              <div class="acct__delta{% if delta.value > 0 %} acct__delta--up{% elif delta.value < 0 %} acct__delta--down{% endif %}">
+                <span class="acct__delta-label">{{ delta.label }}</span>
+                <bdi class="acct__delta-val num"><span aria-hidden="true">{% if delta.value > 0 %}▲{% elif delta.value < 0 %}▼{% else %}•{% endif %}</span> {% if delta.value > 0 %}+{% endif %}{{ delta.value|toman }}</bdi>
+              </div>
             {% endfor %}
           </div>
         </div>
@@ -45,7 +48,7 @@ last week/last month), all read from the Payment ledger. No independent
     {% endif %}
   {% endfor %}
 {% else %}
-  <div class="placeholder">
+  <div class="placeholder placeholder--centered">
     <p>هنوز حساب بانکی فعالی ثبت نشده است.</p>
     <a href="{% url 'bank_accounts:new' %}" class="btn">ثبت اولین حساب بانکی</a>
   </div>

@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load paper dues_ui %}
 
 {% comment %}
 Cheques: both directions in one table, filtered by
@@ -30,49 +30,56 @@ status, direction and due-date range.
 
     {% if cheques %}
       <div class="table-card">
-        <table class="data-table">
+        <table class="data-table data-table--cheques">
           <thead>
             <tr>
               <th>جهت</th>
-              <th>شماره چک</th>
-              <th>طرف حساب</th>
-              <th>صادرکننده</th><th>بانک</th>
+              <th>چک</th>
               {% sort_th "سررسید" "due" %}
               {% sort_th "مبلغ" "amount" %}
-              <th>فاکتور</th>
               <th>وضعیت</th>
+              <th>بانک، صادرکننده و فاکتور</th>
             </tr>
           </thead>
           <tbody>
             {% for cheque in cheques %}
-              <tr>
-                <td>{{ cheque.get_direction_display }}</td>
-                <td><a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number|default:"(بدون شماره)" }}</a>
-                  {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}{% flag_badge "pending" "ناقص" %}{% endif %}</td>
-                <td>{{ cheque.customer|default:cheque.supplier|default:"—" }}</td>
-                <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
-                <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
-                <td class="num">{{ cheque.amount|toman }}</td>
+              {% with days=cheque.due_date|days_from:today %}
+              <tr{% if cheque.status == "pending" and days != None and days < 0 %} class="is-overdue"{% elif cheque.status == "pending" and days == 0 %} class="is-today"{% elif cheque.status == "pending" and days != None and days <= 7 %} class="is-soon"{% endif %}>
                 <td>
-                  {% if cheque.sales_invoice %}
-                    <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
-                  {% elif cheque.purchase_invoice %}
-                    <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
-                  {% else %}عمومی{% endif %}
+                  <span class="dir dir--{{ cheque.direction }}">
+                    <span class="dir__ico" aria-hidden="true">{% if cheque.direction == "in" %}↓{% else %}↑{% endif %}</span>
+                    {{ cheque.get_direction_display }}
+                  </span>
                 </td>
                 <td>
-                  {% status_badge "cheque" cheque.status cheque.get_status_display %}
+                  <a href="{% url 'cheques:detail' cheque.pk %}">{% if cheque.cheque_number %}{{ cheque.cheque_number|ident }}{% else %}(بدون شماره){% endif %}</a>
+                  {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}{% flag_badge "pending" "ناقص" %}{% endif %}
+                  <small class="cell-sub">{{ cheque.customer|default:cheque.supplier|dash }}</small>
+                </td>
+                <td class="num">
+                  {{ cheque.due_date|jalali|dash }}
+                  {% if cheque.status == "pending" %}<small class="cell-sub">{% due_chip days %}</small>{% endif %}
+                </td>
+                <td class="num cell-amount">{{ cheque.amount|toman }}</td>
+                <td>{% status_badge "cheque" cheque.status cheque.get_status_display %}</td>
+                <td>
+                  {{ cheque.bank_name|dash }}
+                  <small class="cell-sub">
+                    {% if cheque.issuer %}{{ cheque.issuer }} · {% endif %}
+                    {% if cheque.sales_invoice %}فاکتور <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
+                    {% elif cheque.purchase_invoice %}فاکتور <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
+                    {% else %}عمومی{% endif %}
+                  </small>
                 </td>
               </tr>
+              {% endwith %}
             {% endfor %}
           </tbody>
         </table>
       </div>
       {% pager page_obj %}
     {% else %}
-      <div class="placeholder">
-        <p>چکی با این فیلترها پیدا نشد.</p>
-      </div>
+      {% include "shared/_empty_state.html" with icon="ledger" title="چکی با این فیلترها پیدا نشد." hint="وضعیت یا بازهٔ سررسید را تغییر دهید؛ چک‌ها هنگام ثبت پرداخت یا دریافت با روش «چک» اینجا جمع می‌شوند." %}
     {% endif %}
   </div>
 </div>

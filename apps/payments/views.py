@@ -63,10 +63,48 @@ from .services import (
     cancel_cheque,
     cancel_expense,
     clear_cheque,
+    next_due_after,
     pay_expense,
     record_expense,
     record_payment,
 )
+
+
+def clear_account_defaults(direction):
+    """
+    ``(accounts, default_id)`` for clearing a cheque of `direction`: the
+    active current accounts by pk, and the one to pre-pick when a cheque has
+    none of its own -- the account the previous cheque of this direction
+    cleared into, else the shop's only current account. Read-only; the
+    owner nearly always answers "which account?" the same way.
+    """
+    accounts = {
+        a.pk: a for a in BankAccount.objects.filter(
+            is_active=True, account_type=BankAccount.AccountType.CURRENT,
+        )
+    }
+    last = (
+        Cheque.objects.filter(
+            status=Cheque.Status.CLEARED, direction=direction, payment__bank_account__in=list(accounts),
+        )
+        .order_by("-updated_at")
+        .values_list("payment__bank_account_id", flat=True)
+        .first()
+    )
+    if last in accounts:
+        return accounts, last
+    return accounts, (next(iter(accounts)) if len(accounts) == 1 else None)
+
+
+def clear_form_for(cheque, accounts, default_id, auto_id=None):
+    """
+    ``(ClearChequeForm, BankAccount or None)`` for one pending cheque, with
+    its own account pre-picked, else the shared default. The account is
+    returned too so the template can name it without opening the form.
+    """
+    account = accounts.get(cheque.bank_account_id) or accounts.get(default_id)
+    kwargs = {"auto_id": auto_id} if auto_id else {}
+    return ClearChequeForm(initial={"bank_account": account.pk if account else ""}, **kwargs), account
 
 
 class _DuesListView(LoginRequiredMixin, TemplateView):
@@ -91,17 +129,30 @@ class _DuesListView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         paying_supplier = self.direction == Payment.Direction.OUT
         today = timezone.localdate()
+        accounts, default_account_id = clear_account_defaults(self.direction)
+        # The account the previous payment in this direction used: nearly always the same one.
+        last_account_id = (
+            Payment.objects.filter(
+                direction=self.direction, bank_account__is_active=True,
+                **({"bank_account__account_type": BankAccount.AccountType.CURRENT} if paying_supplier else {}),
+            )
+            .order_by("-payment_date", "-created_at")
+            .values_list("bank_account_id", flat=True)
+            .first()
+        )
 
         cheques = []
         for cheque in get_pending_cheques(self.direction):
+            clear_form, default_account = clear_form_for(
+                cheque, accounts, default_account_id, auto_id=f"clr_{cheque.pk.hex[:8]}_%s",
+            )
             cheques.append({
                 "cheque": cheque,
                 "party": cheque.customer or cheque.supplier,
                 "overdue": cheque.due_date is not None and cheque.due_date < today,
-                "clear_form": ClearChequeForm(
-                    initial={"bank_account": cheque.bank_account_id},
-                    auto_id=f"clr_{cheque.pk.hex[:8]}_%s",
-                ),
+                "days_left": (cheque.due_date - today).days if cheque.due_date else None,
+                "clear_form": clear_form,
+                "default_account": default_account,
             })
 
         credit = []
@@ -111,9 +162,10 @@ class _DuesListView(LoginRequiredMixin, TemplateView):
                 **item,
                 "party": getattr(invoice, self.party_field),
                 "overdue": item["due_date"] is not None and item["due_date"] < today,
+                "days_left": (item["due_date"] - today).days if item["due_date"] else None,
                 "form": PayInvoiceForm(
                     invoice=invoice, credit_amount=item["amount"], paying_supplier=paying_supplier,
-                    initial={"payment_date": today},
+                    initial={"payment_date": today, "bank_account": last_account_id},
                 ),
                 "post_url": reverse(self.pay_url_name, args=[invoice.pk]),
             })
@@ -130,18 +182,46 @@ class _DuesListView(LoginRequiredMixin, TemplateView):
                 self.party_field: party,
                 "party": party,
                 "outstanding": outstanding,
-                "form": RecordPaymentForm(**{self.party_field: party}, open_invoices=open_invoices),
+                "form": RecordPaymentForm(
+                    **{self.party_field: party}, open_invoices=open_invoices,
+                    initial={"payment_date": today, "bank_account": last_account_id},
+                ),
                 "post_url": reverse(self.record_url_name, args=[party.pk]),
             })
         rows.sort(key=lambda r: -r["outstanding"])
 
+        # The "jump to the first late row" anchor: one id on the page, cheques before credit.
+        first_late = next((c for c in cheques if c["overdue"]), None)
+        if first_late is not None:
+            first_late["first_overdue"] = True
+        else:
+            first_late_credit = next((i for i in credit if i["overdue"]), None)
+            if first_late_credit is not None:
+                first_late_credit["first_overdue"] = True
+
+        cheques_total = sum(c["cheque"].amount for c in cheques)
+        credit_total = sum(i["amount"] for i in credit)
+        late_cheques = sum(c["cheque"].amount for c in cheques if c["overdue"])
+        late_credit = sum(i["amount"] for i in credit if i["overdue"])
+        grand_total = cheques_total + credit_total
+        # Display-only split for the header bar: integer shares, the last one takes the remainder.
+        pct_late = round((late_cheques + late_credit) * 100 / grand_total) if grand_total else 0
+        pct_cheque = round((cheques_total - late_cheques) * 100 / grand_total) if grand_total else 0
+
         context.update({
             "cheques": cheques,
-            "cheques_total": sum(c["cheque"].amount for c in cheques),
+            "cheques_total": cheques_total,
             "credit": credit,
-            "credit_total": sum(i["amount"] for i in credit),
+            "credit_total": credit_total,
             "rows": rows,
             "next_url": self.request.path,
+            "today": today,
+            "grand_total": grand_total,
+            "overdue_total": late_cheques + late_credit,
+            "overdue_count": sum(1 for c in cheques if c["overdue"]) + sum(1 for i in credit if i["overdue"]),
+            "pct_late": pct_late,
+            "pct_cheque": pct_cheque,
+            "pct_credit": max(100 - pct_late - pct_cheque, 0) if grand_total else 0,
         })
         return context
 
@@ -283,20 +363,31 @@ class _RecordPaymentView(LoginRequiredMixin, View):
                         request.user,
                     )
                     remaining = data["amount"]
+                    allocated = []  # for the success message only
                     for invoice in chosen:
                         if remaining <= 0:
                             break
-                        take = min(invoice.outstanding, remaining)
+                        due = invoice.outstanding
+                        take = min(due, remaining)
                         allocate_payment(
                             PaymentAllocation(payment=payment, amount=take, **{self.invoice_fk: invoice.pk}),
                             request.user,
                         )
+                        allocated.append({"invoice": invoice, "amount": take, "closed": take >= due})
                         remaining -= take
             except ValidationError as exc:
                 form.add_error(None, "؛ ".join(exc.messages))
             else:
                 html = render_to_string(
-                    "payments/_record_payment_success.html", {"party": party}, request=request,
+                    "payments/_record_payment_success.html",
+                    {
+                        "party": party,
+                        "amount": data["amount"],
+                        "receipt": form.direction == Payment.Direction.IN,
+                        "allocated": allocated,
+                        "unallocated": remaining,
+                    },
+                    request=request,
                 )
                 return HttpResponse(html)
 
@@ -356,6 +447,7 @@ class ChequesListView(LoginRequiredMixin, TemplateView):
             "page_obj": page_obj,
             "sort_key": self.request.GET.get("sort") if order else None,
             "sort_dir": direction,
+            "today": timezone.localdate(),  # the due-date chip counts days from here
         })
         return context
 
@@ -377,9 +469,10 @@ class ChequeDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["completion_form"] = ChequeCompletionForm(instance=self.object)
-        context["clear_form"] = ClearChequeForm(
-            initial={"bank_account": str(self.object.bank_account_id) if self.object.bank_account_id else ""},
-        )
+        accounts, default_id = clear_account_defaults(self.object.direction)
+        context["clear_form"], context["default_account"] = clear_form_for(self.object, accounts, default_id)
+        context["party"] = self.object.customer or self.object.supplier
+        context["today"] = timezone.localdate()
         return context
 
 
@@ -440,6 +533,14 @@ class ChequeActionView(LoginRequiredMixin, View):
         return redirect(self._back(request, pk))
 
 
+def _balance_deltas(account, balance, today):
+    """The three comparison deltas (vs. yesterday / last week / last month) shown on an account's card and page."""
+    return [
+        {"label": label, "value": balance - get_bank_account_balance(account, as_of=today - datetime.timedelta(days=days))}
+        for label, days in (("نسبت به دیروز", 1), ("نسبت به هفتهٔ گذشته", 7), ("نسبت به ماه گذشته", 30))
+    ]
+
+
 class BankAccountListView(LoginRequiredMixin, TemplateView):
     """
     Bank Accounts: one card per account -- name,
@@ -461,17 +562,7 @@ class BankAccountListView(LoginRequiredMixin, TemplateView):
             rows.append({
                 "account": account,
                 "balance": balance,
-                "deltas": [
-                    {"label": "نسبت به دیروز", "value": balance - get_bank_account_balance(
-                        account, as_of=today - datetime.timedelta(days=1),
-                    )},
-                    {"label": "نسبت به هفتهٔ گذشته", "value": balance - get_bank_account_balance(
-                        account, as_of=today - datetime.timedelta(days=7),
-                    )},
-                    {"label": "نسبت به ماه گذشته", "value": balance - get_bank_account_balance(
-                        account, as_of=today - datetime.timedelta(days=30),
-                    )},
-                ],
+                "deltas": _balance_deltas(account, balance, today),
             })
         # Card readers and current accounts are shown as two sections (D-067).
         context["groups"] = [
@@ -538,13 +629,24 @@ class BankAccountDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["balance"] = get_bank_account_balance(self.object)
+        context["deltas"] = _balance_deltas(self.object, context["balance"], timezone.localdate())
         payments = Payment.objects.filter(bank_account=self.object).select_related(
             "customer", "supplier", "created_by", "cheque", "expense", "reversed_expense",
         ).prefetch_related(
             "allocations__sales_invoice", "allocations__purchase_invoice",
             "reversed_allocation__sales_invoice", "reversed_allocation__purchase_invoice",
         ).order_by("-payment_date", "-created_at")
-        context["ledger_rows"] = [_describe_payment(payment) for payment in payments]
+        rows = [_describe_payment(payment) for payment in payments]
+        # Running balance for display only: rows are newest-first, so walk down from the
+        # card's balance (same IN-minus-OUT sum as get_bank_account_balance).
+        running = context["balance"]
+        for row in rows:
+            payment = row["payment"]
+            row["signed"] = payment.amount if payment.direction == Payment.Direction.IN else -payment.amount
+            row["balance_after"] = running
+            running -= row["signed"]
+        context["opening_balance"] = running
+        context["ledger_rows"] = rows
         return context
 
 
@@ -632,14 +734,24 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
         paginator = Paginator(expenses, self.paginate_by)
         page_obj = paginator.get_page(self.request.GET.get("page"))
 
+        # The owner pays the same bills from the same account: pre-pick it (still changeable).
+        pay_initial = {"payment_date": timezone.localdate(), "bank_account": _default_expense_account()[0]}
         rows = [
             {
                 "expense": expense,
-                "pay_form": PayExpenseForm(expense=expense, initial={"payment_date": timezone.localdate()})
+                "pay_form": PayExpenseForm(expense=expense, initial=pay_initial)
                 if not expense.is_paid and not expense.is_cancelled else None,
             }
             for expense in page_obj.object_list
         ]
+        # A reminder row carries its own pay form, so "پرداخت" pays instead of scrolling to a row
+        # that may sit outside the month filter. Its own id prefix keeps ids unique next to the table's.
+        due_reminders = get_expense_reminders()
+        for item in due_reminders:
+            if item["kind"] == "expense":
+                item["pay_form"] = PayExpenseForm(
+                    expense=item["obj"], initial=pay_initial, auto_id=f"remind_{item['obj'].pk.hex[:8]}_%s",
+                )
         context.update({
             "range_form": range_form,
             "date_range": date_range,
@@ -648,7 +760,7 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
             "rows": rows,
             "cards": self._cards(),
             "can_cancel": is_privileged(self.request.user),
-            "due_reminders": get_expense_reminders(),
+            "due_reminders": due_reminders,
         })
         return context
 
@@ -680,18 +792,28 @@ class ExpenseCreateView(LoginRequiredMixin, View):
 
     template_name = "payments/expense_new.html"
 
+    # Where "ثبت پرداخت" may send the owner back to after saving (whitelist, never a raw URL).
+    next_targets = {"recurring": "recurring_expenses:list"}
+
     def get(self, request):
         initial = {"expense_date": timezone.localdate()}
         recurring = RecurringExpense.objects.filter(pk=_uuid_or_none(request.GET.get("recurring")), is_active=True).first()
+        account_id, account_from_last = _default_expense_account(recurring)
+        if account_id is not None:
+            initial["bank_account"] = account_id
         if recurring is not None:
             initial.update({
                 "reason": recurring.reason, "amount": recurring.amount, "recurring": recurring.pk,
                 "note": recurring.note,
             })
-        return render(request, self.template_name, {"form": ExpenseForm(initial=initial), "recurring": recurring})
+        next_key = request.GET.get("next") if request.GET.get("next") in self.next_targets else ""
+        context = _expense_page_context(ExpenseForm(initial=initial), recurring)
+        context.update({"next": next_key, "account_from_last": account_from_last})
+        return render(request, self.template_name, context)
 
     def post(self, request):
         form = ExpenseForm(request.POST, request.FILES)
+        next_key = request.POST.get("next") if request.POST.get("next") in self.next_targets else ""
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -699,9 +821,115 @@ class ExpenseCreateView(LoginRequiredMixin, View):
             except ValidationError as exc:
                 form.add_error(None, "؛ ".join(exc.messages))
             else:
-                messages.success(request, "هزینه ثبت شد.")
-                return redirect("expenses:list")
-        return render(request, self.template_name, {"form": form, "recurring": form.cleaned_data.get("recurring") if hasattr(form, "cleaned_data") else None})
+                if expense.recurring_id:
+                    # record_expense advanced the reminder on its own locked copy: read the new date back.
+                    next_due = RecurringExpense.objects.filter(pk=expense.recurring_id).values_list("next_due_date", flat=True).first()
+                    messages.success(request, f"هزینه ثبت شد؛ سررسید بعدی «{expense.reason}»: {dates.format_date(next_due)}.")
+                else:
+                    messages.success(request, "هزینه ثبت شد.")
+                return redirect(self.next_targets.get(next_key, "expenses:list"))
+        recurring = form.cleaned_data.get("recurring") if hasattr(form, "cleaned_data") else None
+        context = _expense_page_context(form, recurring)
+        context["next"] = next_key
+        return render(request, self.template_name, context)
+
+
+def _default_expense_account(recurring=None):
+    """
+    ``(account_pk, from_last_settlement)``: the current account an expense most likely
+    leaves from -- the one this fixed cost was last settled from, else the one the newest
+    transfer expense used, else the shop's only current account. Read-only; it only
+    pre-selects the box, the owner can still pick another.
+    """
+    current = set(BankAccount.objects.filter(
+        is_active=True, account_type=BankAccount.AccountType.CURRENT,
+    ).values_list("pk", flat=True)[:50])
+    transfers = Expense.objects.filter(
+        cancelled_at__isnull=True, payment_method=Expense.PaymentMethod.TRANSFER, bank_account__isnull=False,
+    ).order_by("-created_at")
+    if recurring is not None:
+        last = transfers.filter(recurring=recurring).values_list("bank_account_id", flat=True).first()
+        if last in current:
+            return last, True
+    last = transfers.values_list("bank_account_id", flat=True).first()
+    if last in current:
+        return last, False
+    return (next(iter(current)) if len(current) == 1 else None), False
+
+
+def _recent_expense_presets(limit=40):
+    """Newest expense per distinct reason (cancelled ones skipped), so typing a known reason can pre-fill the rest."""
+    seen, out = set(), []
+    recent = Expense.objects.filter(cancelled_at__isnull=True).order_by("-expense_date", "-created_at").values_list(
+        "reason", "amount", "payment_method", "bank_account_id",
+    )[:300]
+    for reason, amount, method, account_id in recent:
+        key = (reason or "").strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append({"reason": key, "amount": amount, "method": method, "account": str(account_id) if account_id else ""})
+        if len(out) == limit:
+            break
+    return out
+
+
+def _expense_account_data(accounts):
+    """
+    ``{account_pk: {name, balance, owner, bank, next}}`` for the expense form's live preview
+    and its cheque pre-fill: the balance now, the account owner (who signs the cheque), and
+    the bank and next number taken from the newest cheque issued on that account. Display
+    hints only -- every value stays editable and the server validates as before.
+    """
+    data = {}
+    for account in accounts:
+        last = Cheque.objects.filter(
+            bank_account=account, direction=Payment.Direction.OUT,
+        ).exclude(cheque_number="").order_by("-created_at").first()
+        next_number = ""
+        if last is not None and last.cheque_number.isdigit():
+            next_number = str(int(last.cheque_number) + 1).zfill(len(last.cheque_number))
+        data[str(account.pk)] = {
+            "name": account.name,
+            "balance": get_bank_account_balance(account),
+            "owner": account.owner,
+            "bank": last.bank_name if last is not None else "",
+            "next": next_number,
+        }
+    return data
+
+
+def _due_presets(days, month_end=False):
+    """One-tap due dates ("N days from today", optionally "end of this month") as Jalali strings."""
+    today = timezone.localdate()
+    out = [
+        {"label": f"{dates.to_persian_digits(n)} روز دیگر", "value": dates.format_date(today + datetime.timedelta(days=n))}
+        for n in days
+    ]
+    if month_end:
+        jalali_today = dates.today()
+        out.append({
+            "label": "آخر این ماه",
+            "value": dates.format_date(dates.month_bounds(jalali_today.year, jalali_today.month)[1]),
+        })
+    return out
+
+
+def _expense_page_context(form, recurring=None):
+    """Everything new-expense.html needs beyond the form: settle banner, account hints, reason presets, due chips."""
+    settle = None
+    if recurring is not None:
+        days_left = (recurring.next_due_date - timezone.localdate()).days
+        settle = {"next_due": next_due_after(recurring), "days_left": days_left, "overdue": days_left < 0}
+    accounts = list(form.fields["bank_account"].queryset.all())
+    return {
+        "form": form,
+        "recurring": recurring,
+        "settle": settle,
+        "expense_data": {"accounts": _expense_account_data(accounts), "presets": _recent_expense_presets()},
+        "credit_presets": _due_presets((7, 15, 30), month_end=True),
+        "cheque_presets": _due_presets((30, 45, 60, 90)),
+    }
 
 
 def _uuid_or_none(value):
@@ -767,16 +995,85 @@ class RecurringExpenseListView(LoginRequiredMixin, TemplateView):
                 "due_soon": item.is_active and days_left <= item.remind_days_before,
             })
         context["rows"] = rows
+        if not rows:
+            context["presets"] = _recurring_presets()
         return context
 
 
+# Common fixed costs offered as one-tap starting points: label, reason, repeat every N,
+# unit, remind days before, and the word to look for in past expenses to suggest an amount.
+_RECURRING_PRESETS = (
+    ("اجاره", "اجارهٔ مغازه", 1, RecurringExpense.Unit.MONTH, 7, "اجاره"),
+    ("برق", "قبض برق", 2, RecurringExpense.Unit.MONTH, 5, "قبض برق"),
+    ("آب", "قبض آب", 3, RecurringExpense.Unit.MONTH, 5, "قبض آب"),
+    ("گاز", "قبض گاز", 2, RecurringExpense.Unit.MONTH, 5, "قبض گاز"),
+    ("اینترنت", "اینترنت و تلفن", 1, RecurringExpense.Unit.MONTH, 5, "اینترنت"),
+    ("بیمه", "بیمه", 3, RecurringExpense.Unit.MONTH, 10, "بیمه"),
+)
+
+
+def _recurring_presets():
+    """The starter fixed costs, each with the amount of its latest matching past expense (if any)."""
+    out = []
+    for label, reason, every, unit, remind, match in _RECURRING_PRESETS:
+        amount = Expense.objects.filter(cancelled_at__isnull=True, reason__icontains=match).order_by(
+            "-expense_date", "-created_at",
+        ).values_list("amount", flat=True).first()
+        out.append({
+            "label": label, "reason": reason, "every": every, "unit": str(unit), "remind": remind,
+            "amount": amount or "",
+        })
+    return out
+
+
+def _recurring_due_suggestions():
+    """Next-due-date shortcuts as Jalali strings: end of this month and the 1st/5th/10th/15th of next month."""
+    jalali_today = dates.today()
+    year, month = (jalali_today.year, jalali_today.month + 1) if jalali_today.month < 12 else (jalali_today.year + 1, 1)
+    first_next = dates.month_bounds(year, month)[0]
+    out = [{"label": "اول ماه بعد", "value": dates.format_date(first_next)}]
+    for day in (5, 10, 15):
+        out.append({
+            "label": f"{dates.to_persian_digits(day)} ام ماه بعد",
+            "value": dates.format_date(first_next + datetime.timedelta(days=day - 1)),
+        })
+    out.append({
+        "label": "آخر ماه جاری",
+        "value": dates.format_date(dates.month_bounds(jalali_today.year, jalali_today.month)[1]),
+    })
+    return out
+
+
+def _recurring_form_extras():
+    """Quick-start chips, due-date shortcuts and past reasons for the create form (display helpers only)."""
+    past = _recent_expense_presets(limit=30)
+    return {
+        "presets": _recurring_presets(),
+        "due_suggestions": _recurring_due_suggestions(),
+        "past_reasons": [p["reason"] for p in past],
+        "past_amounts": {p["reason"]: p["amount"] for p in past},
+    }
+
+
 class RecurringExpenseCreateView(LoginRequiredMixin, View):
-    """Add a fixed cost."""
+    """Add a fixed cost. ``?reason=&every=&unit=&remind=&amount=`` (a quick-start chip) only pre-fills the form."""
 
     template_name = "payments/recurring_form.html"
 
     def get(self, request):
-        return render(request, self.template_name, {"form": RecurringExpenseForm(initial={"repeat_every": 1, "remind_days_before": 7})})
+        initial = {"repeat_every": 1, "remind_days_before": 7}
+        query = request.GET
+        if query.get("reason", "").strip():
+            initial["reason"] = query["reason"].strip()[:255]
+        if query.get("every", "").isdigit() and 1 <= int(query["every"]) <= 36:
+            initial["repeat_every"] = int(query["every"])
+        if query.get("unit") in RecurringExpense.Unit.values:
+            initial["repeat_unit"] = query["unit"]
+        if query.get("remind", "").isdigit() and int(query["remind"]) <= 90:
+            initial["remind_days_before"] = int(query["remind"])
+        if query.get("amount", "").isdigit() and 0 < int(query["amount"]) < 10**12:
+            initial["amount"] = int(query["amount"])
+        return render(request, self.template_name, {"form": RecurringExpenseForm(initial=initial), **_recurring_form_extras()})
 
     def post(self, request):
         form = RecurringExpenseForm(request.POST)
@@ -784,7 +1081,7 @@ class RecurringExpenseCreateView(LoginRequiredMixin, View):
             form.save()
             messages.success(request, "هزینهٔ ثابت ثبت شد.")
             return redirect("recurring_expenses:list")
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": form, **_recurring_form_extras()})
 
 
 class RecurringExpenseUpdateView(LoginRequiredMixin, View):
