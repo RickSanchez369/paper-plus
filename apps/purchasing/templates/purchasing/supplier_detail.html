@@ -55,9 +55,17 @@ flattened, so it stays clear which payment settled which purchase.
     {% if outstanding > 0 %}
       <span class="field__hint">{{ summary.open_count|fa_number }} فاکتور باز · پرداخت را در کارت «ثبت پرداخت» زیر همین بخش ثبت کنید.</span>
     {% else %}
-      <span class="field__hint">حساب تسویه است.</span>
+      <span class="field__hint">{% if credit %}فاکتور بازی ندارد.{% else %}حساب تسویه است.{% endif %}</span>
     {% endif %}
   </div>
+  {% if credit %}
+  {# D-087: money we paid ahead; it pays this supplier's next invoice first. #}
+  <div class="stat-card stat-card--credit">
+    <span class="stat-card__label">پیش‌پرداخت نزد تأمین‌کننده</span>
+    <span class="stat-card__value num">{{ credit|toman_split }}</span>
+    <span class="field__hint">از فاکتور خرید بعدی خودکار کسر می‌شود.</span>
+  </div>
+  {% endif %}
   <div class="stat-card">
     <span class="stat-card__label">جمع خرید</span>
     <span class="stat-card__value num">{{ summary.total|toman_split }}</span>

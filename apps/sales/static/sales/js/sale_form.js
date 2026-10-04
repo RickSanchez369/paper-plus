@@ -105,12 +105,14 @@
 
     setText("sale-subtotal", formatToman(subtotal));
     setText("sale-total", formatToman(total));
-    setText("sale-full-amount", formatToman(total));
+    // Earlier credit of the party pays first (D-087, party_credit.js).
+    var payable = window.payableAfterCredit ? window.payableAfterCredit(total) : total;
+    setText("sale-full-amount", formatToman(payable));
     document.querySelectorAll("[data-dock-total]").forEach(function (el) {
       el.textContent = formatToman(total);
     });
 
-    recomputeRemaining(total);
+    recomputeRemaining(payable);
     document.dispatchEvent(new CustomEvent("invoice:recomputed"));
     scheduleRecap();
   }
@@ -765,6 +767,8 @@
     if (customer && !customer.value) customer.focus();
     else if (search && !search.value) search.focus();
   }
+
+  document.addEventListener("invoice:party-changed", function () { recomputeInvoice(); });
 
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-item-row]").forEach(function (row) {

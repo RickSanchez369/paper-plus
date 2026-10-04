@@ -22,7 +22,7 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.payments.forms import RecordPaymentForm
 from apps.payments.models import Payment
-from apps.payments.selectors import get_customer_outstanding, get_open_invoices
+from apps.payments.selectors import get_customer_outstanding, get_open_invoices, get_party_credit
 from apps.sales.models import SalesInvoice
 from apps.shared.listing import paginate, sort_rows
 
@@ -83,6 +83,7 @@ def _customer_row(customer):
         "customer": customer,
         "outstanding": outstanding,
         "owes": outstanding > 0,
+        "credit": get_party_credit(customer=customer),  # paid ahead (D-087)
         "invoice_count": confirmed.count(),
         "last_purchase": last_purchase,
     }
@@ -217,6 +218,7 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
         }
 
         outstanding = get_customer_outstanding(customer)
+        credit = get_party_credit(customer=customer)
         open_invoices = get_open_invoices(SalesInvoice, customer=customer)
         context.update({
             "invoices": invoices,
@@ -225,7 +227,9 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             "ledger": ledger,
             "statement": statement,
             "outstanding": outstanding,
+            "credit": credit,
             "cards": {
+                "credit": credit,
                 "lifetime_purchases": sum(i.total for i in confirmed),
                 "outstanding": outstanding,
                 "invoice_count": len(confirmed),

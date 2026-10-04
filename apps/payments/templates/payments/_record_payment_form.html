@@ -45,8 +45,7 @@ the form is the plain form it always was.
     <div class="field">
       <span class="field__label">{{ form.invoices.label }}</span>
       <p class="field__hint">
-        اگر هیچ فاکتوری را انتخاب نکنید، پرداخت به نام همین طرف حساب ثبت می‌شود
-        و بعداً قابل تخصیص است.
+        اگر هیچ فاکتوری را انتخاب نکنید، مبلغ از قدیمی‌ترین فاکتور باز تخصیص می‌یابد.
       </p>
       <div class="invoice-picker">
         {% for choice in form.invoices %}
@@ -65,8 +64,9 @@ the form is the plain form it always was.
       {% for error in form.invoices.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
     </div>
   {% else %}
-    <p class="field__hint">این طرف حساب فاکتور بازی ندارد؛ پرداخت بدون تخصیص ثبت می‌شود.</p>
+    <p class="field__hint">این طرف حساب فاکتور بازی ندارد؛ پرداخت فقط به‌عنوان {% if form.customer %}بستانکاری (پیش‌دریافت){% else %}پیش‌پرداخت{% endif %} ثبت می‌شود و از فاکتور بعدی خودکار کسر می‌شود.</p>
   {% endif %}
+  <label class="check pay-credit">{{ form.as_credit }} {{ form.as_credit.label }}</label>
 
   {% include "shared/_field.html" with field=form.note %}
 

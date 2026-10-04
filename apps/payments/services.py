@@ -191,6 +191,44 @@ def allocate_payment(allocation, user):
 
 
 @transaction.atomic
+def apply_party_credit(invoice, user):
+    """
+    Use the party's unabsorbed money on a just-confirmed invoice (D-087).
+
+    A prepayment, or what was left of an earlier payment, is money already in
+    hand: it pays the new invoice before anything else, oldest payment first,
+    one ordinary `allocate_payment` per payment (so the usual locks and checks
+    apply and every Toman stays traceable). Never more than the invoice still owes.
+
+    Returns:
+        int: the Toman applied (0 when the party had no credit).
+    """
+    from .selectors import get_credit_payments
+
+    if isinstance(invoice, SalesInvoice):
+        party, invoice_field, total = {"customer": invoice.customer}, "sales_invoice", invoice.total
+    else:
+        party, invoice_field, total = {"supplier": invoice.supplier}, "purchase_invoice", invoice.total_amount
+    need = total - invoice.paid_amount
+    applied = 0
+    for payment in get_credit_payments(**party):
+        if need <= 0:
+            break
+        take = min(payment.amount - payment.allocated, need)
+        allocate_payment(PaymentAllocation(payment=payment, amount=take, **{invoice_field: invoice}), user)
+        applied += take
+        need -= take
+    if applied:
+        log_event(
+            actor=user,
+            event_type="apply_credit",
+            target=invoice,
+            payload={"amount": applied, "invoice": invoice.invoice_number},
+        )
+    return applied
+
+
+@transaction.atomic
 def refund_invoice_payments(invoice, user):
     """
     Give back the money of a cancelled invoice (D-055).

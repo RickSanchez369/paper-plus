@@ -29,9 +29,11 @@
     return parseInt(digitsToAscii(String(text || "")).replace(/[^0-9]/g, ""), 10) || 0;
   }
 
+  // What is still to settle: the invoice total minus the party's earlier credit (D-087).
   function total() {
     var el = document.getElementById("sale-total");
-    return el ? toInt(el.textContent) : 0;
+    var t = el ? toInt(el.textContent) : 0;
+    return window.payableAfterCredit ? window.payableAfterCredit(t) : t;
   }
 
   function fmt(n) {

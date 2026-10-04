@@ -59,8 +59,16 @@ component reused as-is from Receivables.
   <div class="stat-card stat-card--primary{% if cards.outstanding %} stat-card--owed{% endif %}">
     <span class="stat-card__label">مانده باز</span>
     <span class="stat-card__value num{% if cards.outstanding %} is-loss{% endif %}">{{ cards.outstanding|toman_split }}</span>
-    <span class="field__hint">{% if cards.outstanding %}بدهکار به شرکت{% else %}تسویه‌شده{% endif %}</span>
+    <span class="field__hint">{% if cards.outstanding %}بدهکار به شرکت{% elif not cards.credit %}تسویه‌شده{% else %}فاکتور بازی ندارد{% endif %}</span>
   </div>
+  {% if cards.credit %}
+  {# D-087: money paid ahead; it pays this customer's next invoice first. #}
+  <div class="stat-card stat-card--credit">
+    <span class="stat-card__label">بستانکاری (پیش‌دریافت)</span>
+    <span class="stat-card__value num">{{ cards.credit|toman_split }}</span>
+    <span class="field__hint">از فاکتور بعدی این مشتری خودکار کسر می‌شود.</span>
+  </div>
+  {% endif %}
   <div class="stat-card">
     <span class="stat-card__label">جمع خرید عمر مشتری</span>
     <span class="stat-card__value num">{{ cards.lifetime_purchases|toman_split }}</span>

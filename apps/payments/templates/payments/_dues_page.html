@@ -91,6 +91,30 @@ link straight to one row; dues_cheques.js opens its form.
   </div>
 </div>
 
+{% if credit_parties %}
+{# D-087: money a party paid ahead (or we paid them ahead). It is not a debt, so it is listed apart, never netted. #}
+<div class="card" id="dues-credit-parties">
+  <div class="card__body">
+    <h2>{% if pay_label == "دریافت" %}بستانکاران (پیش‌دریافت از مشتری){% else %}پیش‌پرداخت به تأمین‌کننده{% endif %}
+      <span class="field__hint">جمع: <span class="num">{{ credit_parties_total|toman }}</span> · از فاکتور بعدی هر {{ party_word }} خودکار کسر می‌شود</span></h2>
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th>{{ party_header }}</th><th>تلفن</th><th>مبلغ</th></tr></thead>
+        <tbody>
+          {% for row in credit_parties %}
+            <tr>
+              <td>{% if pay_label == "دریافت" %}<a href="{% url 'customers:detail' row.party.pk %}#statement">{{ row.party.name }}</a>{% else %}<a href="{% url 'purchasing:supplier_detail' row.party.pk %}">{{ row.party.name }}</a>{% endif %}</td>
+              <td>{{ row.party.phone|ident|dash }}</td>
+              <td class="num">{{ row.credit|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="card">
   <div class="card__body">
     <h2 id="dues-cheques">چک‌ها</h2>

@@ -24,12 +24,15 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.inventory.selectors import get_stock_map
 from apps.partners.forms import QuickCustomerForm
+from apps.partners.models import Customer
 from apps.products.forms import excluded_product_ids
 from apps.products.models import Product
+from apps.payments.selectors import get_credit_map
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
+from apps.shared.services import display_document_number
 from apps.shared.utils import format_toman
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
@@ -203,6 +206,7 @@ def _empty_forms():
         "payment_formset": SalesPaymentEntryFormSet(prefix="payments"),
         "quick_customer_form": QuickCustomerForm(),
         "quick_customer_url": reverse("customers:quick_new"),
+        "party_credits": get_credit_map(Customer),
     }
 
 
@@ -278,7 +282,7 @@ class SalesCreateView(LoginRequiredMixin, View):
             except ValidationError as exc:
                 error = "؛ ".join(exc.messages)
             else:
-                messages.success(request, f"فاکتور {invoice.invoice_number} ثبت شد.")
+                messages.success(request, f"فاکتور {display_document_number(invoice.invoice_number)} ثبت شد.")
                 return redirect("sales:detail", pk=invoice.pk)
 
         context = {
@@ -288,6 +292,7 @@ class SalesCreateView(LoginRequiredMixin, View):
             "error": error,
             "quick_customer_form": QuickCustomerForm(),
             "quick_customer_url": reverse("customers:quick_new"),
+            "party_credits": get_credit_map(Customer),
         }
         return render(request, self.template_name, context)
 

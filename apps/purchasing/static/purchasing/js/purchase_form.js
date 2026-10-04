@@ -89,8 +89,10 @@
     total += freight;
 
     setText("sale-total", formatToman(total));
-    setText("sale-full-amount", formatToman(total));
-    recomputeRemaining(total);
+    // Earlier credit of the party pays first (D-087, party_credit.js).
+    var payable = window.payableAfterCredit ? window.payableAfterCredit(total) : total;
+    setText("sale-full-amount", formatToman(payable));
+    recomputeRemaining(payable);
     document.dispatchEvent(new CustomEvent("invoice:recomputed"));
   }
 
@@ -514,6 +516,8 @@
     if (form) delete form.dataset.busy;
     if (event.persisted) recomputeInvoice();
   });
+
+  document.addEventListener("invoice:party-changed", function () { recomputeInvoice(); });
 
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-item-row]").forEach(function (row) {

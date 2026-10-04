@@ -64,7 +64,8 @@ this page, which is harmless).
                   {# The balance links straight to the statement card. #}
                   <div class="balance-cell">
                     <a class="balance-cell__amount num" href="{% url 'customers:detail' row.customer.pk %}#statement">{{ row.outstanding|toman }}</a>
-                    {% if row.owes %}{% flag_badge "bad" "بدهکار" %}{% else %}{% flag_badge "good" "تسویه‌شده" %}{% endif %}
+                    {% if row.owes %}{% flag_badge "bad" "بدهکار" %}{% elif not row.credit %}{% flag_badge "good" "تسویه‌شده" %}{% endif %}
+                    {% if row.credit %}<span class="badge badge--info">بستانکار <span class="num">{{ row.credit|toman }}</span></span>{% endif %}
                   </div>
                 </td>
                 <td class="num">{{ row.invoice_count|fa_number }}</td>

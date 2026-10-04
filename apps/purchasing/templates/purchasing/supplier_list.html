@@ -57,6 +57,7 @@ read from later.
                 {# The debt links to the supplier's ready-filled payment form (#pay). #}
                 <td class="num {% if row.outstanding > 0 %}figure--owed{% else %}figure--zero{% endif %}">
                   {% if row.outstanding > 0 %}<a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}#pay" title="ثبت پرداخت به این تأمین‌کننده">{{ row.outstanding|toman }}</a>{% else %}{{ row.outstanding|toman }}{% endif %}
+                  {% if row.credit %}<span class="badge badge--info">پیش‌پرداخت <span class="num">{{ row.credit|toman }}</span></span>{% endif %}
                 </td>
                 <td class="num">{{ row.total_purchased|toman }}</td>
               </tr>

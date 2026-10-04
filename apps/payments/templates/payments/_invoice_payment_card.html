@@ -14,6 +14,12 @@ due date. invoice_payment.js owns the live behaviour (amount autofill, the
 <div class="card">
   <div class="card__body">
     <h2>پرداخت</h2>
+    {# D-087: the party's earlier credit pays this invoice first; party_credit.js fills and shows it. #}
+    {{ party_credits|json_script:"party-credits" }}
+    <p class="credit-note" id="party-credit-note" role="status" hidden>
+      این {{ party_word }} <span class="num" id="party-credit-amount">۰</span> تومان {% if show_pos %}بستانکاری (پیش‌پرداخت){% else %}پیش‌پرداخت نزد او{% endif %} دارد.
+      <span class="num" id="party-credit-used">۰</span> تومان از آن خودکار از همین فاکتور کسر می‌شود؛ مبلغ باقی‌مانده برای تسویه: <strong class="num" id="party-credit-due">۰</strong> تومان.
+    </p>
     <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.payment_mode.label }}">
       {% for radio in invoice_form.payment_mode %}
         <label class="payment-mode__option">{{ radio.tag }} <span class="payment-mode__text">{{ radio.choice_label }}<small class="payment-mode__sub">{% if radio.data.value == "split" %}چک، نسیه، یا بخشی همین الان و بخشی بعداً{% elif show_pos %}کارت‌خوان و/یا حواله بانکی، همین الان{% else %}حواله بانکی، همین الان{% endif %}</small></span></label>

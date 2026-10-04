@@ -49,6 +49,7 @@ from .forms import (
 from .models import BankAccount, Cheque, Expense, Payment, PaymentAllocation, RecurringExpense
 from .selectors import (
     get_bank_account_balance,
+    get_credit_balances,
     get_customer_outstanding,
     get_credit_items,
     get_expense_reminders,
@@ -190,6 +191,8 @@ class _DuesListView(LoginRequiredMixin, TemplateView):
                 "post_url": reverse(self.record_url_name, args=[party.pk]),
             })
         rows.sort(key=lambda r: -r["outstanding"])
+        # D-087: money paid ahead, not yet absorbed by any invoice (shown, never netted off a debt row).
+        credit_parties = get_credit_balances(self.party_model)
 
         # The "jump to the first late row" anchor: one id on the page, cheques before credit.
         first_late = next((c for c in cheques if c["overdue"]), None)
@@ -215,6 +218,8 @@ class _DuesListView(LoginRequiredMixin, TemplateView):
             "credit": credit,
             "credit_total": credit_total,
             "rows": rows,
+            "credit_parties": credit_parties,
+            "credit_parties_total": sum(r["credit"] for r in credit_parties),
             "next_url": self.request.path,
             "today": today,
             "grand_total": grand_total,
@@ -325,9 +330,10 @@ class PaySupplierInvoiceView(_PayInvoiceView):
 class _RecordPaymentView(LoginRequiredMixin, View):
     """
     Shared POST handler behind the one "ثبت پرداخت" component: books the Payment, then allocates it
-    across whichever open invoices were checked, oldest first, until the
-    amount runs out -- any leftover stays an unallocated payment on that
-    party's account (a prepayment, same as the form's own hint says).
+    across whichever open invoices were checked (all of them when none was),
+    oldest first, until the amount runs out. Anything beyond every open invoice
+    is the party's credit (D-087), accepted only when `as_credit` was ticked;
+    it shows on the party pages and pays their next invoice first.
     """
 
     party_model = None
@@ -350,6 +356,10 @@ class _RecordPaymentView(LoginRequiredMixin, View):
                 (by_id[pk_str] for pk_str in data.get("invoices") or [] if pk_str in by_id),
                 key=lambda invoice: invoice.invoice_date,
             )
+            # Nothing ticked: settle every open invoice, oldest first (D-087, amends
+            # D-042) -- the money must land where a balance shows it.
+            if not chosen:
+                chosen = list(open_invoices)
             try:
                 with transaction.atomic():
                     payment = record_payment(

@@ -1335,3 +1335,25 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   only (`display_document_number`), never stored. The sales list search accepts Persian digits.
 - Existing invoices keep their numbers (`1405/0001`, `9956001`): they are written into append-only ledger notes (D-014).
 - Schema: migration `shared.0019`.
+
+### D-087: Party credit: money beyond the open invoices is kept on purpose, shown, and used first
+- Status: Final (amends D-042)
+- Date: 2026-10-04
+- Decided by: Sina (the "combined" option, after the bug was reproduced)
+- Context: a payment could be recorded for a customer with nothing open (or with no invoice ticked); it reached the
+  bank balance and the statement table but no balance figure (customer card, lists, Receivables, dashboard) and was
+  never used by the next invoice, so the customer was in effect billed twice. Same on the supplier side.
+- Decision:
+  - «ثبت پرداخت»: with no invoice ticked, the amount settles every open invoice oldest first (D-042 left it
+    unallocated). Ticked invoices still cap the amount. What is left beyond all open invoices is accepted only with
+    the new tick «مازاد به‌عنوان بستانکاری (پیش‌دریافت) / پیش‌پرداخت ثبت شود»; otherwise the form refuses it.
+  - Credit = Σ unallocated amount of the party's non-reversal payments in its normal direction (`get_party_credit`,
+    `get_credit_payments`, `get_credit_balances`); derived, never stored (D-025). A refund (D-055) is never credit.
+  - `confirm_sale` / `confirm_purchase` call `apply_party_credit` first: oldest credit payment first, one ordinary
+    `allocate_payment` each, audit event `apply_credit`. Payment rows may then cover only total - credit; a due date is
+    needed only if something is still unpaid. `plan_full_payment` books total - credit (nothing when credit covers all).
+  - Shown: customer/supplier page (own card), customer/supplier lists (badge), Receivables «بستانکاران» and Payables
+    «پیش‌پرداخت به تأمین‌کننده» sections, and a notice on the new invoice form (`party_credit.js`) that also lowers the
+    full-settlement amount.
+  - Cancelling an invoice paid from credit refunds that part like any payment (D-055), not back into credit.
+- Schema: migration `shared.0020` (audit event choice only).

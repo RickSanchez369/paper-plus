@@ -15,6 +15,8 @@ or a view — the rule that used to say "Admin never writes" (D-035).
 
 from django import forms
 
+from apps.shared.utils import format_toman
+
 from apps.shared.widgets import NumericInput
 from apps.shared.forms import JalaliDateField
 
@@ -284,6 +286,9 @@ class RecordPaymentForm(forms.Form):
         label="تخصیص به فاکتورها",
         widget=forms.CheckboxSelectMultiple,
     )
+    # D-087: money beyond every open invoice becomes credit only when said so;
+    # a typo must not silently park money where no balance shows it.
+    as_credit = forms.BooleanField(required=False)
 
     def __init__(self, *args, customer=None, supplier=None, open_invoices=(), **kwargs):
         # Several of these forms share one page (a row per debtor, or beside
@@ -310,6 +315,9 @@ class RecordPaymentForm(forms.Form):
             (str(invoice.pk), invoice) for invoice in self.open_invoices
         ]
         self.fields["payment_date"].initial = None
+        self.fields["as_credit"].label = (
+            "مازاد به‌عنوان بستانکاری (پیش‌دریافت) ثبت شود" if customer else "مازاد به‌عنوان پیش‌پرداخت ثبت شود"
+        )
 
     @property
     def direction(self):
@@ -331,6 +339,16 @@ class RecordPaymentForm(forms.Form):
                 self.add_error(
                     "amount",
                     "مبلغ پرداخت از باقیماندهٔ فاکتورهای انتخاب‌شده بیشتر است.",
+                )
+        elif amount and not cleaned.get("as_credit"):
+            # Nothing ticked: the view settles every open invoice oldest first (D-087).
+            open_total = sum(invoice.outstanding for invoice in self.open_invoices)
+            if amount > open_total:
+                word = "بستانکاری (پیش‌دریافت)" if self.customer else "پیش‌پرداخت"
+                owed = f"کل بدهی باز ({format_toman(open_total)})" if open_total else "بدهی باز این طرف حساب (صفر)"
+                self.add_error(
+                    "amount",
+                    f"مبلغ پرداخت از {owed} بیشتر است. اگر مازاد {word} است، گزینهٔ «{self.fields['as_credit'].label}» را تیک بزنید.",
                 )
         return cleaned
 

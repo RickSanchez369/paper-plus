@@ -31,9 +31,10 @@ from apps.partners.forms import QuickSupplierForm, SupplierForm
 from apps.partners.models import Supplier
 from apps.payments.forms import RecordPaymentForm
 from apps.payments.models import Payment
-from apps.payments.selectors import get_open_invoices, get_supplier_outstanding
+from apps.payments.selectors import get_open_invoices, get_party_credit, get_supplier_outstanding
 from apps.products.forms import QuickProductForm, excluded_product_ids
 from apps.products.models import Product
+from apps.payments.selectors import get_credit_map
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
@@ -213,6 +214,7 @@ def _empty_forms():
         "payment_formset": PurchasePaymentEntryFormSet(prefix="payments"),
         "quick_supplier_form": QuickSupplierForm(),
         "quick_supplier_url": reverse("purchasing:quick_supplier"),
+        "party_credits": get_credit_map(Supplier),
         "quick_product_form": QuickProductForm(auto_id=QUICK_PRODUCT_AUTO_ID),
         "quick_product_url": reverse("purchasing:quick_product"),
     }
@@ -287,6 +289,7 @@ class PurchaseCreateView(LoginRequiredMixin, View):
             "error": error,
             "quick_supplier_form": QuickSupplierForm(),
             "quick_supplier_url": reverse("purchasing:quick_supplier"),
+            "party_credits": get_credit_map(Supplier),
             "quick_product_form": QuickProductForm(auto_id=QUICK_PRODUCT_AUTO_ID),
             "quick_product_url": reverse("purchasing:quick_product"),
         }
@@ -413,6 +416,7 @@ class SupplierListView(LoginRequiredMixin, TemplateView):
                 "supplier": supplier,
                 "total_purchased": sum(i.total_amount for i in confirmed),
                 "outstanding": get_supplier_outstanding(supplier),
+                "credit": get_party_credit(supplier=supplier),  # our advance (D-087)
             }
 
         # Row figures cost queries: only the page is computed unless the sort
@@ -493,6 +497,7 @@ class SupplierDetailView(LoginRequiredMixin, DetailView):
         )
         context["cheques"] = supplier.cheques.order_by("-created_at")
         context["outstanding"] = get_supplier_outstanding(supplier)
+        context["credit"] = get_party_credit(supplier=supplier)
         context["edit_form"] = SupplierForm(instance=supplier)
 
         # Summary strip: only live (confirmed) invoices count; cancelled ones stay in the table, dimmed.

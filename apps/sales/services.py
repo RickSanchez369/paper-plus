@@ -17,7 +17,9 @@ from apps.inventory.models import InventoryMovement
 from apps.inventory.selectors import get_stock_map
 from apps.inventory.services import consume_fifo, restore_consumptions
 from apps.payments.models import Cheque, Payment, PaymentAllocation
+from apps.payments.selectors import get_party_credit
 from apps.payments.services import (
+    apply_party_credit,
     allocate_payment,
     record_cheque,
     record_payment,
@@ -31,6 +33,7 @@ from apps.shared.audit import log_event
 from apps.shared.exchange import latest_valid_rate
 from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
+from apps.shared.utils import format_toman
 
 from .models import SalesInvoice, SalesPaymentEntry
 
@@ -167,11 +170,19 @@ def confirm_sale(invoice, user):
     # portion; it needs no row of its own, payment_status already shows it.
     entries = list(locked_invoice.payment_entries.all())
     paid_by_rows = sum(entry.amount for entry in entries)
-    if paid_by_rows > locked_invoice.total:
+    # Money the customer already paid beyond earlier invoices pays this one first (D-087).
+    credit_used = apply_party_credit(locked_invoice, user)
+    due = locked_invoice.total - credit_used
+    if paid_by_rows > due:
+        if credit_used:
+            raise ValidationError(
+                f"جمع ردیف‌های پرداخت از مبلغ باقی‌ماندهٔ فاکتور بیشتر است "
+                f"({format_toman(credit_used)} از بستانکاری قبلی کسر شد؛ باقی‌مانده {format_toman(due)})."
+            )
         raise ValidationError("جمع ردیف‌های پرداخت از مبلغ کل فاکتور بیشتر است.")
     # What the rows leave unpaid is credit (نسیه) and needs a due date (D-069);
     # a due date on a fully covered invoice means nothing and is dropped.
-    if paid_by_rows < locked_invoice.total:
+    if paid_by_rows < due:
         if locked_invoice.credit_due_date is None:
             raise ValidationError("برای مبلغ نسیه، تاریخ سررسید را وارد کنید.")
     elif locked_invoice.credit_due_date is not None:
@@ -237,7 +248,8 @@ def plan_full_payment(invoice, parts):
 
     Must be called inside the caller's transaction, before confirm_sale.
     """
-    total = invoice.total
+    # What earlier credit will not cover (D-087): confirm applies the credit first.
+    total = invoice.total - get_party_credit(customer=invoice.customer)
     if total <= 0:
         return []
     return [

@@ -71,14 +71,40 @@
     summary.className = "pay-summary";
     var blocked = false;
 
-    if (rows.length && amount > 0) {
-      if (!ticked.length) {
+    var creditBox = form.querySelector('input[name="as_credit"]');
+    var asCredit = !!(creditBox && creditBox.checked);
+    var creditWord = verb === "دریافت" ? "بستانکاری (پیش‌دریافت)" : "پیش‌پرداخت";
+
+    if (amount > 0 && (!rows.length || !ticked.length)) {
+      // Nothing ticked: the server settles the open invoices oldest first (D-087);
+      // only what is left beyond all of them may stay as credit, and only on purpose.
+      var leftAll = amount;
+      var listAll = el("ul", "pay-summary__list");
+      rows.forEach(function (row) {
+        var due = rowDue(row);
+        var take = Math.min(due, leftAll);
+        leftAll -= take;
+        if (take > 0) listAll.appendChild(el("li", "", "فاکتور " + row.getAttribute("data-name") + ": " + fmt(take) + " تومان" +
+          (take === due ? " (تسویهٔ کامل)" : " (بخشی؛ " + fmt(due - take) + " می‌ماند)")));
+      });
+      if (rows.length) {
+        summary.appendChild(el("p", "pay-summary__head", "تخصیص خودکار از قدیمی‌ترین فاکتور:"));
+        summary.appendChild(listAll);
+      }
+      if (leftAll > 0 && !asCredit) {
+        blocked = true;
+        summary.classList.add("is-bad");
+        summary.appendChild(el("p", "pay-summary__head", fmt(leftAll) + " تومان بیشتر از کل بدهی باز است. اگر " + creditWord +
+          " است، گزینهٔ «مازاد به‌عنوان " + creditWord + " ثبت شود» را تیک بزنید."));
+      } else if (leftAll > 0) {
         summary.classList.add("is-note");
-        summary.appendChild(el("p", "pay-summary__head",
-          amount > sumOf(rows)
-            ? "مبلغ از کل مانده بیشتر است؛ به‌صورت پیش‌دریافت (بدون تخصیص) ثبت می‌شود و فاکتورها باز می‌مانند."
-            : "فاکتوری انتخاب نشده؛ کل مبلغ بدون تخصیص ثبت می‌شود و فاکتورها باز می‌مانند."));
-      } else if (amount > tickedDue) {
+        summary.appendChild(el("p", "pay-summary__head", fmt(leftAll) + " تومان به‌عنوان " + creditWord +
+          " به نام «" + party + "» می‌ماند و از فاکتور بعدی او خودکار کسر می‌شود."));
+      } else {
+        summary.classList.add("is-ok");
+      }
+    } else if (rows.length && amount > 0) {
+      if (amount > tickedDue) {
         blocked = true;
         summary.classList.add("is-bad");
         summary.appendChild(el("p", "pay-summary__head",
@@ -135,6 +161,7 @@
 
   document.addEventListener("change", function (e) {
     var form = e.target.closest && e.target.closest("form[data-pay-form]");
+    if (form && e.target.name === "as_credit") { renderPay(form); return; }
     if (!form || !e.target.matches || !e.target.matches(".invoice-picker input[type=checkbox]")) return;
     initPay(form);
     // A manual tick means "I know better": stop re-allocating automatically.

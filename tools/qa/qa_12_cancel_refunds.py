@@ -93,7 +93,7 @@ def scenarios(h):
     h.c.post(f"/sales/{a2.pk}/cancel/")
     check("RF06 cancelling the newer invoice refunds only ITS 200", Payment.objects.filter(customer=c5, is_reversal=True).get().amount == 200 and get_bank_account_balance(acct2) == b2 - 200)
     check("RF06 the other invoice still counts its 1000 as paid", a1.paid_amount == 1000 and SalesInvoice.objects.get(pk=a1.pk).payment_status == "paid")
-    h.c.post(f"/receivables/{c5.pk}/record-payment/", {"amount": "77", "payment_date": TODAY_J, "bank_account": str(acct2.pk)})
+    h.c.post(f"/receivables/{c5.pk}/record-payment/", {"amount": "77", "payment_date": TODAY_J, "bank_account": str(acct2.pk), "as_credit": "on"})
     h.c.post(f"/sales/{a1.pk}/cancel/")
     refunds = list(Payment.objects.filter(customer=c5, is_reversal=True).order_by("created_at"))
     check("RF07 a prepayment (unallocated) is left alone by cancellations", Payment.objects.filter(customer=c5, amount=77, is_reversal=False).exists() and len(refunds) == 2 and sum(x.amount for x in refunds) == 1200)

@@ -144,3 +144,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-084 Fifty-critic UI audit, batch 1: card gaps and edge tokens, danger/disabled buttons, field error state, ui.js toast + Persian-digit numeric boxes, error pages, invoice-form keyboard flow, inventory search, dashboard attention strip.
 - D-085 Two-hundred-critic UI audit: 147 presentation fixes applied, 64 deferred entries in docs/UI_AUDIT_200_DEFERRED.md need Sina.
 - D-086 Sales invoice number = Persian letter + "/" + Jalali yyyymmdd of the invoice date (الف/14050712, ب/...; after ی: الف2); purchases keep year/running.
+- D-087 Unticked payments settle open invoices oldest first; money beyond them is party credit only when ticked; credit shows on party pages/lists/dues and pays the next invoice first (amends D-042).

@@ -21,7 +21,7 @@ reopen the customer to check.
     </ul>
   {% endif %}
   {% if unallocated %}
-    <p class="field__hint"><span class="num">{{ unallocated|toman }}</span> به هیچ فاکتوری تخصیص نیافت و به نام «{{ party }}» می‌ماند.</p>
+    <p class="field__hint"><span class="num">{{ unallocated|toman }}</span> به‌عنوان {% if receipt %}بستانکاری{% else %}پیش‌پرداخت{% endif %} به نام «{{ party }}» ماند و از فاکتور بعدی او خودکار کسر می‌شود.</p>
   {% endif %}
   <a href="." class="btn btn--block" autofocus>بروزرسانی فهرست و دیدن مانده جدید</a>
 </div>
