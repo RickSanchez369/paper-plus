@@ -86,6 +86,12 @@ fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
 `MASTER_PROMPT` section numbers (removed 2026-09-30).
 
+## Deployment runbooks (2026-10-04)
+`deploy/CHECKLIST.md` (order, revert point, live test list), `deploy/UNIT_CONVERSION.md` (rehearse on a restored backup copy, then live),
+cron lines for `backup_db --keep 14` and `fetch_usd_rate`, HSTS ramp, `COMPANY_*`. The rehearsal flow (backup, restore_db,
+inventory_unit_report, convert_units --dry-run) was run end to end on the demo database. Host is cPanel without SSH; whether the host DB
+is PostgreSQL or SQLite is unconfirmed (docs disagree). Nothing was run on the host.
+
 ## Open items (raise with Sina before touching)
 - **Real company details/logo for the printed invoice** — Sina will send them.
 - **USD rate on the host** — tgju is read with stdlib `urllib` (D-080); whether the shared host allows outbound HTTPS is
