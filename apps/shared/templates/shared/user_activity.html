@@ -17,6 +17,8 @@ AuditLog feed (UserActivityDetailView).
   <div class="page-head__row">
     <h1>فعالیت کاربران</h1>
     <form method="get">
+      {# The filter form below is a separate GET form: carry its values so a preset does not drop them. #}
+      {% for key, value in request.GET.items %}{% if key == "user" or key == "event_type" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       {% include "shared/_date_range.html" with form=range_form %}
     </form>
   </div>
@@ -28,6 +30,8 @@ AuditLog feed (UserActivityDetailView).
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {# ...and the other way round: applying a filter keeps the chosen range. #}
+      {% for key, value in request.GET.items %}{% if key == "preset" or key == "start" or key == "end" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.user %}
         {% include "shared/_field.html" with field=filter_form.event_type %}
@@ -47,7 +51,7 @@ AuditLog feed (UserActivityDetailView).
           <tbody>
             {% for row in rows %}
               <tr>
-                <td><a href="{% url 'user_activity:detail' row.actor.pk %}">{{ row.actor }}</a></td>
+                <td><a href="{% url 'user_activity:detail' row.actor.pk %}?{% for key, value in request.GET.items %}{% if key == 'preset' or key == 'start' or key == 'end' or key == 'event_type' %}{{ key }}={{ value|urlencode }}&amp;{% endif %}{% endfor %}">{{ row.actor }}</a></td>
                 {% for bucket in bucket_order %}
                   <td class="num">
                     {{ row.counts|dict_get:bucket|fa_number }}

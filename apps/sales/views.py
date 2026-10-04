@@ -161,6 +161,16 @@ class ProductSearchView(LoginRequiredMixin, View):
         return render(request, "sales/_product_search_results.html", {"rows": rows})
 
 
+def _is_uuid(value):
+    """True for a well-formed UUID string; keeps a junk ?customer= from reaching the ORM."""
+    import uuid
+    try:
+        uuid.UUID(str(value))
+    except ValueError:
+        return False
+    return True
+
+
 def _empty_forms():
     return {
         # JalaliDateField stores/reads Gregorian (D-004); dates.today()
@@ -191,7 +201,15 @@ class SalesCreateView(LoginRequiredMixin, View):
     template_name = "sales/new.html"
 
     def get(self, request):
-        return render(request, self.template_name, _empty_forms())
+        context = _empty_forms()
+        # "New sale" from a customer page arrives with ?customer=<pk>; an unknown or inactive id is ignored.
+        pre = request.GET.get("customer", "")
+        if pre:
+            form = context["invoice_form"]
+            valid = form.fields["customer"].queryset.filter(pk=pre).first() if _is_uuid(pre) else None
+            if valid:
+                form.initial["customer"] = valid.pk
+        return render(request, self.template_name, context)
 
     def post(self, request):
         invoice_form = SaleInvoiceForm(request.POST)

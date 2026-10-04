@@ -5,7 +5,7 @@ Context: title, group ({items, total, overdue_total}), empty (text when none).
 {% load paper %}
 <h4>{{ title }}</h4>
 {% if group.items %}
-  <table class="data-table">
+  <div class="table-card"><table class="data-table">
     <thead><tr><th>سررسید</th><th>بابت</th><th>مبلغ</th><th></th></tr></thead>
     <tbody>
       {% for item in group.items %}
@@ -29,7 +29,7 @@ Context: title, group ({items, total, overdue_total}), empty (text when none).
       {% endfor %}
       <tr><td colspan="2"><strong>جمع {{ title }}</strong></td><td class="num"><strong>{{ group.total|toman }}</strong></td><td></td></tr>
     </tbody>
-  </table>
+  </table></div>
 {% else %}
   <p class="field__hint">{{ empty }}</p>
 {% endif %}

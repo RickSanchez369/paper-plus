@@ -33,7 +33,7 @@ this range alone.
     <span class="stat-card__value num">{{ cards.sales.value|toman }}</span>
     {% if cards.sales.change is not None %}
       <span class="stat-card__delta{% if cards.sales.change > 0 %} stat-card__delta--up{% elif cards.sales.change < 0 %} stat-card__delta--down{% endif %}">
-        {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_number }}٪ نسبت به بازهٔ قبل
+        {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% endif %}
   </div>
@@ -41,8 +41,8 @@ this range alone.
     <span class="stat-card__label">جمع خرید</span>
     <span class="stat-card__value num">{{ cards.purchases.value|toman }}</span>
     {% if cards.purchases.change is not None %}
-      <span class="stat-card__delta{% if cards.purchases.change > 0 %} stat-card__delta--up{% elif cards.purchases.change < 0 %} stat-card__delta--down{% endif %}">
-        {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_number }}٪ نسبت به بازهٔ قبل
+      <span class="stat-card__delta{% if cards.purchases.change > 0 %} stat-card__delta--down{% elif cards.purchases.change < 0 %} stat-card__delta--up{% endif %}">
+        {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% endif %}
   </div>
@@ -50,8 +50,8 @@ this range alone.
     <span class="stat-card__label">هزینه‌ها</span>
     <span class="stat-card__value num">{{ cards.expenses.value|toman }}</span>
     {% if cards.expenses.change is not None %}
-      <span class="stat-card__delta{% if cards.expenses.change > 0 %} stat-card__delta--up{% elif cards.expenses.change < 0 %} stat-card__delta--down{% endif %}">
-        {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_number }}٪ نسبت به بازهٔ قبل
+      <span class="stat-card__delta{% if cards.expenses.change > 0 %} stat-card__delta--down{% elif cards.expenses.change < 0 %} stat-card__delta--up{% endif %}">
+        {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% endif %}
   </div>
@@ -60,16 +60,16 @@ this range alone.
     <span class="stat-card__value num">{{ cards.gross_profit.value|toman }}</span>
     {% if cards.gross_profit.change is not None %}
       <span class="stat-card__delta{% if cards.gross_profit.change > 0 %} stat-card__delta--up{% elif cards.gross_profit.change < 0 %} stat-card__delta--down{% endif %}">
-        {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_number }}٪ نسبت به بازهٔ قبل
+        {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% endif %}
   </div>
-  <div class="stat-card">
+  <div class="stat-card stat-card--primary">
     <span class="stat-card__label">سود خالص</span>
-    <span class="stat-card__value num">{{ cards.net_profit.value|toman }}</span>
+    <span class="stat-card__value num{% if cards.net_profit.value < 0 %} is-loss{% endif %}">{{ cards.net_profit.value|toman }}</span>
     {% if cards.net_profit.change is not None %}
       <span class="stat-card__delta{% if cards.net_profit.change > 0 %} stat-card__delta--up{% elif cards.net_profit.change < 0 %} stat-card__delta--down{% endif %}">
-        {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_number }}٪ نسبت به بازهٔ قبل
+        {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% endif %}
   </div>
@@ -79,7 +79,7 @@ this range alone.
 <div class="card">
   <div class="card__body">
     <h2>سود چطور حساب می‌شود</h2>
-    <table class="data-table data-table--figures">
+    <div class="table-card"><table class="data-table data-table--figures">
       <tbody>
         <tr><td>جمع فروش</td><td class="num">{{ cards.sales.value|toman }}</td></tr>
         <tr><td>− بهای تمام‌شدهٔ کالاهای فروخته‌شده (روش FIFO)</td><td class="num">{{ cards.cogs|toman }}</td></tr>
@@ -87,7 +87,7 @@ this range alone.
         <tr><td>− هزینه‌ها</td><td class="num">{{ cards.expenses.value|toman }}</td></tr>
         <tr><td><strong>= سود خالص</strong></td><td class="num"><strong>{{ cards.net_profit.value|toman }}</strong></td></tr>
       </tbody>
-    </table>
+    </table></div>
     <p class="field__hint">
       «جمع خرید» در این محاسبه نیست: خرید فقط موجودی انبار را زیاد می‌کند و تا وقتی آن کالا فروخته نشود
       هزینه حساب نمی‌شود؛ هر فروش، قیمت خرید همان کالایی را که فروخته شده (قدیمی‌ترین موجودی اول) کم می‌کند.
@@ -99,7 +99,7 @@ this range alone.
   <div class="card__body">
     <h2>فروش عمده و خرد</h2>
     <p class="field__hint">همان فاکتورهای بالا، به‌تفکیک نوع فروش؛ جمع دو ردیف برابر جمع فروش و سود ناخالص است.</p>
-    <table class="data-table data-table--figures">
+    <div class="table-card"><table class="data-table data-table--figures">
       <thead>
         <tr><th>نوع فروش</th><th>تعداد فاکتور</th><th>فروش (پس از تخفیف)</th><th>تخفیف داده‌شده</th><th>سود</th><th>حاشیهٔ سود</th></tr>
       </thead>
@@ -115,7 +115,7 @@ this range alone.
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 
@@ -124,7 +124,7 @@ this range alone.
     <h2>فروش به تفکیک کالا</h2>
     {% if sales_by_product %}
       <p class="field__hint">مبلغ و سود پس از تخفیف فاکتورها است؛ تخفیف هر فاکتور به نسبت مبلغ ردیف‌ها بین کالاهای آن سرشکن شده است.</p>
-      <table class="data-table data-table--figures">
+      <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>کالا</th><th>مقدار</th><th>مبلغ خالص</th><th>سود</th></tr>
         </thead>
@@ -138,7 +138,7 @@ this range alone.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">در این بازه فروشی ثبت نشده است.</p>
     {% endif %}
@@ -149,7 +149,7 @@ this range alone.
   <div class="card__body">
     <h2>خرید به تفکیک کالا</h2>
     {% if purchases_by_product %}
-      <table class="data-table data-table--figures">
+      <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>کالا</th><th>مقدار</th><th>مبلغ</th></tr>
         </thead>
@@ -162,7 +162,7 @@ this range alone.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">در این بازه خریدی ثبت نشده است.</p>
     {% endif %}
@@ -173,7 +173,7 @@ this range alone.
   <div class="card__body">
     <h2>پرفروش‌ترین کالاها</h2>
     {% if top_sellers %}
-      <table class="data-table data-table--figures">
+      <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>#</th><th>کالا</th><th>مقدار فروش</th></tr>
         </thead>
@@ -186,7 +186,7 @@ this range alone.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">در این بازه فروشی ثبت نشده است.</p>
     {% endif %}
@@ -213,7 +213,7 @@ this range alone.
   <div class="card__body">
     <h2>حساب‌های بانکی (پایان بازه)</h2>
     {% if bank_accounts %}
-      <table class="data-table data-table--figures">
+      <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>حساب</th><th>مانده (پایان بازه)</th><th>واریز این بازه</th><th>برداشت این بازه</th></tr>
         </thead>
@@ -227,7 +227,7 @@ this range alone.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">حساب بانکی فعالی ثبت نشده است.</p>
     {% endif %}
@@ -238,7 +238,7 @@ this range alone.
   <div class="card__body">
     <h2>چک‌ها (سررسید در این بازه)</h2>
     {% if cheques %}
-      <table class="data-table data-table--figures">
+      <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>وضعیت</th><th>تعداد</th><th>مبلغ</th></tr>
         </thead>
@@ -251,7 +251,7 @@ this range alone.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">چکی با سررسید در این بازه ثبت نشده است.</p>
     {% endif %}
@@ -262,7 +262,7 @@ this range alone.
   <div class="card__body">
     <h2>فعالیت کاربران (در این بازه)</h2>
     {% if user_activity %}
-      <table class="data-table data-table--figures">
+      <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>کاربر</th><th>تعداد رویداد</th></tr>
         </thead>
@@ -274,7 +274,7 @@ this range alone.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">در این بازه رویدادی ثبت نشده است.</p>
     {% endif %}

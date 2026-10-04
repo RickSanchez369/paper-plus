@@ -45,7 +45,7 @@ Three blocks, by how the money will be settled:
           <tbody>
             {% for row in cheques %}
               {% with cheque=row.cheque %}
-              <tr>
+              <tr{% if row.overdue %} class="is-overdue"{% endif %}>
                 <td class="num">
                   {% if cheque.due_date %}{{ cheque.due_date|jalali }}{% else %}—{% endif %}
                   {% if row.overdue %}{% flag_badge "bad" "سررسید گذشته" %}{% endif %}
@@ -109,7 +109,7 @@ Three blocks, by how the money will be settled:
           </thead>
           <tbody>
             {% for item in credit %}
-              <tr>
+              <tr{% if item.overdue %} class="is-overdue"{% endif %}>
                 <td class="num">
                   {% if item.due_date %}{{ item.due_date|jalali }}{% else %}—{% endif %}
                   {% if item.overdue %}{% flag_badge "bad" "سررسید گذشته" %}{% endif %}

@@ -50,7 +50,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
 <div class="card">
   <div class="card__body">
     <h2>اقلام فاکتور</h2>
-    <table class="data-table">
+    <div class="table-card"><table class="data-table">
       <thead>
         <tr>
           <th>کالا</th>
@@ -79,7 +79,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
 
     <div class="sale-form__totals">
       {% if invoice.freight_amount %}
@@ -100,7 +100,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
     </p>
 
     {% if invoice.payment_allocations.all %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>تاریخ</th>
@@ -124,14 +124,14 @@ stricter -- blocked once any of this purchase's stock has been sold).
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز پرداختی برای این فاکتور ثبت نشده است.</p>
     {% endif %}
 
     {% if invoice.cheques.all %}
       <h2>چک‌های مرتبط</h2>
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره چک</th>
@@ -154,7 +154,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% endif %}
   </div>
 </div>

@@ -8,6 +8,7 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
   <meta name="theme-color" content="#0a1f44">
   <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   {% comment %} D-047: every htmx form here answers a validation error with 422 + the
      same form re-rendered with its Persian errors (quick customer/supplier/

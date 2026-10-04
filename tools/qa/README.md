@@ -32,6 +32,7 @@ python manage.py shell -c "exec(open('tools/qa/qa_02_purchase.py', encoding='utf
 | qa_21_units | carton + pack lines, stock in packs, average price apart from FIFO, printing (D-081) |
 | qa_23_convert_units | report, dry run and merge of carton products into packs (D-081) |
 | qa_22_freight | freight in the total owed, split by packs, landed cost per pack/carton, cancel (D-082) |
+| qa_24_ui_audit | numeric widgets, status tones, percent/units wording, error pages, filter/range plumbing, `?customer=` prefill, sidebar state (D-084) |
 | qa_14_invoice_print | printed invoice: words, company header, stamp boxes, watermark (D-061) |
 
 `OK`/`FAIL` per check and `n/N passed` at the end. JavaScript behaviour

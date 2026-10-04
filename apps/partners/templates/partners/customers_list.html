@@ -27,12 +27,14 @@ this page, which is harmless).
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {% include "shared/_keep_sort.html" %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.account_status %}
         {% include "shared/_field.html" with field=filter_form.is_active %}
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
       </div>
+    {% include "shared/_filter_reset.html" %}
     </form>
 
     {% if rows %}

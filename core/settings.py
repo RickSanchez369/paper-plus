@@ -174,6 +174,9 @@ if not DEBUG:
     # The app sends no email, so the "console backend is dev-only" check is noise
     # that would otherwise make `manage.py update` fail on a real host.
     SILENCED_SYSTEM_CHECKS = ["mail.E001"]
+    # Assets that change carry ?v= (static_v); the rest (font, htmx) hardly ever do. The default is 60 s,
+    # which on a slow shared host means a revalidation round trip per asset every minute.
+    WHITENOISE_MAX_AGE = env.int("STATIC_MAX_AGE", default=86400)
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},

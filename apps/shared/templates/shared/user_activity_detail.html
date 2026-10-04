@@ -20,6 +20,8 @@ simply show no link), timestamp -- newest first.
   <div class="page-head__row">
     <h1>{{ actor }}</h1>
     <form method="get">
+      {# The filter form below is a separate GET form: carry its values so a preset does not drop them. #}
+      {% for key, value in request.GET.items %}{% if key == "user" or key == "event_type" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       {% include "shared/_date_range.html" with form=range_form %}
     </form>
   </div>
@@ -31,6 +33,8 @@ simply show no link), timestamp -- newest first.
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {# ...and the other way round: applying a filter keeps the chosen range. #}
+      {% for key, value in request.GET.items %}{% if key == "preset" or key == "start" or key == "end" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.event_type %}
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
@@ -38,7 +42,7 @@ simply show no link), timestamp -- newest first.
     </form>
 
     {% if feed %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr><th>زمان</th><th>رویداد</th><th>هدف</th></tr>
         </thead>
@@ -57,7 +61,7 @@ simply show no link), timestamp -- newest first.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">در این بازه رویدادی برای این کاربر ثبت نشده است.</p>
     {% endif %}

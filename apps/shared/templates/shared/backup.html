@@ -19,7 +19,7 @@ on the fly and streamed; nothing is stored on the server by this page.
 
 <div class="card backup-card">
   <div class="card__body">
-    <form method="post">
+    <form method="post" data-busy-label="در حال ساخت فایل…">
       {% csrf_token %}
       <button type="submit" class="btn btn--lg">دانلود پشتیبان کامل</button>
     </form>

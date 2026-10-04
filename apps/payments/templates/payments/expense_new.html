@@ -20,7 +20,7 @@ cancel_expense instead.
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'expenses:list' %}">هزینه‌ها</a> / هزینهٔ جدید</p>
 
-<div class="card">
+<div class="card form-narrow">
   <div class="card__body">
     <h1>ثبت هزینهٔ جدید</h1>
     {% if recurring %}
@@ -48,7 +48,8 @@ cancel_expense instead.
         {% include "shared/_field.html" with field=form.bank_account %}
         <p class="field__hint">
           حساب مورد نظر در فهرست نیست؟
-          <a href="{% url 'bank_accounts:new' %}">ثبت حساب بانکی جدید</a>
+          <a href="{% url 'bank_accounts:new' %}" target="_blank" rel="noopener">ثبت حساب بانکی جدید (در تب جدید)</a>
+          — پس از ثبت، این صفحه را دوباره باز کنید.
         </p>
       </div>
 

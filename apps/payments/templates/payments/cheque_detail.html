@@ -36,10 +36,10 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
       <h2>اقدامات</h2>
       <div class="page-head__actions">
         <form method="post" action="{% url 'cheques:clear' cheque.pk %}" class="cheque-clear"
-              onsubmit="return confirm('این چک وصول شود؟ یک پرداخت ثبت می‌شود.');">
+              onsubmit="return confirm('{% if cheque.direction == 'in' %}این چک وصول شود؟{% else %}این چک پاس شود؟{% endif %} یک پرداخت ثبت می‌شود.');">
           {% csrf_token %}
           {% include "shared/_field.html" with field=clear_form.bank_account %}
-          <button type="submit" class="btn">وصول چک</button>
+          <button type="submit" class="btn">{% if cheque.direction == 'in' %}وصول چک{% else %}پاس شدن چک{% endif %}</button>
         </form>
         <form method="post" action="{% url 'cheques:bounce' cheque.pk %}"
               onsubmit="return confirm('این چک برگشت بخورد؟');">
@@ -73,7 +73,7 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
 <div class="card">
   <div class="card__body">
     <h2>مشخصات</h2>
-    <table class="data-table">
+    <div class="table-card"><table class="data-table">
       <tbody>
         <tr><th>صادرکننده</th><td>{{ cheque.issuer|default:"—" }}</td></tr>
         <tr><th>بانک</th><td>{{ cheque.bank_name|default:"—" }}</td></tr>
@@ -89,18 +89,18 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
           </td>
         </tr>
         <tr>
-          <th>پرداخت وصول‌شده</th>
+          <th>{% if cheque.direction == 'in' %}پرداخت وصول‌شده{% else %}پرداخت پاس‌شده{% endif %}</th>
           <td>
             {% if cheque.payment %}
               {{ cheque.payment.amount|toman }} — {{ cheque.payment.payment_date|jalali }}
               ({{ cheque.payment.bank_account|default:"نقدی" }})
-            {% else %}هنوز وصول نشده{% endif %}
+            {% else %}{% if cheque.direction == 'in' %}هنوز وصول نشده{% else %}هنوز پاس نشده{% endif %}{% endif %}
           </td>
         </tr>
         <tr><th>توضیح</th><td>{{ cheque.note|default:"—" }}</td></tr>
         <tr><th>تاریخ ثبت</th><td class="num">{{ cheque.created_at|jalali_at }}</td></tr>
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 {% endblock %}

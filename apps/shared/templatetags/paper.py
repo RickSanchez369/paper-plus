@@ -111,6 +111,20 @@ def toman_words(value):
     return f"{number_to_words(value)} تومان"
 
 
+@register.filter(name="fa_percent")
+def fa_percent(value):
+    """A percentage with at most one decimal, «+۱۲٫۹٪»; `fa_number` truncates to an int, which turned +12.9% into +12
+    and -0.6% into 0."""
+    if value is None:
+        return ""
+    rounded = round(float(value), 1)
+    text = f"{abs(rounded):.1f}".removesuffix(".0").replace(".", "٫")
+    figure = dates.to_persian_digits(text)
+    if rounded < 0:
+        return _keep_sign_left(f"-{figure}٪")
+    return f"{figure}٪"
+
+
 @register.filter(name="fa_number")
 def fa_number(value):
     """A plain count in Persian digits: quantities, invoice counts, page numbers."""
@@ -124,11 +138,14 @@ def units(quantity, pack_per_carton):
     """A stock/quantity in packs as «۶ کارتن + ۴ بسته», plus «(۳۴ بسته)» once cartons are involved (D-081)."""
     if quantity is None:
         return ""
+    # Oversold stock reads «منفی ۲ کارتن + ۴ بسته»: a minus before each part flips in an RTL run.
+    prefix = "منفی " if quantity < 0 else ""
+    quantity = abs(quantity)
     cartons, packs = split_units(quantity, pack_per_carton)
     text = units_phrase(cartons, packs)
     if cartons:
         text += f" ({quantity} بسته)"
-    return dates.to_persian_digits(text)
+    return dates.to_persian_digits(prefix + text)
 
 
 @register.filter(name="line_units")

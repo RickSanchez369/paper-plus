@@ -1290,6 +1290,15 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   "register your first invoice". (10) Inventory list: search (`q`), in-stock filter, out-of-stock count and badge, name and
   code on two lines. (11) Dashboard: an attention strip for overdue/incomplete first, month figure leads each tile with
   today beneath, net profit tile is primary and red on loss, tiles that are links are whole-tile links, dues card retitled.
+- Batch 2, same decision: expense receipts are a real link; the expense form is narrow with method cards and tinted panels;
+  user-activity range and filter forms carry each other's values; filter forms keep the chosen sort and show «clear filters»;
+  reports: `fa_percent` (was truncating +12.9% to +12), cost cards no longer paint a rise green, net profit is the primary
+  tile, new presets «ماه قبل» and «امسال»; oversold stock reads «منفی ...»; bank cards put the name first and the whole card
+  links, balance strip on the detail page; supplier detail opens with a debt tile; tables always sit in `.table-card`
+  (scroll inside the card on phones, the table keeps its roles); overdue dues rows are tinted; cheque detail words
+  pass/clear by direction; customer page has «فاکتور فروش جدید» (`/sales/new/?customer=`) and the invoice links to its
+  customer; sidebar marks the current page (`aria-current`, edge) and the drawer makes the page inert; login at 16px;
+  static assets cache one day (`STATIC_MAX_AGE`), the font is preloaded, print waits for the font.
 - Not done on purpose (needs Sina): desktop permanent sidebar (contradicts D-065); merging the customer and date cards on
   the sale form; one anatomy for all detail pages; a keyboard-navigable calendar; thousands separators inside inputs;
   required-field markers; admin theming.

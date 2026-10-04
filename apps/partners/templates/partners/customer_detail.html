@@ -27,6 +27,7 @@ component reused as-is from Receivables.
         مانده باز: <strong class="num">{{ outstanding|toman }}</strong>
       </p>
     </div>
+    <a href="{% url 'sales:new' %}?customer={{ customer.pk }}" class="btn">فاکتور فروش جدید</a>
     <details class="quick-party-disclosure">
       <summary class="btn btn--quiet">ویرایش</summary>
       <form method="post" action="{% url 'customers:edit' customer.pk %}" class="quick-party">
@@ -76,7 +77,7 @@ component reused as-is from Receivables.
   <div class="card__body">
     <h2>فاکتورهای فروش</h2>
     {% if invoices %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره فاکتور</th>
@@ -103,7 +104,7 @@ component reused as-is from Receivables.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز فاکتوری برای این مشتری ثبت نشده است.</p>
     {% endif %}
@@ -114,7 +115,7 @@ component reused as-is from Receivables.
   <div class="card__body">
     <h2>پرداخت‌ها</h2>
     {% if payments %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>تاریخ</th>
@@ -133,7 +134,7 @@ component reused as-is from Receivables.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">پرداختی از این مشتری ثبت نشده است.</p>
     {% endif %}
@@ -144,7 +145,7 @@ component reused as-is from Receivables.
   <div class="card__body">
     <h2>چک‌ها</h2>
     {% if cheques %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره چک</th>
@@ -167,7 +168,7 @@ component reused as-is from Receivables.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">چکی برای این مشتری ثبت نشده است.</p>
     {% endif %}
@@ -178,7 +179,7 @@ component reused as-is from Receivables.
   <div class="card__body">
     <h2>صورت‌حساب (بدهکار/بستانکار)</h2>
     {% if ledger %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>تاریخ</th>
@@ -199,7 +200,7 @@ component reused as-is from Receivables.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز تراکنشی برای این مشتری ثبت نشده است.</p>
     {% endif %}

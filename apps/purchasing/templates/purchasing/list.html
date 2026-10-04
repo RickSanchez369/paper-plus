@@ -38,6 +38,7 @@ profit card -- profit is sales-only.
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {% include "shared/_keep_sort.html" %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.payment_status %}
@@ -47,6 +48,7 @@ profit card -- profit is sales-only.
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
       </div>
       {% include "shared/_date_range.html" with form=range_form %}
+    {% include "shared/_filter_reset.html" %}
     </form>
 
     {% if invoices %}

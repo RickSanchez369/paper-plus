@@ -10,7 +10,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
   <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
 </head>
 <body class="print-page">
-  <button type="button" class="btn no-print print-page__trigger" onclick="window.print()">چاپ</button>
+  <button type="button" class="btn no-print print-page__trigger" onclick="(document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { window.print(); })">چاپ</button>
 
   <div class="print-invoice">
     <header class="print-invoice__head">

@@ -19,7 +19,7 @@ Who issues it comes from settings.COMPANY (filled from .env, see
 <body class="print-page">
   <div class="print-toolbar no-print">
     <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn--quiet">بازگشت</a>
-    <button type="button" class="btn" onclick="window.print()">چاپ فاکتور</button>
+    <button type="button" class="btn" onclick="(document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { window.print(); })">چاپ فاکتور</button>
     <span class="print-toolbar__hint">برای چاپ، گزینهٔ «Headers and footers» مرورگر را خاموش کنید.</span>
   </div>
 

@@ -17,6 +17,7 @@ status, direction and due-date range.
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {% include "shared/_keep_sort.html" %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.status %}
         {% include "shared/_field.html" with field=filter_form.direction %}
@@ -24,6 +25,7 @@ status, direction and due-date range.
         {% include "shared/_field.html" with field=filter_form.due_end %}
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
       </div>
+    {% include "shared/_filter_reset.html" %}
     </form>
 
     {% if cheques %}

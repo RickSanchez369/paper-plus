@@ -24,8 +24,7 @@ flattened, so it stays clear which payment settled which purchase.
       <h1>{{ supplier.name }}</h1>
       <p class="page-head__lede">
         {% if supplier.phone %}تلفن: {{ supplier.phone }} · {% endif %}
-        {% if not supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %} · {% endif %}
-        بدهی باز: <strong class="num">{{ outstanding|toman }}</strong>
+        {% if not supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}
       </p>
     </div>
     <details class="quick-party-disclosure">
@@ -42,11 +41,18 @@ flattened, so it stays clear which payment settled which purchase.
   </div>
 </div>
 
+<div class="stats">
+  <div class="stat-card">
+    <span class="stat-card__label">بدهی باز</span>
+    <span class="stat-card__value num{% if outstanding > 0 %} is-negative{% endif %}">{{ outstanding|toman }}</span>
+  </div>
+</div>
+
 <div class="card">
   <div class="card__body">
     <h2>تاریخچهٔ خرید</h2>
     {% if invoices %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره فاکتور</th>
@@ -73,7 +79,7 @@ flattened, so it stays clear which payment settled which purchase.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز فاکتور خریدی از این تأمین‌کننده ثبت نشده است.</p>
     {% endif %}
@@ -84,7 +90,7 @@ flattened, so it stays clear which payment settled which purchase.
   <div class="card__body">
     <h2>چک‌های صادرشده</h2>
     {% if cheques %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره چک</th>
@@ -107,7 +113,7 @@ flattened, so it stays clear which payment settled which purchase.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">چکی برای این تأمین‌کننده ثبت نشده است.</p>
     {% endif %}

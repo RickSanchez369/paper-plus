@@ -78,7 +78,7 @@ each row touched and a link back to its source invoice; and a
   <div class="card__body">
     <h2>لایه‌های فعال</h2>
     {% if active_layers %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>منشأ</th>
@@ -99,7 +99,7 @@ each row touched and a link back to its source invoice; and a
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">این کالا لایهٔ فعالی ندارد (موجودی صفر یا منفی است).</p>
     {% endif %}
@@ -110,7 +110,7 @@ each row touched and a link back to its source invoice; and a
   <div class="card__body">
     <h2>تاریخچهٔ تراکنش‌ها</h2>
     {% if movement_rows %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>تاریخ</th>
@@ -149,7 +149,7 @@ each row touched and a link back to its source invoice; and a
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز حرکتی برای این کالا ثبت نشده است.</p>
     {% endif %}
@@ -161,7 +161,7 @@ each row touched and a link back to its source invoice; and a
     <details>
       <summary class="btn btn--quiet">تاریخچهٔ قیمت</summary>
       {% if price_history %}
-        <table class="data-table">
+        <div class="table-card"><table class="data-table">
           <thead>
             <tr>
               <th>تاریخ</th>
@@ -184,7 +184,7 @@ each row touched and a link back to its source invoice; and a
               </tr>
             {% endfor %}
           </tbody>
-        </table>
+        </table></div>
       {% else %}
         <p class="field__hint">تاریخچه‌ای ثبت نشده است.</p>
       {% endif %}

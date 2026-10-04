@@ -1449,11 +1449,45 @@ summary:focus-visible,
   margin: var(--space-3) 0 var(--space-4);
 }
 
+/* The main decision of the form is a choice of cards, not a footnote of radios. */
 .payment-mode__option {
   display: flex;
+  flex: 1 1 140px;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   cursor: pointer;
+}
+
+.payment-mode__option:has(input:checked) {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+  font-weight: 600;
+}
+
+.payment-mode__option:has(input:focus-visible) {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+.form-narrow {
+  max-width: 640px;
+}
+
+/* A panel that belongs to the chosen method reads as a unit. */
+[data-expense-panel] {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+[data-expense-panel][hidden] {
+  display: none;
 }
 
 .form-actions {
@@ -1557,10 +1591,12 @@ form + .card {
 }
 
 @media (max-width: 720px) {
+  /* The .table-card around each table scrolls; the table stays a table (header band, a11y roles). */
   .data-table {
-    display: block;
-    overflow-x: auto;
-    max-width: 100%;
+    min-width: 640px;
+  }
+
+  .table-card {
     -webkit-overflow-scrolling: touch;
   }
 
@@ -1871,4 +1907,118 @@ h3 { font-size: 15px; }
   gap: var(--space-2);
   min-height: 41px;
   font-size: 13.5px;
+}
+
+.stat-card--primary .stat-card__delta--up { color: #8fe3b3; }
+.stat-card--primary .stat-card__delta--down { color: #ffb3ae; }
+
+/* ------------------------------------------------------ bank accounts */
+
+.stat-card--account {
+  position: relative;
+}
+
+.stat-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stat-card__name:hover {
+  text-decoration: none;
+  color: var(--accent-700);
+}
+
+/* The whole card is the link, not only the name. */
+.stat-card__name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.stat-card__meta {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.stat-card--account .stat-card__value {
+  font-size: 22px;
+}
+
+.is-negative {
+  color: var(--negative-700);
+}
+
+/* ------------------------------------------------------------- dues */
+
+/* Overdue rows are tinted and edged, not only badged. */
+.data-table tr.is-overdue td {
+  background: var(--negative-100);
+}
+
+.data-table tr.is-overdue td:first-child {
+  box-shadow: inset -3px 0 0 var(--negative-600);
+}
+
+.inline-form {
+  display: inline-block;
+  margin-top: var(--space-2);
+}
+
+/* Open/closed must differ for an inline disclosure: a chevron after the label. */
+.quick-party-disclosure > summary::after {
+  content: "▾";
+  margin-inline-start: var(--space-2);
+}
+
+.quick-party-disclosure[open] > summary::after {
+  content: "▴";
+}
+
+/* Where am I: not colour alone. */
+.nav-link.is-active {
+  box-shadow: inset -3px 0 0 var(--accent-500);
+}
+
+.nav-group__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ------------------------------------------------------------- login + header */
+
+/* 16px inputs: iOS Safari zooms the page on focus below that. */
+.auth .field__control,
+.auth .field > input {
+  font-size: 16px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.auth__brand {
+  flex-direction: column;
+  text-align: center;
+  gap: var(--space-2);
+}
+
+.auth .sidebar__mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 20px;
+}
+
+.auth__lede {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .header__user > span { display: none; }
+  .header__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

@@ -51,6 +51,19 @@
     if (fixed !== t.value) t.value = fixed;
   }, true);
 
+  // A slow POST that answers with a download (backup) never navigates, so nothing tells the user
+  // it is working and a second click builds a second dump: disable the button for a while.
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form.dataset || !form.dataset.busyLabel) return;
+    var btn = form.querySelector("[type=submit]");
+    if (!btn) return;
+    if (btn.disabled) { e.preventDefault(); return; }
+    var label = btn.textContent;
+    setTimeout(function () { btn.disabled = true; btn.textContent = form.dataset.busyLabel; }, 0);
+    setTimeout(function () { btn.disabled = false; btn.textContent = label; }, 12000);
+  });
+
   document.addEventListener("DOMContentLoaded", function () { markInvalid(document); });
   document.body.addEventListener("htmx:afterSwap", function (e) { markInvalid(e.target); });
 

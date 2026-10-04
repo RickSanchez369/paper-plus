@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ورود | پیپر پلاس</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
 </head>
 <body>
@@ -15,6 +16,7 @@
       <div class="auth__brand">
         <span class="sidebar__mark">پ</span>
         <span class="auth__title">پیپر پلاس</span>
+        <span class="auth__lede">ورود به سامانهٔ مدیریت فروش و انبار</span>
       </div>
 
       <form method="post" novalidate>
@@ -23,7 +25,7 @@
         {% comment %} Non-field errors are the wrong-credentials case; they belong above
            the fields, not attached to one of them. {% endcomment %}
         {% if form.non_field_errors %}
-          <div class="form-error">
+          <div class="form-error" role="alert">
             {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
           </div>
         {% endif %}
@@ -37,7 +39,7 @@
         {% endfor %}
 
         <div class="field">
-          <button type="submit" class="btn btn--block">ورود</button>
+          <button type="submit" class="btn btn--lg btn--block">ورود</button>
         </div>
 
         <input type="hidden" name="next" value="{{ next }}">
