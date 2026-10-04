@@ -1431,3 +1431,14 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Existing data: nothing is rewritten. Old invoices keep the type D-081 gave them; until the owner sets the two new cells,
   a wholesale invoice prices exactly as before and a retail carton is pack x ratio.
 - Schema: `products.0010`, `partners.0003`.
+
+### D-091: The production host runs SQLite
+- Status: Final (confirms D-066 for the live app)
+- Date: 2026-10-04
+- Decided by: Sina (the shared host that was bought does not offer PostgreSQL)
+- Decision: the live database is one SQLite file (`DATABASE_URL=sqlite:////abs/path/db.sqlite3`, outside `public_html`).
+  Every change is therefore tested on SQLite: the whole `tools/qa` suite runs on a throwaway SQLite database, and the
+  D-086..D-090 migrations were rehearsed on a SQLite copy built with the current `deploy` branch code and data, then
+  migrated with this code (numbers, sale types, stock and balances unchanged; an old unallocated payment became visible
+  credit). PostgreSQL stays supported for development; no PostgreSQL-only feature may be used. `deploy/UPDATING.md` and
+  `deploy/CHECKLIST.md` say so; the scheduled `backup_db` cron (D-077) is what protects the single file.

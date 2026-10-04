@@ -148,3 +148,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-088 Printed sales invoice = one A4 brand sheet (کاغذ پلاس, green/navy/white, B&W switch, settlement box, terms, thank-you line, contacts); USD rate shown on detail pages only, never printed.
 - D-089 Returns: from one confirmed invoice, per line at most what is left; value = line net share; sales returns come back as a new FIFO layer at the line cost, purchase returns leave that purchase's layer; money off the invoice first, rest refunded (current account) or kept as party credit; invoices with returns cannot be cancelled.
 - D-090 Four prices (retail/wholesale x pack/carton, unset = derived, `price_for`); sale type chosen on the invoice, preset from `Customer.price_tier`, kept at confirmation; below-cost line hint.
+- D-091 The live host runs SQLite (shared host without PostgreSQL): test every change on SQLite, no PostgreSQL-only features.
