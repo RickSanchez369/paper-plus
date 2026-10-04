@@ -16,7 +16,8 @@ refuses.
     <button type="button"
             class="jdp__cell{% if day.is_today %} is-today{% endif %}"
             data-jdp="day"
-            data-value="{{ day.value }}">{{ day.day }}</button>
+            data-value="{{ day.value }}"
+            aria-label="{{ day.day }} {{ grid.title }}"{% if day.is_today %} aria-current="date"{% endif %}>{{ day.day }}</button>
   {% endfor %}
 </div>
 <div class="jdp__foot">

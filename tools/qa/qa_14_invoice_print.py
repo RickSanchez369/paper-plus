@@ -30,7 +30,8 @@ def scenarios(h):
     check("PR04 buyer name and address print", has(r, cust.name) and has(r, "تهران، خیابان آزادی"))
     check("PR05 amount in words: 3000-500 = 2500", has(r, "دو هزار و پانصد تومان"))
     check("PR06 discount line shows, note prints", has(r, "تخفیف") and has(r, "تحویل درب انبار"))
-    check("PR07 no company extras by default (no economic code label)", not has(r, "شمارهٔ اقتصادی"))
+    # The on-screen (no-print) note may name a missing field; the printed header must not carry the label.
+    check("PR07 no company extras by default (no economic code label)", "<dt>شمارهٔ اقتصادی" not in text(r))
     with override_settings(COMPANY={"name": "شرکت آزمون", "legal_name": "آزمون تجارت پارس", "economic_code": "411123456789",
                                     "registration_no": "", "national_id": "", "postal_code": "1234567890",
                                     "phone": "02111112222", "address": "تهران، ولیعصر", "footer_note": "کالای فروخته‌شده پس گرفته نمی‌شود"}):

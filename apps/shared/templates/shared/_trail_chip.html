@@ -1,0 +1,13 @@
+{% load paper %}{% comment %}
+One chip of a "related records" trail (customer > invoice > cheque), shared so
+every page that shows the trail renders it the same way.
+Context: kind (small label), text, url (omit for plain text), current (the page
+being viewed), badge_kind/badge_value/badge_label (optional status chip for
+status_badge), meta_label + meta (optional muted figure).
+{% endcomment %}
+<li class="trail__item{% if current %} trail__item--current{% endif %}"{% if current %} aria-current="page"{% endif %}>
+  <span class="trail__kind">{{ kind }}</span>
+  {% if url and not current %}<a class="trail__link" href="{{ url }}">{{ text }}</a>{% else %}<strong>{{ text }}</strong>{% endif %}
+  {% if badge_kind %}{% status_badge badge_kind badge_value badge_label %}{% endif %}
+  {% if meta %}<span class="trail__meta num">{% if meta_label %}{{ meta_label }} {% endif %}{{ meta }}</span>{% endif %}
+</li>

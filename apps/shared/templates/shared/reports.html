@@ -14,84 +14,126 @@ this range alone.
 {% block title %}گزارش‌های مالی{% endblock %}
 {% block header %}گزارش‌های مالی{% endblock %}
 
+{% block head %}<script src="{% static_v 'shared/js/insight.js' %}" defer></script>{% endblock %}
+
 {% block content %}
 <div class="page-head">
   <div class="page-head__row">
     <h1>گزارش‌های مالی</h1>
-    <form method="get">
-      {% include "shared/_date_range.html" with form=range_form %}
-    </form>
+    <div class="page-head__actions">
+      <form method="get">
+        {% include "shared/_date_range.html" with form=range_form %}
+      </form>
+      {# Print / copy act on the numbers already on screen, so the hand-off can never disagree with the page. #}
+      <button type="button" class="btn no-print" data-report-print title="چاپ یا ذخیره به‌صورت PDF، با همین بازهٔ انتخاب‌شده">چاپ / PDF برای حسابدار</button>
+      <button type="button" class="btn btn--quiet no-print" data-report-copy title="خلاصهٔ متنی برای ارسال در تلگرام یا واتس‌اپ">کپی خلاصه</button>
+    </div>
   </div>
   <p class="page-head__lede">
     بازهٔ انتخابی: <span class="num">{{ date_range.0|jalali }}</span> تا <span class="num">{{ date_range.1|jalali }}</span>
+    · درصدها در مقایسه با <span class="num">{{ prev_range.0|jalali }}</span> تا <span class="num">{{ prev_range.1|jalali }}</span>
+    <span class="no-print">· <a href="#sales-by-product">فروش هر کالا در این بازه ↓</a></span>
   </p>
+  <p class="print-only report-stamp">{{ company.name }} · گزارش مالی · تاریخ تهیه: <span class="num">{{ today|jalali }}</span></p>
+  <span class="field__hint no-print" data-report-status role="status" aria-live="polite"></span>
 </div>
 
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">جمع فروش</span>
-    <span class="stat-card__value num">{{ cards.sales.value|toman }}</span>
+    <span class="stat-card__value num">{{ cards.sales.value|toman_split }}</span>
     {% if cards.sales.change is not None %}
       <span class="stat-card__delta{% if cards.sales.change > 0 %} stat-card__delta--up{% elif cards.sales.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
+    {% else %}
+      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
     <span class="stat-card__label">جمع خرید</span>
-    <span class="stat-card__value num">{{ cards.purchases.value|toman }}</span>
+    <span class="stat-card__value num">{{ cards.purchases.value|toman_split }}</span>
+    <a class="stat-card__note no-print" href="#profit-how">در سود حساب نمی‌شود؛ موجودی انبار می‌شود</a>
     {% if cards.purchases.change is not None %}
       <span class="stat-card__delta{% if cards.purchases.change > 0 %} stat-card__delta--down{% elif cards.purchases.change < 0 %} stat-card__delta--up{% endif %}">
         {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
+    {% else %}
+      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
     <span class="stat-card__label">هزینه‌ها</span>
-    <span class="stat-card__value num">{{ cards.expenses.value|toman }}</span>
+    <span class="stat-card__value num">{{ cards.expenses.value|toman_split }}</span>
     {% if cards.expenses.change is not None %}
       <span class="stat-card__delta{% if cards.expenses.change > 0 %} stat-card__delta--down{% elif cards.expenses.change < 0 %} stat-card__delta--up{% endif %}">
         {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
+    {% else %}
+      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
     <span class="stat-card__label">سود ناخالص</span>
-    <span class="stat-card__value num">{{ cards.gross_profit.value|toman }}</span>
+    <span class="stat-card__value num">{{ cards.gross_profit.value|toman_split }}</span>
     {% if cards.gross_profit.change is not None %}
       <span class="stat-card__delta{% if cards.gross_profit.change > 0 %} stat-card__delta--up{% elif cards.gross_profit.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
+    {% else %}
+      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card stat-card--primary">
     <span class="stat-card__label">سود خالص</span>
-    <span class="stat-card__value num{% if cards.net_profit.value < 0 %} is-loss{% endif %}">{{ cards.net_profit.value|toman }}</span>
+    <span class="stat-card__value num{% if cards.net_profit.value < 0 %} is-loss{% endif %}">{{ cards.net_profit.value|toman_split }}</span>
+    <a class="stat-card__more no-print" href="#profit-how">چطور حساب شد؟ ↓</a>
     {% if cards.net_profit.change is not None %}
       <span class="stat-card__delta{% if cards.net_profit.change > 0 %} stat-card__delta--up{% elif cards.net_profit.change < 0 %} stat-card__delta--down{% endif %}">
         {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
+    {% else %}
+      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   {% usd_rate_card %}
 </div>
 
-<div class="card">
+<div class="card" id="profit-how">
   <div class="card__body">
     <h2>سود چطور حساب می‌شود</h2>
-    <div class="table-card"><table class="data-table data-table--figures">
-      <tbody>
-        <tr><td>جمع فروش</td><td class="num">{{ cards.sales.value|toman }}</td></tr>
-        <tr><td>− بهای تمام‌شدهٔ کالاهای فروخته‌شده (روش FIFO)</td><td class="num">{{ cards.cogs|toman }}</td></tr>
-        <tr><td><strong>= سود ناخالص</strong></td><td class="num"><strong>{{ cards.gross_profit.value|toman }}</strong></td></tr>
-        <tr><td>− هزینه‌ها</td><td class="num">{{ cards.expenses.value|toman }}</td></tr>
-        <tr><td><strong>= سود خالص</strong></td><td class="num"><strong>{{ cards.net_profit.value|toman }}</strong></td></tr>
-      </tbody>
-    </table></div>
-    <p class="field__hint">
-      «جمع خرید» در این محاسبه نیست: خرید فقط موجودی انبار را زیاد می‌کند و تا وقتی آن کالا فروخته نشود
-      هزینه حساب نمی‌شود؛ هر فروش، قیمت خرید همان کالایی را که فروخته شده (قدیمی‌ترین موجودی اول) کم می‌کند.
+    <p class="profit-verdict{% if cards.net_profit.value < 0 %} profit-verdict--loss{% endif %}">
+      {% if cards.net_profit.value < 0 %}
+        در این بازه <strong class="num">{{ cards.sales.value|toman }}</strong> فروختید و <strong class="num">{{ cards.gross_profit.value|toman }}</strong> سود ناخالص ماند؛
+        اما هزینه‌ها <strong class="num">{{ cards.expenses.value|toman }}</strong> بود، پس نتیجه <strong>ضرر <span class="num">{{ net_loss|toman }}</span></strong> شد.
+        <a class="no-print" href="{% url 'expenses:list' %}{% if range_qs %}?{{ range_qs }}{% endif %}">دیدن هزینه‌های این بازه ‹</a>
+      {% else %}
+        از فروش این بازه، بعد از کسر بهای کالاها و هزینه‌ها، <strong class="num">{{ cards.net_profit.value|toman }}</strong> سود خالص ماند.
+      {% endif %}
     </p>
+    {# Proportional bridge: each bar is sized against the largest figure, so a loss or a thin margin is visible before a digit is read. #}
+    <ol class="bridge">
+      {% for r in profit_bridge %}
+        <li class="bridge__row bridge__row--{{ r.kind }}">
+          <span class="bridge__label">
+            {% if r.link == "sales" %}<a href="{% url 'sales:list' %}{% if range_qs %}?{{ range_qs }}{% endif %}">{{ r.label }}</a>
+            {% elif r.link == "expenses" %}<a href="{% url 'expenses:list' %}{% if range_qs %}?{{ range_qs }}{% endif %}">{{ r.label }}</a>
+            {% else %}{{ r.label }}{% endif %}
+            {% if r.note %}<small>{{ r.note }}</small>{% endif %}
+          </span>
+          <span class="bridge__track" aria-hidden="true"><span class="bridge__bar" style="margin-inline-start:{{ r.offset|stringformat:'d' }}%;inline-size:{{ r.width|stringformat:'d' }}%"></span></span>
+          <span class="bridge__value num">{{ r.value|toman }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+    <details class="profit-note" open>
+      <summary>چرا «جمع خرید» در این حساب نیست؟</summary>
+      <p class="field__hint">
+        «جمع خرید» در این محاسبه نیست: خرید فقط موجودی انبار را زیاد می‌کند و تا وقتی آن کالا فروخته نشود
+        هزینه حساب نمی‌شود؛ هر فروش، قیمت خرید همان کالایی را که فروخته شده (قدیمی‌ترین موجودی اول) کم می‌کند.
+        سود هر کالا را در جدول «فروش به تفکیک کالا» ببینید.
+      </p>
+    </details>
   </div>
 </div>
 
@@ -119,25 +161,47 @@ this range alone.
   </div>
 </div>
 
-<div class="card">
+<div class="card" id="sales-by-product">
   <div class="card__body">
-    <h2>فروش به تفکیک کالا</h2>
+    <h2>فروش به تفکیک کالا <small class="card__range">از <span class="num">{{ date_range.0|jalali }}</span> تا <span class="num">{{ date_range.1|jalali }}</span></small></h2>
     {% if sales_by_product %}
+      <div class="report-filter no-print">
+        <input type="search" class="field__control" id="product-filter" autocomplete="off"
+               placeholder="جستجوی کالا در همین جدول…" aria-label="جستجوی کالا در جدول فروش">
+        <span class="field__hint" id="product-filter-summary" role="status" aria-live="polite"></span>
+      </div>
       <p class="field__hint">مبلغ و سود پس از تخفیف فاکتورها است؛ تخفیف هر فاکتور به نسبت مبلغ ردیف‌ها بین کالاهای آن سرشکن شده است.</p>
-      <div class="table-card"><table class="data-table data-table--figures">
+      <p class="field__hint no-print">برای دیدن فاکتورهای هر کالا در همین بازه، روی نام آن بزنید.</p>
+      <div class="table-card"><table class="data-table data-table--figures" id="sales-by-product-table">
         <thead>
           <tr><th>کالا</th><th>مقدار</th><th>مبلغ خالص</th><th>سود</th></tr>
         </thead>
         <tbody>
           {% for row in sales_by_product %}
-            <tr>
-              <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
+            <tr data-name="{{ row.product.name }}" data-amount="{{ row.amount }}" data-profit="{{ row.profit }}">
+              <td>
+                <a href="{% url 'sales:list' %}?{% if range_qs %}{{ range_qs }}&amp;{% endif %}product={{ row.product.pk }}" title="فاکتورهای فروش این کالا در همین بازه">{{ row.product.name }}</a>
+                <a class="row-link-secondary no-print" href="{% url 'inventory:detail' row.product.pk %}">کاردکس ‹</a>
+              </td>
               <td class="num">{{ row.quantity|units:row.product.pack_per_carton }}</td>
-              <td class="num">{{ row.amount|toman }}</td>
+              {% widthratio row.amount cards.sales.value 100 as share %}
+              <td class="num share-cell" style="--share: {{ share }}%">
+                {{ row.amount|toman }}
+                <span class="share-cell__pct">{{ share|fa_number }}٪ از کل فروش</span>
+              </td>
               <td class="num">{{ row.profit|toman }}</td>
             </tr>
           {% endfor %}
         </tbody>
+        {# The unfiltered total is the server's own figure, so the table visibly ties to «جمع فروش» above. #}
+        <tfoot>
+          <tr>
+            <td><strong>جمع <span id="product-totals-label">همهٔ کالاها</span></strong></td>
+            <td></td>
+            <td class="num"><strong id="tot-amount">{{ cards.sales.value|toman }}</strong></td>
+            <td class="num"><strong id="tot-profit">{{ cards.gross_profit.value|toman }}</strong></td>
+          </tr>
+        </tfoot>
       </table></div>
     {% else %}
       <p class="field__hint">در این بازه فروشی ثبت نشده است.</p>
@@ -154,13 +218,15 @@ this range alone.
           <tr><th>کالا</th><th>مقدار</th><th>مبلغ</th></tr>
         </thead>
         <tbody>
+          {% with top=purchases_by_product|peak:"amount" %}
           {% for row in purchases_by_product %}
             <tr>
               <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
               <td class="num">{{ row.quantity|units:row.product.pack_per_carton }}</td>
-              <td class="num">{{ row.amount|toman }}</td>
+              <td class="num cell-meter">{{ row.amount|toman }}{% meter row.amount top tone="quiet" %}</td>
             </tr>
           {% endfor %}
+          {% endwith %}
         </tbody>
       </table></div>
     {% else %}
@@ -171,20 +237,26 @@ this range alone.
 
 <div class="card">
   <div class="card__body">
-    <h2>پرفروش‌ترین کالاها</h2>
+    <h2>پرفروش‌ترین کالاها <small class="card__range">از <span class="num">{{ date_range.0|jalali }}</span> تا <span class="num">{{ date_range.1|jalali }}</span></small></h2>
     {% if top_sellers %}
+      <p class="field__hint no-print">ده کالای اول از جدول «<a href="#sales-by-product">فروش به تفکیک کالا</a>» بالا، به ترتیب مقدار.</p>
       <div class="table-card"><table class="data-table data-table--figures">
         <thead>
           <tr><th>#</th><th>کالا</th><th>مقدار فروش</th></tr>
         </thead>
         <tbody>
+          {% with top=top_sellers|peak:"quantity" %}
           {% for row in top_sellers %}
             <tr>
               <td class="num">{{ forloop.counter|fa_number }}</td>
-              <td><a href="{% url 'inventory:detail' row.product.pk %}">{{ row.product.name }}</a></td>
-              <td class="num">{{ row.quantity|units:row.product.pack_per_carton }}</td>
+              <td>
+                <a href="{% url 'sales:list' %}?{% if range_qs %}{{ range_qs }}&amp;{% endif %}product={{ row.product.pk }}" title="فاکتورهای فروش این کالا در همین بازه">{{ row.product.name }}</a>
+                <a class="row-link-secondary no-print" href="{% url 'inventory:detail' row.product.pk %}">کاردکس ‹</a>
+              </td>
+              <td class="num cell-meter">{{ row.quantity|units:row.product.pack_per_carton }}{% meter row.quantity top %}</td>
             </tr>
           {% endfor %}
+          {% endwith %}
         </tbody>
       </table></div>
     {% else %}
@@ -196,16 +268,16 @@ this range alone.
 <div class="stats">
   <div class="stat-card">
     <span class="stat-card__label">ارزش موجودی (پایان بازه)</span>
-    <span class="stat-card__value num">{{ inventory.total_value|toman }}</span>
+    <span class="stat-card__value num">{{ inventory.total_value|toman_split }}</span>
     <span class="field__hint">{{ inventory.product_count|fa_number }} کالا با موجودی</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">مطالبات باز (پایان بازه)</span>
-    <span class="stat-card__value num">{{ receivables_payables.receivables|toman }}</span>
+    <span class="stat-card__value num">{{ receivables_payables.receivables|toman_split }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">بدهی باز (پایان بازه)</span>
-    <span class="stat-card__value num">{{ receivables_payables.payables|toman }}</span>
+    <span class="stat-card__value num">{{ receivables_payables.payables|toman_split }}</span>
   </div>
 </div>
 
@@ -218,14 +290,16 @@ this range alone.
           <tr><th>حساب</th><th>مانده (پایان بازه)</th><th>واریز این بازه</th><th>برداشت این بازه</th></tr>
         </thead>
         <tbody>
+          {% with peak_balance=bank_accounts|peak:"balance" peak_in=bank_accounts|peak:"period_in" peak_out=bank_accounts|peak:"period_out" %}
           {% for row in bank_accounts %}
             <tr>
               <td><a href="{% url 'bank_accounts:detail' row.account.pk %}">{{ row.account.name }}</a></td>
-              <td class="num">{{ row.balance|toman }}</td>
-              <td class="num">{{ row.period_in|toman }}</td>
-              <td class="num">{{ row.period_out|toman }}</td>
+              <td class="num cell-meter">{{ row.balance|toman }}{% meter row.balance peak_balance signed=True %}</td>
+              <td class="num cell-meter">{{ row.period_in|toman }}{% meter row.period_in peak_in tone="pos" %}</td>
+              <td class="num cell-meter">{{ row.period_out|toman }}{% meter row.period_out peak_out tone="neg" %}</td>
             </tr>
           {% endfor %}
+          {% endwith %}
         </tbody>
       </table></div>
     {% else %}

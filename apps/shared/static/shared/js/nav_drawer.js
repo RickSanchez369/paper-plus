@@ -17,12 +17,12 @@
     var main = document.querySelector(".main");
     if (main) main.inert = open;
     opener.setAttribute("aria-expanded", open ? "true" : "false");
+    // The scrim fades through body.nav-open in CSS; toggling `hidden` here would
+    // cut the transition (display:none cannot animate).
     if (open) {
-      overlay.hidden = false;
       var first = nav.querySelector(".nav-link, .sidebar__brand");
       if (first) first.focus({ preventScroll: true });
     } else {
-      overlay.hidden = true;
       opener.focus({ preventScroll: true });
     }
   }

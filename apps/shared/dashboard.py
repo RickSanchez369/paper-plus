@@ -25,9 +25,38 @@ from apps.sales.models import SalesInvoice
 from apps.shared import dates, reports, user_activity
 
 
+def _prev_month_span(jalali_today):
+    """Last Jalali month, from its first day to the same day-of-month (clamped to its length), so a
+    half-finished month is compared like for like instead of against a full one.
+    Returns (start, end, jalali month number, days covered)."""
+    year, month = dates.clamp_month(jalali_today.year, jalali_today.month - 1)
+    prev_start, prev_end = dates.month_bounds(year, month)
+    span = min(jalali_today.day, (prev_end - prev_start).days + 1)
+    return prev_start, prev_start + datetime.timedelta(days=span - 1), month, span
+
+
+def _compare(current, previous, higher_is_better=True):
+    """How `current` stands against `previous`: signed difference, % change (only against a positive
+    base, so a prior loss never flips the sign), and the tone class. Purchases and expenses pass
+    higher_is_better=False, the same colour logic reports.html uses."""
+    diff = current - previous
+    direction = (diff > 0) - (diff < 0)
+    tone = ""
+    if direction:
+        tone = "up" if (direction > 0) == higher_is_better else "down"
+    return {
+        "prev": previous,
+        "diff": diff,
+        "direction": direction,
+        "tone": tone,
+        "change": reports.pct_change(current, previous) if previous > 0 else None,
+    }
+
+
 def kpi_cards():
     """Sales/purchases/expenses/net-profit, each today + this month -- reuses Financial Reports' own
-    selectors so this card can never disagree with that page."""
+    selectors so this card can never disagree with that page. Also carries the month-to-date
+    comparison with the same days of last Jalali month."""
     today = timezone.localdate()
     jalali_today = dates.today()
     month_start, month_end = dates.month_bounds(jalali_today.year, jalali_today.month)
@@ -36,10 +65,27 @@ def kpi_cards():
         sales = reports.sales_total(start, end)
         purchases = reports.purchases_total(start, end)
         expenses = reports.expenses_total(start, end)
-        net = reports.gross_profit(start, end) - expenses
-        return {"sales": sales, "purchases": purchases, "expenses": expenses, "net_profit": net}
+        gross = reports.gross_profit(start, end)
+        # Same definition as reports.summary_cards: what the goods actually sold cost (FIFO).
+        return {
+            "sales": sales, "purchases": purchases, "expenses": expenses,
+            "cogs": sales - gross, "net_profit": gross - expenses,
+        }
 
-    return {"today": _figures(today, today), "month": _figures(month_start, month_end)}
+    prev_start, prev_end, prev_month, span = _prev_month_span(jalali_today)
+    so_far = _figures(month_start, min(today, month_end))
+    before = _figures(prev_start, prev_end)
+    compare = {
+        key: _compare(so_far[key], before[key], higher_is_better=key not in ("purchases", "expenses"))
+        for key in ("sales", "purchases", "expenses", "net_profit")
+    }
+    return {
+        "today": _figures(today, today),
+        "month": _figures(month_start, month_end),
+        "compare": compare,
+        # "۱۲ شهریور": where last month's comparable span ends.
+        "compare_label": dates.to_persian_digits(f"{span} {dates.MONTH_NAMES[prev_month - 1]}"),
+    }
 
 
 def totals_now():
@@ -54,6 +100,38 @@ def totals_now():
         "payables": {"value": get_total_payables_as_of(today), "url": reverse("payables:list")},
         "bank_balance": {"value": bank_balance, "url": reverse("bank_accounts:list")},
         "inventory_value": {"value": get_total_inventory_value(), "url": reverse("inventory:list")},
+    }
+
+
+def setup_progress():
+    """First-run checklist: a step is done once real rows exist, so it ticks itself and can never
+    drift from the data. The first open step is flagged `is_next` (the one to highlight)."""
+    from apps.partners.models import Supplier
+    from apps.products.models import Product
+
+    steps = [
+        ("ثبت کالاها", "اسم، تعداد بسته در کارتن و قیمت را وارد کنید. موجودی فعلی انبار را هم همان‌جا و فقط یک‌بار می‌توانید ثبت کنید.",
+         reverse("inventory:product_new"), "ثبت کالا", Product.objects.exists()),
+        ("یک حساب بانکی تعریف کنید", "برای دریافت با حواله یا کارت‌خوان و برای چک لازم می‌شود؛ اگر فعلاً نیاز ندارید رد شوید.",
+         reverse("bank_accounts:new"), "ثبت حساب", BankAccount.objects.exists()),
+        ("تأمین‌کننده را اضافه کنید", "فاکتور خرید موجودی انبار را بالا می‌برد؛ تأمین‌کننده و کالای تازه را از داخل خود فاکتور هم می‌شود ساخت.",
+         reverse("purchasing:supplier_new"), "ثبت تأمین‌کننده", Supplier.objects.exists()),
+        ("اولین فاکتور فروش را بزنید", "مشتری را همان‌جا با «+ مشتری جدید» اضافه کنید.",
+         reverse("sales:new"), "فاکتور فروش", SalesInvoice.objects.exists()),
+    ]
+    rows = [
+        {"title": title, "hint": hint, "url": url, "cta": cta, "done": done}
+        for title, hint, url, cta, done in steps
+    ]
+    open_rows = [row for row in rows if not row["done"]]
+    for row in rows:
+        row["is_next"] = bool(open_rows) and row is open_rows[0]
+    done_count = len(rows) - len(open_rows)
+    return {
+        "rows": rows,
+        "done": done_count,
+        "total": len(rows),
+        "complete": done_count == len(rows),
     }
 
 

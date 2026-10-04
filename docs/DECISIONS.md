@@ -1302,3 +1302,20 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Not done on purpose (needs Sina): desktop permanent sidebar (contradicts D-065); merging the customer and date cards on
   the sale form; one anatomy for all detail pages; a keyboard-navigable calendar; thousands separators inside inputs;
   required-field markers; admin theming.
+
+### D-085: Two-hundred-critic UI audit (ease, detail, design)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (asked for 100 ease-of-use, 50 fine-detail and 50 design findings, all to be fixed; ease must never remove a capability)
+- Decision: 196 critics (100 ease, 50 detail, 46 design; the design set has 28 screens + 18 themes, not 50) each wrote one finding;
+  13 implementers, each owning a file group, applied 147 and merged 37 duplicates. Everything is presentation: templates, CSS, JS,
+  template tags, extra read-only context in views. No model, migration, service or data-writing endpoint changed. Highlights: sticky
+  invoice dock with a live "what will be posted" sentence, remembered payment choices (localStorage, applied only on a fresh form),
+  due-term chips, discount segmented control, customer type-ahead, cheque shortcut row, named cancel/bounce dialogs, print in place,
+  Ctrl+K quick-jump palette (pages and actions only), compact-table switch, record-cards for tables on phones, ledger tables, hero
+  bands and split bars on dues/bank/supplier pages, KPI compare lines, reports profit bridge, brand mark, empty-state component,
+  sort/pager/badge/select/checkbox details, error pages, toasts, print rules. CSS from the 13 groups sits in app.css under
+  "UI audit 200" headers (about 160 KB; consolidation is a later task).
+- Not done on purpose: 64 deferred entries in `docs/UI_AUDIT_200_DEFERRED.md` (CSV export, reissue-invoice copy, remembered last
+  backup, server-side global search, all-dates search default, two-column sale workbench, invoice-summary partial rewrite, and similar).
+  Each needs Sina's decision before work starts.

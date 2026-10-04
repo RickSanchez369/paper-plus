@@ -1,0 +1,18 @@
+{% comment %}
+Empty state: a quiet medallion, what the page will show, one centred next step.
+Context: icon (a _nav_icon name), title, hint (optional: what happens next),
+cta_url + cta_label (primary, optional; cta_quiet=True for a "clear filters" link),
+alt_url + alt_label (quiet, optional),
+compact (optional: a dashed strip for an empty section inside a card).
+{% endcomment %}
+<div class="empty-state{% if compact %} empty-state--compact{% endif %}">
+  <span class="empty-state__art" aria-hidden="true">{% include "shared/_nav_icon.html" with name=icon %}</span>
+  <p class="empty-state__title">{{ title }}</p>
+  {% if hint %}<p class="empty-state__hint">{{ hint }}</p>{% endif %}
+  {% if cta_url %}
+    <div class="empty-state__actions">
+      <a href="{{ cta_url }}" class="btn{% if cta_quiet %} btn--quiet{% endif %}">{{ cta_label }}</a>
+      {% if alt_url %}<a href="{{ alt_url }}" class="btn btn--quiet">{{ alt_label }}</a>{% endif %}
+    </div>
+  {% endif %}
+</div>

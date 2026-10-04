@@ -11,15 +11,29 @@
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
 </head>
 <body>
-  <main class="auth">
+  <main class="auth auth--split">
+    {% comment %} Brand pane: wide screens only (CSS hides it on phones, where the
+       card stays alone). It only describes what is already in the product. {% endcomment %}
+    <section class="auth__aside" aria-label="درباره پیپر پلاس">
+      <p class="auth__kicker">پیپر پلاس</p>
+      <p class="auth__pitch">فروش، انبار و چک‌ها؛ همه در یک نگاه</p>
+      <ul class="auth__facts">
+        <li>فاکتور فروش و خرید با محاسبهٔ خودکار</li>
+        <li>موجودی انبار به تفکیک بسته</li>
+        <li>چک‌های پیش‌رو و سررسید مطالبات</li>
+        <li>گزارش‌های مالی به تومان</li>
+      </ul>
+      <div class="auth__stack" aria-hidden="true"><i></i><i></i><i></i></div>
+    </section>
+
     <div class="auth__card">
       <div class="auth__brand">
-        <span class="sidebar__mark">پ</span>
-        <span class="auth__title">پیپر پلاس</span>
+        {% include "shared/_brand_mark.html" %}
+        <h1 class="auth__title">پیپر پلاس</h1>
         <span class="auth__lede">ورود به سامانهٔ مدیریت فروش و انبار</span>
       </div>
 
-      <form method="post" novalidate>
+      <form method="post" novalidate data-busy-label="در حال ورود…">
         {% csrf_token %}
 
         {% comment %} Non-field errors are the wrong-credentials case; they belong above
@@ -33,7 +47,17 @@
         {% for field in form %}
           <div class="field">
             <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
+            {% if field.name == "password" %}
+              {% comment %} Reveal + Caps Lock / Persian-layout hint (login.js): the usual
+                 silent causes of a wrong password, which counts toward the 5-try lock. {% endcomment %}
+              <div class="field__wrap">
+                {{ field }}
+                <button type="button" class="field__reveal" data-password-reveal aria-controls="{{ field.id_for_label }}" aria-pressed="false">نمایش</button>
+              </div>
+              <p class="field__hint field__hint--warn" data-password-hint role="status" aria-live="polite" hidden></p>
+            {% else %}
+              {{ field }}
+            {% endif %}
             {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
           </div>
         {% endfor %}
@@ -50,5 +74,6 @@
       <p class="auth__note">حساب کاربری را مدیر سیستم می‌سازد.</p>
     </div>
   </main>
+  <script src="{% static_v 'shared/js/login.js' %}" defer></script>
 </body>
 </html>

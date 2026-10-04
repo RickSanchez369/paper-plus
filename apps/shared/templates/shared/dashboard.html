@@ -11,6 +11,8 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
 {% block title %}داشبورد{% endblock %}
 {% block header %}داشبورد{% endblock %}
 
+{% block head %}<script src="{% static_v 'shared/js/insight.js' %}" defer></script>{% endblock %}
+
 {% block content %}
 <section class="hero">
   <div class="hero__text">
@@ -18,10 +20,35 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
     <p>{{ today|jalali_long }} — خلاصهٔ وضعیت کسب‌وکار شما</p>
   </div>
   <div class="hero__actions">
-    <a href="{% url 'sales:new' %}" class="btn btn--light">فاکتور فروش جدید</a>
-    <a href="{% url 'purchasing:new' %}" class="btn btn--ghost">فاکتور خرید جدید</a>
+    <a href="{% url 'sales:new' %}" class="btn btn--light">{% icon "plus" %}فاکتور فروش جدید</a>
+    <a href="{% url 'purchasing:new' %}" class="btn btn--ghost">{% icon "plus" %}فاکتور خرید جدید</a>
   </div>
 </section>
+
+{% if not setup.complete %}
+  {# First-run guide: computed from real rows, so it ticks itself and vanishes when every step is done. #}
+  <section class="card setup" id="setup" aria-labelledby="setup-title" data-setup>
+    <div class="card__body">
+      <div class="page-head__row">
+        <h2 id="setup-title">شروع سریع <span class="field__hint">{{ setup.done|fa_number }} از {{ setup.total|fa_number }} انجام شد</span></h2>
+        <button type="button" class="btn btn--quiet" data-setup-dismiss>بعداً</button>
+      </div>
+      <div class="setup__bar" role="progressbar" aria-label="پیشرفت شروع سریع" aria-valuemin="0" aria-valuemax="{{ setup.total }}" aria-valuenow="{{ setup.done }}"><span style="inline-size:{% widthratio setup.done setup.total 100 %}%"></span></div>
+      <ol class="setup__steps">
+        {% for s in setup.rows %}
+          <li class="setup__step{% if s.done %} is-done{% elif s.is_next %} is-next{% endif %}">
+            <span class="setup__tick" aria-hidden="true">{% if s.done %}✓{% else %}{{ forloop.counter|fa_number }}{% endif %}</span>
+            <div>
+              <strong>{{ s.title }}</strong>{% if s.done %} <span class="field__hint">انجام شد</span>{% endif %}
+              <p class="field__hint">{{ s.hint }}</p>
+            </div>
+            {% if not s.done %}<a class="btn{% if not s.is_next %} btn--quiet{% endif %}" href="{{ s.url }}">{{ s.cta }}</a>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+{% endif %}
 
 {% if dues.receivable.overdue_total or dues.payable.overdue_total or cheques_incomplete.total_count %}
   {# The one thing an owner must act on today goes first, not under eight tiles. #}
@@ -33,46 +60,53 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
 {% endif %}
 
 <h2 class="section-label">عملکرد · این ماه و امروز</h2>
-<div class="stats">
-  <div class="stat-card">
+<div class="stats stats--performance">
+  {# Month-to-date vs the same days of last Jalali month (like for like); the card opens last month's full report. #}
+  <a class="stat-card stat-card--in stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
     <span class="stat-card__label">فروش این ماه</span>
-    <span class="stat-card__value num">{{ kpi.month.sales|toman }}</span>
+    <span class="stat-card__value num">{{ kpi.month.sales|toman_split }}</span>
+    {% include "shared/_kpi_compare.html" with c=kpi.compare.sales label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.sales|toman }}</strong></span>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
     <span class="stat-card__label">خرید این ماه</span>
-    <span class="stat-card__value num">{{ kpi.month.purchases|toman }}</span>
+    <span class="stat-card__value num">{{ kpi.month.purchases|toman_split }}</span>
+    {% include "shared/_kpi_compare.html" with c=kpi.compare.purchases label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.purchases|toman }}</strong></span>
-  </div>
-  <div class="stat-card">
+  </a>
+  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
     <span class="stat-card__label">هزینه‌های این ماه</span>
-    <span class="stat-card__value num">{{ kpi.month.expenses|toman }}</span>
+    <span class="stat-card__value num">{{ kpi.month.expenses|toman_split }}</span>
+    {% include "shared/_kpi_compare.html" with c=kpi.compare.expenses label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.expenses|toman }}</strong></span>
-  </div>
-  <div class="stat-card stat-card--primary">
+  </a>
+  <a class="stat-card stat-card--primary stat-card--link" href="{% url 'reports:index' %}?preset=month#profit-how" title="دیدن چگونگی محاسبهٔ سود">
     <span class="stat-card__label">سود خالص این ماه</span>
-    <span class="stat-card__value num{% if kpi.month.net_profit < 0 %} is-loss{% endif %}">{{ kpi.month.net_profit|toman }}</span>
-    <span class="field__hint">امروز: <strong class="num">{{ kpi.today.net_profit|toman }}</strong></span>
-  </div>
+    <span class="stat-card__value num{% if kpi.month.net_profit < 0 %} is-loss{% endif %}">{{ kpi.month.net_profit|toman_split }}</span>
+    {# The equation next to the number: why it is low or negative, without opening Reports. #}
+    <span class="stat-card__eq">{{ kpi.month.sales|toman }} فروش − {{ kpi.month.cogs|toman }} بهای کالای فروخته‌شده − {{ kpi.month.expenses|toman }} هزینه</span>
+    {% include "shared/_kpi_compare.html" with c=kpi.compare.net_profit label=kpi.compare_label %}
+    <span class="field__hint">امروز: <strong class="num">{{ kpi.today.net_profit|toman }}</strong> · چطور حساب شد؟ ‹</span>
+  </a>
 </div>
 
 <h2 class="section-label">وضعیت فعلی</h2>
 <div class="stats stats--position">
-  <a class="stat-card stat-card--link" href="{{ totals.receivables.url }}">
+  <a class="stat-card stat-card--in stat-card--link" href="{{ totals.receivables.url }}">
     <span class="stat-card__label">کل مطالبات باز</span>
-    <span class="stat-card__value num">{{ totals.receivables.value|toman }}</span>
+    <span class="stat-card__value num">{{ totals.receivables.value|toman_split }}</span>
   </a>
-  <a class="stat-card stat-card--link" href="{{ totals.payables.url }}">
+  <a class="stat-card stat-card--out stat-card--link" href="{{ totals.payables.url }}">
     <span class="stat-card__label">کل بدهی باز</span>
-    <span class="stat-card__value num">{{ totals.payables.value|toman }}</span>
+    <span class="stat-card__value num">{{ totals.payables.value|toman_split }}</span>
   </a>
   <a class="stat-card stat-card--link" href="{{ totals.bank_balance.url }}">
     <span class="stat-card__label">جمع مانده حساب‌های بانکی</span>
-    <span class="stat-card__value num">{{ totals.bank_balance.value|toman }}</span>
+    <span class="stat-card__value num">{{ totals.bank_balance.value|toman_split }}</span>
   </a>
   <a class="stat-card stat-card--link" href="{{ totals.inventory_value.url }}">
     <span class="stat-card__label">ارزش موجودی انبار</span>
-    <span class="stat-card__value num">{{ totals.inventory_value.value|toman }}</span>
+    <span class="stat-card__value num">{{ totals.inventory_value.value|toman_split }}</span>
   </a>
 </div>
 

@@ -75,6 +75,12 @@ SQLite except `qa_13` BK12, which also fails on the commit before this batch (SQ
 is new; browser-checked the invoice keyboard flow and the date picker with Playwright. QA scripts need `DEBUG=True` when run on
 SQLite (empty `ALLOWED_HOSTS` otherwise gives 400). Phone width (390px) checked on dashboard and inventory; **not checked:** other pages at phone width, print preview.
 
+**Batch 2026-10-04 two-hundred-critic UI audit (D-085):** 196 findings, 147 applied + 37 merged, 64 deferred entries
+(`docs/UI_AUDIT_200_DEFERRED.md`, need Sina). Preview with `.\tools\qa\preview.ps1` (demo data on a throwaway SQLite). Checked: `qa_02..24`
+pass on SQLite except `qa_13` BK12 (pre-existing); Playwright on 33 pages at 1280 and 390: no JS errors, no page-level horizontal
+overflow except the A4 print page; tables scan at 1280/1024. **Not checked:** real PostgreSQL, real keyboard/touch flows beyond
+the sale form, print preview, localStorage behaviour across sessions. Known: a few wide tables still scroll inside their card at 1024px.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or

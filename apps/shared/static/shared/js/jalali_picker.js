@@ -56,6 +56,46 @@
         return match ? { year: +match[1], month: +match[2] } : null;
     }
 
+    /* ---- Tidying what is typed or pasted (presentation only; the server still judges). ----
+       A date copied from chat, Excel or a PDF drags invisible bidi marks along that the server
+       does not treat as whitespace, and a box that flips between Latin and Persian digits
+       cannot match the calendar's selected day. Keep the box in Persian digits, the one
+       script the rest of the page uses. */
+    var INVISIBLE = /[\u200c-\u200f\u202a-\u202e\u2066-\u2069\u00a0\ufeff]/g;
+
+    function toFa(text) {
+        return text.replace(/[0-9٠-٩]/g, function (c) {
+            var n = c.charCodeAt(0);
+            return String.fromCharCode(0x06f0 + (n >= 0x0660 && n <= 0x0669 ? n - 0x0660 : n - 0x30));
+        });
+    }
+
+    function tidy(text) {
+        return toFa(text.replace(INVISIBLE, "").replace(/٫/g, "/"));
+    }
+
+    /* "1405-7-3" -> "۱۴۰۵/۰۷/۰۳"; anything that is not year/month/day is left alone (null). */
+    function canonical(text) {
+        var ascii = String(text || "").replace(INVISIBLE, "")
+            .replace(/[۰-۹]/g, function (c) { return c.charCodeAt(0) - 0x06f0; })
+            .replace(/[٠-٩]/g, function (c) { return c.charCodeAt(0) - 0x0660; });
+        var m = ascii.match(/^\s*(\d{4})\s*[/\-.٫]\s*(\d{1,2})\s*[/\-.٫]\s*(\d{1,2})\s*$/);
+        return m ? toFa(m[1] + "/" + ("0" + m[2]).slice(-2) + "/" + ("0" + m[3]).slice(-2)) : null;
+    }
+
+    function tidyLive(input) {
+        var before = input.value;
+        var after = tidy(before);
+        if (after === before) return;
+        var caret = input.selectionStart;
+        input.value = after;
+        // Setting .value jumps the caret to the end; put it back where the user was typing.
+        if (caret !== null && input === document.activeElement) {
+            var pos = tidy(before.slice(0, caret)).length;
+            try { input.setSelectionRange(pos, pos); } catch (e) { /* not selectable: ignore */ }
+        }
+    }
+
     function currentGrid() {
         return popup.querySelector(".jdp__grid");
     }
@@ -83,10 +123,12 @@
 
     function markSelected() {
         if (!activeInput || !activeInput.value) return;
-        var wanted = activeInput.value.trim();
+        // Tolerant of "1405/7/3" or Latin digits typed by hand, so the day still lights up.
+        var wanted = canonical(activeInput.value) || activeInput.value.trim();
         popup.querySelectorAll("[data-value]").forEach(function (cell) {
             if (cell.getAttribute("data-value") === wanted) {
                 cell.classList.add("is-selected");
+                cell.setAttribute("aria-pressed", "true");
             }
         });
     }
@@ -177,6 +219,34 @@
     function isDateInput(element) {
         return element && element.classList && element.classList.contains("js-jalali-date");
     }
+
+    // Live: strip invisibles and show Persian digits as the user types (same length for digits).
+    document.addEventListener("input", function (event) {
+        if (isDateInput(event.target) && !event.isComposing) tidyLive(event.target);
+    }, true);
+
+    document.addEventListener("paste", function (event) {
+        var input = event.target;
+        if (!isDateInput(input)) return;
+        setTimeout(function () {                    // after the browser has inserted the text
+            tidyLive(input);
+            var wanted = canonical(input.value);
+            if (wanted) {
+                input.value = wanted;
+                input.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            if (popup && !popup.hidden && activeInput === input) open(input);
+        }, 0);
+    }, true);
+
+    // Typed by hand and left: store the product's own format. Capture phase, so every other
+    // listener of this change event already sees the canonical text.
+    document.addEventListener("change", function (event) {
+        var input = event.target;
+        if (!isDateInput(input)) return;
+        var wanted = canonical(input.value);
+        if (wanted && wanted !== input.value) input.value = wanted;
+    }, true);
 
     document.addEventListener("focusin", function (event) {
         if (isDateInput(event.target)) {
