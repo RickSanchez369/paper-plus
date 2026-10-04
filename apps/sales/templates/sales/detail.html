@@ -10,8 +10,10 @@ invoice ever produced, and cancel (superuser-only, calls the existing
 cancel_sale -- D-023, this view never writes stock/money itself).
 {% endcomment %}
 
-{% block title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
-{% block header %}فاکتور فروش {{ invoice.invoice_number }}{% endblock %}
+{# Kind word first so it survives tab truncation; Persian digits like the h1. #}
+{% block title %}فروش {{ invoice.invoice_number|fa_digits }} · {{ invoice.customer.name }}{% if invoice.status == "cancelled" %} (لغو شده){% endif %}{% endblock %}
+{% block header %}فاکتور فروش {{ invoice.invoice_number|fa_digits }}{% endblock %}
+{% block head %}<script src="{% static_v 'sales/js/sales_pages.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs">
@@ -23,7 +25,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
     <div>
       <h1>فاکتور {{ invoice.invoice_number|fa_digits }}</h1>
       <p class="page-head__lede">
-        مشتری: <a href="{% url 'customers:detail' invoice.customer.pk %}">{{ invoice.customer.name }}</a> ·
+        مشتری: {% party_link invoice.customer %} ·
         نوع فروش: {{ invoice.get_price_tier_display }} ·
         تاریخ: {{ invoice.invoice_date|jalali_long }} ·
         ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}
@@ -32,17 +34,42 @@ cancel_sale -- D-023, this view never writes stock/money itself).
     </div>
     <div class="sale-detail__actions">
       {% status_badge "invoice" invoice.status invoice.get_status_display %}
-      <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet">چاپ فاکتور</a>
+      {% if invoice.status == "cancelled" %}
+        {# A cancel usually means "let me retype it right": the new-sale form opens with this customer already chosen. #}
+        <a href="{% url 'sales:new' %}?customer={{ invoice.customer.pk }}" class="btn">ثبت فاکتور جایگزین</a>
+      {% endif %}
+      <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet" data-sp-print
+         title="چاپ مستقیم (Ctrl+P). برای پیش‌نمایش، با Ctrl+کلیک باز کنید.">چاپ فاکتور</a>
       {% if can_cancel %}
-        <form method="post" action="{% url 'sales:cancel' invoice.pk %}"
-              onsubmit="return confirm('این فاکتور لغو شود؟ موجودی برگردانده می‌شود و این عملیات بازگشت‌ناپذیر است.');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn--danger">لغو فاکتور</button>
-        </form>
+        <button type="button" class="btn btn--danger" data-sp-dialog-open="cancel-dialog">لغو فاکتور</button>
       {% endif %}
     </div>
   </div>
 </div>
+
+{% if invoice.status == "cancelled" %}
+  <div class="sale-cancelled-note" role="status">
+    این فاکتور لغو شده است: کالا به انبار برگشته و مبلغ هر پرداختی که ثبت شده بود به‌صورت پرداخت برگشتی ثبت شده است (جدول‌های پایین را ببینید).
+    برای اصلاح، یک فاکتور جدید ثبت کنید (دکمهٔ «ثبت فاکتور جایگزین» مشتری را از قبل انتخاب می‌کند).
+  </div>
+{% endif %}
+
+{# Related-records trail: customer, this invoice and its cheques, each one click from the others. #}
+<nav class="trail" aria-label="موارد مرتبط">
+  <ol>
+    {% url 'customers:detail' invoice.customer.pk as customer_url %}
+    {% include "shared/_trail_chip.html" with kind="مشتری" text=invoice.customer.name url=customer_url %}
+    {% if invoice.status == "cancelled" %}
+      {% include "shared/_trail_chip.html" with kind="فاکتور" text=invoice.invoice_number|fa_digits current=True badge_kind="invoice" badge_value=invoice.status badge_label=invoice.get_status_display %}
+    {% else %}
+      {% include "shared/_trail_chip.html" with kind="فاکتور" text=invoice.invoice_number|fa_digits current=True badge_kind="payment" badge_value=invoice.payment_status badge_label=invoice.payment_status.label meta_label="مانده" meta=invoice.outstanding|toman %}
+    {% endif %}
+    {% for cheque in invoice.cheques.all %}
+      {% url 'cheques:detail' cheque.pk as cheque_url %}
+      {% include "shared/_trail_chip.html" with kind="چک" text=cheque.cheque_number|default:"(بدون شماره)" url=cheque_url badge_kind="cheque" badge_value=cheque.status badge_label=cheque.get_status_display meta=cheque.amount|toman %}
+    {% endfor %}
+  </ol>
+</nav>
 
 {% if invoice.status != "cancelled" %}
   {% include "shared/_invoice_summary.html" with total=invoice.total paid=invoice.paid_amount outstanding=invoice.outstanding payment_status=invoice.payment_status %}
@@ -104,6 +131,12 @@ cancel_sale -- D-023, this view never writes stock/money itself).
       {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
       — پرداخت‌شده: <span class="num">{{ invoice.paid_amount|toman }}</span>
     </p>
+    {% if invoice.status == "confirmed" and invoice.outstanding %}
+      <p>
+        <a href="{% url 'receivables:list' %}" class="btn btn--quiet"
+           title="مانده این فاکتور را در صفحهٔ مطالبات دریافت کنید">ثبت دریافت در صفحهٔ مطالبات</a>
+      </p>
+    {% endif %}
 
     {% if invoice.payment_allocations.all %}
       <div class="table-card"><table class="data-table">
@@ -120,7 +153,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
               <td class="num">{{ allocation.payment.payment_date|jalali }}</td>
               <td class="num">{{ allocation.amount|toman }}</td>
               <td>
-                {% if allocation.payment.cheque %}چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}
+                {% if allocation.payment.cheque %}<a href="{% url 'cheques:detail' allocation.payment.cheque.pk %}">چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}</a>
                 {% elif allocation.payment.bank_account %}{{ allocation.payment.bank_account.name }}
                 {% else %}نقدی{% endif %}
                 {% if allocation.reversal_payment %}
@@ -150,9 +183,9 @@ cancel_sale -- D-023, this view never writes stock/money itself).
         <tbody>
           {% for cheque in invoice.cheques.all %}
             <tr>
-              <td>{{ cheque.cheque_number|default:"—" }}</td>
-              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
-              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td>{% if cheque.cheque_number %}<a href="{% url 'cheques:detail' cheque.pk %}">{{ cheque.cheque_number }}</a>{% else %}<a href="{% url 'cheques:detail' cheque.pk %}">—</a>{% endif %}</td>
+              <td>{{ cheque.issuer|dash }}</td><td>{{ cheque.bank_name|dash }}</td>
+              <td class="num">{{ cheque.due_date|jalali|dash }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>
                 {% status_badge "cheque" cheque.status cheque.get_status_display %}
@@ -164,4 +197,35 @@ cancel_sale -- D-023, this view never writes stock/money itself).
     {% endif %}
   </div>
 </div>
+{% if can_cancel %}
+<dialog class="quick-dialog cancel-dialog" id="cancel-dialog" aria-labelledby="cancel-title" data-sp-dialog-backdrop>
+  <form method="post" action="{% url 'sales:cancel' invoice.pk %}">
+    {% csrf_token %}
+    <h2 class="quick-dialog__title" id="cancel-title">لغو فاکتور {{ invoice.invoice_number|fa_digits }}؟</h2>
+    <p class="field__hint">با لغو این فاکتور، این‌ها به‌صورت خودکار انجام می‌شود:</p>
+    <ul class="cancel-dialog__effects">
+      {% for item in invoice.items.all %}
+        <li><span class="cancel-dialog__tag">انبار</span>{{ item|line_units }} «{{ item.product.name }}» به انبار برمی‌گردد</li>
+      {% endfor %}
+      {% for allocation in invoice.payment_allocations.all %}{% if not allocation.reversal_payment %}
+        <li><span class="cancel-dialog__tag">پول</span><span class="num">{{ allocation.amount|toman }}</span>
+          {% if allocation.payment.bank_account %}به حساب «{{ allocation.payment.bank_account.name }}»{% endif %}
+          {% if allocation.payment.cheque %}(پرداخت با چک {{ allocation.payment.cheque.cheque_number|default:"بدون شماره" }}){% endif %}
+          برگشت داده می‌شود (ثبت پرداخت معکوس با تاریخ امروز)</li>
+      {% endif %}{% endfor %}
+      {% for cheque in invoice.cheques.all %}{% if cheque.status == "pending" %}
+        <li><span class="cancel-dialog__tag">چک</span>چک {{ cheque.cheque_number|default:"(بدون شماره)" }} به مبلغ <span class="num">{{ cheque.amount|toman }}</span> باطل می‌شود</li>
+      {% endif %}{% endfor %}
+      {% if invoice.outstanding %}
+        <li><span class="cancel-dialog__tag">حساب مشتری</span>مانده <span class="num">{{ invoice.outstanding|toman }}</span> از بدهی «{{ invoice.customer.name }}» کم می‌شود</li>
+      {% endif %}
+    </ul>
+    <p class="field__hint">فاکتور لغوشده قابل ویرایش یا بازگشایی نیست؛ برای اصلاح، یک فاکتور جدید ثبت کنید. سابقهٔ فاکتور و پرداخت‌ها حفظ می‌شود.</p>
+    <div class="cancel-dialog__actions">
+      <button type="submit" class="btn btn--danger">بله، فاکتور {{ invoice.invoice_number|fa_digits }} لغو شود</button>
+      <button type="button" class="btn btn--quiet" data-sp-dialog-close autofocus>انصراف، فاکتور بماند</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}

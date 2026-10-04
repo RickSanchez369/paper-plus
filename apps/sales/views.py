@@ -17,7 +17,9 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, TemplateView
 
 from apps.inventory.selectors import get_stock_map
@@ -56,35 +58,52 @@ class SalesListView(LoginRequiredMixin, TemplateView):
         filter_form = SalesFilterForm(self.request.GET or None)
         date_range = range_form.range
 
-        qs = (
-            SalesInvoice.objects.exclude(status=SalesInvoice.Status.DRAFT)
-            .select_related("customer")
-            .prefetch_related("items__consumptions__layer", "payment_allocations")
-            .filter(invoice_date__gte=date_range[0], invoice_date__lte=date_range[1])
-        )
+        data = filter_form.cleaned_data if filter_form.is_valid() else {}
+        # The box searches two things; saying so spares the owner guessing.
+        filter_form.fields["q"].widget.attrs.setdefault("placeholder", "شمارهٔ فاکتور یا نام مشتری")
 
-        if filter_form.is_valid():
-            data = filter_form.cleaned_data
+        def run_filters(qs):
+            """Apply the search/product filters in SQL and the derived-value filters in Python."""
             if data.get("q"):
                 qs = qs.filter(Q(invoice_number__icontains=data["q"]) | Q(customer__name__icontains=data["q"]))
             if data.get("product"):
                 qs = qs.filter(items__product=data["product"]).distinct()
+            rows = list(qs.order_by("-invoice_date", "-created_at"))
 
-        invoices = list(qs.order_by("-invoice_date", "-created_at"))
-
-        # payment_status/total are derived properties (D-025), not DB
-        # columns -- filtered in Python. The invoice count this ever runs
-        # over is small (one business, one ledger); a materialized view is
-        # a problem for when that stops being true, not now.
-        if filter_form.is_valid():
-            data = filter_form.cleaned_data
+            # payment_status/total are derived properties (D-025), not DB
+            # columns -- filtered in Python. The invoice count this ever runs
+            # over is small (one business, one ledger); a materialized view is
+            # a problem for when that stops being true, not now.
             if data.get("payment_status"):
-                invoices = [i for i in invoices if i.payment_status == data["payment_status"]]
+                rows = [i for i in rows if i.payment_status == data["payment_status"]]
             lo, hi = data.get("amount_min"), data.get("amount_max")
             if lo is not None:
-                invoices = [i for i in invoices if i.total >= lo]
+                rows = [i for i in rows if i.total >= lo]
             if hi is not None:
-                invoices = [i for i in invoices if i.total <= hi]
+                rows = [i for i in rows if i.total <= hi]
+            return rows
+
+        base_qs = (
+            SalesInvoice.objects.exclude(status=SalesInvoice.Status.DRAFT)
+            .select_related("customer")
+            .prefetch_related("items__consumptions__layer", "payment_allocations")
+        )
+        invoices = run_filters(base_qs.filter(invoice_date__gte=date_range[0], invoice_date__lte=date_range[1]))
+
+        # An old invoice typed into the search box reads as "not found" when the
+        # date window is what hides it; offer the same search over the dates its
+        # matches span, as an explicit custom range (the default window is unchanged).
+        widen = None
+        if not invoices and data.get("q"):
+            outside = run_filters(base_qs)
+            if outside:
+                params = self.request.GET.copy()
+                for key in ("preset", "start", "end", "page"):
+                    params.pop(key, None)
+                params["preset"] = DateRangeForm.Preset.CUSTOM.value
+                params["start"] = dates.format_date(min(i.invoice_date for i in outside))
+                params["end"] = dates.format_date(max(i.invoice_date for i in outside))
+                widen = {"count": len(outside), "url": f"?{params.urlencode()}"}
 
         invoices, sort_key, sort_dir = sort_rows(self.request, invoices, {
             "number": lambda i: i.invoice_number,
@@ -102,6 +121,7 @@ class SalesListView(LoginRequiredMixin, TemplateView):
             "sort_key": sort_key,
             "sort_dir": sort_dir,
             "invoices": page_obj.object_list,
+            "widen": widen,
             "cards": self._cards(),
         })
         return context
@@ -314,10 +334,12 @@ class SalesCancelView(LoginRequiredMixin, View):
         return redirect("sales:detail", pk=pk)
 
 
+@method_decorator(xframe_options_sameorigin, name="dispatch")
 class SalesPrintView(LoginRequiredMixin, DetailView):
     """A print-friendly render of the same invoice (RULES.md excludes PDF
     generation from scope -- this is a plain page for the browser's own
-    print dialog, not a generated file)."""
+    print dialog, not a generated file). Framable by our own pages only: the
+    list/detail "چاپ" links print it through a hidden same-origin iframe."""
 
     model = SalesInvoice
     template_name = "sales/print.html"

@@ -41,7 +41,8 @@ which sale_form.js swaps for a real index before inserting it.
     {% for error in form.unit_price.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
   </div>
   <span class="item-row__total num" data-item-row-total data-label="جمع (تومان)">۰</span>
-  <button type="button" class="btn btn--quiet item-row__remove" data-item-row-remove>حذف</button>
+  {# Removal is one click but reversible (sale_form.js offers "بازگردانی"); the word shows on touch layouts, the cross alone on desktop. #}
+  <button type="button" class="btn btn--quiet btn--remove item-row__remove" data-item-row-remove aria-label="حذف این ردیف" title="حذف این ردیف"><span aria-hidden="true">✕</span><span class="item-row__remove-text">حذف</span></button>
   <div class="item-row__note">
     <span class="field__hint" data-item-row-after></span>
     <span class="field__error" data-item-row-warn></span>

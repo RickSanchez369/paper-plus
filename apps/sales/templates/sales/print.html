@@ -19,8 +19,30 @@ Who issues it comes from settings.COMPANY (filled from .env, see
 <body class="print-page">
   <div class="print-toolbar no-print">
     <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn--quiet">بازگشت</a>
-    <button type="button" class="btn" onclick="(document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { window.print(); })">چاپ فاکتور</button>
-    <span class="print-toolbar__hint">برای چاپ، گزینهٔ «Headers and footers» مرورگر را خاموش کنید.</span>
+    <button type="button" class="btn" id="print-go">چاپ فاکتور</button>
+    <p class="print-toolbar__what" id="print-what">
+      چاپ می‌شود: فاکتور <b>{{ invoice.invoice_number|fa_digits|default:"—" }}</b> · {{ invoice.customer.name }} ·
+      <span class="num">{{ invoice.total|toman }}</span> · یک برگ A4 عمودی
+    </p>
+  </div>
+  {# What the paper will carry that the owner might not expect (watermark, missing seller lines). #}
+  <div class="print-notes no-print">
+    {% if invoice.status == "draft" %}
+      <p class="print-note">این فاکتور هنوز پیش‌نویس است؛ نشان «پیش‌نویس» روی کاغذ هم چاپ می‌شود.</p>
+    {% elif invoice.status == "cancelled" %}
+      <p class="print-note print-note--danger">این فاکتور لغو شده؛ نشان «باطل شده» روی کاغذ چاپ می‌شود.</p>
+    {% endif %}
+    {% if not company.address or not company.phone or not company.economic_code %}
+      <p class="print-note">مشخصات فروشنده کامل نیست و این موارد روی کاغذ نمی‌آید:
+        {% if not company.address %}<b class="print-note__miss">نشانی</b>{% endif %}
+        {% if not company.phone %}<b class="print-note__miss">تلفن</b>{% endif %}
+        {% if not company.economic_code %}<b class="print-note__miss">شمارهٔ اقتصادی</b>{% endif %}
+        — در تنظیمات شرکت (فایل .env) پر شود.</p>
+    {% endif %}
+    <details class="print-tip">
+      <summary>روی کاغذ تاریخ یا نشانی سایت چاپ شد؟</summary>
+      <p>در پنجرهٔ چاپ مرورگر، گزینهٔ «سرصفحه و پاصفحه» (Headers and footers) را خاموش کنید.</p>
+    </details>
   </div>
 
   <article class="sheet">
@@ -66,6 +88,10 @@ Who issues it comes from settings.COMPANY (filled from .env, see
 
     <table class="lines">
       <thead>
+        {# Repeats on every printed page, so a loose continuation sheet can be tied back to its invoice. #}
+        <tr class="lines__ident">
+          <th colspan="5">فاکتور {{ invoice.invoice_number|fa_digits|default:"—" }} · {{ invoice.customer.name }} · {{ invoice.invoice_date|jalali }}</th>
+        </tr>
         <tr>
           <th class="lines__row">ردیف</th>
           <th class="lines__name">شرح کالا</th>
@@ -128,5 +154,23 @@ Who issues it comes from settings.COMPANY (filled from .env, see
       <p>ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone|fa_digits }}</p>
     </footer>
   </article>
+
+  <script>
+    (function () {
+      var go = document.getElementById("print-go");
+      if (go) {
+        go.addEventListener("click", function () {
+          // Vazirmatn must be ready, or the first print uses a fallback font.
+          (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { window.print(); });
+        });
+      }
+      window.addEventListener("afterprint", function () {
+        var what = document.getElementById("print-what");
+        if (what) {
+          what.textContent = "چاپ انجام شد؟ اگر کاغذ درست بود «بازگشت» را بزنید؛ برای چاپ دوباره دکمه را بزنید.";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

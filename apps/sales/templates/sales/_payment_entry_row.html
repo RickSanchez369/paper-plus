@@ -14,12 +14,19 @@ changes; the form drops those values server-side for a non-cheque row).
     {% include "shared/_field.html" with field=form.method %}
     {% include "shared/_field.html" with field=form.amount %}
     {% include "shared/_field.html" with field=form.bank_account %}
-    <button type="button" class="btn btn--quiet payment-row__remove" data-payment-row-remove>حذف</button>
+    <button type="button" class="btn btn--quiet btn--remove payment-row__remove" data-payment-row-remove aria-label="حذف این ردیف پرداخت"><span aria-hidden="true">✕</span> حذف</button>
   </div>
   <div class="payment-row__cheque" data-cheque-only{% if form.method.value != "cheque" %} hidden{% endif %}>
     {% include "shared/_field.html" with field=form.cheque_number %}
     {% include "shared/_field.html" with field=form.bank_name %}
     {% include "shared/_field.html" with field=form.issuer %}
     {% include "shared/_field.html" with field=form.due_date %}
+    {# Due-date shortcuts count from the invoice date (sale_form.js); the picker and typing still work. #}
+    <div class="sf-chip-row payment-row__due-chips" role="group" aria-label="مهلت سریع سررسید چک">
+      <span class="credit-due__label">سررسید چک:</span>
+      <button type="button" class="sf-chip" data-cheque-due-days="30">۳۰ روز</button>
+      <button type="button" class="sf-chip" data-cheque-due-days="60">۶۰ روز</button>
+      <button type="button" class="sf-chip" data-cheque-due-days="90">۹۰ روز</button>
+    </div>
   </div>
 </div>
