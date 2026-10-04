@@ -1,0 +1,107 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+New sales/purchase return (D-089), started from one confirmed invoice. Each line
+shows what was sold/bought, what already came back and what is left; the user
+types cartons and/or packs to return. The value is worked out on the server
+from the line's own price (never typed), and so is the split of the money:
+first off what is still open on the invoice, the rest refunded or kept as credit.
+{% endcomment %}
+
+{% block title %}ثبت مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %} · فاکتور {{ invoice.invoice_number|fa_digits }}{% endblock %}
+{% block header %}ثبت مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %}{% endblock %}
+{% block head %}<script src="{% static_v 'returns/js/return_form.js' %}" defer></script>{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'returns:list' %}{% if purchase %}?kind=purchase{% endif %}">مرجوعی</a> /
+  <a href="{% url invoice_url invoice.pk %}">فاکتور {{ invoice.invoice_number|fa_digits }}</a> / ثبت مرجوعی
+</p>
+
+<div class="page-head">
+  <h1>مرجوعی از فاکتور {{ invoice.invoice_number|fa_digits }}</h1>
+  <p class="page-head__lede">{% if purchase %}تأمین‌کننده{% else %}مشتری{% endif %}: <strong>{{ party.name }}</strong> ·
+    تاریخ فاکتور: <span class="num">{{ invoice.invoice_date|jalali }}</span> ·
+    مانده باز فاکتور: <span class="num">{{ invoice.outstanding|toman }}</span></p>
+</div>
+
+{% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+<form method="post" novalidate data-return-form>
+  {% csrf_token %}
+  {% include "shared/_form_errors.html" with form=form %}
+
+  <div class="card">
+    <div class="card__body">
+      <h2>کالاهای مرجوعی</h2>
+      <p class="field__hint">
+        {% if purchase %}فقط آنچه از همین خرید هنوز در انبار مانده قابل مرجوع است. مبلغ برگشتی، قیمت کالا در همین فاکتور است (کرایه بار برنمی‌گردد).
+        {% else %}مبلغ هر ردیف از قیمت واقعی همان ردیف در فاکتور (پس از سهم تخفیف) حساب می‌شود و کالا با بهای تمام‌شدهٔ همان فروش به انبار برمی‌گردد.{% endif %}
+      </p>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>کالا</th>
+              <th>{% if purchase %}خریده‌شده{% else %}فروخته‌شده{% endif %}</th>
+              <th>مرجوع‌شده</th>
+              <th>قابل مرجوع</th>
+              <th>کارتن</th>
+              <th>بسته</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              {% with item=row.item %}
+              <tr data-return-row data-left="{{ row.left }}" data-ratio="{{ item.pack_per_carton }}">
+                <td>{{ item.product.name }}</td>
+                <td class="num">{{ item|line_units }}</td>
+                <td class="num">{{ row.returned|fa_number }} بسته</td>
+                <td class="num">{{ row.left|fa_number }} بسته{% if purchase and row.shelf is not None and row.shelf < item.quantity %} <small class="field__hint">(در انبار)</small>{% endif %}</td>
+                <td><input class="field__control ret-qty" type="text" inputmode="numeric" dir="ltr" name="cartons_{{ item.pk }}" value="{{ row.typed_cartons }}" aria-label="کارتن مرجوعی {{ item.product.name }}" {% if not row.left %}disabled{% endif %}></td>
+                <td><input class="field__control ret-qty" type="text" inputmode="numeric" dir="ltr" name="packs_{{ item.pk }}" value="{{ row.typed_packs }}" aria-label="بستهٔ مرجوعی {{ item.product.name }}" {% if not row.left %}disabled{% endif %}>
+                  <p class="field__error" data-over hidden>بیش از مقدار قابل مرجوع</p></td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__body">
+      <h2>تسویهٔ مبلغ</h2>
+      <p class="field__hint">مبلغ مرجوعی اول از مانده باز همین فاکتور (به‌جز چک‌های در انتظار) کم می‌شود. اگر بیشتر بود، مازاد:</p>
+      <fieldset class="field">
+        <legend class="field__label">{{ form.settle_mode.label }}</legend>
+        {% for radio in form.settle_mode %}
+          <label class="check">{{ radio.tag }} {{ radio.choice_label }}</label>
+        {% endfor %}
+      </fieldset>
+      <div data-refund-account>
+        {% include "shared/_field.html" with field=form.bank_account %}
+      </div>
+      {% include "shared/_field.html" with field=form.return_date %}
+      {% include "shared/_field.html" with field=form.note %}
+      <button type="submit" class="btn">ثبت مرجوعی</button>
+      <a href="{% url invoice_url invoice.pk %}" class="btn btn--quiet">انصراف</a>
+    </div>
+  </div>
+</form>
+
+{% if open_returns %}
+<div class="card">
+  <div class="card__body">
+    <h2>مرجوعی‌های قبلی این فاکتور</h2>
+    <ul>
+      {% for doc in open_returns %}
+        <li><a href="{% if purchase %}{% url 'returns:purchase_detail' doc.pk %}{% else %}{% url 'returns:sales_detail' doc.pk %}{% endif %}">{{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

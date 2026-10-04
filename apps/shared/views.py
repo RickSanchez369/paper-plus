@@ -9,17 +9,19 @@ Views never write (the rule that used to say "Admin never writes" — money
 and stock still go through `apps/*/services.py` inside `transaction.atomic`).
 """
 
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView, View
 
-from . import backup, dashboard, dates, exchange, reports, user_activity
+from . import backup, dashboard, dates, exchange, rate_card, reports, user_activity
 from .forms import DateRangeForm, UserActivityFilterForm
 from .models import ExchangeRate
 
@@ -59,6 +61,7 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
         context.update({
             "today": timezone.localdate(),
             "kpi": dashboard.kpi_cards(),
+            "setup": dashboard.setup_progress(),
             "totals": dashboard.totals_now(),
             "cheques_incomplete": dashboard.cheques_needing_completion(),
             "dues": dashboard.dues_overview(),
@@ -76,6 +79,13 @@ class UsdRateRefreshView(LoginRequiredMixin, View):
 
     def post(self, request):
         row = exchange.fetch_usd_rate()
+        if request.headers.get("HX-Request"):
+            # In-place refresh: the card itself shows the new rate or the failure, so no flash message
+            # (it would only appear on the next full page). Always 200, whatever the fetch result.
+            context = rate_card.usd_rate_context(
+                request, just_updated=row.status == ExchangeRate.Status.OK, next_url=request.POST.get("next", ""),
+            )
+            return render(request, "shared/_usd_rate_card.html", context)
         if row.status == ExchangeRate.Status.OK:
             messages.success(request, f"نرخ دلار بروز شد: {row.rate:,} تومان.")
         else:
@@ -84,6 +94,35 @@ class UsdRateRefreshView(LoginRequiredMixin, View):
         if not url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
             target = reverse("dashboard")
         return redirect(target)
+
+
+def _profit_bridge(cards):
+    """
+    The «سود چطور حساب می‌شود» rows as a proportional bridge: label, value, kind and where the bar
+    starts/how wide it is (whole percent of the largest figure, from the inline start). Presentation
+    only -- every number is read from `reports.summary_cards`, nothing is recomputed.
+    """
+    sales, cogs = cards["sales"]["value"], cards["cogs"]
+    gross, expenses, net = cards["gross_profit"]["value"], cards["expenses"]["value"], cards["net_profit"]["value"]
+    scale = max(sales, cogs, gross, expenses, abs(net), 1)
+
+    def pct(value):
+        return round(abs(value) * 100 / scale)
+
+    return [
+        {"label": "جمع فروش", "value": sales, "kind": "total", "link": "sales", "offset": 0, "width": pct(sales)},
+        {"label": "− بهای تمام‌شدهٔ کالاهای فروخته‌شده", "note": "قیمت خرید همان کالا، قدیمی‌ترین موجودی اول (FIFO)",
+         "value": cogs, "kind": "minus", "offset": pct(sales - cogs) if sales >= cogs else 0, "width": pct(cogs)},
+        {"label": "= سود ناخالص", "value": gross, "kind": "sub", "offset": 0, "width": pct(gross)},
+    ] + ([
+        # D-089: profit the period's sales returns took back (their value minus the cost back on the shelf).
+        {"label": "− سود برگشتی مرجوعی‌ها", "note": "مبلغ مرجوعی فروش منهای بهای کالای برگشته به انبار",
+         "value": cards["returns_profit"]["value"], "kind": "minus", "offset": 0, "width": pct(cards["returns_profit"]["value"])},
+    ] if cards["returns_profit"]["value"] else []) + [
+        {"label": "− هزینه‌ها", "value": expenses, "kind": "minus", "link": "expenses",
+         "offset": pct(gross - expenses) if gross >= expenses else 0, "width": pct(expenses)},
+        {"label": "= سود خالص", "value": net, "kind": "loss" if net < 0 else "result", "offset": 0, "width": pct(net)},
+    ]
 
 
 class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
@@ -103,8 +142,15 @@ class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         start, end = context["date_range"]
 
+        cards = reports.summary_cards(start, end)
         context.update({
-            "cards": reports.summary_cards(start, end),
+            "cards": cards,
+            "today": timezone.localdate(),
+            "net_loss": max(-cards["net_profit"]["value"], 0),
+            "prev_range": reports.previous_period(start, end),
+            "profit_bridge": _profit_bridge(cards),
+            # Carry the chosen range into the module lists the report rows link to.
+            "range_qs": urlencode({key: self.request.GET[key] for key in ("preset", "start", "end") if self.request.GET.get(key)}),
             "sales_by_product": reports.sales_by_product(start, end),
             "sales_by_tier": reports.sales_by_tier(start, end),
             "purchases_by_product": reports.purchases_by_product(start, end),
@@ -139,9 +185,30 @@ class UserActivityView(DateRangeMixin, LoginRequiredMixin, TemplateView):
             selected = filter_form.cleaned_data["user"]
             rows = [row for row in rows if row["actor"].pk == selected.pk]
 
+        # Presentation only: team totals per column, and each cell's size against the busiest user's
+        # in that column (so a bar says "who did the most"). Everything comes from `rows` as read.
+        buckets = user_activity.BUCKET_ORDER
+        totals = {
+            bucket: {
+                "count": sum(row["counts"][bucket] for row in rows),
+                "amount": sum(row["amounts"][bucket] for row in rows),
+            }
+            for bucket in buckets
+        }
+        peak = {bucket: max((row["counts"][bucket] for row in rows), default=0) or 1 for bucket in buckets}
+        for row in rows:
+            row["total_count"] = sum(row["counts"].values())
+            row["pct"] = {bucket: round(100 * row["counts"][bucket] / peak[bucket]) for bucket in buckets}
+
         context.update({
             "filter_form": filter_form,
             "rows": rows,
+            "totals": totals,
+            # The range and event type the drill-down page should inherit from this one.
+            "detail_qs": urlencode({
+                key: self.request.GET[key]
+                for key in ("preset", "start", "end", "event_type") if self.request.GET.get(key)
+            }),
             "bucket_order": user_activity.BUCKET_ORDER,
             "bucket_labels": user_activity.BUCKET_LABELS,
         })
@@ -163,13 +230,20 @@ class UserActivityDetailView(LoginRequiredMixin, TemplateView):
         date_range = range_form.range
         start, end = date_range
         event_type = filter_form.data.get("event_type") if filter_form.is_bound else None
+        # A summary-table count links here with the group it counted; a concrete event type replaces it.
+        bucket = self.request.GET.get("bucket")
+        bucket = bucket if bucket in user_activity.BUCKET_LABELS and not event_type else None
 
+        feed = user_activity.get_activity_feed(start, end, actor=actor, event_type=event_type, bucket=bucket)
         context.update({
             "actor": actor,
             "range_form": range_form,
             "date_range": date_range,
             "filter_form": filter_form,
-            "feed": user_activity.get_activity_feed(start, end, actor=actor, event_type=event_type),
+            "feed": feed,
+            "bucket": bucket,
+            "bucket_label": user_activity.BUCKET_LABELS.get(bucket),
+            "clear_bucket_qs": urlencode({key: value for key, value in self.request.GET.items() if key != "bucket"}),
         })
         return context
 
@@ -212,6 +286,12 @@ class BackupView(LoginRequiredMixin, TemplateView):
     """
 
     template_name = "shared/backup.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # The real, dated name the file will get, shown before the click.
+        context["filename_example"] = backup.backup_filename()
+        return context
 
     def post(self, request, *args, **kwargs):
         handle = backup.build_backup()

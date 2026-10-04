@@ -110,6 +110,8 @@ class DateRangeForm(forms.Form):
         TODAY = "today", "امروز"
         WEEK = "week", "این هفته"
         MONTH = "month", "این ماه"
+        PREV_MONTH = "prev_month", "ماه قبل"
+        YEAR = "year", "امسال"
         CUSTOM = "custom", "بازهٔ دلخواه"
 
     preset = forms.ChoiceField(
@@ -154,6 +156,11 @@ class DateRangeForm(forms.Form):
         if preset == DateRangeForm.Preset.WEEK:
             return dates.week_bounds(today)
         jalali_today = dates.today()
+        if preset == DateRangeForm.Preset.PREV_MONTH:
+            year, month = (jalali_today.year, jalali_today.month - 1) if jalali_today.month > 1 else (jalali_today.year - 1, 12)
+            return dates.month_bounds(year, month)
+        if preset == DateRangeForm.Preset.YEAR:
+            return dates.month_bounds(jalali_today.year, 1)[0], dates.month_bounds(jalali_today.year, 12)[1]
         return dates.month_bounds(jalali_today.year, jalali_today.month)
 
     @property

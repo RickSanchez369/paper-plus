@@ -12,7 +12,7 @@
 
   function formatToman(value) {
     var n = Math.max(0, Math.round(value || 0));
-    var withCommas = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    var withCommas = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u066c");
     return withCommas.replace(/[0-9]/g, function (digit) {
       return String.fromCharCode(0x06f0 + Number(digit));
     });
@@ -49,8 +49,21 @@
     return intVal(row.querySelector('input[name$="-cartons"]')) * ratio + intVal(row.querySelector('input[name$="-packs"]'));
   }
 
+  // Read-only preview of allocate_freight (D-082): floor by packs, the leftover Toman go to the
+  // biggest remainders. Display only; the server redoes the split at confirm.
+  function freightShares(freight, lines) {
+    var packs = lines.reduce(function (s, l) { return s + l.qty; }, 0);
+    var shares = lines.map(function (l) { return packs > 0 ? Math.floor(freight * l.qty / packs) : 0; });
+    var leftover = freight - shares.reduce(function (s, v) { return s + v; }, 0);
+    var order = lines.map(function (l, i) { return { i: i, r: packs > 0 ? (freight * l.qty) % packs : 0 }; });
+    order.sort(function (a, b) { return b.r - a.r || a.i - b.i; });
+    for (var k = 0; k < order.length && leftover > 0; k++, leftover--) shares[order[k].i] += 1;
+    return shares;
+  }
+
   function recomputeInvoice() {
     var total = 0;
+    var lines = [];
     document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
       var lineTotal =
         intVal(row.querySelector('input[name$="-cartons"]')) * intVal(row.querySelector('input[name$="-carton_price"]')) +
@@ -62,22 +75,59 @@
       if (after && row.dataset.stock !== undefined) {
         after.textContent = qty > 0 ? "پس از این خرید: " + window.PaperUnits.phrase(parseInt(row.dataset.stock, 10) + qty, row.dataset.ratio) : "";
       }
+      lines.push({ row: row, lineTotal: lineTotal, qty: qty });
       total += lineTotal;
     });
 
     // Freight counts only while its box is ticked (D-082); it is part of what the supplier is owed.
+    // The amount box stays visible: typing a number ticks the box itself (see the freight listeners below).
     var freight = 0;
     var tick = document.getElementById("id_has_freight");
     if (tick && tick.checked) freight = intVal(document.getElementById("id_freight_amount"));
-    var panel = document.querySelector("[data-freight-fields]");
-    if (panel && tick) panel.hidden = !tick.checked;
     setText("sale-subtotal", formatToman(total));
+    renderFreightPreview(lines, freight, total, tick);
     total += freight;
 
     setText("sale-total", formatToman(total));
-    setText("sale-full-amount", formatToman(total));
-    recomputeRemaining(total);
+    // Earlier credit of the party pays first (D-087, party_credit.js).
+    var payable = window.payableAfterCredit ? window.payableAfterCredit(total) : total;
+    setText("sale-full-amount", formatToman(payable));
+    recomputeRemaining(payable);
     document.dispatchEvent(new CustomEvent("invoice:recomputed"));
+  }
+
+  // What freight does to each pack's landed cost, shown under every row and as one sentence under
+  // the freight box: freight changes cost, not just the total, so a typo in it should be visible.
+  function renderFreightPreview(lines, freight, itemsTotal, tick) {
+    var packs = lines.reduce(function (s, l) { return s + l.qty; }, 0);
+    var shares = freight && packs ? freightShares(freight, lines) : null;
+    lines.forEach(function (l, i) {
+      var el = l.row.querySelector("[data-item-row-landed]");
+      if (!el) return;
+      if (!shares || !l.qty) {
+        el.textContent = "";
+        el.classList.remove("is-high");
+        return;
+      }
+      var perPack = Math.floor((2 * (l.lineTotal + shares[i]) + l.qty) / (2 * l.qty));
+      var base = Math.floor((2 * l.lineTotal + l.qty) / (2 * l.qty));
+      var extra = perPack - base;
+      el.textContent = "با سهم کرایه (" + formatToman(shares[i]) + "): بهای تمام‌شدهٔ هر بسته " + formatToman(perPack) +
+        (extra > 0 ? " (+" + formatToman(extra) + " از کرایه)" : "");
+      // Freight alone adding over a quarter to the pack cost is almost always a typo in the amount.
+      el.classList.toggle("is-high", base > 0 && extra / base > 0.25);
+    });
+    var sum = document.querySelector("[data-freight-summary]");
+    if (!sum) return;
+    if (freight && packs) {
+      sum.textContent = "کرایه حدود " + formatToman(Math.round(freight / packs)) + " تومان به ازای هر بسته (" +
+        window.PaperUnits.fa(packs) + " بسته)" +
+        (itemsTotal > 0 ? " و " + window.PaperUnits.fa(Math.round(freight * 100 / itemsTotal)) + "٪ جمع اقلام" : "") + ".";
+    } else if (tick && tick.checked) {
+      sum.textContent = "مبلغ کرایه را وارد کنید؛ سهم هر کالا همین‌جا و زیر هر ردیف نمایش داده می‌شود.";
+    } else {
+      sum.textContent = "";
+    }
   }
 
   function recomputeRemaining(total) {
@@ -94,7 +144,8 @@
     var ascii = el.textContent.replace(/[۰-۹]/g, function (d) {
       return String(d.charCodeAt(0) - 0x06f0);
     });
-    return parseInt(ascii.replace(/,/g, ""), 10) || 0;
+    // formatToman prints the Arabic thousands mark (٬), not a comma: strip every non-digit.
+    return parseInt(ascii.replace(/[^0-9]/g, ""), 10) || 0;
   }
 
   function setText(id, text) {
@@ -108,15 +159,16 @@
     row.querySelector('input[name$="-product"]').value = source.dataset.id;
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = source.dataset.name;
+    row.dataset.pickedName = source.dataset.name;
 
     row.dataset.stock = source.dataset.stock || "0";
     row.dataset.ratio = source.dataset.ratio || "1";
     // The last known cost per pack is only a hint; a carton hint is that times the ratio.
     var lastCost = parseInt(source.dataset.lastCost, 10);
     var priceInput = row.querySelector('input[name$="-unit_price"]');
-    if (priceInput) priceInput.placeholder = isNaN(lastCost) ? "" : String(lastCost);
+    if (priceInput) priceInput.placeholder = isNaN(lastCost) ? "" : formatToman(lastCost);
     var cartonInput = row.querySelector('input[name$="-carton_price"]');
-    if (cartonInput) cartonInput.placeholder = isNaN(lastCost) ? "" : String(lastCost * parseInt(row.dataset.ratio, 10));
+    if (cartonInput) cartonInput.placeholder = isNaN(lastCost) ? "" : formatToman(lastCost * parseInt(row.dataset.ratio, 10));
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
     if (stockLabel) stockLabel.textContent = "موجودی: " + window.PaperUnits.phrase(row.dataset.stock, row.dataset.ratio);
@@ -142,6 +194,11 @@
     var row = button.closest("[data-item-row]");
     if (!row || chosenProductIds(row).indexOf(button.dataset.id) !== -1) return;
     fillRow(row, button);
+    var cartons = row.querySelector('input[name$="-cartons"]');
+    if (cartons) {
+      cartons.focus();
+      cartons.select();
+    }
   }
 
   // Products already on the invoice never come back in the results: the
@@ -200,9 +257,23 @@
     // A fresh form every time, so a previous success/error never lingers.
     body.innerHTML = template.innerHTML;
     if (window.htmx) window.htmx.process(body);
+    // What he already typed in the row's search box (and no product picked there) becomes the name.
+    var rowSearch = quickProductRow && quickProductRow.querySelector("[data-item-row-search]");
+    var rowPicked = quickProductRow && quickProductRow.querySelector('input[name$="-product"]');
+    var typed = rowSearch && !(rowPicked && rowPicked.value) ? rowSearch.value.trim() : "";
+    var nameInput = body.querySelector('input[name="name"]');
+    if (nameInput && typed) nameInput.value = typed;
+    // The shared partial only says "ثبت"; here it also puts the product on the invoice.
+    var submit = body.querySelector('button[type="submit"]');
+    if (submit) submit.textContent = "ثبت کالا و افزودن به فاکتور";
     dialog.showModal();
-    var first = body.querySelector("input:not([type=hidden])");
-    if (first) first.focus();
+    // First empty box, so with the name already in, typing continues at the SKU.
+    var inputs = Array.prototype.slice.call(body.querySelectorAll("input:not([type=hidden])"));
+    var target = inputs.filter(function (i) { return !i.value; })[0] || inputs[0];
+    if (target) {
+      target.focus();
+      target.select();
+    }
   }
 
   function targetRowForNewProduct() {
@@ -231,6 +302,32 @@
       var qty = row.querySelector('input[name$="-cartons"]');
       if (qty) qty.focus();
     }
+  });
+
+  // Editing the name after a pick must not leave the OLD product id and stock behind.
+  document.addEventListener("input", function (event) {
+    var search = event.target.closest && event.target.closest("[data-item-row-search]");
+    if (!search) return;
+    var row = search.closest("[data-item-row]");
+    if (!row || search.value === (row.dataset.pickedName || "")) return;
+    var id = row.querySelector('input[name$="-product"]');
+    if (id && id.value) {
+      id.value = "";
+      delete row.dataset.stock;
+      var label = row.querySelector("[data-item-row-stock]");
+      if (label) label.textContent = "";
+      recomputeInvoice();
+    }
+  });
+
+  // The result list closes on Esc and on a click anywhere else.
+  function closeResults(except) {
+    document.querySelectorAll(".item-row__results").forEach(function (box) {
+      if (box !== except && !(except && box.parentNode.contains(except))) box.innerHTML = "";
+    });
+  }
+  document.addEventListener("click", function (event) {
+    closeResults(event.target.closest(".item-row__search"));
   });
 
   document.addEventListener("click", function (event) {
@@ -271,7 +368,9 @@
     }
 
     if (event.target.id === "add-item-row") {
-      addRow("item-rows", "item-row-template", "items");
+      var added = addRow("item-rows", "item-row-template", "items");
+      var addedSearch = added && added.querySelector("[data-item-row-search]");
+      if (addedSearch) addedSearch.focus();
       return;
     }
 
@@ -299,11 +398,13 @@
   }
 
   document.addEventListener("input", function (event) {
+    // A typed freight amount ticks its own box first, so it can never be silently dropped.
+    if (event.target.id === "id_freight_amount") syncFreightTick();
     if (
       event.target.matches('input[name$="-cartons"]') ||
       event.target.matches('input[name$="-packs"]') ||
-      event.target.matches('input[name$="-carton_price"]') ||
       event.target.matches('input[name$="-unit_price"]') ||
+      event.target.matches('input[name$="-carton_price"]') ||
       event.target.matches('input[name$="-amount"]') ||
       event.target.id === "id_freight_amount"
     ) {
@@ -312,22 +413,220 @@
   });
 
   document.addEventListener("change", function (event) {
-    if (event.target.id === "id_has_freight") recomputeInvoice();
+    if (event.target.id === "id_has_freight") {
+      recomputeInvoice();
+      // Ticked: the next thing to do is type the amount.
+      var amount = document.getElementById("id_freight_amount");
+      if (event.target.checked && amount) {
+        amount.focus();
+        amount.select();
+      }
+    }
+    if (event.target.id === "id_supplier") refreshFreightChip();
+  });
+
+  // ---- freight shortcuts: the supplier's last freight is one tap away -----
+  // Per-browser memory only (localStorage); it is never posted, and the box stays editable.
+  function freightKey() {
+    var sup = document.getElementById("id_supplier");
+    return sup && sup.value ? "pp.freight." + sup.value : null;
+  }
+
+  function lastFreight() {
+    var key = freightKey();
+    if (!key) return 0;
+    try {
+      return parseInt(window.localStorage.getItem(key), 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function syncFreightTick() {
+    var tick = document.getElementById("id_has_freight");
+    var amount = document.getElementById("id_freight_amount");
+    if (!tick || !amount) return;
+    var has = intVal(amount) > 0;
+    if (tick.checked !== has) tick.checked = has;
+    refreshFreightChip();
+  }
+
+  function refreshFreightChip() {
+    var chip = document.querySelector("[data-freight-suggest]");
+    if (!chip) return;
+    var last = lastFreight();
+    chip.hidden = !last || intVal(document.getElementById("id_freight_amount")) === last;
+    chip.dataset.value = String(last);
+    chip.textContent = "کرایهٔ دفعهٔ قبل: " + formatToman(last) + " تومان";
+  }
+
+  document.addEventListener("click", function (event) {
+    var chip = event.target.closest && event.target.closest("[data-freight-suggest]");
+    var amount = document.getElementById("id_freight_amount");
+    if (!chip || !amount) return;
+    amount.value = chip.dataset.value;
+    amount.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  document.addEventListener("submit", function (event) {
+    if (event.target.id !== "purchase-form") return;
+    var key = freightKey();
+    var tick = document.getElementById("id_has_freight");
+    var used = intVal(document.getElementById("id_freight_amount"));
+    try {
+      if (key && tick && tick.checked && used > 0) window.localStorage.setItem(key, String(used));
+    } catch (e) { /* storage blocked: the shortcut simply stays off */ }
   });
 
   // Enter inside a text/number box must not post the invoice: this form
   // creates and confirms a financial document in one go, and Enter is how
   // people finish typing a number, not how they mean to submit.
   document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeResults();
     if (event.key !== "Enter") return;
     var t = event.target;
+    // Enter in the product box picks the first result instead of doing nothing.
+    if (t.matches && t.matches("[data-item-row-search]")) {
+      var first = t.closest("[data-item-row]").querySelector("[data-item-row-pick]:not(:disabled)");
+      if (first) pickProduct(first);
+      else if (t.value.trim() && t.closest(".item-row__search").querySelector(".item-row__result--empty [data-open-quick-product]")) {
+        // "Not found" is on screen: Enter is the same as its "+ ساخت کالای جدید" button.
+        openQuickProduct(t);
+      }
+      event.preventDefault();
+      return;
+    }
     if (t.matches && t.matches("#purchase-form input:not([type=submit]):not([type=button]):not([type=radio]):not([type=checkbox])")) {
       event.preventDefault();
     }
   });
 
+  // This form creates and confirms a financial document: a second click must not post it twice.
+  document.addEventListener("submit", function (event) {
+    var form = event.target;
+    if (form.id !== "purchase-form") return;
+    if (form.dataset.busy) {
+      event.preventDefault();
+      return;
+    }
+    form.dataset.busy = "1";
+  });
+  window.addEventListener("pageshow", function (event) {
+    var form = document.getElementById("purchase-form");
+    if (form) delete form.dataset.busy;
+    if (event.persisted) recomputeInvoice();
+  });
+
+  document.addEventListener("invoice:party-changed", function () { recomputeInvoice(); });
+
   document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-item-row]").forEach(function (row) {
+      var s = row.querySelector("[data-item-row-search]");
+      if (s && s.value) row.dataset.pickedName = s.value;
+    });
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
+    refreshFreightChip();
+  });
+})();
+
+/*
+ * Product search list: one visible "active" row shared by keyboard and mouse, with
+ * ArrowUp/ArrowDown and proper listbox roles. Enter picks the active row; with no
+ * movement that is the first in-stock result, exactly what Enter always did.
+ * Self-contained (event delegation, no dependency on the form script's internals) so the
+ * purchase form carries the very same block.
+ */
+(function () {
+  "use strict";
+
+  var uid = 0;
+
+  function options(box) {
+    return Array.prototype.slice.call(box.querySelectorAll("[data-item-row-pick]:not(:disabled)"));
+  }
+
+  function inputOf(box) {
+    return box.parentNode.querySelector("[data-item-row-search]");
+  }
+
+  function setActive(box, option, scroll) {
+    var input = inputOf(box);
+    Array.prototype.forEach.call(box.querySelectorAll("[aria-selected]"), function (o) {
+      o.removeAttribute("aria-selected");
+    });
+    if (!option) {
+      if (input) input.removeAttribute("aria-activedescendant");
+      return;
+    }
+    option.setAttribute("aria-selected", "true");
+    if (input) input.setAttribute("aria-activedescendant", option.id);
+    if (scroll && option.scrollIntoView) option.scrollIntoView({ block: "nearest" });
+  }
+
+  function activeOption(box) {
+    return box.querySelector('[data-item-row-pick][aria-selected="true"]:not(:disabled)');
+  }
+
+  function boxOf(input) {
+    return input.parentNode.querySelector(".item-row__results");
+  }
+
+  // After every swap of results: roles, ids, and the first in-stock row becomes the active one.
+  document.body.addEventListener("htmx:afterSwap", function (event) {
+    var box = (event.detail && event.detail.target) || event.target;
+    if (!box || !box.classList || !box.classList.contains("item-row__results")) return;
+    var input = inputOf(box);
+    if (!input) return;
+    box.id = box.id || "search-results-" + (++uid);
+    box.setAttribute("role", "listbox");
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-controls", box.id);
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "true");
+    Array.prototype.forEach.call(box.querySelectorAll(".item-row__result"), function (option, i) {
+      option.id = box.id + "-" + i;
+      option.setAttribute("role", "option");
+    });
+    setActive(box, options(box)[0], false);
+    if (!box._watched && window.MutationObserver) {
+      // The form script empties the box on pick / Esc / outside click: collapse the combobox state.
+      box._watched = true;
+      new MutationObserver(function () {
+        if (box.children.length) return;
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+      }).observe(box, { childList: true });
+    }
+  });
+
+  // Capture phase: runs before the form script's own Enter branch.
+  document.addEventListener("keydown", function (event) {
+    var input = event.target;
+    if (!input.matches || !input.matches("[data-item-row-search]")) return;
+    var box = boxOf(input);
+    if (!box || !box.children.length) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      var list = options(box);
+      if (!list.length) return;
+      var current = list.indexOf(activeOption(box));
+      var next = event.key === "ArrowDown" ? current + 1 : current - 1;
+      setActive(box, list[(next + list.length) % list.length], true);
+      event.preventDefault();
+    } else if (event.key === "Enter") {
+      var active = activeOption(box);
+      if (!active) return;
+      event.preventDefault();
+      event.stopPropagation();
+      active.click();
+    }
+  }, true);
+
+  // Mouse and keyboard share one highlight.
+  document.addEventListener("mouseover", function (event) {
+    var option = event.target.closest && event.target.closest("[data-item-row-pick]:not(:disabled)");
+    if (!option) return;
+    var box = option.closest(".item-row__results");
+    if (box && option.getAttribute("aria-selected") !== "true") setActive(box, option, false);
   });
 })();

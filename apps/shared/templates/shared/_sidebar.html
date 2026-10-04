@@ -1,10 +1,11 @@
 {% comment %} The module list comes from apps/shared/navigation.py, never from this
    file, so "which modules exist" has exactly one answer in the codebase. {% endcomment %}
-<div class="nav-overlay" data-nav-close hidden></div>
+{# No `hidden`: the scrim fades with body.nav-open (a display:none swap cannot animate). #}
+<div class="nav-overlay" data-nav-close aria-hidden="true"></div>
 <nav class="sidebar" id="site-nav" aria-label="منوی اصلی" aria-hidden="true">
   <div class="sidebar__top">
     <a class="sidebar__brand" href="{% url 'dashboard' %}">
-      <span class="sidebar__mark">پ</span>
+      {% include "shared/_brand_mark.html" %}
       <span>{{ company.name }}</span>
     </a>
     <button type="button" class="nav-close" data-nav-close aria-label="بستن منو">
@@ -17,16 +18,16 @@
       {% if group.items %}
         {# Receivables / Payables / Cheques: one module, three views (4.4). #}
         <div class="nav-group">
-          <div class="nav-group__label">{{ group.label }}</div>
+          <div class="nav-group__label">{% if group.icon %}{% include "shared/_nav_icon.html" with name=group.icon %}{% endif %}<span>{{ group.label }}</span></div>
           {% for item in group.items %}
             <a class="nav-link nav-link--child{% if current_section == item.match_prefix %} is-active{% endif %}"
-               href="{% url item.url_name %}">{{ item.label }}</a>
+               {% if current_section == item.match_prefix %}aria-current="true" {% endif %}href="{% url item.url_name %}">{{ item.label }}</a>
           {% endfor %}
         </div>
       {% else %}
         <div class="nav-group">
           <a class="nav-link{% if current_section == group.prefix %} is-active{% endif %}"
-             href="{% url group.url_name %}">
+             {% if current_section == group.prefix %}aria-current="true" {% endif %}href="{% url group.url_name %}">
             {% include "shared/_nav_icon.html" with name=group.icon %}
             <span>{{ group.label }}</span>
           </a>

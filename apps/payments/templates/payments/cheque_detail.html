@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static paper dues_ui %}
 
 {% comment %}
 Cheque detail: full lifecycle trace. A still-PENDING
@@ -7,100 +7,142 @@ cheque can have its descriptive fields completed here (4.3b); once
 cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
 {% endcomment %}
 
-{% block title %}چک {{ cheque.cheque_number|default:"(بدون شماره)" }}{% endblock %}
-{% block header %}چک {{ cheque.cheque_number|default:"(بدون شماره)" }}{% endblock %}
+{% block title %}چک {{ cheque.cheque_number|default:"(بدون شماره)"|fa_digits }}{% endblock %}
+{% block header %}چک {{ cheque.cheque_number|default:"(بدون شماره)"|fa_digits }}{% endblock %}
+{% block head %}<script src="{% static_v 'shared/js/dues_cheques.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'cheques:list' %}">چک‌ها</a> / چک {{ cheque.cheque_number|default:"(بدون شماره)" }}</p>
 
-<div class="page-head">
-  <div class="page-head__row">
+{# The cheque itself as the page's hero: amount, due date and party first, then where it is in its life. #}
+<section class="cheque-face cheque-face--{{ cheque.status }} cheque-face--{{ cheque.direction }}" aria-label="خلاصه چک">
+  <div class="cheque-face__top">
     <div>
-      <h1>چک {{ cheque.cheque_number|default:"(بدون شماره)" }}</h1>
-      <p class="page-head__lede">
-        جهت: {{ cheque.get_direction_display }} ·
-        طرف حساب: {{ cheque.customer|default:cheque.supplier|default:"—" }} ·
-        مبلغ: <span class="num">{{ cheque.amount|toman }}</span> ·
-        سررسید: {{ cheque.due_date|jalali|default:"—" }}
-      </p>
+      <p class="cheque-face__eyebrow">{% if cheque.direction == 'in' %}چک دریافتی{% else %}چک پرداختی{% endif %}</p>
+      <h1 class="cheque-face__no">چک {% if cheque.cheque_number %}{{ cheque.cheque_number|ident }}{% else %}(بدون شماره){% endif %}</h1>
     </div>
-    <div class="sale-detail__actions">
-      {% status_badge "cheque" cheque.status cheque.get_status_display %}
-    </div>
+    {% status_badge "cheque" cheque.status cheque.get_status_display %}
   </div>
-</div>
+  <p class="cheque-face__amount num">{{ cheque.amount|toman_bare }}</p>
+  <dl class="cheque-face__meta">
+    <div><dt>جهت</dt><dd>{{ cheque.get_direction_display }}</dd></div>
+    <div><dt>طرف حساب</dt><dd>{{ party|dash }}</dd></div>
+    <div>
+      <dt>سررسید</dt>
+      <dd class="num">{{ cheque.due_date|jalali|dash }}{% if cheque.status == 'pending' and cheque.due_date %} {% due_chip cheque.due_date|days_from:today %}{% endif %}</dd>
+    </div>
+    <div><dt>بانک</dt><dd>{{ cheque.bank_name|dash }}</dd></div>
+  </dl>
+  <ol class="cheque-track" aria-label="مراحل چک">
+    <li class="is-done">ثبت</li>
+    <li class="{% if cheque.status == 'pending' %}is-current{% else %}is-done{% endif %}">در انتظار</li>
+    <li class="{% if cheque.status != 'pending' %}is-current is-{{ cheque.status }}{% endif %}">
+      {% if cheque.status == 'pending' %}{% if cheque.direction == 'in' %}وصول / برگشت{% else %}پاس / برگشت{% endif %}{% else %}{{ cheque.get_status_display }}{% endif %}
+    </li>
+  </ol>
+</section>
 
-{% if cheque.status == 'pending' %}
-  <div class="card">
-    <div class="card__body">
-      <h2>اقدامات</h2>
-      <div class="page-head__actions">
-        <form method="post" action="{% url 'cheques:clear' cheque.pk %}" class="cheque-clear"
-              onsubmit="return confirm('این چک وصول شود؟ یک پرداخت ثبت می‌شود.');">
-          {% csrf_token %}
-          {% include "shared/_field.html" with field=clear_form.bank_account %}
-          <button type="submit" class="btn">وصول چک</button>
-        </form>
-        <form method="post" action="{% url 'cheques:bounce' cheque.pk %}"
-              onsubmit="return confirm('این چک برگشت بخورد؟');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">برگشت خورد</button>
-        </form>
-        <form method="post" action="{% url 'cheques:cancel' cheque.pk %}"
-              onsubmit="return confirm('این چک لغو شود؟ این چک هرگز پولی محسوب نشده بود.');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">لغو چک</button>
-        </form>
+<div class="cheque-grid">
+  <div class="cheque-grid__main">
+    {% if cheque.status == 'pending' %}
+      <div class="card">
+        <div class="card__body">
+          <h2>اقدامات</h2>
+          <div class="cheque-actions">
+            {% if cheque.direction == 'in' %}
+              {% include "payments/_cheque_clear.html" with cheque=cheque clear_form=clear_form default_account=default_account party=party label="وصول چک" %}
+            {% else %}
+              {% include "payments/_cheque_clear.html" with cheque=cheque clear_form=clear_form default_account=default_account party=party label="پاس شدن چک" %}
+            {% endif %}
+            <div class="cheque-actions__danger">
+              {% include "payments/_cheque_bounce.html" with cheque=cheque party=party label="برگشت خورد" %}
+              <form method="post" action="{% url 'cheques:cancel' cheque.pk %}" class="inline-form"
+                    data-confirm="چک {{ cheque.cheque_number|default:'(بدون شماره)' }} به مبلغ {{ cheque.amount|toman }} لغو شود؟ این چک اشتباهی ثبت شده بوده؛ هیچ مبلغی روی حساب‌ها تغییر نمی‌کند و این کار قابل بازگشت نیست.">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--danger">لغو چک</button>
+              </form>
+            </div>
+          </div>
+          <p class="field__hint">
+            «برگشت خورد»: بانک چک را برگردانده و مبلغ دوباره روی حساب طرف مقابل باز می‌شود.
+            «لغو چک»: چک اشتباهی ثبت شده و هیچ مبلغی تغییر نمی‌کند.
+          </p>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if cheque.status == 'bounced' %}
+      <div class="card cheque-followup">
+        <div class="card__body">
+          <h2>برگشت ثبت شد؛ قدم بعدی</h2>
+          <p class="field__hint">
+            <span class="num">{{ cheque.amount|toman }}</span>
+            {% if cheque.direction == 'in' %}دوباره{% if party %} از «{{ party }}»{% endif %} طلب شماست.
+            {% else %}دوباره{% if party %} به «{{ party }}»{% endif %} بدهکارید.{% endif %}
+          </p>
+          <div class="page-head__actions">
+            {% if party.phone %}<a class="btn" href="tel:{{ party.phone }}">تماس با {{ party.name }} · <span dir="ltr">{{ party.phone|fa_digits }}</span></a>{% endif %}
+            {% if cheque.direction == 'in' and cheque.customer_id %}
+              <a class="btn btn--quiet" href="{% url 'receivables:list' %}#{% if cheque.sales_invoice %}inv-{{ cheque.sales_invoice.pk }}{% else %}party-{{ cheque.customer_id }}{% endif %}">ثبت دریافت جایگزین</a>
+            {% elif cheque.direction == 'out' and cheque.supplier_id %}
+              <a class="btn btn--quiet" href="{% url 'payables:list' %}#{% if cheque.purchase_invoice %}inv-{{ cheque.purchase_invoice.pk }}{% else %}party-{{ cheque.supplier_id }}{% endif %}">ثبت پرداخت جایگزین</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card__body">
+        <h2>مشخصات</h2>
+        <div class="table-card"><table class="data-table">
+          <tbody>
+            <tr><th>صادرکننده</th><td>{{ cheque.issuer|dash }}</td></tr>
+            <tr><th>بانک</th><td>{{ cheque.bank_name|dash }}</td></tr>
+            <tr><th>حساب بانکی</th><td>{{ cheque.bank_account|dash }}</td></tr>
+            <tr>
+              <th>فاکتور مرتبط</th>
+              <td>
+                {% if cheque.sales_invoice %}
+                  <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
+                {% elif cheque.purchase_invoice %}
+                  <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
+                {% else %}عمومی (بدون فاکتور){% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th>{% if cheque.direction == 'in' %}پرداخت وصول‌شده{% else %}پرداخت پاس‌شده{% endif %}</th>
+              <td>
+                {% if cheque.payment %}
+                  {{ cheque.payment.amount|toman }} — {{ cheque.payment.payment_date|jalali }}
+                  ({{ cheque.payment.bank_account|default:"نقدی" }})
+                {% else %}{% if cheque.direction == 'in' %}هنوز وصول نشده{% else %}هنوز پاس نشده{% endif %}{% endif %}
+              </td>
+            </tr>
+            <tr><th>توضیح</th><td>{{ cheque.note|dash }}</td></tr>
+            <tr><th>تاریخ ثبت</th><td class="num">{{ cheque.created_at|jalali_at }}</td></tr>
+          </tbody>
+        </table></div>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card__body">
-      <h2>تکمیل مشخصات</h2>
-      <form method="post" action="{% url 'cheques:complete' cheque.pk %}" novalidate>
-        {% csrf_token %}
-        {% include "shared/_form_errors.html" with form=completion_form %}
-        {% for field in completion_form %}
-          {% include "shared/_field.html" with field=field %}
-        {% endfor %}
-        <button type="submit" class="btn">ذخیره</button>
-      </form>
-    </div>
-  </div>
-{% endif %}
-
-<div class="card">
-  <div class="card__body">
-    <h2>مشخصات</h2>
-    <table class="data-table">
-      <tbody>
-        <tr><th>صادرکننده</th><td>{{ cheque.issuer|default:"—" }}</td></tr>
-        <tr><th>بانک</th><td>{{ cheque.bank_name|default:"—" }}</td></tr>
-        <tr><th>حساب بانکی</th><td>{{ cheque.bank_account|default:"—" }}</td></tr>
-        <tr>
-          <th>فاکتور مرتبط</th>
-          <td>
-            {% if cheque.sales_invoice %}
-              <a href="{% url 'sales:detail' cheque.sales_invoice.pk %}">{{ cheque.sales_invoice.invoice_number|fa_digits }}</a>
-            {% elif cheque.purchase_invoice %}
-              <a href="{% url 'purchasing:detail' cheque.purchase_invoice.pk %}">{{ cheque.purchase_invoice.invoice_number|fa_digits }}</a>
-            {% else %}عمومی (بدون فاکتور){% endif %}
-          </td>
-        </tr>
-        <tr>
-          <th>پرداخت وصول‌شده</th>
-          <td>
-            {% if cheque.payment %}
-              {{ cheque.payment.amount|toman }} — {{ cheque.payment.payment_date|jalali }}
-              ({{ cheque.payment.bank_account|default:"نقدی" }})
-            {% else %}هنوز وصول نشده{% endif %}
-          </td>
-        </tr>
-        <tr><th>توضیح</th><td>{{ cheque.note|default:"—" }}</td></tr>
-        <tr><th>تاریخ ثبت</th><td class="num">{{ cheque.created_at|jalali_at }}</td></tr>
-      </tbody>
-    </table>
-  </div>
+  {% if cheque.status == 'pending' %}
+    <aside class="cheque-grid__side">
+      <div class="card">
+        <div class="card__body">
+          <h2>تکمیل مشخصات</h2>
+          <form method="post" action="{% url 'cheques:complete' cheque.pk %}" novalidate>
+            {% csrf_token %}
+            {% include "shared/_form_errors.html" with form=completion_form %}
+            {% for field in completion_form %}
+              {% include "shared/_field.html" with field=field %}
+            {% endfor %}
+            <button type="submit" class="btn">ذخیره</button>
+          </form>
+        </div>
+      </div>
+    </aside>
+  {% endif %}
 </div>
 {% endblock %}

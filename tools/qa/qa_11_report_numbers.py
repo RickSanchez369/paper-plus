@@ -52,7 +52,7 @@ def audit(tag, start, end):
         revenue += sum(it.line_total for it in i.items.all()) - i.discount_amount
     cogs = InventoryConsumption.objects.filter(sale_item__invoice__in=inv).aggregate(t=Sum(COST))["t"] or 0
     purchases = sum(
-        sum(it.line_total for it in p.items.all())
+        sum(it.line_total for it in p.items.all()) + p.freight_amount  # freight is owed too (D-082)
         for p in PurchaseInvoice.objects.filter(status="confirmed", invoice_date__gte=start, invoice_date__lte=end)
     )
     expenses = Expense.objects.filter(cancelled_at__isnull=True, expense_date__gte=start, expense_date__lte=end).aggregate(t=Sum("amount"))["t"] or 0
@@ -64,7 +64,8 @@ def audit(tag, start, end):
     check(f"[{tag}] purchases total", reports.purchases_total(start, end) == purchases)
     check(f"[{tag}] expenses total", reports.expenses_total(start, end) == expenses)
     cards = reports.summary_cards(start, end)
-    check(f"[{tag}] net profit = gross profit - expenses", cards["net_profit"]["value"] == revenue - cogs - expenses,
+    check(f"[{tag}] net profit = gross profit - profit given back by returns - expenses (D-089)",
+          cards["net_profit"]["value"] == revenue - cogs - reports.returns_profit(start, end) - expenses,
           f"{cards['net_profit']['value']} vs {revenue - cogs - expenses}")
     rows = reports.sales_by_product(start, end)
     check(f"[{tag}] per-product net amounts sum to sales total", sum(r["amount"] for r in rows) == revenue)

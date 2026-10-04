@@ -4,19 +4,41 @@ The «نرخ دلار» stat card (D-080): newest successful rate, when it was r
 where. A stale rate or a failed last attempt is flagged, never hidden; the button reads
 the rate now.
 {% endcomment %}
-<div class="stat-card">
+<div class="stat-card stat-card--usd{% if stale or last_failed %} is-warn{% endif %}" id="usd-rate-card">
   <span class="stat-card__label">نرخ دلار</span>
   {% if row %}
-    <span class="stat-card__value num">{{ row.rate|toman }}</span>
+    <span class="stat-card__value num">{{ row.rate|toman_split }}</span>
+    {% if delta_abs %}
+      {# Arrow + sign, so the direction never rides on colour alone. #}
+      <span class="stat-card__delta stat-card__delta--{% if delta_dir > 0 %}up{% else %}down{% endif %}">
+        {% if delta_dir > 0 %}▲ +{% else %}▼ −{% endif %}{{ delta_abs|toman }} ({{ delta_pct|fa_percent }}) نسبت به نرخ قبلی
+      </span>
+    {% elif just_updated %}
+      <span class="stat-card__delta">بدون تغییر نسبت به نرخ قبلی</span>
+    {% endif %}
     <span class="field__hint">{{ row.fetched_at|jalali_at }} · منبع: {{ row.source }}</span>
     {% if stale %}{% flag_badge "pending" "قدیمی" %}{% endif %}
+    {% if just_updated %}<span class="badge badge--good" role="status">همین الان بروز شد</span>{% endif %}
+    <span class="field__hint">فاکتورهایی که از این لحظه تأیید شوند با همین نرخ ثبت می‌شوند.</span>
   {% else %}
     <span class="stat-card__value">هنوز دریافت نشده</span>
+    <span class="field__hint">با دکمهٔ زیر یک‌بار نرخ را بخوانید؛ تا آن موقع فاکتورها بدون نرخ دلار ثبت می‌شوند.</span>
   {% endif %}
-  {% if last_failed %}<span class="field__hint">آخرین دریافت ناموفق بود؛ نرخ بالا همان آخرین نرخ معتبر است.</span>{% endif %}
-  <form method="post" action="{% url 'usd_rate_refresh' %}">
+  {% if last_failed %}
+    <span class="field__hint field__hint--error" role="alert">
+      آخرین دریافت ناموفق بود؛ نرخ بالا همان آخرین نرخ معتبر است و تغییری نکرده.
+      {% if fail_reason %}<span class="usd-reason" dir="auto">{{ fail_reason }}</span>{% endif %}
+    </span>
+  {% endif %}
+  {# Works without JS (plain POST + redirect); with htmx only this card is replaced, so the page keeps its place. #}
+  <form method="post" action="{% url 'usd_rate_refresh' %}"
+        hx-post="{% url 'usd_rate_refresh' %}" hx-target="#usd-rate-card" hx-swap="outerHTML"
+        hx-disabled-elt="find button" hx-indicator="#usd-rate-card">
     <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit" class="btn btn--quiet">بروزرسانی نرخ</button>
+    <button type="submit" class="btn btn--quiet">
+      <span class="usd-idle">{% if last_failed %}تلاش دوباره{% else %}بروزرسانی نرخ{% endif %}</span>
+      <span class="usd-busy" aria-live="polite">در حال خواندن نرخ از منبع…</span>
+    </button>
   </form>
 </div>

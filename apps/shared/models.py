@@ -54,6 +54,9 @@ class AuditLog(BaseModel):
         BOUNCE_CHEQUE = "bounce_cheque", "برگشت چک"
         CANCEL_CHEQUE = "cancel_cheque", "لغو چک"
         REVERSE_PAYMENT = "reverse_payment", "برگشت پرداخت بابت لغو فاکتور"
+        APPLY_CREDIT = "apply_credit", "کسر بستانکاری از فاکتور"
+        SALES_RETURN = "sales_return", "ثبت مرجوعی فروش"
+        PURCHASE_RETURN = "purchase_return", "ثبت مرجوعی خرید"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
         PAY_EXPENSE = "pay_expense", "پرداخت هزینه"
@@ -103,7 +106,8 @@ class AuditLog(BaseModel):
 
 class DocumentSequence(BaseModel):
     """
-    Per-document-type, per-Jalali-year counter for invoice numbers (D-022, D-064).
+    Per-document-type, per-Jalali-year counter for invoice numbers (D-022, D-064);
+    sales count per Jalali day instead (``day``, D-086).
 
     ``next_number`` is the number to hand out next within ``year``; a new
     year starts again at 1. Issuing it safely under concurrency is the job
@@ -115,6 +119,8 @@ class DocumentSequence(BaseModel):
     class DocType(models.TextChoices):
         SALE = "sale", "فاکتور فروش"
         PURCHASE = "purchase", "فاکتور خرید"
+        SALES_RETURN = "sales_return", "مرجوعی فروش"
+        PURCHASE_RETURN = "purchase_return", "مرجوعی خرید"
 
     doc_type = models.CharField(
         max_length=20,
@@ -124,6 +130,12 @@ class DocumentSequence(BaseModel):
     year = models.PositiveSmallIntegerField(
         default=0,
         verbose_name="سال شمسی",
+    )
+    # Sales count per invoice day since D-086 (Jalali MMDD, e.g. 712 for 12 Mehr);
+    # 0 = a whole-year counter (purchases, and every row from before D-086).
+    day = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="روز (ماه‌روز شمسی)",
     )
     next_number = models.PositiveIntegerField(
         default=1,
@@ -135,8 +147,8 @@ class DocumentSequence(BaseModel):
         verbose_name_plural = "شمارنده‌های سند"
         constraints = [
             models.UniqueConstraint(
-                fields=["doc_type", "year"],
-                name="unique_document_sequence_per_doctype_year",
+                fields=["doc_type", "year", "day"],
+                name="unique_document_sequence_per_doctype_year_day",
             ),
         ]
 

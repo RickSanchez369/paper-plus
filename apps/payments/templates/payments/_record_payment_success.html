@@ -1,10 +1,27 @@
+{% load paper %}
 {% comment %}
 Replaces the record-payment form after a successful submit. The row's own
 outstanding figure is now stale -- rather than
 patch it in place, point at a reload, which also re-sorts the row out of
-the list once its balance reaches zero.
+the list once its balance reaches zero. It says what was booked and where it
+went (amount, per-invoice split, any unallocated rest) so nobody has to
+reopen the customer to check.
 {% endcomment %}
 <div class="payment-form payment-form--success">
-  <p class="field__hint">پرداخت برای «{{ party }}» ثبت شد.</p>
-  <a href="." class="btn btn--quiet btn--block">بروزرسانی فهرست</a>
+  <p class="pay-success__head">
+    {% if receipt %}دریافت{% else %}پرداخت{% endif %} <span class="num">{{ amount|toman }}</span>
+    {% if receipt %}از{% else %}به{% endif %} «{{ party }}» ثبت شد.
+  </p>
+  {% if allocated %}
+    <ul class="pay-success__list">
+      {% for item in allocated %}
+        <li>فاکتور {{ item.invoice.invoice_number|fa_digits }}: <span class="num">{{ item.amount|toman }}</span>
+          {% if item.closed %}(تسویهٔ کامل){% else %}(بخشی از مانده){% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if unallocated %}
+    <p class="field__hint"><span class="num">{{ unallocated|toman }}</span> به‌عنوان {% if receipt %}بستانکاری{% else %}پیش‌پرداخت{% endif %} به نام «{{ party }}» ماند و از فاکتور بعدی او خودکار کسر می‌شود.</p>
+  {% endif %}
+  <a href="." class="btn btn--block" autofocus>بروزرسانی فهرست و دیدن مانده جدید</a>
 </div>

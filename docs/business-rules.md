@@ -141,3 +141,11 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-081 One product with `pack_per_carton`; everything stored in packs; lines hold cartons + packs; retail = per pack, wholesale = per carton; average price is display-only, FIFO decides cost and profit; sale type is derived.
 - D-082 Purchase freight is part of the total owed to the supplier and is spread over the lines by packs into their landed FIFO cost (`freight_share`).
 - D-083 Data-UI audit fixes: RTL numbers with units, one status-badge map, AA contrast tokens, summary strip, shared pager + sort, search rows, mid-width invoice grid.
+- D-084 Fifty-critic UI audit, batch 1: card gaps and edge tokens, danger/disabled buttons, field error state, ui.js toast + Persian-digit numeric boxes, error pages, invoice-form keyboard flow, inventory search, dashboard attention strip.
+- D-085 Two-hundred-critic UI audit: 147 presentation fixes applied, 64 deferred entries in docs/UI_AUDIT_200_DEFERRED.md need Sina.
+- D-086 Sales invoice number = Persian letter + "/" + Jalali yyyymmdd of the invoice date (الف/14050712, ب/...; after ی: الف2); purchases keep year/running.
+- D-087 Unticked payments settle open invoices oldest first; money beyond them is party credit only when ticked; credit shows on party pages/lists/dues and pays the next invoice first (amends D-042).
+- D-088 Printed sales invoice = one A4 brand sheet (کاغذ پلاس, green/navy/white, B&W switch, settlement box, terms, thank-you line, contacts); USD rate shown on detail pages only, never printed.
+- D-089 Returns: from one confirmed invoice, per line at most what is left; value = line net share; sales returns come back as a new FIFO layer at the line cost, purchase returns leave that purchase's layer; money off the invoice first, rest refunded (current account) or kept as party credit; invoices with returns cannot be cancelled.
+- D-090 Four prices (retail/wholesale x pack/carton, unset = derived, `price_for`); sale type chosen on the invoice, preset from `Customer.price_tier`, kept at confirmation; below-cost line hint.
+- D-091 The live host runs SQLite (shared host without PostgreSQL): test every change on SQLite, no PostgreSQL-only features.

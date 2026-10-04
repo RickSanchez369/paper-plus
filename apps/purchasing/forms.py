@@ -11,8 +11,9 @@ default to fall back to the way a sale has -- and cancel is stricter
 
 from django import forms
 
+from apps.shared.widgets import NumericInput
 from apps.partners.models import Supplier
-from apps.payments.forms import ENTRY_METHOD_CHOICES, InvoicePaymentFields, PaymentEntryFormMixin
+from apps.payments.forms import ENTRY_METHOD_CHOICES, AccountSelect, InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
@@ -70,7 +71,7 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         required=False,
         min_value=0,
         label="مبلغ کرایه بار (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "کرایه بار نمی‌تواند منفی باشد."},
     )
 
@@ -157,6 +158,18 @@ class BasePurchaseItemFormSet(forms.BaseFormSet):
 PurchaseItemFormSet = forms.formset_factory(PurchaseItemForm, formset=BasePurchaseItemFormSet, extra=1)
 
 
+class OwnerAccountSelect(AccountSelect):
+    """Account select whose options also carry `data-owner`: the issuer of our own cheque is the
+    account's owner, so purchase_payment.js can pre-fill it (presentation only, nothing is posted)."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None and instance.owner:
+            option["attrs"]["data-owner"] = instance.owner
+        return option
+
+
 class PurchasePaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
     """One planned payment row -- mirrors sales.forms.SalesPaymentEntryForm
     (method list without cash, account checked against the method, cheque-only
@@ -171,7 +184,7 @@ class PurchasePaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
-        widget=forms.NumberInput(
+        widget=NumericInput(
             attrs={"class": "field__control payment-row__amount", "dir": "ltr", "inputmode": "numeric"}
         ),
         error_messages={"required": "مبلغ الزامی است.", "min_value": "مبلغ باید بزرگ‌تر از صفر باشد."},
@@ -185,6 +198,14 @@ class PurchasePaymentEntryForm(PaymentEntryFormMixin, forms.ModelForm):
             "bank_name": forms.TextInput(attrs={"class": "field__control"}),
             "issuer": forms.TextInput(attrs={"class": "field__control"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Swap in the owner-aware widget on the account field the mixin built.
+        field = self.fields["bank_account"]
+        widget = OwnerAccountSelect(attrs=dict(field.widget.attrs))
+        widget.choices = field.choices
+        field.widget = widget
 
 
 PurchasePaymentEntryFormSet = forms.formset_factory(PurchasePaymentEntryForm, extra=0)

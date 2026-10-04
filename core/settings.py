@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'apps.purchasing',
     'apps.sales',
     'apps.payments',
+    'apps.returns',
 ]
 
 MIDDLEWARE = [
@@ -160,6 +161,16 @@ COMPANY = {
     "phone": env.str("COMPANY_PHONE", default=""),
     "address": env.str("COMPANY_ADDRESS", default=""),
     "footer_note": env.str("COMPANY_FOOTER_NOTE", default=""),
+    # The printed sales invoice (D-088): brand, contacts and small print.
+    "brand": env.str("COMPANY_BRAND", default="کاغذ پلاس"),
+    # "name:phone" pairs separated by commas.
+    "phones": env.str("COMPANY_PHONES", default="خندانی:09145572511,حقگو:09145589832"),
+    "email": env.str("COMPANY_EMAIL", default="kaghazplus1@gmail.com"),
+    "instagram": env.str("COMPANY_INSTAGRAM", default=""),
+    "telegram": env.str("COMPANY_TELEGRAM", default=""),
+    "whatsapp": env.str("COMPANY_WHATSAPP", default=""),
+    # Lines separated by "|"; empty = the built-in three lines.
+    "terms": env.str("COMPANY_TERMS", default=""),
 }
 
 if not DEBUG:
@@ -174,6 +185,9 @@ if not DEBUG:
     # The app sends no email, so the "console backend is dev-only" check is noise
     # that would otherwise make `manage.py update` fail on a real host.
     SILENCED_SYSTEM_CHECKS = ["mail.E001"]
+    # Assets that change carry ?v= (static_v); the rest (font, htmx) hardly ever do. The default is 60 s,
+    # which on a slow shared host means a revalidation round trip per asset every minute.
+    WHITENOISE_MAX_AGE = env.int("STATIC_MAX_AGE", default=86400)
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},

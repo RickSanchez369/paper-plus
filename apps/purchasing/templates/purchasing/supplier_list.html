@@ -27,32 +27,39 @@ read from later.
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {% include "shared/_keep_sort.html" %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.is_active %}
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
       </div>
+    {% include "shared/_filter_reset.html" %}
     </form>
 
     {% if rows %}
       <div class="table-card">
-        <table class="data-table">
+        <table class="data-table data-table--figures data-table--ledger">
           <thead>
             <tr>
-              {% sort_th "نام" "name" %}
-              <th>تلفن</th>
-              {% sort_th "جمع خرید" "total_purchased" %}
+              {% sort_th "نام و تلفن" "name" %}
               {% sort_th "بدهی باز" "outstanding" %}
+              {% sort_th "جمع خرید" "total_purchased" %}
             </tr>
           </thead>
           <tbody>
             {% for row in rows %}
               <tr>
-                <td><a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a>
-                  {% if not row.supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}</td>
-                <td class="num">{{ row.supplier.phone|default:"—" }}</td>
+                <td>
+                  <a class="cell-name" href="{% url 'purchasing:supplier_detail' row.supplier.pk %}">{{ row.supplier.name }}</a>
+                  {% if not row.supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}
+                  <small class="cell-sub num">{{ row.supplier.phone|ident|dash }}</small>
+                </td>
+                {# The debt links to the supplier's ready-filled payment form (#pay). #}
+                <td class="num {% if row.outstanding > 0 %}figure--owed{% else %}figure--zero{% endif %}">
+                  {% if row.outstanding > 0 %}<a href="{% url 'purchasing:supplier_detail' row.supplier.pk %}#pay" title="ثبت پرداخت به این تأمین‌کننده">{{ row.outstanding|toman }}</a>{% else %}{{ row.outstanding|toman }}{% endif %}
+                  {% if row.credit %}<span class="badge badge--info">پیش‌پرداخت <span class="num">{{ row.credit|toman }}</span></span>{% endif %}
+                </td>
                 <td class="num">{{ row.total_purchased|toman }}</td>
-                <td class="num">{{ row.outstanding|toman }}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -60,10 +67,8 @@ read from later.
       </div>
       {% pager page_obj %}
     {% else %}
-      <div class="placeholder">
-        <p>تأمین‌کننده‌ای با این شرایط پیدا نشد.</p>
-        <a href="{% url 'purchasing:supplier_new' %}" class="btn">+ تأمین‌کنندهٔ جدید</a>
-      </div>
+      {% url 'purchasing:supplier_new' as new_url %}
+      {% include "shared/_empty_state.html" with icon="customer" title="تأمین‌کننده‌ای با این شرایط پیدا نشد." cta_url=new_url cta_label="+ تأمین‌کنندهٔ جدید" %}
     {% endif %}
   </div>
 </div>

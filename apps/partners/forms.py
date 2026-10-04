@@ -25,13 +25,24 @@ _WIDGETS = {
 }
 
 
-class QuickCustomerForm(forms.ModelForm):
+class _CustomerTierMixin:
+    """`price_tier` may be left out of a POST (older pages): keep what the customer had, else retail (D-090)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["price_tier"].required = False
+
+    def clean_price_tier(self):
+        return self.cleaned_data.get("price_tier") or getattr(self.instance, "price_tier", None) or "retail"
+
+
+class QuickCustomerForm(_CustomerTierMixin, forms.ModelForm):
     """New customer, inline. Reused by the Customers page and the sale form."""
 
     class Meta:
         model = Customer
-        fields = ("name", "phone", "address", "note")
-        widgets = _WIDGETS
+        fields = ("name", "phone", "price_tier", "address", "note")
+        widgets = {**_WIDGETS, "price_tier": forms.Select(attrs={"class": "field__control"})}
         error_messages = {
             "name": {
                 # Names are globally unique now that there is one business
@@ -58,7 +69,7 @@ class QuickSupplierForm(forms.ModelForm):
         }
 
 
-class CustomerForm(forms.ModelForm):
+class CustomerForm(_CustomerTierMixin, forms.ModelForm):
     """Full edit form for the Customers detail page --
     the quick-create form only asks name/phone/address/note; this one adds
     is_active, since deactivating a customer is an edit-page action, not a
@@ -66,9 +77,10 @@ class CustomerForm(forms.ModelForm):
 
     class Meta:
         model = Customer
-        fields = ("name", "phone", "address", "note", "is_active")
+        fields = ("name", "phone", "price_tier", "address", "note", "is_active")
         widgets = {
             **_WIDGETS,
+            "price_tier": forms.Select(attrs={"class": "field__control"}),
             "is_active": forms.CheckboxInput(),
         }
         error_messages = {

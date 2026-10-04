@@ -54,10 +54,9 @@ def scenarios(h):
     r = pay(400, [inv1])
     check("R05 picking an already-paid invoice is rejected (not a choice any more)", r.status_code == 422 and Payment.objects.filter(customer=cust).count() == n, r.status_code)
     r = pay(150)
-    check("R06 an amount with no invoices = unallocated payment, still linked to the customer",
-          r.status_code == 200 and Payment.objects.filter(customer=cust, amount=150).exists() and
-          not PaymentAllocation.objects.filter(payment__amount=150, payment__customer=cust).exists())
-    check("R06 …and does not reduce what the invoices show as owed (400)", get_customer_outstanding(cust) == 400)
+    check("R06 no invoice ticked: the amount settles the open invoices oldest first (D-087)",
+          r.status_code == 200 and PaymentAllocation.objects.filter(payment__amount=150, payment__customer=cust).exists())
+    check("R06 …so what is owed drops to 250", get_customer_outstanding(cust) == 250, get_customer_outstanding(cust))
     for label, amt in (("zero", "0"), ("negative", "-5"), ("text", "abc"), ("blank", ""), ("decimal", "2.5")):
         r = pay(amt, [inv2])
         check(f"R07 {label} amount rejected", r.status_code == 422 and Payment.objects.filter(customer=cust).count() == n + 1, r.status_code)

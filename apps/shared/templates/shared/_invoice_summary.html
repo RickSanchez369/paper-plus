@@ -7,15 +7,15 @@ Context: total, paid, outstanding, payment_status.
 <div class="summary-strip">
   <div class="summary-strip__item">
     <span class="summary-strip__label">جمع نهایی</span>
-    <span class="summary-strip__value num">{{ total|toman }}</span>
+    <span class="summary-strip__value num">{{ total|toman_split }}</span>
   </div>
   <div class="summary-strip__item">
     <span class="summary-strip__label">پرداخت‌شده</span>
-    <span class="summary-strip__value num">{{ paid|toman }}</span>
+    <span class="summary-strip__value num">{{ paid|toman_split }}</span>
   </div>
   <div class="summary-strip__item summary-strip__item--{% if outstanding %}owed{% else %}settled{% endif %}">
     <span class="summary-strip__label">مانده</span>
-    <span class="summary-strip__value num">{{ outstanding|toman }}</span>
+    <span class="summary-strip__value num">{{ outstanding|toman_split }}</span>
   </div>
   <div class="summary-strip__item">
     <span class="summary-strip__label">وضعیت پرداخت</span>

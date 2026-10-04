@@ -23,6 +23,8 @@
 
   // "۶ کارتن + ۴ بسته", zero parts left out; "(۳۴ بسته)" appended once cartons are involved.
   function phrase(quantity, ratio) {
+    // Oversold stock reads «منفی ۲ کارتن + ۴ بسته»: a minus before each part flips in an RTL run.
+    if (parseInt(quantity, 10) < 0) return "منفی " + phrase(-parseInt(quantity, 10), ratio);
     var s = split(quantity, ratio);
     var parts = [];
     if (s.cartons) parts.push(fa(s.cartons) + " کارتن");

@@ -1,0 +1,77 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+One return (D-089): what came back, its value, the FIFO cost back on (or off)
+the shelf, and how the money was settled. Read-only: a return is never edited.
+{% endcomment %}
+
+{% block title %}مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %} {{ doc.return_number|fa_digits }}{% endblock %}
+{% block header %}مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %} {{ doc.return_number|fa_digits }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs">
+  <a href="{% url 'returns:list' %}{% if purchase %}?kind=purchase{% endif %}">مرجوعی</a> / {{ doc.return_number|fa_digits }}
+</p>
+
+<div class="page-head">
+  <h1>مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %} {{ doc.return_number|fa_digits }}</h1>
+  <p class="page-head__lede">
+    {% if purchase %}تأمین‌کننده{% else %}مشتری{% endif %}: <strong>{{ party.name }}</strong> ·
+    فاکتور <a href="{% url invoice_url doc.invoice.pk %}">{{ doc.invoice.invoice_number|fa_digits }}</a> ·
+    تاریخ: <span class="num">{{ doc.return_date|jalali }}</span> ·
+    ثبت‌کننده: {{ doc.created_by.get_full_name|default:doc.created_by.phone|fa_digits }}
+  </p>
+</div>
+
+<div class="stats">
+  <div class="stat-card stat-card--primary">
+    <span class="stat-card__label">مبلغ مرجوعی</span>
+    <span class="stat-card__value num">{{ doc.total_amount|toman_split }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">{% if purchase %}ارزش انبار خارج‌شده{% else %}بهای کالای برگشته به انبار{% endif %}</span>
+    <span class="stat-card__value num">{{ doc.cost_amount|toman_split }}</span>
+  </div>
+  {% if not purchase %}
+  <div class="stat-card">
+    <span class="stat-card__label">سود برگشتی</span>
+    <span class="stat-card__value num">{{ doc.profit_given_back|toman_split }}</span>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>تسویه</h2>
+    <p>{% include "returns/_settle_chips.html" %}</p>
+    <ul class="field__hint">
+      {% if doc.applied_amount %}<li><span class="num">{{ doc.applied_amount|toman }}</span> از مانده باز فاکتور کم شد.</li>{% endif %}
+      {% if doc.refund_amount %}<li><span class="num">{{ doc.refund_amount|toman }}</span> {% if purchase %}به حساب{% else %}از حساب{% endif %} «{{ doc.bank_account.name }}» {% if purchase %}برگشت داده شد{% else %}پرداخت شد{% endif %}.</li>{% endif %}
+      {% if doc.credit_amount %}<li><span class="num">{{ doc.credit_amount|toman }}</span> به‌عنوان {% if purchase %}پیش‌پرداخت نزد تأمین‌کننده{% else %}بستانکاری مشتری{% endif %} ماند و از فاکتور بعدی کسر می‌شود.</li>{% endif %}
+    </ul>
+    {% if doc.note %}<p><b>توضیح:</b> {{ doc.note }}</p>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <h2>اقلام</h2>
+    <div class="table-card">
+      <table class="data-table">
+        <thead><tr><th>کالا</th><th>مقدار</th><th>مبلغ</th><th>{% if purchase %}ارزش انبار{% else %}بهای تمام‌شده{% endif %}</th></tr></thead>
+        <tbody>
+          {% for row in doc.items.all %}
+            <tr>
+              <td>{% if purchase %}{{ row.purchase_item.product.name }}{% else %}{{ row.sale_item.product.name }}{% endif %}</td>
+              <td class="num">{% if row.cartons %}{{ row.cartons|fa_number }} کارتن{% if row.loose_packs %} + {% endif %}{% endif %}{% if row.loose_packs %}{{ row.loose_packs|fa_number }} بسته{% endif %}{% if row.cartons %} ({{ row.quantity|fa_number }} بسته){% endif %}</td>
+              <td class="num">{{ row.amount|toman }}</td>
+              <td class="num">{{ row.cost|toman }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

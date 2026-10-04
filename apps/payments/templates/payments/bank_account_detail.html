@@ -14,16 +14,24 @@ Expense.payment, resolved once per row in views._describe_payment.
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'bank_accounts:list' %}">حساب‌های بانکی</a> / {{ account.name }}</p>
 
-<div class="page-head">
-  <div class="page-head__row">
-    <div>
-      <h1>{{ account.name }}{% if account.owner %} — {{ account.owner }}{% endif %}</h1>
-      <p class="page-head__lede">
-        شماره حساب: {{ account.account_number }} ·
-        موجودی: <strong class="num">{{ balance|toman }}</strong>
-      </p>
+{% comment %}One hero: who the account is, what is in it and how it moved; the ledger below is its statement.{% endcomment %}
+<div class="stat-card stat-card--primary exb-hero">
+  <div class="exb-hero__id">
+    <h1>{{ account.name }}{% if account.owner %} — {{ account.owner }}{% endif %}</h1>
+    <p class="exb-hero__meta">
+      {{ account.get_account_type_display }} · شماره حساب: <bdi dir="ltr" class="num">{{ account.account_number }}</bdi>
+    </p>
+    <a href="{% url 'bank_accounts:edit' account.pk %}" class="btn btn--ghost">ویرایش مشخصات</a>
+  </div>
+  <div class="exb-hero__bal">
+    <span class="stat-card__label">موجودی</span>
+    <span class="stat-card__value num{% if balance < 0 %} is-loss{% endif %}">{{ balance|toman_split }}</span>
+    {% if balance < 0 %}<span class="field__hint">پرداخت‌ها از دریافت‌ها بیشتر بوده است؛ ستون «مانده پس از این ردیف» نشان می‌دهد از کدام ردیف منفی شده.</span>{% endif %}
+    <div class="stat-card__deltas exb-hero__deltas">
+      {% for d in deltas %}
+        <span class="stat-card__delta{% if d.value > 0 %} stat-card__delta--up{% elif d.value < 0 %} stat-card__delta--down{% endif %}">{{ d.label }}: <bdi class="num">{% if d.value > 0 %}+{% endif %}{{ d.value|toman }}</bdi></span>
+      {% endfor %}
     </div>
-    <a href="{% url 'bank_accounts:edit' account.pk %}" class="btn btn--quiet">ویرایش مشخصات</a>
   </div>
 </div>
 
@@ -31,12 +39,13 @@ Expense.payment, resolved once per row in views._describe_payment.
   <div class="card__body">
     <h2>دفتر حساب</h2>
     {% if ledger_rows %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>تاریخ</th>
             <th>جهت</th>
             <th>مبلغ</th>
+            <th>مانده پس از این ردیف</th>
             <th>منشأ/مقصد</th>
             <th>ثبت‌کننده</th>
             <th>زمان ثبت</th>
@@ -49,16 +58,23 @@ Expense.payment, resolved once per row in views._describe_payment.
               <td>
                 {% status_badge "direction" row.payment.direction row.payment.get_direction_display %}
               </td>
-              <td class="num">{{ row.payment.amount|toman }}</td>
+              <td class="num exb-amount {% if row.signed > 0 %}exb-amount--in{% else %}exb-amount--out{% endif %}">{% if row.signed > 0 %}+{% endif %}{{ row.signed|toman }}</td>
+              <td class="num{% if row.balance_after < 0 %} is-negative{% endif %}">{{ row.balance_after|toman }}</td>
               <td>
                 {% if row.url %}<a href="{{ row.url }}">{{ row.source }}</a>{% else %}{{ row.source }}{% endif %}
+                {% if row.party and row.party|stringformat:"s" != row.source %}<span class="cell-sub">{{ row.party }}</span>{% endif %}
               </td>
               <td>{{ row.payment.created_by.get_full_name|default:row.payment.created_by.phone }}</td>
               <td class="num">{{ row.payment.created_at|jalali_at }}</td>
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
+      <p class="field__hint exb-proof">
+        مانده اول دوره {{ opening_balance|toman }}
+        {% if opening_balance %}<strong class="is-negative">(مغایرت با مانده حساب)</strong>{% endif %}
+        · {{ ledger_rows|length|fa_number }} ردیف · مانده نهایی {{ balance|toman }}
+      </p>
     {% else %}
       <p class="field__hint">هنوز پرداختی از این حساب ثبت نشده است.</p>
     {% endif %}

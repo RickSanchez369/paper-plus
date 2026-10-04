@@ -1,0 +1,72 @@
+{% extends "shared/base.html" %}
+{% load paper %}
+
+{% comment %}
+Returns (D-089): sales returns and purchase returns in two tabs. A return is
+always started from its invoice (the invoice page's «ثبت مرجوعی» button), so
+this page lists and finds; it has no "new" button of its own.
+{% endcomment %}
+
+{% block title %}مرجوعی{% endblock %}
+{% block header %}مرجوعی{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head__row">
+    <h1>مرجوعی‌ها</h1>
+  </div>
+  <p class="page-head__lede">برای ثبت مرجوعی، فاکتور فروش یا خرید را باز کنید و «ثبت مرجوعی» را بزنید.</p>
+</div>
+
+<nav class="ret-tabs" aria-label="نوع مرجوعی">
+  <a href="?kind=sales" class="ret-tabs__tab{% if kind == 'sales' %} is-active{% endif %}"{% if kind == 'sales' %} aria-current="page"{% endif %}>مرجوعی فروش <span class="num">({{ sales_count|fa_number }})</span></a>
+  <a href="?kind=purchase" class="ret-tabs__tab{% if kind == 'purchase' %} is-active{% endif %}"{% if kind == 'purchase' %} aria-current="page"{% endif %}>مرجوعی خرید <span class="num">({{ purchase_count|fa_number }})</span></a>
+</nav>
+
+<div class="card">
+  <div class="card__body">
+    <form method="get" class="toolbar toolbar--panel">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <div class="filters">
+        <div class="field">
+          <label class="field__label" for="ret-q">جست‌وجو</label>
+          <input class="field__control" id="ret-q" type="search" name="q" value="{{ q }}" placeholder="شمارهٔ مرجوعی، شمارهٔ فاکتور یا نام {% if kind == 'purchase' %}تأمین‌کننده{% else %}مشتری{% endif %}">
+        </div>
+        <button type="submit" class="btn">جست‌وجو</button>
+      </div>
+    </form>
+
+    {% if page_obj.object_list %}
+      <div class="table-card">
+        <table class="data-table data-table--ledger">
+          <thead>
+            <tr>
+              <th>شمارهٔ مرجوعی</th>
+              <th>تاریخ</th>
+              <th>{% if kind == 'purchase' %}تأمین‌کننده{% else %}مشتری{% endif %}</th>
+              <th>فاکتور</th>
+              <th>مبلغ</th>
+              <th>تسویه</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for doc in page_obj.object_list %}
+              <tr>
+                <td><a href="{% if kind == 'purchase' %}{% url 'returns:purchase_detail' doc.pk %}{% else %}{% url 'returns:sales_detail' doc.pk %}{% endif %}">{{ doc.return_number|fa_digits }}</a></td>
+                <td class="num">{{ doc.return_date|jalali }}</td>
+                <td>{{ doc.party.name }}</td>
+                <td><a href="{% if kind == 'purchase' %}{% url 'purchasing:detail' doc.invoice.pk %}{% else %}{% url 'sales:detail' doc.invoice.pk %}{% endif %}">{{ doc.invoice.invoice_number|fa_digits }}</a></td>
+                <td class="num">{{ doc.total_amount|toman }}</td>
+                <td>{% include "returns/_settle_chips.html" %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% pager page_obj %}
+    {% else %}
+      {% include "shared/_empty_state.html" with icon="return" title="مرجوعی‌ای ثبت نشده است." hint="از صفحهٔ هر فاکتور تأییدشده می‌توانید مرجوعی ثبت کنید." %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

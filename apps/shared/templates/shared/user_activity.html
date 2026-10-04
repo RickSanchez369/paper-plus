@@ -12,11 +12,15 @@ AuditLog feed (UserActivityDetailView).
 {% block title %}فعالیت کاربران{% endblock %}
 {% block header %}فعالیت کاربران{% endblock %}
 
+{% block head %}<script src="{% static_v 'shared/js/insight.js' %}" defer></script>{% endblock %}
+
 {% block content %}
 <div class="page-head">
   <div class="page-head__row">
     <h1>فعالیت کاربران</h1>
     <form method="get">
+      {# The filter form below is a separate GET form: carry its values so a preset does not drop them. #}
+      {% for key, value in request.GET.items %}{% if key == "user" or key == "event_type" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       {% include "shared/_date_range.html" with form=range_form %}
     </form>
   </div>
@@ -25,9 +29,26 @@ AuditLog feed (UserActivityDetailView).
   </p>
 </div>
 
+{% if rows %}
+  {# Team totals per column (same buckets as the table): the page also answers "in total", not only "per user". #}
+  <div class="stats stats--activity">
+    {% for bucket in bucket_order %}
+      {% with t=totals|dict_get:bucket %}
+        <div class="stat-card{% if not t.count %} stat-card--idle{% endif %}">
+          <span class="stat-card__label">{{ bucket_labels|dict_get:bucket }}</span>
+          <span class="stat-card__value num">{{ t.count|fa_number }}</span>
+          {% if t.amount %}<span class="stat-card__delta num">{{ t.amount|toman }}</span>{% endif %}
+        </div>
+      {% endwith %}
+    {% endfor %}
+  </div>
+{% endif %}
+
 <div class="card">
   <div class="card__body">
-    <form method="get" class="toolbar">
+    <form method="get" class="toolbar" data-autosubmit>
+      {# ...and the other way round: applying a filter keeps the chosen range. #}
+      {% for key, value in request.GET.items %}{% if key == "preset" or key == "start" or key == "end" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.user %}
         {% include "shared/_field.html" with field=filter_form.event_type %}
@@ -37,7 +58,7 @@ AuditLog feed (UserActivityDetailView).
 
     {% if rows %}
       <div class="table-card">
-        <table class="data-table">
+        <table class="data-table data-table--figures">
           <thead>
             <tr>
               <th>کاربر</th>
@@ -47,14 +68,25 @@ AuditLog feed (UserActivityDetailView).
           <tbody>
             {% for row in rows %}
               <tr>
-                <td><a href="{% url 'user_activity:detail' row.actor.pk %}">{{ row.actor }}</a></td>
+                <td>
+                  <a class="actor" href="{% url 'user_activity:detail' row.actor.pk %}{% if detail_qs %}?{{ detail_qs }}{% endif %}">
+                    <span class="actor__avatar" aria-hidden="true">{{ row.actor|stringformat:"s"|slice:"-2:"|fa_digits }}</span>
+                    <span class="actor__name">{{ row.actor }}</span>
+                    <span class="actor__total num">{{ row.total_count|fa_number }} رویداد</span>
+                  </a>
+                </td>
                 {% for bucket in bucket_order %}
-                  <td class="num">
-                    {{ row.counts|dict_get:bucket|fa_number }}
-                    {% with amount=row.amounts|dict_get:bucket %}
-                      {% if amount %}<br><span class="field__hint">{{ amount|toman }}</span>{% endif %}
-                    {% endwith %}
-                  </td>
+                  {% with n=row.counts|dict_get:bucket amount=row.amounts|dict_get:bucket %}
+                    {# The count opens that user's feed filtered to this very group; the bar sizes it against the busiest user. #}
+                    <td class="num cell-meter{% if not n %} cell-meter--zero{% endif %}" style="--pct: {{ row.pct|dict_get:bucket }}%">
+                      {% if n %}
+                        <a class="cell-meter__n count-link" href="{% url 'user_activity:detail' row.actor.pk %}?{% if detail_qs %}{{ detail_qs }}&amp;{% endif %}bucket={{ bucket }}" title="نمایش {{ bucket_labels|dict_get:bucket }} این کاربر">{{ n|fa_number }}</a>
+                      {% else %}
+                        <span class="cell-meter__n">{{ n|fa_number }}</span>
+                      {% endif %}
+                      {% if amount %}<span class="cell-meter__amt">{{ amount|toman }}</span>{% endif %}
+                    </td>
+                  {% endwith %}
                 {% endfor %}
               </tr>
             {% endfor %}
@@ -62,9 +94,7 @@ AuditLog feed (UserActivityDetailView).
         </table>
       </div>
     {% else %}
-      <div class="placeholder">
-        <p>در این بازه رویدادی ثبت نشده است.</p>
-      </div>
+      {% include "shared/_empty_state.html" with icon="activity" title="در این بازه رویدادی ثبت نشده است." hint="بازهٔ تاریخ را گسترده‌تر کنید تا فعالیت‌های بیشتری دیده شود." %}
     {% endif %}
   </div>
 </div>

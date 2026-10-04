@@ -147,9 +147,32 @@ def get_recent_activity(limit=10):
     ]
 
 
-def get_activity_feed(start, end, actor=None, event_type=None):
+# Persian nouns for AuditLog.target_type, so the feed never shows a model path like
+# "inventory.inventorymovement". Unknown types fall back to a generic word.
+TARGET_LABELS = {
+    "sales.salesinvoice": "فاکتور فروش",
+    "purchasing.purchaseinvoice": "فاکتور خرید",
+    "payments.cheque": "چک",
+    "payments.payment": "پرداخت",
+    "payments.paymentallocation": "تخصیص پرداخت",
+    "payments.expense": "هزینه",
+    "payments.recurringexpense": "هزینهٔ ثابت",
+    "products.product": "کالا",
+    "inventory.inventorymovement": "کالا",
+}
+
+
+def bucket_event_types(bucket):
+    """The event types the aggregate table counts under `bucket` (so a drill-down can show the same group)."""
+    return [event_type for event_type, name in _BUCKETS.items() if name == bucket]
+
+
+def get_activity_feed(start, end, actor=None, event_type=None, bucket=None):
     """The raw AuditLog feed for the drill-down page: event type, linked
-    target, timestamp -- newest first."""
+    target, timestamp -- newest first. A single `event_type` wins over a
+    `bucket` (the group the summary table counts under one column).
+    Each row also carries a readable target name, the amount the summary
+    would count for it, and a tone (cancellations/bounces read as "bad")."""
     qs = (
         AuditLog.objects
         .filter(created_at__date__gte=start, created_at__date__lte=end)
@@ -160,11 +183,47 @@ def get_activity_feed(start, end, actor=None, event_type=None):
         qs = qs.filter(actor=actor)
     if event_type:
         qs = qs.filter(event_type=event_type)
+    elif bucket in BUCKET_LABELS:
+        qs = qs.filter(event_type__in=bucket_event_types(bucket))
+
+    entries = list(qs)
+
+    # Bulk lookups, like the summary: a movement's product, and the total of a confirmed invoice
+    # (confirm events never logged an amount).
+    movement_ids = {e.target_id for e in entries if e.target_type == "inventory.inventorymovement"}
+    products = {
+        movement.pk: movement.product
+        for movement in InventoryMovement.objects.filter(pk__in=movement_ids).select_related("product")
+    }
+    sale_ids = {e.target_id for e in entries if e.event_type == EventType.CONFIRM_SALE}
+    purchase_ids = {e.target_id for e in entries if e.event_type == EventType.CONFIRM_PURCHASE}
+    sale_totals = {invoice.pk: invoice.total for invoice in SalesInvoice.objects.filter(pk__in=sale_ids)}
+    purchase_totals = {
+        invoice.pk: invoice.total_amount for invoice in PurchaseInvoice.objects.filter(pk__in=purchase_ids)
+    }
 
     rows = []
-    for entry in qs:
+    for entry in entries:
+        product = products.get(entry.target_id) if entry.target_type == "inventory.inventorymovement" else None
+        if product is not None:
+            target_url = reverse("inventory:detail", args=[product.pk])
+        else:
+            target_url = resolve_target_url(entry.target_type, entry.target_id)
+
+        amount = _amount_for(entry)
+        if amount is None:
+            if entry.event_type == EventType.CONFIRM_SALE:
+                amount = sale_totals.get(entry.target_id)
+            elif entry.event_type == EventType.CONFIRM_PURCHASE:
+                amount = purchase_totals.get(entry.target_id)
+
         rows.append({
             "entry": entry,
-            "target_url": resolve_target_url(entry.target_type, entry.target_id),
+            "target_url": target_url,
+            "target_label": TARGET_LABELS.get(entry.target_type, "مورد"),
+            # .name, not str(): Product.__str__ queries the stock, one query per row.
+            "subject": product.name if product is not None else "",
+            "amount": amount or None,
+            "tone": "bad" if _BUCKETS.get(entry.event_type) == "cancellations" else "info",
         })
     return rows

@@ -8,8 +8,9 @@ history, cancel via the existing cancel_purchase (superuser-only, and
 stricter -- blocked once any of this purchase's stock has been sold).
 {% endcomment %}
 
-{% block title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
-{% block header %}فاکتور خرید {{ invoice.invoice_number }}{% endblock %}
+{# Kind word first so it survives tab truncation; Persian digits like the h1. #}
+{% block title %}خرید {{ invoice.invoice_number|fa_digits }} · {{ invoice.supplier.name }}{% if invoice.status == "cancelled" %} (لغو شده){% endif %}{% endblock %}
+{% block header %}فاکتور خرید {{ invoice.invoice_number|fa_digits }}{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs">
@@ -24,19 +25,20 @@ stricter -- blocked once any of this purchase's stock has been sold).
         تأمین‌کننده:
         <a href="{% url 'purchasing:supplier_detail' invoice.supplier.pk %}">{{ invoice.supplier.name }}</a>
         · تاریخ: {{ invoice.invoice_date|jalali_long }}
-        {% if invoice.supplier_invoice_number %} · شماره فاکتور تأمین‌کننده: {{ invoice.supplier_invoice_number }}{% endif %}
+        {% if invoice.supplier_invoice_number %} · شماره فاکتور تأمین‌کننده: {{ invoice.supplier_invoice_number|ident }}{% endif %}
         · ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}
       </p>
       <p class="page-head__lede">{% include "shared/_usd_rate_note.html" with rate=invoice.usd_rate %}</p>
     </div>
     <div class="sale-detail__actions">
       {% status_badge "invoice" invoice.status invoice.get_status_display %}
+      {% if invoice.status == "confirmed" %}<a href="{% url 'returns:purchase_new' invoice.pk %}" class="btn btn--quiet">ثبت مرجوعی</a>{% endif %}
       <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ فاکتور</a>
       {% if can_cancel %}
         <form method="post" action="{% url 'purchasing:cancel' invoice.pk %}"
-              onsubmit="return confirm('این فاکتور لغو شود؟ موجودی برگردانده می‌شود و این عملیات بازگشت‌ناپذیر است.');">
+              onsubmit="return confirm('این فاکتور خرید لغو شود؟ کالاهای آن از موجودی کم می‌شود و این عملیات بازگشت‌ناپذیر است.');">
           {% csrf_token %}
-          <button type="submit" class="btn btn--quiet">لغو فاکتور</button>
+          <button type="submit" class="btn btn--danger">لغو فاکتور</button>
         </form>
       {% endif %}
     </div>
@@ -48,9 +50,23 @@ stricter -- blocked once any of this purchase's stock has been sold).
 {% endif %}
 
 <div class="card">
+  {% if invoice.returns.all %}
+{# D-089: goods and money that came back on this invoice. #}
+<div class="card">
   <div class="card__body">
+    <h2>مرجوعی‌های این فاکتور</h2>
+    <ul class="ret-list">
+      {% for doc in invoice.returns.all %}
+        <li><a href="{% url 'returns:purchase_detail' doc.pk %}">مرجوعی {{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span> {% include "returns/_settle_chips.html" with purchase=True %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="card__body">
     <h2>اقلام فاکتور</h2>
-    <table class="data-table">
+    <div class="table-card"><table class="data-table">
       <thead>
         <tr>
           <th>کالا</th>
@@ -79,7 +95,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
 
     <div class="sale-form__totals">
       {% if invoice.freight_amount %}
@@ -100,7 +116,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
     </p>
 
     {% if invoice.payment_allocations.all %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>تاریخ</th>
@@ -116,6 +132,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
               <td>
                 {% if allocation.payment.cheque %}چک {{ allocation.payment.cheque.cheque_number|default:"(بدون شماره)" }}
                 {% elif allocation.payment.bank_account %}{{ allocation.payment.bank_account.name }}
+                {% elif allocation.payment.is_credit_note %}{{ allocation.payment.note }}
                 {% else %}نقدی{% endif %}
                 {% if allocation.reversal_payment %}
                   <span class="badge badge--bad">برگشت داده شد {{ allocation.reversal_payment.payment_date|jalali }}</span>
@@ -124,14 +141,14 @@ stricter -- blocked once any of this purchase's stock has been sold).
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز پرداختی برای این فاکتور ثبت نشده است.</p>
     {% endif %}
 
     {% if invoice.cheques.all %}
       <h2>چک‌های مرتبط</h2>
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره چک</th>
@@ -144,9 +161,9 @@ stricter -- blocked once any of this purchase's stock has been sold).
         <tbody>
           {% for cheque in invoice.cheques.all %}
             <tr>
-              <td>{{ cheque.cheque_number|default:"—" }}</td>
-              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
-              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td>{{ cheque.cheque_number|ident|dash }}</td>
+              <td>{{ cheque.issuer|dash }}</td><td>{{ cheque.bank_name|dash }}</td>
+              <td class="num">{{ cheque.due_date|jalali|dash }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>
                 {% status_badge "cheque" cheque.status cheque.get_status_display %}
@@ -154,7 +171,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% endif %}
   </div>
 </div>

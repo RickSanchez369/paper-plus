@@ -2,9 +2,9 @@
 One field, rendered the same way everywhere: label, control, errors.
 Included rather than copied so a change to how errors look happens once.
 {% endcomment %}
-<div class="field">
-  <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+<div class="field{% if field.errors %} field--invalid{% endif %}">
+  <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="field__req" aria-hidden="true">*</span>{% endif %}</label>
   {{ field }}
   {% if field.help_text %}<p class="field__hint">{{ field.help_text }}</p>{% endif %}
-  {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  {% for error in field.errors %}<p class="field__error"{% if forloop.first %} id="{{ field.id_for_label }}_err"{% endif %} role="alert">{{ error }}</p>{% endfor %}
 </div>

@@ -10,23 +10,24 @@ answer "how are we doing right now."
 
 {% block title %}فروش{% endblock %}
 {% block header %}فروش{% endblock %}
+{% block head %}<script src="{% static_v 'sales/js/sales_pages.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div class="page-head__row">
     <h1>فاکتورهای فروش</h1>
-    <a href="{% url 'sales:new' %}" class="btn">+ فاکتور فروش جدید</a>
+    <a href="{% url 'sales:new' %}" class="btn">{% icon "plus" %}فاکتور فروش جدید</a>
   </div>
 </div>
 
 <div class="stats">
-  <div class="stat-card">
+  <div class="stat-card stat-card--in">
     <span class="stat-card__label">فروش امروز</span>
-    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman_split }}</span>
   </div>
-  <div class="stat-card">
+  <div class="stat-card stat-card--in">
     <span class="stat-card__label">فروش این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman_split }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">فاکتورهای باز (نیمه/نسیه)</span>
@@ -34,55 +35,60 @@ answer "how are we doing right now."
   </div>
   <div class="stat-card">
     <span class="stat-card__label">سود این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_profit|toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_profit|toman_split }}</span>
   </div>
 </div>
 
 <div class="card">
   <div class="card__body">
-    <form method="get" class="toolbar">
+    <form method="get" class="toolbar toolbar--panel">
+      {% include "shared/_keep_sort.html" %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.payment_status %}
+        {% include "shared/_field.html" with field=filter_form.price_tier %}
         {% include "shared/_field.html" with field=filter_form.product %}
         {% include "shared/_field.html" with field=filter_form.amount_min %}
         {% include "shared/_field.html" with field=filter_form.amount_max %}
-        <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
+        <button type="submit" class="btn">اعمال فیلتر</button>
       </div>
       {% include "shared/_date_range.html" with form=range_form %}
+    {% include "shared/_filter_reset.html" %}
     </form>
 
     {% if invoices %}
       <div class="table-card">
-        <table class="data-table">
+        <table class="data-table data-table--ledger">
           <thead>
             <tr>
               {% sort_th "شماره فاکتور" "number" %}
               {% sort_th "تاریخ" "date" %}
               {% sort_th "مشتری" "party" %}
-              {% sort_th "مبلغ کل" "total" %}
+              {% sort_th "مبلغ کل (تومان)" "total" %}
               <th>وضعیت پرداخت</th>
-              <th>سود</th>
-              <th>وضعیت سند</th>
-              <th></th>
+              <th>سود (تومان)</th>
+              <th><span class="ledger__sr">عملیات</span></th>
             </tr>
           </thead>
           <tbody>
             {% for invoice in invoices %}
-              <tr>
-                <td><a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
-                <td class="num">{{ invoice.invoice_date|jalali }}</td>
-                <td>{{ invoice.customer.name }}</td>
-                <td class="num">{{ invoice.total|toman }}</td>
-                <td>
-                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
+              <tr{% if invoice.status == 'cancelled' %} class="is-void"{% endif %}>
+                <td class="cell-id">
+                  <a href="{% url 'sales:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a>
+                  {# The document status is only worth a chip when it is not the normal confirmed one. #}
+                  {% if invoice.status != 'confirmed' %}{% status_badge "invoice" invoice.status invoice.get_status_display %}{% endif %}
                 </td>
-                <td class="num">{{ invoice.profit|toman }}</td>
+                <td class="num cell-soft">{{ invoice.invoice_date|jalali }}</td>
+                <td class="cell-grow"><span class="name-clip" title="{{ invoice.customer.name }}">{{ invoice.customer.name }}</span>
+                  {% if invoice.price_tier == "wholesale" %}<span class="badge badge--info">عمده</span>{% else %}<span class="badge badge--muted">خرد</span>{% endif %}</td>
+                <td class="num cell-money cell-money--total">{{ invoice.total|toman_bare }}</td>
                 <td>
-                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
+                  {% if invoice.status == 'cancelled' %}—{% else %}{% status_badge "payment" invoice.payment_status invoice.payment_status.label %}{% endif %}
                 </td>
-                <td>
-                  <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>
+                <td class="num cell-money cell-soft">{{ invoice.profit|toman_bare }}</td>
+                <td class="cell-act">
+                  <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet btn--sm" data-sp-print
+                     title="چاپ مستقیم فاکتور (برای پیش‌نمایش با Ctrl+کلیک باز کنید)">{% icon "print" %}چاپ</a>
                 </td>
               </tr>
             {% endfor %}
@@ -93,8 +99,19 @@ answer "how are we doing right now."
       {% pager page_obj %}
     {% else %}
       <div class="placeholder">
-        <p>فاکتوری با این فیلترها پیدا نشد.</p>
-        <a href="{% url 'sales:new' %}" class="btn">ثبت اولین فاکتور فروش</a>
+        {% if request.GET %}
+          <p>در این بازه یا با این فیلترها فاکتوری پیدا نشد.</p>
+          <div class="sales-empty__actions">
+            {% if widen %}
+              {# The text matches invoices dated outside the chosen window: one click shows them. #}
+              <a href="{{ widen.url }}" class="btn">{{ widen.count|fa_number }} فاکتور با این عبارت در تاریخ‌های دیگر هست — نمایش</a>
+            {% endif %}
+            <a href="{% url 'sales:list' %}" class="btn btn--quiet">پاک‌کردن فیلترها</a>
+          </div>
+        {% else %}
+          <p>هنوز فاکتوری ثبت نشده است.</p>
+          <a href="{% url 'sales:new' %}" class="btn">ثبت اولین فاکتور فروش</a>
+        {% endif %}
       </div>
     {% endif %}
   </div>

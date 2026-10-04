@@ -53,9 +53,11 @@
   --warning-700: #865b00;
 
   --surface: var(--white);
-  --surface-sunken: #f2f5fb;
+  --surface-sunken: #eaeff7;
   --surface-tint: var(--ink-100);
-  --border: var(--ink-200);
+  --border: #d3dbe8;
+  /* Control edges need 3:1 (WCAG 1.4.11); --border stays for decorative dividers. */
+  --control-border: #7a869c;
   --text: var(--ink-900);
   --text-muted: var(--ink-500);
 
@@ -74,8 +76,8 @@
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  /* Flat by default; only overlays (dropdowns, dialogs, date picker) lift. */
-  --shadow-sm: none;
+  /* Cards get a hairline lift so layers read; only overlays (dropdowns, dialogs, date picker) lift more. */
+  --shadow-sm: 0 1px 2px rgb(10 31 68 / 7%);
   --shadow-md: 0 10px 30px rgb(10 31 68 / 14%);
 
   /* The dark gradient used by the sidebar and the sign-in page. */
@@ -106,6 +108,9 @@ body {
   color: var(--text);
   background: var(--surface-sunken);
   -webkit-font-smoothing: antialiased;
+  /* Persian digits are proportional; dates, numbers and quantities must line up. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 a {
@@ -125,7 +130,7 @@ h3 {
   line-height: 1.35;
 }
 
-h1 { font-size: 22px; font-weight: 500; }
+h1 { font-size: 22px; font-weight: 700; }
 h2 { font-size: 16px; }
 
 /*
@@ -280,9 +285,8 @@ body.nav-open {
 
 .nav-group__label {
   padding: var(--space-2) var(--space-3);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
   color: var(--ink-400);
   text-transform: none;
 }
@@ -418,6 +422,19 @@ body.nav-open {
   padding: var(--space-5);
 }
 
+/* Stacked cards need a gap, and a heading needs air above the table or hint under it. */
+.card + .card {
+  margin-top: var(--space-5);
+}
+
+.card__body > h2 {
+  margin-bottom: var(--space-3);
+}
+
+.card__body > * + h2 {
+  margin-top: var(--space-5);
+}
+
 .page-head {
   margin-bottom: var(--space-5);
 }
@@ -450,6 +467,19 @@ body.nav-open {
   text-decoration: none;
 }
 
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* A dead button must look dead (the invoice submit is disabled while stock is short). */
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  background: var(--ink-100);
+  border-color: var(--ink-300);
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
+
 /* Every interactive element gets a visible ring (3:1 against white); .btn keeps its own. */
 a:focus-visible,
 button:focus-visible,
@@ -459,9 +489,10 @@ summary:focus-visible,
   outline-offset: 2px;
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--accent-500);
-  outline-offset: 2px;
+/* accent-500 is 2.7:1 on white; it is only legible on the navy chrome. */
+.sidebar .btn:focus-visible,
+.auth .btn:focus-visible {
+  outline-color: var(--accent-500);
 }
 
 .btn--lg {
@@ -483,6 +514,19 @@ summary:focus-visible,
 
 .btn--block {
   width: 100%;
+}
+
+/* Irreversible actions (cancel, bounce) must not look like Print. */
+.btn--danger {
+  background: var(--surface);
+  border-color: var(--negative-700);
+  color: var(--negative-700);
+}
+
+.btn--danger:hover {
+  background: var(--negative-100);
+  border-color: var(--negative-700);
+  color: var(--negative-700);
 }
 
 .badge {
@@ -541,7 +585,7 @@ summary:focus-visible,
 .field > textarea {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--ink-300);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 14px;
@@ -556,6 +600,21 @@ summary:focus-visible,
   outline: 3px solid rgb(0 119 255 / 18%);
   outline-offset: 0;
   border-color: var(--accent-600);
+}
+
+.field__control::placeholder,
+.field > input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* A field with an error must look different, not only add a line below it. */
+.field--invalid .field__control,
+.field--invalid > input,
+.field--invalid > select,
+.field--invalid > textarea {
+  border-color: var(--negative-700);
+  box-shadow: inset 0 0 0 1px var(--negative-700);
 }
 
 .field__error {
@@ -720,7 +779,7 @@ summary:focus-visible,
   display: grid;
   place-items: center;
   height: 26px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -757,7 +816,7 @@ summary:focus-visible,
 }
 
 .jdp__cell.is-selected {
-  background: var(--accent-600);
+  background: var(--accent-700);
   color: var(--white);
   font-weight: 600;
 }
@@ -831,7 +890,7 @@ summary:focus-visible,
 }
 
 .daterange__preset.is-active {
-  background: var(--accent-600);
+  background: var(--accent-700);
   color: var(--white);
 }
 
@@ -1012,8 +1071,7 @@ summary:focus-visible,
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border-top: 3px solid var(--accent-500);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-sm);
 }
 
 .stat-card__label {
@@ -1391,11 +1449,45 @@ summary:focus-visible,
   margin: var(--space-3) 0 var(--space-4);
 }
 
+/* The main decision of the form is a choice of cards, not a footnote of radios. */
 .payment-mode__option {
   display: flex;
+  flex: 1 1 140px;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   cursor: pointer;
+}
+
+.payment-mode__option:has(input:checked) {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+  font-weight: 600;
+}
+
+.payment-mode__option:has(input:focus-visible) {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+.form-narrow {
+  max-width: 640px;
+}
+
+/* A panel that belongs to the chosen method reads as a unit. */
+[data-expense-panel] {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+[data-expense-panel][hidden] {
+  display: none;
 }
 
 .form-actions {
@@ -1429,10 +1521,24 @@ summary:focus-visible,
   color: var(--text-muted);
 }
 
+/* Sticky: on a long invoice the confirm button must not live 1200px below the first row. */
 .sale-form__submit {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 -4px 12px rgb(10 31 68 / 8%);
+}
+
+.card + form,
+form + .card {
   margin-top: var(--space-5);
 }
 
@@ -1485,10 +1591,12 @@ summary:focus-visible,
 }
 
 @media (max-width: 720px) {
+  /* The .table-card around each table scrolls; the table stays a table (header band, a11y roles). */
   .data-table {
-    display: block;
-    overflow-x: auto;
-    max-width: 100%;
+    min-width: 640px;
+  }
+
+  .table-card {
     -webkit-overflow-scrolling: touch;
   }
 
@@ -1574,13 +1682,15 @@ summary:focus-visible,
 /* Dashboard dues card: receivables and payables side by side, stacked on narrow screens (D-079). */
 .dues-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
   gap: var(--space-5, 1.5rem);
 }
 
 .dues-col h4 {
   margin: var(--space-4) 0 var(--space-2);
-  font-size: 0.95rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .payment-full__tick {
@@ -1635,3 +1745,6951 @@ summary:focus-visible,
 
 .sort-link:hover { color: var(--accent-700); text-decoration: none; }
 .sort-link--active { color: var(--action); }
+
+/* ------------------------------------------------------- UI audit batch 2 */
+
+/* A voided document stays in history but must not read as a live debt. */
+.data-table tr.is-void td {
+  color: var(--text-muted);
+}
+
+.data-table tr.is-void td:first-child a {
+  color: inherit;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.section-title:first-child {
+  margin-top: 0;
+}
+
+/* A sortable header must announce itself before it is the active one. */
+.sort-link:not(.sort-link--active)::after {
+  content: "⇅";
+  margin-inline-start: var(--space-1);
+  opacity: 0.35;
+}
+
+.toast {
+  position: fixed;
+  inset-inline: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 60;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+  font-size: 13.5px;
+}
+
+.toast a {
+  color: var(--accent-500);
+}
+
+/* A message needs a cue besides colour, and a stripe makes it findable. */
+.message {
+  border-inline-start: 4px solid var(--ink-300);
+}
+
+.message--success { border-inline-start-color: var(--positive-600); }
+.message--warning { border-inline-start-color: var(--warning-600); }
+.message--error { border-inline-start-color: var(--negative-600); }
+.message--info { border-inline-start-color: var(--accent-600); }
+
+.error-page {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  max-width: 560px;
+}
+
+/* Fingers need bigger date cells than a mouse does. */
+@media (pointer: coarse) {
+  .jdp { width: min(320px, calc(100vw - 16px)); }
+  .jdp__cell { height: 40px; font-size: 15px; }
+  .jdp__nav { width: 40px; height: 40px; }
+}
+
+/* ---------------------------------------------------------- dashboard */
+
+.section-label {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.alert-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border-inline-start: 4px solid var(--negative-600);
+  background: var(--negative-100);
+  color: var(--negative-700);
+  font-weight: 500;
+}
+
+.alert-strip:hover {
+  text-decoration: none;
+  filter: brightness(0.97);
+}
+
+/* The number the owner reads first gets the weight; a loss is red, never a quiet number. */
+.stat-card--primary {
+  background: var(--chrome);
+  color: var(--white);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-sm);
+}
+
+.stat-card--primary .stat-card__label,
+.stat-card--primary .field__hint {
+  color: var(--ink-200);
+}
+
+.stat-card--primary .stat-card__value {
+  font-size: 22px;
+}
+
+.stat-card__value.is-loss {
+  color: #ffb3ae;
+}
+
+.stat-card--link {
+  color: inherit;
+}
+
+.stat-card--link:hover {
+  text-decoration: none;
+  border-color: var(--accent-600);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-md);
+}
+
+.dues-overdue {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--negative-100);
+  color: var(--negative-700);
+  font-size: 13px;
+}
+
+h3 { font-size: 15px; }
+
+.stat-card > .badge,
+.stat-card > .btn {
+  justify-self: start;
+}
+
+.cell-sub {
+  display: block;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 41px;
+  font-size: 13.5px;
+}
+
+.stat-card--primary .stat-card__delta--up { color: #8fe3b3; }
+.stat-card--primary .stat-card__delta--down { color: #ffb3ae; }
+
+/* ------------------------------------------------------ bank accounts */
+
+.stat-card--account {
+  position: relative;
+}
+
+.stat-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stat-card__name:hover {
+  text-decoration: none;
+  color: var(--accent-700);
+}
+
+/* The whole card is the link, not only the name. */
+.stat-card__name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.stat-card__meta {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.stat-card--account .stat-card__value {
+  font-size: 22px;
+}
+
+.is-negative {
+  color: var(--negative-700);
+}
+
+/* ------------------------------------------------------------- dues */
+
+/* Overdue rows are tinted and edged, not only badged. */
+.data-table tr.is-overdue td {
+  background: var(--negative-100);
+}
+
+.data-table tr.is-overdue td:first-child {
+  box-shadow: inset -3px 0 0 var(--negative-600);
+}
+
+.inline-form {
+  display: inline-block;
+  margin-top: var(--space-2);
+}
+
+/* Open/closed must differ for an inline disclosure: a chevron after the label. */
+.quick-party-disclosure > summary::after {
+  content: "▾";
+  margin-inline-start: var(--space-2);
+}
+
+.quick-party-disclosure[open] > summary::after {
+  content: "▴";
+}
+
+/* Where am I: not colour alone. */
+.nav-link.is-active {
+  box-shadow: inset -3px 0 0 var(--accent-500);
+}
+
+.nav-group__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ------------------------------------------------------------- login + header */
+
+/* 16px inputs: iOS Safari zooms the page on focus below that. */
+.auth .field__control,
+.auth .field > input {
+  font-size: 16px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.auth__brand {
+  flex-direction: column;
+  text-align: center;
+  gap: var(--space-2);
+}
+
+.auth .sidebar__mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 20px;
+}
+
+.auth__lede {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .header__user > span { display: none; }
+  .header__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.card__body > h1 {
+  margin-bottom: var(--space-4);
+}
+
+.dues-grid {
+  margin-top: var(--space-4);
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): css_foundation
+   ====================================================================== */
+/* ==========================================================================
+   css_foundation: component micro-details (pager, sort headers, badges, forms,
+   buttons, tables, links, print). Appended after app.css; rules win by position
+   at equal specificity. Tokens only; grouped by finding id.
+   ========================================================================== */
+
+:root {
+  /* D039: one control height. 41px is what inputs already measure (14px x 1.65 + 16 + 2),
+     so buttons are brought up to it instead of inputs down. */
+  --control-h: 41px;
+  --control-pad: var(--space-2);
+  --control-line: calc(var(--control-h) - 2px - 2 * var(--control-pad));   /* 23px */
+  --control-radius: var(--radius-sm);
+
+  /* D028: row states. */
+  --row-hover: #eef4fd;
+  --row-open: var(--accent-100);
+  --negative-200: #f9d3d0;
+
+  /* D038: every drawer text offset comes from the 18px icon slot. */
+  --nav-pad: var(--space-3);
+  --nav-icon: 18px;
+  --nav-text-start: calc(var(--nav-pad) + var(--nav-icon) + var(--space-3));
+}
+
+/* ---------------------------------------------------------------- D001 pager */
+
+/* Count at the start edge, controls at the end edge; every control keeps its slot
+   (disabled ones stay visible) so nothing moves between clicks. */
+.pagination {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.pagination__count,
+.pagination__page {
+  margin: 0;                       /* not a form hint: no 8px top margin */
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pagination__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pagination__page {
+  min-width: 104px;                /* "صفحهٔ ۱ از ۹" and "صفحهٔ ۱۰ از ۹۹" take the same slot */
+  text-align: center;
+}
+
+.pagination__btn {
+  min-width: 64px;                 /* قبلی and بعدی are the same width */
+}
+
+.pagination__btn--icon {
+  min-width: 40px;
+  padding-inline: var(--space-2);
+}
+
+/* A disabled pager button keeps its slot and drops the hover lift. */
+.pagination__btn[aria-disabled="true"]:hover {
+  background: var(--ink-100);
+  border-color: var(--ink-300);
+  color: var(--ink-500);
+}
+
+@media (max-width: 640px) {
+  .pagination {
+    justify-content: center;
+    flex-direction: column-reverse;   /* controls first, count under them */
+  }
+
+  .pagination__btn {
+    min-height: 44px;                 /* phone tap target */
+  }
+}
+
+/* ------------------------------------------------------------ D002 sort header */
+
+.sort-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-block: 2px;
+}
+
+.sort-link:not(.sort-link--active)::after {
+  content: none;                      /* the font-fallback arrow is replaced by .sort-icon */
+}
+
+.sort-link:hover .sort-icon::before,
+.sort-link:hover .sort-icon::after {
+  background: var(--accent-700);
+}
+
+/* Two stacked triangles drawn in CSS so every OS shows the same shape; the lit one is the direction. */
+.sort-icon {
+  position: relative;
+  flex: none;
+  width: 8px;
+  height: 13px;
+}
+
+.sort-icon::before,
+.sort-icon::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 5px;
+  background: var(--ink-500);
+}
+
+.sort-icon::before {
+  top: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.sort-icon::after {
+  bottom: 0;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* Active column: coloured label, one lit triangle, underlined header cell. */
+.data-table th[aria-sort] {
+  box-shadow: inset 0 -2px 0 var(--accent-700);
+}
+
+.sort-link--active {
+  color: var(--accent-700);
+}
+
+.sort-link--active .sort-icon::before,
+.sort-link--active .sort-icon::after {
+  background: var(--ink-300);
+}
+
+th[aria-sort="ascending"] .sort-icon::before,
+th[aria-sort="descending"] .sort-icon::after {
+  background: var(--accent-700);
+}
+
+@media (forced-colors: active) {
+  .sort-icon::before,
+  .sort-icon::after {
+    background: CanvasText;
+  }
+}
+
+/* ------------------------------------------------------------ D003 count badge */
+
+/* A count is not a status: no dot, and a fill that shows on the sunken page. */
+.badge--count {
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  line-height: 1;                     /* stop the 1.65 body leading offsetting the digit */
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--ink-200);
+  color: var(--text-muted);
+}
+
+.badge--count::before {
+  content: none;
+}
+
+/* -------------------------------------------------------------- D004 date picker */
+
+/* Friday is the weekly holiday: column 7 of the 7-column grid (headers, blanks and days share it). */
+.jdp__grid > :nth-child(7n) {
+  color: var(--negative-700);
+}
+
+.jdp__grid > .jdp__weekday:nth-child(7) {
+  font-weight: 600;
+}
+
+/* Today: a 1.5px ring in the 3:1-safe blue plus weight, so it reads without colour. */
+.jdp__cell.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--accent-700);
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.jdp__cell.is-selected {
+  background: var(--accent-700);
+  color: var(--white);
+  font-weight: 600;
+}
+
+/* Selected and today: a white inner ring keeps it distinguishable from plain selected. */
+.jdp__cell.is-selected.is-today {
+  box-shadow: inset 0 0 0 2px var(--white), 0 0 0 1.5px var(--accent-700);
+}
+
+/* --ink-100 is near-white on white; the accent tint is perceptible. */
+.jdp__cell:not(.is-selected, .jdp__cell--empty):hover {
+  background: var(--accent-100);
+}
+
+/* ------------------------------------------------------ D039 control scale (+ D006 select) */
+
+/* Buttons and inputs share one height: a fixed line box makes the padding add up to the
+   same pixel count (small buttons that only shrink their padding stay on the scale). */
+.btn {
+  line-height: var(--control-line);
+  border-radius: var(--control-radius);
+}
+
+.btn--lg {
+  font-size: 15px;
+}
+
+.field__control,
+.field > input:not([type="checkbox"], [type="radio"], [type="hidden"]),
+.field > select,
+.field > textarea {
+  min-height: var(--control-h);
+  line-height: var(--control-line);
+  border-radius: var(--control-radius);
+}
+
+.auth .field__control,
+.auth .field > input {
+  min-height: 48px;
+}
+
+/* Patches that faked the scale per place. */
+.filters .btn,
+.payment-row__remove {
+  height: auto;
+}
+
+.daterange__presets {
+  min-height: var(--control-h);
+}
+
+.daterange__preset {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--control-h) - 2px);
+  line-height: 1.3;
+}
+
+.daterange__custom > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  line-height: 1.3;
+}
+
+/* D006: one chevron on the inline-end side (left in RTL), a reserved gutter so long labels
+   ellipsize instead of running under it. The popup stays native. */
+select.field__control:not(.cust-combo__native, [multiple], [size]),
+.field > select:not(.cust-combo__native, [multiple], [size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-left: calc(var(--space-3) + 24px);
+  padding-right: var(--space-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6' fill='none' stroke='%2355617a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  background-position: left var(--space-3) center;
+}
+
+select.field__control:not(.cust-combo__native, [multiple], [size]):focus,
+.field > select:not(.cust-combo__native, [multiple], [size]):focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6' fill='none' stroke='%23213368' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+select.field__control:not(.cust-combo__native, [multiple], [size]):disabled,
+.field > select:not(.cust-combo__native, [multiple], [size]):disabled {
+  background-color: var(--ink-100);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* ------------------------------------------------- D007 checkbox, radio, tick rows */
+
+/* One checkbox/radio look everywhere: brand colour, 18px, no RTL-blind UA margins. */
+input[type="checkbox"],
+input[type="radio"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;                          /* spacing comes from the label's gap */
+  accent-color: var(--accent-700);
+  cursor: pointer;
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 3px solid rgb(0 119 255 / 18%);
+  outline-offset: 2px;
+}
+
+/* Every tick row is a 44px target; the whole label is the button. */
+.check,
+.payment-full__tick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.check {
+  display: inline-flex;
+}
+
+/* The radio sits on the reading-start edge of its card, not floating in the middle. */
+.payment-mode__option {
+  justify-content: flex-start;
+  min-height: 48px;
+  padding-inline: var(--space-4);
+}
+
+/* A boolean rendered by _field.html: control and label on one line. */
+.field:has(> input[type="checkbox"]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  min-height: 44px;
+}
+
+.field:has(> input[type="checkbox"]) .field__label {
+  margin: 0;
+  order: 2;
+}
+
+.field:has(> input[type="checkbox"]) > .field__hint,
+.field:has(> input[type="checkbox"]) > .field__error {
+  order: 3;
+  flex: 1 0 100%;
+}
+
+/* --------------------------------------------------------- D014 money cells */
+
+/* Zero is "nothing here": keep the unit for context but step back, so real figures stand out. */
+.data-table td.num.is-zero {
+  color: var(--ink-500);
+  font-weight: 400;
+}
+
+.data-table td.num.is-zero strong {
+  font-weight: 400;
+}
+
+/* Negative figures in tables get the same signal as the negative stat cards. */
+.data-table td.num.is-neg {
+  color: var(--negative-700);
+}
+
+/* ------------------------------------------- D015 empty cells, D045/D046 identifiers */
+
+/* «No value»: quieter than data so blanks recede, and voiced as a label to screen readers. */
+.nil {
+  color: var(--ink-400);
+  font-weight: 400;
+  user-select: none;
+  cursor: default;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Identifiers (phone, SKU, cheque / supplier-invoice number) read left-to-right as one unit.
+   Unlike .num (amount + unit, must stay RTL) the unit-side rule does not apply here. */
+.ident {
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------- D019 summary strip, D027/D030 stat cards */
+
+.summary-strip__item {
+  min-width: 0;                       /* let grid cells shrink instead of overflowing */
+}
+
+.summary-strip__value {
+  font-size: clamp(17px, 4.6vw, 20px);
+  line-height: 1.4;
+  white-space: nowrap;                /* figure and unit never split */
+}
+
+.summary-strip__value .money__unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.summary-strip__item--owed .summary-strip__value .money__unit,
+.summary-strip__item--settled .summary-strip__value .money__unit {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.summary-strip__status {
+  display: flex;
+  align-items: center;
+  min-height: 28px;                   /* matches the one-line value so the four cards align */
+}
+
+@media (max-width: 720px) {
+  .summary-strip {
+    gap: var(--space-3);
+  }
+
+  .summary-strip__item {
+    padding: var(--space-3);
+  }
+}
+
+/* One rhythm inside a stat card: the grid gap alone spaces the lines, and a figure
+   never breaks (ui.js shrinks one that is wider than its card instead of clipping it). */
+.stat-card {
+  min-width: 0;
+}
+
+.stat-card > .field__hint {
+  margin: 0;
+}
+
+.stat-card__value {
+  min-width: 0;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.stat-card__value[data-fitted] {
+  cursor: help;
+}
+
+/* The unit is a caption of the figure, not a second figure. The dashboard tiles style their own. */
+.stats:not(.stats--performance, .stats--position) .stat-card__value .money__unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.stats:not(.stats--performance, .stats--position) .stat-card--primary .stat-card__value .money__unit {
+  color: var(--ink-200);
+}
+
+.stat-card__value.is-loss .money__unit,
+.stat-card__value.is-negative .money__unit {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------ D025 textarea, D032 rhythm */
+
+/* A textarea is inline-block (a descender gap under it) and resizes both ways (can overflow
+   the card): make it a block that resizes vertically only. */
+textarea.field__control,
+.field > textarea {
+  display: block;
+  resize: vertical;
+  min-height: 4.5rem;
+  max-height: 50vh;
+  padding-block: var(--space-2);
+  line-height: 1.6;
+}
+
+/* A submit button that follows the last field keeps the field-to-field rhythm; a wrapper
+   (hint, panel) before a field must not reset it either. */
+form:not(.filters, .quick-party--compact, .cheque-clear, .toolbar--panel) > .field + .btn {
+  margin-top: var(--space-4);
+}
+
+.field + .form-actions {
+  margin-top: var(--space-5);
+}
+
+[data-expense-panel] + .field,
+[data-payment-panel] + .field {
+  margin-top: var(--space-4);
+}
+
+[data-expense-panel] > .field__hint {
+  margin-bottom: var(--space-3);
+}
+
+/* ---------------------------------------------------------- D026 placeholder, hints */
+
+/* A placeholder is never dimmed twice: the muted colour is already 6.2:1 on white. */
+.field__control::placeholder,
+.field > input::placeholder,
+.field > textarea::placeholder,
+.item-row input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;                         /* Firefox lowers it by default */
+}
+
+.field__hint {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+span.field__hint,
+td .field__hint {
+  font-size: 12.5px;
+}
+
+.nav-group__label {
+  color: var(--ink-300);
+  font-size: 12.5px;
+}
+
+/* ------------------------------------------------------------- D028 row states */
+
+/* Hover is painted on the cell, so it also shows on tinted (overdue) rows. */
+.data-table tbody tr:hover {
+  background: transparent;
+}
+
+.data-table tbody tr:hover > td,
+.data-table tbody tr:focus-within > td {
+  background: var(--row-hover);
+}
+
+.data-table tbody tr.is-overdue:hover > td,
+.data-table tbody tr.is-overdue:focus-within > td {
+  background: var(--negative-200);
+}
+
+.data-table tbody tr.is-void:hover > td {
+  background: var(--surface-tint);
+}
+
+/* A row whose inline action form is open: tinted + start-edge rail, so the form reads as part of it. */
+.data-table tbody tr:has(details[open]) > td {
+  background: var(--row-open);
+}
+
+.data-table tbody tr:has(details[open]) > td:first-child {
+  box-shadow: inset -3px 0 0 var(--accent-600);
+}
+
+.data-table tbody tr.is-overdue:has(details[open]) > td:first-child {
+  box-shadow: inset -3px 0 0 var(--negative-600);
+}
+
+/* The card edge closes the table; a bottom border on the last row is clipped by the card's
+   rounded corner into a floating stub. A <tfoot> keeps the divider above the totals. */
+.data-table tbody:last-child tr:last-child > td {
+  border-bottom-color: transparent;
+}
+
+/* ------------------------------------------------------------ D029 long names */
+
+/* Two lines at most, full text in the title tooltip; the figures keep their columns. */
+.name-clip {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 28ch;
+  overflow-wrap: anywhere;            /* an unbroken long token cannot widen the table */
+  line-height: 1.5;
+}
+
+.data-table td .name-clip {
+  min-width: 12ch;
+}
+
+.item-row__result-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.item-row__result-meta {
+  flex: 0 0 auto;                     /* stock and price never get squeezed */
+}
+
+@media (max-width: 720px) {
+  .name-clip {
+    max-width: 20ch;
+  }
+}
+
+/* ---------------------------------------------------------------- D031 form grid */
+
+/* Two columns on desktop, one on phone. A long-by-nature field (note, address) takes the row. */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  max-width: 880px;                   /* keeps lines of input scannable on wide screens */
+  align-items: start;                 /* a hint under one field must not stretch its neighbour */
+}
+
+.form-grid > .field + .field {
+  margin-top: 0;                      /* the grid gap owns the rhythm */
+}
+
+.form-grid > .field--wide,
+.form-grid > .field:has(> textarea),
+.form-grid > .form-section,
+.form-grid > .form-actions {
+  grid-column: 1 / -1;
+}
+
+.form-grid > .form-actions {
+  margin-top: var(--space-2);
+}
+
+/* An in-form section title: .card__body > h2 never matches inside <form>. */
+.form-section {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+}
+
+.form-section__hint {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+@media (max-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -------------------------------------------------------------- D038 drawer axis */
+
+.nav-group__label {
+  gap: var(--space-3);                /* same icon-to-text gap as .nav-link */
+  padding: var(--space-2) var(--nav-pad);
+}
+
+.nav-link--child {
+  padding-inline-start: var(--nav-text-start);   /* on the parent-link text axis */
+}
+
+/* ---------------------------------------------- D040 inline forms inside tables */
+
+/* An open row form must not drag the other cells to mid-height, and it reads as a panel. */
+.data-table tbody tr:has(details[open]) > td {
+  vertical-align: top;
+}
+
+.data-table td:has(> .quick-party-disclosure) {
+  vertical-align: top;
+}
+
+.data-table .quick-party-disclosure > summary {
+  width: fit-content;
+}
+
+.data-table .quick-party-disclosure[open] {
+  width: min(340px, 100%);
+}
+
+.data-table .quick-party-disclosure > .payment-form {
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-tint);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent-500);
+  border-radius: var(--radius-md);
+}
+
+.data-table .quick-party-disclosure > .payment-form .field + .field {
+  margin-top: var(--space-3);
+}
+
+.data-table .quick-party-disclosure > .payment-form .btn--block {
+  margin-top: var(--space-4);
+}
+
+/* -------------------------------------------------------- D041 disclosure chevron */
+
+/* One affordance for every <details> trigger: a drawn chevron that rotates (the old text
+   glyphs are missing from Vazirmatn and fall back to a random system font). */
+details > summary.btn::after,
+details.quick-party-disclosure > summary::after,
+.daterange__custom > summary::after {
+  content: "";
+  display: inline-block;              /* a flex item in a .btn, inline after the text elsewhere */
+  vertical-align: middle;
+  flex: none;
+  inline-size: 6px;
+  block-size: 6px;
+  margin-inline-start: var(--space-2);
+  border-inline-end: 1.5px solid currentColor;
+  border-block-end: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s;
+}
+
+details[open] > summary.btn::after,
+details.quick-party-disclosure[open] > summary::after,
+.daterange__custom[open] > summary::after {
+  content: "";
+  transform: translateY(1px) rotate(-135deg);
+}
+
+/* The open state shows on the trigger too. */
+details[open] > summary.btn--quiet,
+.daterange__custom[open] > summary {
+  background: var(--ink-100);
+  border-color: var(--ink-700);
+  color: var(--ink-900);
+}
+
+/* Revealed content needs breathing room (the price-history table butted against its button). */
+details > summary.btn + * {
+  margin-top: var(--space-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  details > summary.btn::after,
+  details.quick-party-disclosure > summary::after,
+  .daterange__custom > summary::after {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ D042 links */
+
+/* A link inside data is told apart by more than colour: a hairline underline at rest,
+   full on hover. Buttons and sort links opt out. */
+.data-table a:not(.btn, .sort-link, .badge) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.28em;
+  text-decoration-skip-ink: none;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+
+.data-table a:not(.btn, .sort-link, .badge):hover {
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 2px;
+  color: var(--action);               /* a state change beyond the line */
+}
+
+/* A voided row's link stays a link (dotted = still reachable, just historical). */
+.data-table tr.is-void td:first-child a {
+  color: var(--text-muted);
+  text-decoration-style: dotted;
+  text-decoration-color: currentColor;
+}
+
+.data-table tr.is-void td:first-child a:hover {
+  color: var(--action);
+  text-decoration-style: solid;
+}
+
+/* ------------------------------------------------------------ D044 table scroll */
+
+/* Thin on-palette scrollbar; the thumb keeps 3:1 (WCAG 1.4.11). */
+.table-card {
+  scrollbar-width: thin;
+  scrollbar-color: var(--control-border) var(--ink-100);
+}
+
+.table-card::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-card::-webkit-scrollbar-track {
+  background: var(--ink-100);
+  border-radius: 4px;
+}
+
+.table-card::-webkit-scrollbar-thumb {
+  background: var(--control-border);
+  border-radius: 4px;
+}
+
+.table-card::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-700);
+}
+
+/* ui.js makes an overflowing card focusable so a keyboard can scroll it. */
+.table-card:focus-visible {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+/* An edge fade only on the side that still hides columns. Scroll-driven, so no JS; browsers
+   without it keep the thin bar. A table that fits has no overflow: the timeline stays inactive. */
+@property --fade-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --fade-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
+@keyframes table-card-fade {
+  /* RTL: 0% is scrolled to the right edge, so the hidden columns are on the left. */
+  0%   { --fade-l: 24px; --fade-r: 0px; }
+  5%   { --fade-l: 24px; --fade-r: 24px; }
+  95%  { --fade-l: 24px; --fade-r: 24px; }
+  100% { --fade-l: 0px; --fade-r: 24px; }
+}
+
+@supports (animation-timeline: scroll()) {
+  .table-card {
+    animation: table-card-fade linear both;
+    animation-timeline: scroll(self inline);
+    mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l),
+                                #000 calc(100% - var(--fade-r)), transparent 100%);
+  }
+}
+
+@media (max-width: 720px) {
+  .table-card {
+    overscroll-behavior-x: contain;   /* a sideways swipe at the end must not navigate back */
+  }
+}
+
+/* -------------------------------------------------------------- D047 printing */
+
+/* Ctrl+P on a list or detail page prints the content, not the app chrome. The invoice
+   sheets (body.print-page) have their own stylesheet and are left alone. */
+@media print {
+  body:not(.print-page) .sidebar,
+  body:not(.print-page) .nav-overlay,
+  body:not(.print-page) .header,
+  body:not(.print-page) .page-head__actions,
+  body:not(.print-page) .filters,
+  body:not(.print-page) .pagination__nav,
+  body:not(.print-page) .messages,
+  body:not(.print-page) .toast,
+  body:not(.print-page) .term-tip,
+  body:not(.print-page) .jdp,
+  body:not(.print-page) [data-no-print] {
+    display: none !important;
+  }
+
+  body:not(.print-page) {
+    background: #fff;
+    color: #000;
+  }
+
+  body:not(.print-page) .content {
+    max-width: none;
+    padding: 0;
+  }
+
+  /* Flat cards that may break across pages. */
+  body:not(.print-page) .card {
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* No clipped columns on paper: the table uses the page width. */
+  body:not(.print-page) .table-card {
+    overflow: visible;
+    mask-image: none;
+  }
+
+  body:not(.print-page) thead {
+    display: table-header-group;       /* repeat the header on each page */
+  }
+
+  body:not(.print-page) tr,
+  body:not(.print-page) .stat-card {
+    break-inside: avoid;
+  }
+
+  body:not(.print-page) h1,
+  body:not(.print-page) h2,
+  body:not(.print-page) h3 {
+    break-after: avoid;
+  }
+
+  /* A status keeps its tint and its dot on paper. */
+  .badge,
+  .badge::before,
+  .data-table tr.is-overdue td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body:not(.print-page) a {
+    color: inherit;
+  }
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): design_system
+   ====================================================================== */
+/* ==========================================================================
+   design_system: cross-cutting design language (tone, type scale, density,
+   icons, empty states, meter, buttons, forms, panels, money, phone cards).
+   Appended LAST, so equal-specificity rules here win by order. Tokens first,
+   then one block per finding id. Nothing here changes a label, a column or a
+   control; it only re-skins them.
+   ========================================================================== */
+
+:root {
+  /* ---- G029: the cyan as a scale, light-on-dark money colours, mid ink ---- */
+  --accent-300: #7fd4f5;              /* text/icons on navy */
+  --accent-cyan-700: #0b6b96;         /* cyan text on light (5.9:1 on white) */
+  --positive-300: #8fe3b3;            /* light-on-dark money, replaces literals */
+  --negative-300: #ffb3ae;
+  --negative-200: #f9d3d0;
+  --ink-050: #f7f9fd;                 /* was neutral grey; now on the navy hue */
+  --ink-600: #3a4766;                 /* the missing mid-tone of the ramp */
+  --focus-ring: color-mix(in srgb, var(--accent-600) 18%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent-500) 40%, transparent);
+
+  /* Tone = what a card's money does. Stripe fills only (never text): 3:1 is enough. */
+  --tone-default: var(--accent-500);  /* balances, stock, neutral counts */
+  --tone-in: #1f9d62;                 /* sales, receivables: money arriving */
+  --tone-out: #d49a12;                /* purchases, expenses, payables: money leaving */
+  --tone-risk: var(--negative-600);   /* overdue, shortfall, loss */
+
+  /* ---- G030: one type scale; raw px sizes outside :root are drift ---- */
+  --fs-100: 12px;   /* badge, table head, cell-sub */
+  --fs-200: 13px;   /* label, hint, caption, breadcrumb, KPI label */
+  --fs-300: 14px;   /* body, message, toast, nav link */
+  --fs-400: 16px;   /* card title, section heading */
+  --fs-500: 22px;   /* page title */
+  --fs-600: 26px;   /* KPI figure */
+  --fs-700: 32px;   /* the single primary KPI */
+  --fw-regular: 400;
+  --fw-label: 500;
+  --fw-heading: 600;
+  --fw-figure: 700;
+
+  /* ---- G031: one place decides how tall a table row / inline control is ---- */
+  --row-y: 5px;                       /* compact data-table cell block padding */
+  --ctl-sm: 32px;                     /* inline action button inside a row */
+
+  /* ---- G034: data-viz tokens, one fill / track / height everywhere ---- */
+  --viz-fill: var(--accent-600);
+  --viz-fill-pos: var(--positive-600);
+  --viz-fill-neg: var(--negative-600);
+  --viz-fill-quiet: var(--ink-300);
+  --viz-track: var(--ink-200);
+  --viz-h: 6px;
+
+  /* ---- G036: button edge and lift ---- */
+  --control-h-sm: var(--ctl-sm);
+  --btn-lift: 0 1px 0 rgb(255 255 255 / 14%) inset, 0 1px 2px rgb(10 31 68 / 28%);
+  --btn-lift-hover: 0 2px 6px rgb(10 31 68 / 30%);
+  --btn-edge: #9aa6bb;                /* quiet border, ~2.4:1 on white */
+
+  /* ---- G040: one overlay shadow ---- */
+  --shadow-pop: 0 1px 2px rgb(10 31 68 / 8%), 0 12px 32px rgb(10 31 68 / 18%);
+}
+
+/* Touch targets: inline row buttons grow back to 40px on phones and touch screens. */
+@media (max-width: 640px), (pointer: coarse) {
+  :root { --ctl-sm: 40px; }
+}
+
+/* ==========================================================================
+   G029 (+G039 stripe): the stat-card top edge is a short tab that carries the
+   money direction, not a full-width inset shadow clipped into curved "ears".
+   ========================================================================== */
+.stat-card {
+  --tone: var(--tone-default);
+  position: relative;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: var(--space-5);        /* the reading side: lines up with the label */
+  inline-size: 36px;
+  block-size: 4px;
+  border-radius: 0 0 4px 4px;
+  background: var(--tone);
+  pointer-events: none;
+}
+
+.stat-card--in { --tone: var(--tone-in); }
+.stat-card--out { --tone: var(--tone-out); }
+.stat-card--risk { --tone: var(--tone-risk); }
+
+/* Variants that painted their own inset stripe now only set a tone. */
+.stat-card.stat-card--primary { box-shadow: var(--shadow-sm); }
+.stat-card.stat-card--primary:has(.is-loss) { --tone: var(--tone-risk); }
+.stat-card.stat-card--owed { --tone: var(--tone-risk); box-shadow: var(--shadow-sm); }
+.stat-card.stat-card--idle { --tone: var(--ink-200); box-shadow: var(--shadow-sm); }
+.stat-card.is-warn { --tone: var(--warning-600); box-shadow: var(--shadow-sm); }
+.stat-card.dues-hero__late { --tone: var(--negative-600); box-shadow: var(--shadow-sm); }
+.stat-card.dues-hero__late.is-clear { --tone: var(--positive-600); box-shadow: var(--shadow-sm); }
+
+/* Hover lifts the card and takes the tone as its border; no inset stripe. */
+.stat-card--link:hover,
+.stats--performance .stat-card--link:hover,
+.stats--position .stat-card--link:hover,
+.stat-card--account:hover,
+a.dues-hero__late:hover {
+  border-color: var(--tone);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==========================================================================
+   G030: the type scale applied to the roles that were improvised.
+   Section heading > card title > column heading > label > hint, five steps.
+   ========================================================================== */
+h3 {
+  font-size: var(--fs-300);
+  font-weight: var(--fw-heading);
+  color: var(--ink-700);
+}
+
+.dues-col h4 {
+  font-size: var(--fs-200);
+  font-weight: var(--fw-heading);
+  color: var(--ink-700);
+}
+
+/* A group heading must out-rank the KPI captions under it. */
+.section-label,
+.section-title {
+  font-size: var(--fs-400);
+  font-weight: var(--fw-heading);
+  color: var(--ink-700);
+}
+
+.stat-card__label,
+.summary-strip__label {
+  font-size: var(--fs-200);
+  font-weight: var(--fw-label);
+  color: var(--text-muted);
+}
+
+.stat-card--primary .stat-card__label { color: var(--ink-200); }
+
+/* A KPI figure is one size everywhere; standalone figures need no column alignment, so digits are proportional. */
+.stat-card__value {
+  font-size: var(--fs-600);
+  font-weight: var(--fw-figure);
+  line-height: 1.3;
+  font-variant-numeric: proportional-nums;
+  font-feature-settings: "tnum" 0;
+}
+
+/* Light-on-dark money colours come from tokens instead of literals. */
+.stat-card--primary .stat-card__delta--up { color: var(--positive-300); }
+.stat-card--primary .stat-card__delta--down { color: var(--negative-300); }
+
+/* Half pixels (12.5 / 13.5) were noise, not hierarchy: snap them to the scale. */
+.field__hint,
+span.field__hint,
+td .field__hint,
+.field__error,
+.breadcrumbs,
+nav.breadcrumbs,
+.stat-card__meta,
+.item-row__stock,
+.auth__note,
+.jdp__action,
+.pagination__count,
+.pagination__page,
+.nav-group__label,
+.form-section__hint,
+.field__hint--warn {
+  font-size: var(--fs-200);
+}
+
+.nav-link,
+.message,
+.toast {
+  font-size: var(--fs-300);
+}
+
+/* ==========================================================================
+   G031: density. Comfortable is today's look; Compact trims cell padding and
+   every in-row button is a 32px inline action instead of a form-sized control.
+   ========================================================================== */
+:root[data-density="compact"] .data-table th,
+:root[data-density="compact"] .data-table td {
+  padding-block: var(--row-y);
+}
+
+/* Low specificity on purpose (0,1,1): pages that tuned their own row button keep their rule. */
+:where(.data-table) td .btn:not(:where(.btn--block, .btn--lg, .payment-form .btn)) {
+  min-height: var(--ctl-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--fs-200);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.btn--sm {
+  min-height: var(--ctl-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--fs-200);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* The header switch: lit when Compact is on. */
+.header__density[aria-pressed="true"] {
+  background: var(--accent-100);
+  border-color: var(--accent-700);
+  color: var(--accent-700);
+}
+
+@media (max-width: 720px) {
+  .header__density { display: none; }   /* phones already get record cards */
+}
+
+/* ==========================================================================
+   G032: one icon language. `{% icon %}` glyphs on actions; every badge tone has
+   its own shape, so status never relies on hue alone.
+   ========================================================================== */
+.icon {
+  inline-size: 16px;
+  block-size: 16px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn .icon { margin-inline-start: calc(var(--space-1) * -1); }   /* optical: hugs the edge */
+.btn--lg .icon { inline-size: 18px; block-size: 18px; }
+.icon--in { color: var(--positive-700); }
+.icon--out { color: var(--ink-500); }
+
+@media (forced-colors: active) {
+  .icon { stroke: CanvasText; }
+}
+
+/* A 12px glyph replaces the identical 6px dot on the toned badges (the neutral one keeps its dot). */
+.badge--pending::before,
+.badge--good::before,
+.badge--bad::before,
+.badge--bad-solid::before,
+.badge--info::before,
+.badge--muted::before {
+  inline-size: 12px;
+  block-size: 12px;
+  border-radius: 0;
+  -webkit-mask: var(--glyph) center / contain no-repeat;
+  mask: var(--glyph) center / contain no-repeat;
+}
+
+/* pending = clock, good = check, bad = alert triangle, bad-solid = x in circle, info = ring + dot, muted = slash. */
+.badge--pending::before { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E"); }
+.badge--good::before { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E"); }
+.badge--bad::before { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 22 20H2z'/%3E%3Cpath d='M12 10v4'/%3E%3C/svg%3E"); }
+.badge--bad-solid::before { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m8.5 8.5 7 7m0-7-7 7'/%3E%3C/svg%3E"); }
+.badge--info::before { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='3' fill='%23000'/%3E%3C/svg%3E"); }
+.badge--muted::before { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m6 18 12-12'/%3E%3C/svg%3E"); }
+
+/* The due-date chips draw their own marker (or none): keep it. */
+.badge[class*="badge--due-"]::before {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  -webkit-mask: none;
+  mask: none;
+}
+
+/* ==========================================================================
+   G033: one empty state. The bare .placeholder stops stretching its button and
+   gains the same medallion; `_empty_state.html` is the full version.
+   ========================================================================== */
+.placeholder,
+.empty-state {
+  display: grid;
+  justify-items: center;              /* a lone CTA no longer spans the card */
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.placeholder::before {                 /* generic tray glyph for markup that has not migrated */
+  content: "";
+  inline-size: 72px;
+  block-size: 72px;
+  border-radius: 50%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230062d1' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 13h4l1.5 3h5L16 13h4'/%3E%3Cpath d='M4 13 6.5 5.5h11L20 13v5.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z'/%3E%3C/svg%3E") center / 32px no-repeat, var(--accent-100);
+  box-shadow: 0 0 0 8px var(--ink-100);
+  margin-block-end: var(--space-2);
+}
+
+.empty-state__art {
+  display: grid;
+  place-items: center;
+  inline-size: 72px;
+  block-size: 72px;
+  border-radius: 50%;
+  background: var(--accent-100);
+  color: var(--accent-700);
+  box-shadow: 0 0 0 8px var(--ink-100);   /* soft halo ring */
+  margin-block-end: var(--space-2);
+}
+
+.empty-state__art .nav-icon {
+  inline-size: 32px;
+  block-size: 32px;
+  stroke-width: 1.4;
+  opacity: 1;
+}
+
+.empty-state__title {
+  margin: 0;
+  font-size: var(--fs-400);
+  font-weight: var(--fw-figure);
+  color: var(--text);
+}
+
+.empty-state__hint {
+  margin: 0;
+  max-inline-size: 46ch;
+  font-size: var(--fs-200);
+  line-height: 1.9;
+}
+
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+/* In-card variant: a dashed strip, so a small empty section still reads as "a place where rows will appear". */
+.empty-state--compact {
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+  text-align: start;
+  padding: var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+}
+
+.empty-state--compact .empty-state__art {
+  inline-size: 40px;
+  block-size: 40px;
+  box-shadow: none;
+  margin: 0;
+}
+
+.empty-state--compact .empty-state__art .nav-icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+@media (max-width: 860px) {
+  .placeholder,
+  .empty-state { padding: var(--space-6) var(--space-4); }
+  .empty-state__actions .btn { inline-size: 100%; }   /* full width only where thumbs need it */
+}
+
+/* ==========================================================================
+   G034: the shared magnitude bar. --v is 0..100; the figure above it carries
+   the real value, the bar is decoration (aria-hidden).
+   ========================================================================== */
+.meter {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 64px;
+  block-size: var(--viz-h);
+  margin-block-start: var(--space-1);
+  border-radius: 999px;
+  background: var(--viz-track);
+  overflow: hidden;
+}
+
+.meter::after {
+  content: "";
+  display: block;
+  block-size: 100%;
+  inline-size: calc(var(--v, 0) * 1%);
+  min-inline-size: 2px;               /* a non-zero value never vanishes */
+  border-radius: inherit;
+  background: var(--viz-fill);
+  transition: inline-size 0.3s ease;
+}
+
+.meter--empty::after { display: none; }
+.meter--pos::after { background: var(--viz-fill-pos); }
+.meter--neg::after { background: var(--viz-fill-neg); }
+.meter--quiet::after { background: var(--viz-fill-quiet); }
+
+@media (prefers-reduced-motion: reduce) {
+  .meter::after { transition: none; }
+}
+
+/* A cell holding figure + bar stacked. */
+.cell-meter { min-inline-size: 140px; }
+.cell-meter > .meter { margin-inline-start: auto; }
+
+/* Zero-centred variant for signed values (profit, balance): positive grows one way, negative the other. */
+.meter--signed {
+  position: relative;
+  background: linear-gradient(var(--ink-400), var(--ink-400)) center / 1px 100% no-repeat, var(--viz-track);
+}
+
+.meter--signed::after {
+  position: absolute;
+  inset-block: 0;
+  inline-size: calc(var(--v, 0) * 0.5%);
+}
+
+.meter--signed.meter--pos::after { inset-inline-start: 50%; }
+.meter--signed.meter--neg::after { inset-inline-end: 50%; }
+
+.stat-card--primary .meter {
+  --viz-track: rgb(255 255 255 / 18%);
+  --viz-fill: var(--accent-500);
+}
+
+/* ==========================================================================
+   G036: button hierarchy. Primary lifts, quiet gets a legible edge, destructive
+   in-row actions are tertiary, and an action bar pushes the destructive one away.
+   ========================================================================== */
+.btn:not(.btn--quiet, .btn--danger, .btn--ghost, .btn--light, .btn--remove, :disabled, [aria-disabled="true"]) {
+  border-color: var(--action-hover);
+  box-shadow: var(--btn-lift);
+}
+
+.btn:not(.btn--quiet, .btn--danger, .btn--ghost, .btn--light, .btn--remove, :disabled, [aria-disabled="true"]):hover {
+  box-shadow: var(--btn-lift-hover);
+}
+
+.btn:not(.btn--quiet, .btn--danger, .btn--ghost, .btn--light, .btn--remove, :disabled, [aria-disabled="true"]):active {
+  box-shadow: none;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] { box-shadow: none; }
+
+.btn--quiet {
+  border-color: var(--btn-edge);
+  color: var(--ink-800);
+}
+
+.btn--quiet:hover {
+  border-color: var(--control-border);
+  color: var(--ink-900);
+}
+
+/* In a row the destructive action must not outweigh the confirm beside it. */
+.data-table .btn--danger {
+  border-color: var(--negative-200);
+}
+
+.data-table .btn--danger:hover {
+  border-color: var(--negative-700);
+}
+
+/* One action-bar pattern: the destructive action sits at the far end. */
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.action-bar__spacer { margin-inline-start: auto; }
+.action-bar .btn--danger { margin-inline-start: auto; }
+
+.action-bar--sticky {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 5;
+  padding: var(--space-3) var(--space-4);
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgb(10 31 68 / 6%);
+}
+
+/* ==========================================================================
+   G037: form primitives that the feature groups' own grids do not provide.
+   ========================================================================== */
+.form-wide { max-inline-size: 960px; }
+
+/* Opt-in sticky action row for long single forms (modifier, so the invoice form's .form-actions is untouched). */
+.form-actions--bar {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 5;
+  margin-block-start: var(--space-5);
+  padding: var(--space-3) 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.form-actions--bar .btn { padding-inline: var(--space-5); }
+
+@media (max-width: 720px) {
+  .form-actions--bar .btn { flex: 1; }
+}
+
+/* The native file input weighs the same as the other controls, no grey OS button. */
+.field > input[type="file"] { padding: 6px var(--space-3); }
+
+.field > input[type="file"]::file-selector-button {
+  margin-inline-end: var(--space-3);
+  padding: 4px var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-200);
+  cursor: pointer;
+}
+
+.form-section__title {
+  margin: 0;
+  font-size: var(--fs-300);
+  font-weight: var(--fw-heading);
+}
+
+/* ==========================================================================
+   G039: panel anatomy for cards whose body starts with an h2: a titled band,
+   a table that runs edge to edge, and a quieter empty section. No overflow
+   clipping on .card, so dropdowns and the date picker still overlay.
+   ========================================================================== */
+.card__body > h2:first-child {
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+}
+
+/* The table butts against the band and runs to the card edge. */
+.card__body > h2:first-child:has(+ .table-card) { margin-bottom: 0; }
+.card__body > h2:first-child + .table-card { margin-inline: calc(-1 * var(--space-5)); }
+
+.card__body > h2:first-child + .table-card:last-child {
+  margin-bottom: calc(-1 * var(--space-5));
+  border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
+}
+
+.card__body > h2:first-child + .table-card:last-child tbody tr:last-child td { border-bottom: 0; }
+
+/* Table text lines up with the band's title edge. */
+.card__body > h2:first-child + .table-card th:first-child,
+.card__body > h2:first-child + .table-card td:first-child { padding-inline-start: var(--space-5); }
+.card__body > h2:first-child + .table-card th:last-child,
+.card__body > h2:first-child + .table-card td:last-child { padding-inline-end: var(--space-5); }
+
+/* An empty section: same band, muted title, tighter body, so filled panels outrank it. */
+.card__body:has(> h2:first-child + .field__hint:last-child) { padding-bottom: var(--space-4); }
+.card__body > h2:first-child:has(+ .field__hint:last-child) { color: var(--text-muted); }
+.card__body > h2:first-child + .field__hint:last-child { margin: 0; }
+
+/* ==========================================================================
+   G040 (tokens only): every floating surface shares one shadow. The in-flow
+   <details> forms keep their inline behaviour.
+   ========================================================================== */
+.jdp,
+.daterange__panel,
+.item-row__results,
+.quick-dialog {
+  box-shadow: var(--shadow-pop);
+}
+
+/* ==========================================================================
+   G045: the two-part money component. `|money` emits figure + quiet unit and
+   carries the sign / zero state, so every amount reads the same way.
+   ========================================================================== */
+.money {
+  white-space: nowrap;
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+.money .money__unit {
+  font-size: 0.8em;
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
+  margin-inline-start: 0.1em;
+}
+
+.money.is-neg .money__fig { color: var(--negative-700); }
+
+/* "۰ تومان" recedes instead of looking like a balance. */
+.money.is-zero .money__fig {
+  color: var(--text-muted);
+  font-weight: var(--fw-regular);
+}
+
+.money--pos .money__fig { color: var(--positive-700); }
+
+/* ==========================================================================
+   G043: phone record cards. design_system.js marks well-formed tables
+   (data-cards) and copies each column header into its cells (data-label);
+   below 720px each row becomes a labelled card with the actions pulled
+   into view instead of hidden behind a sideways scroll.
+   ========================================================================== */
+@media (max-width: 720px) {
+  .table-card:has(> .data-table[data-cards]) { overflow-x: visible; }
+
+  table.data-table[data-cards],
+  table.data-table[data-cards] tbody {
+    display: block;
+    min-inline-size: 0;
+  }
+
+  table.data-table[data-cards] thead {    /* hidden visually, still read by assistive tech */
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Cell padding (not grid gap) spaces the card, so tinted cells (overdue, today) tile into one band. */
+  table.data-table[data-cards] tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table.data-table[data-cards] tbody tr:last-child { border-bottom: 0; }
+
+  table.data-table[data-cards] td {
+    display: block;
+    min-inline-size: 0;
+    inline-size: auto;
+    padding: var(--space-1) var(--space-4);
+    border: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-align: start;
+  }
+
+  table.data-table[data-cards] td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--fs-100);
+    font-weight: var(--fw-regular);
+    color: var(--text-muted);
+  }
+
+  /* First cell = the card title (invoice no., name). */
+  table.data-table[data-cards] td:first-child {
+    grid-column: 1 / -1;
+    font-weight: var(--fw-heading);
+  }
+
+  /* Actions: a full-width row under the card, big touch targets, wrapping instead of clipping. */
+  table.data-table[data-cards] td.cell-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding-block-start: var(--space-2);
+  }
+
+  table.data-table[data-cards] td.cell-actions .btn {
+    flex: 1 1 120px;
+    min-height: 40px;
+  }
+
+  table.data-table[data-cards] td.cell-actions details { flex: 1 1 100%; }
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): shell
+   ====================================================================== */
+/* ==========================================================================
+   shell group: appended after app.css. Same specificity as the rules it
+   refines, so it wins by position. Tokens only (new ones are declared in
+   the first block below).
+   ========================================================================== */
+
+/* ---- G041 motion tokens + D043 browser-painted details + G042/G046 tokens ---- */
+:root {
+  /* Motion language: fast = hover/press, base = state change, slow = panels.
+     Ease-out for what arrives, ease-in for what leaves. */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 280ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --rise: 6px;
+
+  --scrim: rgb(10 31 68 / 55%);
+  --ring-on-navy: #8fd8ff;
+
+  /* Brand mark (shared/_brand_mark.html): colours come from here, so it works on white and navy. */
+  --mark-tile: #0a1f44;
+  --mark-sheet: #fff;
+  --mark-fold: #c9e8f7;
+  --mark-accent: #26a9e0;
+
+  color-scheme: light;  /* UA scrollbars and controls stay light even if the OS is dark */
+}
+
+/* ---- D043: selection, caret, autofill, native control accent ---- */
+html { accent-color: var(--accent-600); }
+input, textarea, select { caret-color: var(--accent-700); }
+
+::selection { background: rgb(0 119 255 / 24%); color: var(--text); }
+/* On navy chrome the same tint vanishes: a light cyan wash with white ink. */
+.sidebar ::selection,
+.auth ::selection { background: rgb(38 169 224 / 45%); color: var(--white); }
+.auth__card ::selection { background: rgb(0 119 255 / 24%); color: var(--text); }
+
+/* Autofill: the UA paints #e8f0fe / yellow and forces its own text colour. Keep the
+   "this was autofilled" cue but as a brand tint with navy ink. The inset shadow covers
+   the UA background (which cannot be overridden directly). */
+.field__control:-webkit-autofill,
+.field__control:-webkit-autofill:hover,
+.field__control:-webkit-autofill:focus,
+.field > input:-webkit-autofill,
+.field > input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--accent-700);
+  box-shadow: 0 0 0 1000px var(--accent-100) inset;
+  transition: background-color 99999s ease-out 0s;
+}
+
+.field__control:autofill,
+.field > input:autofill {
+  background-color: var(--accent-100);
+  color: var(--text);
+}
+
+.field__control:-webkit-autofill:focus {
+  outline: 3px solid rgb(0 119 255 / 18%);
+  border-color: var(--accent-600);
+}
+
+/* ---- D036: anchors and focus scrolling land clear of the sticky header and invoice bar ---- */
+html {
+  scroll-padding-top: calc(var(--header-height) + var(--space-4));
+  scroll-padding-bottom: 88px;
+}
+
+:target { animation: target-flash 1.8s ease-out 1; }
+tr:target > td { background: var(--accent-100); }
+
+@keyframes target-flash {
+  from { box-shadow: 0 0 0 3px rgb(0 119 255 / 35%); }
+  to { box-shadow: 0 0 0 3px transparent; }
+}
+
+/* ---- D012: the drawer scrim fades together with the panel (no `hidden` swap) ---- */
+.sidebar {
+  transition: transform var(--dur-base) var(--ease-in), visibility 0s linear var(--dur-base);
+}
+
+body.nav-open .sidebar {
+  transition: transform var(--dur-slow) var(--ease-out), visibility 0s;
+}
+
+.nav-overlay:not([hidden]) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: var(--scrim);
+  transition: opacity var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base);
+}
+
+body.nav-open .nav-overlay:not([hidden]) {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--dur-slow) var(--ease-out), visibility 0s;
+}
+
+/* ---- D013: focus rings that are legible on the navy chrome ---- */
+.sidebar a:focus-visible,
+.sidebar button:focus-visible,
+.hero a:focus-visible,
+.hero button:focus-visible,
+.stat-card--primary a:focus-visible,
+.stat-card--primary button:focus-visible {
+  outline: 2px solid var(--ring-on-navy);
+  outline-offset: 2px;
+}
+
+.sidebar .nav-link:focus-visible {
+  outline-offset: -2px;          /* inside the pill: never clipped by the scrolling drawer */
+  background: rgb(255 255 255 / 10%);
+  color: var(--white);
+}
+
+.hero .btn--ghost:focus-visible { background: rgb(255 255 255 / 12%); }
+
+/* The sign-in and error cards are white: there the cyan would vanish, the blue is right. */
+.auth__card a:focus-visible,
+.auth__card button:focus-visible,
+.auth__card .btn:focus-visible {
+  outline-color: var(--accent-700);
+}
+
+/* ---- G042: brand mark ---- */
+.brand-mark { width: 30px; height: 30px; flex-shrink: 0; display: block; }
+.brand-mark__tile { fill: var(--mark-tile); }
+.brand-mark__back { fill: none; stroke: var(--mark-accent); stroke-width: 1.6; opacity: 0.6; }
+.brand-mark__sheet { fill: var(--mark-sheet); }
+.brand-mark__fold { fill: var(--mark-fold); }
+.brand-mark__plus { fill: none; stroke: var(--mark-accent); stroke-width: 2.2; stroke-linecap: round; }
+
+/* On the navy drawer and sign-in backdrop the dark tile would vanish: use the lighter chrome tile. */
+.sidebar .brand-mark,
+.auth .brand-mark { --mark-tile: #213368; }
+
+.auth .brand-mark {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 6px 14px rgb(38 169 224 / 35%));
+}
+
+.brand-mark--mono { --mark-tile: #000; --mark-sheet: #fff; --mark-fold: #999; --mark-accent: #fff; }
+
+.header__brand {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.header__brand:hover { text-decoration: none; }
+.header__brand .brand-mark { width: 28px; height: 28px; }
+
+/* Loading signal: a thin cyan line under the header while an htmx request is out (ui.js
+   sets <html data-loading>). The delay keeps fast requests (search as you type) from flickering. */
+.header::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-500), transparent) no-repeat;
+  background-size: 40% 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) linear;
+}
+
+html[data-loading] .header::after {
+  opacity: 1;
+  transition-delay: 150ms;
+  animation: pp-load 1s linear infinite;
+}
+
+@keyframes pp-load {
+  from { background-position: -40% 0; }
+  to { background-position: 140% 0; }
+}
+
+/* ---- D011: back control = a 40px icon button matching the hamburger ---- */
+.header__lead { flex: 1 1 auto; }
+
+.header__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  min-width: 40px;
+  height: 40px;
+  padding-inline: var(--space-2) var(--space-3);
+  border: 1px solid var(--ink-300);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-700);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.header__back:hover {
+  background: var(--ink-100);
+  border-color: var(--ink-700);
+  color: var(--ink-900);
+  text-decoration: none;
+}
+
+.header__back svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.header__back:hover svg { transform: translateX(2px); }   /* nudge in the direction of travel (right in RTL) */
+
+/* ---- G046/E089/E090: quick-jump palette, cheat sheet, key caps ---- */
+.kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  margin-inline: 2px;
+  border: 1px solid var(--ink-300);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font: 600 11px/18px var(--font);
+  text-align: center;
+  direction: ltr;
+}
+
+.cmdk-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 1 320px;
+  min-width: 0;
+  height: 40px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--ink-300);
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cmdk-trigger:hover { background: var(--surface); border-color: var(--ink-700); }
+
+.cmdk-trigger svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  flex-shrink: 0;
+}
+
+.cmdk-trigger__text {
+  flex: 1;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmdk {
+  width: min(560px, calc(100vw - 2 * var(--space-4)));
+  margin: 12vh auto auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.cmdk::backdrop { background: var(--scrim); }
+
+.cmdk[open] { animation: cmdk-in var(--dur-base) var(--ease-out); }
+@keyframes cmdk-in { from { opacity: 0; transform: translateY(-6px) scale(0.98); } }
+
+.cmdk__input {
+  display: block;
+  width: 100%;
+  height: 56px;
+  padding-inline: var(--space-5);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  outline: none;     /* the dialog edge is the frame; the focus cue is the accent underline below */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.cmdk__input:focus { border-bottom-color: var(--accent-600); box-shadow: 0 1px 0 var(--accent-600); }
+
+.cmdk__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+}
+
+.cmdk__group {
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.cmdk__list a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+}
+
+.cmdk__list a:hover { text-decoration: none; background: var(--ink-100); }
+.cmdk__list small { color: var(--text-muted); font-size: 12px; }
+
+.cmdk__list [aria-selected="true"] a {
+  background: var(--accent-100);
+  box-shadow: inset -3px 0 0 var(--accent-700);   /* RTL: the bar sits on the start edge */
+}
+
+.cmdk__empty { margin: 0; padding: var(--space-5); text-align: center; color: var(--text-muted); }
+
+.cmdk__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--surface-tint);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cmdk__help {
+  margin-inline-start: auto;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--accent-700);
+  font: inherit;
+  cursor: pointer;
+}
+
+.kbd-help__box { padding: var(--space-5); }
+.kbd-help__title { margin: 0 0 var(--space-1); font-size: 16px; }
+.kbd-help__lede { margin: 0 0 var(--space-4); color: var(--text-muted); font-size: 13px; }
+
+.kbd-help__table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+.kbd-help__table th,
+.kbd-help__table td {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.kbd-help__table th { width: 40%; font-weight: 500; white-space: nowrap; }
+.kbd-help__actions { margin-top: var(--space-4); display: flex; justify-content: flex-end; }
+
+/* Phones: header trigger is an icon-only 40px target; no key hints without a keyboard. */
+@media (max-width: 720px) {
+  .header { gap: var(--space-2); }
+  .header__lead { gap: var(--space-2); }
+  .header__brand { display: none; }
+
+  /* Back keeps its icon and its accessible name; the word only goes visually. */
+  .header__back { padding-inline: 0; width: 40px; }
+  .header__back-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Let a number run inside the clipped title keep its own direction. */
+  .header__title { unicode-bidi: plaintext; }
+
+  .cmdk-trigger { flex: 0 0 40px; width: 40px; padding: 0; justify-content: center; }
+  .cmdk-trigger__text,
+  .cmdk-trigger .kbd,
+  .cmdk__foot .kbd { display: none; }
+  .cmdk { margin-top: 8vh; }
+}
+
+@media (hover: none) {
+  .cmdk__foot > span { display: none; }
+}
+
+/* ---- E073: sign in again in place when the session ends ---- */
+.relogin {
+  width: min(92vw, 360px);
+  padding: var(--space-5);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.relogin::backdrop { background: var(--scrim); }
+.relogin__title { margin: 0 0 var(--space-1); font-size: 18px; }
+.relogin__lede { margin: 0 0 var(--space-4); color: var(--text-muted); font-size: 13.5px; }
+
+/* ---- E074 / D034: password reveal and the Caps Lock / layout hint on sign-in ---- */
+.field__wrap { position: relative; }
+
+/* The password box is dir=ltr, so typed text grows from the left and the control sits on the free (right) edge. */
+.field__wrap > .field__control { padding-right: 76px; }
+
+.field__reveal {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--accent-700);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.field__reveal:hover { text-decoration: underline; }
+.field__hint--warn { margin: var(--space-2) 0 0; font-size: 12.5px; color: var(--warning-700); }
+.field__hint--warn::before { content: "\26A0\FE0E "; }
+
+/* ---- G028: sign-in as a two-pane brand + form layout (wide screens only) ---- */
+.auth__aside { display: none; }
+
+.auth__title { margin: 0; font-size: 20px; font-weight: 700; }
+
+.auth__kicker { margin: 0; font-size: 13px; font-weight: 600; color: var(--accent-500); }
+
+.auth__pitch {
+  margin: 0;
+  max-width: 14em;
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.auth__facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  font-size: 15px;
+  color: rgb(255 255 255 / 82%);
+}
+
+.auth__facts li { display: flex; align-items: center; gap: var(--space-3); }
+
+/* A cyan tick instead of a bullet: the same highlight the drawer uses. */
+.auth__facts li::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--accent-500);
+}
+
+/* A stack of paper sheets, pure CSS: ties the screen to the product. */
+.auth__stack {
+  position: absolute;
+  inset-inline-end: -40px;
+  inset-block-end: -50px;
+  width: 280px;
+  height: 340px;
+}
+
+.auth__stack i {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: rgb(255 255 255 / 6%);
+  border: 1px solid rgb(255 255 255 / 14%);
+}
+
+.auth__stack i:nth-child(1) { transform: rotate(-9deg) translate(24px, 6px); }
+.auth__stack i:nth-child(2) { transform: rotate(-4deg) translate(12px, 3px); background: rgb(255 255 255 / 9%); }
+.auth__stack i:nth-child(3) {
+  transform: rotate(2deg);
+  background: rgb(38 169 224 / 22%);
+  border-color: rgb(38 169 224 / 55%);
+}
+
+.auth .btn { box-shadow: 0 6px 16px rgb(33 51 104 / 25%); }
+
+@media (min-width: 960px) {
+  .auth--split {
+    grid-template-columns: minmax(0, 1fr) 460px;   /* RTL: the first column is the right-hand brand pane */
+    grid-template-rows: minmax(100vh, 1fr);
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .auth--split .auth__aside {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-5);
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-7) clamp(48px, 8vw, 120px);
+    color: var(--white);
+  }
+
+  .auth--split .auth__aside > :not(.auth__stack) { position: relative; z-index: 1; }
+
+  /* The card becomes a full-height white panel, not a floating card. */
+  .auth--split .auth__card {
+    width: auto;
+    border-radius: 0;
+    box-shadow: 24px 0 60px rgb(0 0 0 / 25%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--space-7);
+  }
+}
+
+/* ---- D049: error pages borrow the sign-in shell ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.auth__card.error-card {
+  width: min(440px, 100%);
+  text-align: center;
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+}
+
+.error-card .auth__brand { margin-bottom: var(--space-2); }
+
+.error-card__code {
+  margin: 0;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent-600);
+}
+
+.error-card h1 { margin: 0; font-size: 20px; }
+.error-card .page-head__lede { margin: 0; max-width: 34ch; font-size: 13.5px; }
+
+.error-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ---- D009: toast clears the sticky invoice bar, can be closed, and animates ---- */
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  z-index: 70;
+  border-inline-start: 4px solid var(--negative-600);
+  line-height: 1.7;
+}
+
+/* The confirm bar of the invoice pages is sticky at the bottom (~56px): sit above it. */
+body:has(.sale-form__submit) .toast {
+  bottom: calc(var(--space-4) + 64px + env(safe-area-inset-bottom, 0px));
+}
+
+.toast__text { flex: 1; min-width: 0; }
+
+.toast__close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: -4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.toast__close:hover,
+.toast__close:focus-visible { opacity: 1; background: rgb(255 255 255 / 12%); }
+
+.toast:not([hidden]) { animation: toast-in var(--dur-base) var(--ease-out) both; }
+.toast.is-leaving { animation: toast-out var(--dur-fast) var(--ease-in) both; }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(12px); } }
+
+/* ---- D023: flash messages: glyph + straight stripe + info tint, one live role each ---- */
+.messages:not(:has(.message)) { display: none; }   /* every message dismissed: no empty gap */
+
+.message {
+  position: relative;
+  overflow: hidden;                 /* clips the stripe to the radius: a straight bar, not a crescent */
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3) var(--space-4);
+  padding-inline-start: calc(var(--space-4) + 4px);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.message::after {                   /* the stripe, logical so it is on the start edge in RTL */
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background: currentColor;
+}
+
+.message::before {                  /* the glyph: currentColor through a mask, no dependency */
+  content: "";
+  grid-column: 1;
+  width: 20px;
+  height: 20px;
+  margin-block: 2px;
+  background: currentColor;
+  -webkit-mask: var(--msg-icon) center / contain no-repeat;
+  mask: var(--msg-icon) center / contain no-repeat;
+  --msg-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill-rule='evenodd' d='M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm-.9 4h1.8v1.8H9.1V5.5Zm0 3.5h1.8v5.5H9.1V9Z'/%3E%3C/svg%3E");
+}
+
+.message__text { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
+
+.message__close {
+  grid-column: 3;
+  align-self: start;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.message__close:hover,
+.message__close:focus-visible { opacity: 1; background: rgb(0 0 0 / 6%); }
+
+.message--success { background: var(--positive-100); color: var(--positive-700); }
+.message--warning { background: var(--warning-100); color: var(--warning-700); }
+.message--error { background: var(--negative-100); color: var(--negative-700); }
+
+.message--success::before { --msg-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill-rule='evenodd' d='M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm-1.2 11.9-3.4-3.4 1.2-1.2 2.2 2.2 4.6-4.6 1.2 1.2-5.8 5.8Z'/%3E%3C/svg%3E"); }
+.message--warning::before { --msg-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill-rule='evenodd' d='M10 2 .8 18h18.4L10 2Zm-.9 5.5h1.8v5H9.1v-5Zm0 6.5h1.8v1.8H9.1V14Z'/%3E%3C/svg%3E"); }
+.message--error::before { --msg-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill-rule='evenodd' d='M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm3.3 10.6-1.2 1.2L10 11.2l-2.1 2.1-1.2-1.2L8.8 10 6.7 7.9l1.2-1.2L10 8.8l2.1-2.1 1.2 1.2L11.2 10l2.1 2.1Z'/%3E%3C/svg%3E"); }
+
+@media (forced-colors: active) {
+  .message { border: 1px solid CanvasText; }
+  .message::after { display: none; }
+}
+
+/* ---- D010: breadcrumb trail (ui.js rebuilds `p.breadcrumbs` into this nav) ---- */
+nav.breadcrumbs {
+  margin: 0 0 var(--space-3);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each crumb stays whole when the trail wraps, so a separator is never orphaned at a line start. */
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.breadcrumbs li:last-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+/* A chevron pointing left (= one level deeper in RTL), drawn with borders: no glyph, no font. */
+.breadcrumbs li + li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-inline: var(--space-2);
+  border-left: 1.5px solid var(--ink-400);
+  border-bottom: 1.5px solid var(--ink-400);
+  transform: rotate(45deg);
+}
+
+.breadcrumbs a { padding-block: 6px; }
+
+@media (pointer: coarse) {
+  .breadcrumbs a { padding-block: 10px; }
+}
+
+/* ---- D024: the receipt file input, localised ---- */
+.filepick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 41px;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: 1px dashed var(--control-border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  font-size: 14px;
+}
+
+.filepick.is-filled { border-style: solid; background: var(--ink-100); }
+.filepick.is-drag { border-color: var(--accent-600); background: var(--accent-100); }
+
+.filepick__input {                  /* visually hidden, still focusable and submitted */
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.filepick__btn { flex: none; min-height: 33px; margin: 0; cursor: pointer; }
+
+.filepick__input:focus-visible ~ .filepick__btn {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+.filepick__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.filepick.is-filled .filepick__name { color: var(--text); }
+.filepick__name bdi { direction: ltr; unicode-bidi: isolate; }   /* IMG_2026.jpg reads left to right */
+.filepick__name small { color: var(--text-muted); font-size: 12.5px; }
+
+.filepick__clear {
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.filepick__clear:hover { background: var(--surface-sunken); color: var(--negative-700); }
+.field--invalid .filepick { border-color: var(--negative-700); box-shadow: inset 0 0 0 1px var(--negative-700); }
+
+/* A field that follows a toggled panel loses the `.field + .field` gap. */
+[data-expense-panel] + .field,
+[data-expense-panel] + [data-expense-panel] { margin-top: var(--space-4); }
+
+/* ---- D035: htmx in-flight state (ui.js locks the submit buttons and flags <html data-loading>) ---- */
+form[hx-post].htmx-request {
+  position: relative;
+  pointer-events: none;
+  cursor: progress;
+}
+
+form[hx-post].htmx-request .field__control { opacity: 0.6; }
+
+/* A locked button must look busy, not dead-grey. */
+.btn[data-htmx-locked]:disabled {
+  background: var(--action);
+  border-color: transparent;
+  color: var(--white);
+  opacity: 0.85;
+  cursor: progress;
+}
+
+.btn--quiet[data-htmx-locked]:disabled {
+  background: var(--surface);
+  border-color: var(--ink-300);
+  color: var(--ink-700);
+}
+
+.btn--danger[data-htmx-locked]:disabled {
+  background: var(--surface);
+  border-color: var(--negative-700);
+  color: var(--negative-700);
+}
+
+.btn[data-htmx-locked]::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: pp-spin 0.7s linear infinite;
+}
+
+@keyframes pp-spin { to { transform: rotate(360deg); } }
+
+/* Product search: a spinner at the inline end while the debounced request is out; the stale
+   list stays readable but visibly outdated. */
+.item-row__search::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 10px;
+  top: 11px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink-300);
+  border-top-color: var(--accent-700);
+  border-radius: 50%;
+  animation: pp-spin 0.7s linear infinite;
+  opacity: 0;
+  transition: opacity 0.1s linear 0.15s;
+  pointer-events: none;
+}
+
+.item-row__search:has(.htmx-request)::after { opacity: 1; }
+.item-row__search:has(.htmx-request) .item-row__results { opacity: 0.55; }
+
+/* ---- D050: quick-create confirmation reads as success ---- */
+.quick-party--success {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  background: var(--positive-100);
+  border-inline-start: 4px solid var(--positive-700);
+}
+
+.quick-party--success:focus { outline: none; }
+
+.quick-party--success::before {   /* a tick: a second cue besides the green */
+  content: "\2713";
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--positive-700);
+  color: var(--white);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.quick-party--success > .field__hint {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.quick-party--success > .btn { grid-column: 1 / -1; }
+
+/* ---- D037: term help (an abbr with data-tip; one shared bubble made by ui.js) ---- */
+.term {
+  text-decoration: underline dotted var(--ink-400);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  cursor: help;
+  unicode-bidi: isolate;
+}
+
+.term:hover { text-decoration-color: var(--accent-700); }
+
+.term-tip {
+  position: fixed;
+  z-index: 80;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.7;
+  pointer-events: none;
+}
+
+/* ---- G041: motion layer ---- */
+.nav-link,
+.btn,
+.field__control,
+.badge,
+.data-table tbody tr,
+.sort-link {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* Arrival: what a swap or an opened disclosure brings in rises a few px and fades. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(var(--rise)); }
+  to { opacity: 1; transform: none; }
+}
+
+.payment-form--success,
+.quick-party--success,
+details[open] > :not(summary) {
+  animation: rise-in var(--dur-base) var(--ease-out) backwards;  /* no fill after: no lingering stacking context */
+}
+
+/* The chevron turns instead of swapping glyphs. */
+.quick-party-disclosure > summary::after,
+.quick-party-disclosure[open] > summary::after {
+  content: "\25BE";
+  display: inline-block;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.quick-party-disclosure[open] > summary::after { transform: rotate(180deg); }
+
+/* Pending: a slim cyan line across the top of a posting htmx form. */
+form[hx-post].htmx-request::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-500), transparent) no-repeat;
+  background-size: 40% 100%;
+  animation: pp-load 0.9s linear infinite;
+}
+
+/* The user's OS setting wins: every state still changes, the travel does not. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  html[data-loading] .header::after,
+  form[hx-post].htmx-request::after {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): sales_form
+   ====================================================================== */
+/* ==========================================================================
+   sales_form group: new-sale page (sales/new.html, the shared payment card,
+   sale_form.js, invoice_payment.js, customer_combo.js).
+   Appended after app.css: same specificity, so these win by order.
+   ========================================================================== */
+
+/* ---- shared small controls: chips (E003/E004/E005/E006/E009) ----------- */
+.sf-chip {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sf-chip:hover {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+}
+
+.sf-chip[aria-pressed="true"] {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.sf-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .sf-chip {
+    min-height: 40px;
+  }
+}
+
+/* ---- E001/E002/G007/G003 (reduced)/D016: the sticky "invoice dock" ------- */
+.sale-dock {
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: 2px solid var(--accent-700);
+  box-shadow: 0 -6px 18px rgb(10 31 68 / 12%);
+}
+
+.sale-dock__info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sale-dock__recap,
+.sale-dock__blocked {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.sale-dock__recap.is-warn {
+  display: inline-block;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warning-100);
+  color: var(--warning-700);
+}
+
+.sale-dock__blocked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--negative-700);
+  font-weight: 500;
+}
+
+.sale-dock__link {
+  margin-inline-start: var(--space-2);
+  padding: 2px var(--space-3);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sale-dock__blocked .sale-dock__link {
+  margin-inline-start: 0;
+}
+
+.sale-dock__total {
+  display: grid;
+  flex: none;
+  line-height: 1.3;
+}
+
+.sale-dock__total-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sale-dock__total-value {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sale-dock__total-value .num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.sale-dock__btns {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+}
+
+.sale-dock__btns .btn:not(.btn--quiet) {
+  min-width: 170px;
+}
+
+@media (max-width: 720px) {
+  .sale-dock {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  /* The info block dissolves so a recap/blocked message can take its own full row, and an
+     ordinary recap hides (the total and buttons stay) to keep the bar short on a phone. */
+  .sale-dock__info {
+    display: contents;
+  }
+
+  .sale-dock__recap,
+  .sale-dock__blocked {
+    flex: 1 0 100%;
+    order: -1;
+  }
+
+  .sale-dock__recap:not(.is-warn) {
+    display: none;
+  }
+
+  .sale-dock__total {
+    flex: 1 1 auto;
+  }
+
+  .sale-dock__btns {
+    flex: 1 1 100%;
+  }
+
+  .sale-dock__btns .btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ---- D016: a line short of stock is marked, not only described ------------ */
+.item-row--over {
+  background: var(--negative-100);
+  box-shadow: inset -3px 0 0 var(--negative-700);
+}
+
+/* ---- G003 (reduced): the final total is the focal point of the totals block */
+.sale-form__totals {
+  max-width: 380px;
+}
+
+#sale-form .sale-form__totals-final {
+  align-items: baseline;
+  padding: var(--space-3) var(--space-4);
+  border-top: 0;
+  border-radius: var(--radius-md);
+  background: var(--ink-900);
+  color: var(--white);
+  font-size: 13px;
+}
+
+#sale-form .sale-form__totals-final .num {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* ---- E005/E006: discount as a receipt line + compact segmented switch ----- */
+.sale-form__totals-applied {
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.sale-form__totals-applied small {
+  margin-inline-start: var(--space-2);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.sale-form__totals-discount {
+  flex-wrap: wrap;
+}
+
+.sf-seg {
+  display: inline-flex;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sf-seg__opt {
+  position: relative;
+  min-width: 64px;
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface);
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.sf-seg__opt input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sf-seg__opt + .sf-seg__opt {
+  border-inline-start: 1px solid var(--control-border);
+}
+
+.sf-seg__opt:has(input:checked) {
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.sf-seg__opt:has(input:focus-visible) {
+  outline: 2px solid var(--accent-700);
+  outline-offset: -2px;
+}
+
+/* ---- D008: the active row of the product search list --------------------- */
+.item-row__results:not(:empty) {
+  scroll-padding-block: var(--space-1);
+}
+
+.item-row__result[aria-selected="true"]:not(:disabled) {
+  background: var(--ink-100);
+  box-shadow: inset 3px 0 0 var(--accent-700);
+  outline: none;
+}
+
+/* ---- D018: row removal is calmer, bigger to tap, and undoable ------------- */
+.btn--remove {
+  min-width: 44px;
+  min-height: 40px;
+  padding-inline: var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-500);
+}
+
+.btn--remove:hover,
+.btn--remove:focus-visible {
+  border-color: var(--negative-700);
+  background: var(--negative-100);
+  color: var(--negative-700);
+}
+
+.payment-row__remove.btn--remove {
+  height: auto;
+}
+
+@media (min-width: 1101px) {
+  .item-row__remove-text {
+    display: none;
+  }
+}
+
+.undo-bar {
+  position: fixed;
+  inset-inline: var(--space-4);
+  bottom: 96px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: 420px;
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--ink-900);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+  font-size: 13.5px;
+}
+
+.undo-bar__action {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--accent-500);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-500);
+  font: inherit;
+  cursor: pointer;
+}
+
+.undo-bar__action:hover {
+  background: var(--accent-500);
+  color: var(--ink-900);
+}
+
+@media (max-width: 720px) {
+  .undo-bar {
+    bottom: 150px;
+  }
+}
+
+/* ---- E004/E010: the payment-mode cards say what each one means ------------ */
+.payment-mode__text {
+  display: grid;
+  text-align: start;
+}
+
+.payment-mode__sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ---- E009: one-tap customer cheque ---------------------------------------- */
+.payment-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.payment-quick .field__hint {
+  margin: 0;
+}
+
+.payment-row__due-chips {
+  grid-column: 1 / -1;
+}
+
+/* ---- E007/E008: card + transfer together ----------------------------------- */
+.payment-full__tick {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.payment-full__tick input {
+  width: 20px;
+  height: 20px;
+}
+
+.payment-full__auto {
+  margin-top: var(--space-1);
+  color: var(--accent-700);
+}
+
+.payment-full.is-attention {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--warning-600);
+  outline-offset: 6px;
+}
+
+.payment-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 13.5px;
+}
+
+.payment-split__eq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.payment-split[data-state="ok"] {
+  border-color: var(--positive-600);
+}
+
+.payment-split[data-state="bad"] {
+  border-color: var(--warning-600);
+}
+
+.payment-split__state {
+  font-weight: 600;
+}
+
+.payment-split[data-state="ok"] .payment-split__state {
+  color: var(--positive-700);
+}
+
+.payment-split[data-state="bad"] .payment-split__state {
+  color: var(--text-muted);
+}
+
+.payment-split__half {
+  margin-inline-start: auto;
+  min-height: 36px;
+}
+
+/* ---- E004/E003: the credit (نسیه) block ------------------------------------- */
+.payment-full__credit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+
+.payment-full__credit .field__hint {
+  margin: 0;
+}
+
+.credit-due__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.credit-due__label {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.credit-summary {
+  margin: var(--space-3) 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.credit-summary:empty {
+  display: none;
+}
+
+.credit-summary--warn {
+  color: var(--warning-700);
+}
+
+/* ---- E011/E012: type-ahead customer box --------------------------------------- */
+.cust-combo {
+  position: relative;
+}
+
+.field > select.cust-combo__native.field__control {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cust-combo__list {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  z-index: 20;
+  max-height: 280px;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.cust-combo__list li {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.cust-combo__list li[aria-selected="true"] {
+  background: var(--ink-100);
+  box-shadow: inset -3px 0 0 var(--accent-700);
+}
+
+.cust-combo__new {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--border);
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.quick-party__match {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.quick-party__match .btn {
+  min-height: 32px;
+  padding-block: 0;
+}
+
+.quick-party__match--exact {
+  color: var(--negative-700);
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): sales_pages
+   ====================================================================== */
+/* ==================== sales_pages (sales list + detail) ==================== */
+
+/* G006 -- sales list filter bar: period chips + reset on row 1, fields + apply
+   on row 2, in one tinted panel. Scoped to .toolbar--panel so the other lists
+   keep their own toolbar. */
+.toolbar--panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-tint);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.toolbar--panel > .daterange {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.toolbar--panel > .btn--quiet {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.toolbar--panel > .filters {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.toolbar--panel .filters .field {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .toolbar--panel {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar--panel > .daterange,
+  .toolbar--panel > .btn--quiet,
+  .toolbar--panel > .filters {
+    grid-column: 1;
+  }
+
+  .toolbar--panel > .btn--quiet {
+    grid-row: 3;
+  }
+
+  .toolbar--panel > .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* E013/E014 -- empty-state actions (widen the search / clear filters). */
+.sales-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* G002 -- invoice ledger table: hierarchy from weight, alignment and density. */
+.data-table--ledger th,
+.data-table--ledger td {
+  padding: var(--space-2) var(--space-4);
+  vertical-align: middle;
+}
+
+/* Customer takes the slack; every other column hugs its content. */
+.data-table--ledger td {
+  white-space: nowrap;
+}
+
+.data-table--ledger td.cell-grow {
+  width: 100%;
+  white-space: normal;
+}
+
+/* Money columns (total, profit) share the least-significant edge so units,
+   thousands and millions line up from row to row. */
+.data-table--ledger th:nth-child(4),
+.data-table--ledger td:nth-child(4),
+.data-table--ledger th:nth-child(6),
+.data-table--ledger td:nth-child(6) {
+  text-align: end;
+}
+
+.data-table--ledger .cell-money {
+  min-width: 112px;
+}
+
+/* One strong figure per row: the total. */
+.data-table--ledger .cell-money--total {
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.data-table--ledger .cell-soft {
+  color: var(--text-muted);
+}
+
+.data-table--ledger .cell-id a {
+  font-weight: 600;
+  margin-inline-end: var(--space-2);
+}
+
+.data-table--ledger tr.is-void .cell-money--total {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* The row action is a small quiet button, not a full-height outlined slab. */
+.data-table--ledger .btn--sm {
+  padding: 3px var(--space-3);
+  font-size: 12.5px;
+}
+
+.data-table--ledger .cell-act {
+  width: 1%;
+  text-align: end;
+}
+
+.data-table--ledger .cell-act .btn {
+  opacity: 0.75;
+}
+
+.data-table--ledger tr:hover .cell-act .btn,
+.data-table--ledger .cell-act .btn:focus-visible {
+  opacity: 1;
+}
+
+/* Header text for the action column, for screen readers only. */
+.ledger__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* E085 -- a party name that links to its account page. */
+.party-link {
+  font-weight: 600;
+}
+
+.party-link:hover {
+  text-decoration: underline;
+}
+
+/* E086 -- related-records trail (customer > invoice > cheques). */
+.trail {
+  margin: 0 0 var(--space-5);
+}
+
+.trail ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trail__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 4px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13.5px;
+}
+
+/* In RTL the arrow points toward the next hop (to the left). */
+.trail__item + .trail__item::before {
+  content: "‹";
+  color: var(--text-muted);
+  margin-inline-end: var(--space-1);
+}
+
+.trail__item--current {
+  background: var(--accent-100);
+  border-color: var(--accent-700);
+}
+
+.trail__kind {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.trail__link {
+  font-weight: 600;
+}
+
+.trail__meta {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+@media (max-width: 640px) {
+  .trail ol {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: var(--space-1);
+  }
+
+  .trail__item {
+    flex: none;
+  }
+}
+
+/* E018/E017 -- cancel dialog that names what will be undone, and the
+   note shown on a cancelled invoice. */
+.cancel-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.cancel-dialog::backdrop {
+  background: rgb(15 23 32 / 40%);
+}
+
+.cancel-dialog__effects {
+  list-style: none;
+  margin: var(--space-3) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.cancel-dialog__effects li {
+  padding: var(--space-2) var(--space-3);
+  background: var(--negative-100);
+  border-radius: var(--radius-md);
+  line-height: 1.8;
+}
+
+.cancel-dialog__tag {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+  font-weight: 600;
+  color: var(--negative-700);
+}
+
+.cancel-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .cancel-dialog__actions .btn {
+    width: 100%;
+  }
+}
+
+.sale-cancelled-note {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 4px solid var(--ink-400);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--ink-700);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): purchasing
+   ====================================================================== */
+/* ==================== purchasing (new purchase, suppliers) ==================== */
+
+/* E021 + E022 -- freight: amount box always visible, last-freight chip, live landed-cost preview. */
+.sale-form__totals-discount {
+  flex-wrap: wrap;
+}
+
+.sale-form__totals-discount [data-freight-fields] {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sale-form__totals-discount [data-freight-suggest] {
+  min-height: 32px;
+  padding-block: 0;
+  font-size: 12.5px;
+}
+
+.sale-form__totals-discount [data-freight-fields] .field__hint,
+.sale-form__totals-discount [data-freight-fields] .freight-summary {
+  flex-basis: 100%;
+}
+
+.freight-summary {
+  margin: 0;
+  font-size: 12px;
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.freight-summary:empty {
+  display: none;
+}
+
+/* Two spans live in the row note now (stock after, landed cost): empty ones take no space. */
+.item-row__note > :empty {
+  display: none;
+}
+
+.item-row__note:not(:has(> :not(:empty))) {
+  display: none;
+}
+
+.item-row__landed {
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.item-row__landed.is-high {
+  color: var(--warning-700);
+}
+
+/* E024 -- "new product" dialog: the generic partial's head repeats the dialog title; the lead says what ثبت does. */
+.quick-dialog .quick-party__head {
+  display: none;
+}
+
+.quick-dialog__lead {
+  margin: 0 0 var(--space-4);
+  line-height: 1.9;
+}
+
+.pur-kbd {
+  margin-inline-start: var(--space-2);
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+/* E026 -- the consequence sentence on the sticky submit bar. */
+.sale-form__consequence {
+  margin: 0;
+  margin-inline-end: auto;
+  align-self: center;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.sale-form__consequence:empty {
+  display: none;
+}
+
+/* E027 + E028 -- one-click cheque row (purchases): shortcut button, due-date chips, one-line summary. */
+.pur-cheque-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.pur-cheque-quick .field__hint {
+  margin: 0;
+}
+
+.pur-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.payment-row__cheque > .pur-chips,
+.payment-row__cheque > .pur-cheque-summary {
+  grid-column: 1 / -1;
+}
+
+.pur-chips__label {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.pur-chip {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pur-chip:hover {
+  border-color: var(--accent-700);
+}
+
+.pur-chip[aria-pressed="true"] {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-weight: 600;
+}
+
+.pur-chip:focus-visible {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+.pur-cheque-summary {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-inline-start: 3px solid var(--accent-500);
+  border-radius: var(--radius-sm);
+  line-height: 1.8;
+}
+
+.pur-cheque-summary:empty {
+  display: none;
+}
+
+/* E029 + E030 -- supplier ledger: filter chips and the shown-rows total. */
+.pur-chips--filter {
+  margin: 0 0 var(--space-3);
+}
+
+.pur-chips--filter .pur-chip[aria-pressed="true"] {
+  background: var(--accent-700);
+  border-color: var(--accent-700);
+  color: var(--white);
+}
+
+.data-table tfoot td {
+  border-top: 2px solid var(--border);
+  background: var(--ink-100);
+  font-weight: 600;
+}
+
+/* G010 -- supplier detail: the debt is a hero card, counts are supporting facts. */
+.stats--hero {
+  grid-template-columns: 2fr repeat(4, 1fr);
+}
+
+.stat-card--hero {
+  align-content: center;
+  padding-block: var(--space-5);
+}
+
+.stat-card--hero .stat-card__value {
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+@media (max-width: 960px) {
+  .stats--hero {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stat-card--hero {
+    grid-column: 1 / -1;
+  }
+}
+
+/* E081 -- the pay card the debt figure links to (#pay): keep its heading clear of the sticky header. */
+#pay {
+  scroll-margin-top: var(--space-6);
+}
+
+/* G009 -- suppliers table as a ledger: the name is the anchor, the debt is the loudest figure. */
+.data-table--ledger td {
+  padding-block: var(--space-4);
+  vertical-align: middle;
+}
+
+.data-table--ledger .cell-name {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.data-table--ledger .cell-sub {
+  margin-top: 2px;
+}
+
+.data-table--ledger .figure--owed,
+.data-table--ledger .figure--owed a {
+  font-weight: 700;
+  color: var(--warning-700); /* amber, not red: a payable is normal, not an error */
+}
+
+.data-table--ledger .figure--zero {
+  color: var(--text-muted);
+}
+
+.data-table--ledger tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  /* Name + debt fit in 390px; total purchased is one short swipe away. */
+  .data-table--ledger {
+    min-width: 420px;
+  }
+
+  .data-table--figures.data-table--ledger th:not(:first-child),
+  .data-table--figures.data-table--ledger td:not(:first-child) {
+    min-width: 120px;
+  }
+
+  .sale-form__consequence {
+    display: none; /* the card's own sentences carry it on phones */
+  }
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): inventory
+   ====================================================================== */
+/* ==========================================================================
+   Inventory group (E031-E038, E087, E088, G013-G015). Appended after app.css:
+   same specificity wins by order. Class names are prefixed (inv-, pn-,
+   price-) so they cannot collide with other groups' rules.
+   ========================================================================== */
+
+/* An author `display` would otherwise beat the [hidden] attribute these widgets rely on. */
+.pn-summary[hidden],
+.price-chips[hidden],
+.price-auto[hidden],
+.price-preview[hidden],
+.price-preview__warn[hidden] {
+  display: none;
+}
+
+/* ---- E031 / E032 / G015: new-product form, grouped sections + live summary ---- */
+.pn-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.pn-section {
+  margin: 0;
+  padding: var(--space-4) 0 var(--space-5);
+  border: 0;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+.pn-section:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* Floated so the legend sits inside the flow instead of straddling the border. */
+.pn-section__title {
+  float: inline-start;
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.pn-section__title + .pn-grid {
+  clear: both;
+}
+
+.pn-section__tag {
+  margin-inline-start: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: 1px;
+}
+
+.pn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  max-width: 760px;
+}
+
+/* The grid gap replaces the stacking margin between fields. */
+.pn-grid .field + .field,
+.pn-grid > .pn-grid__wide > .field {
+  margin-top: 0;
+}
+
+.pn-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.pn-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: 760px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.pn-footer .btn {
+  min-width: 9rem;
+  justify-content: center;
+}
+
+.pn-summary {
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-4));
+  padding: var(--space-4) var(--space-5);
+  background: var(--accent-100);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent-500);
+  border-radius: var(--radius-md);
+}
+
+.pn-summary__title {
+  margin: 0 0 var(--space-3);
+  font-size: 14px;
+}
+
+.pn-summary__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.pn-summary__list li + li {
+  margin-top: var(--space-2);
+}
+
+.pn-summary__list .is-muted {
+  color: var(--text-muted);
+}
+
+.pn-summary__list .is-warn {
+  color: var(--warning-700);
+}
+
+@media (max-width: 900px) {
+  .pn-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pn-summary {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .pn-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pn-footer .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* ---- E035: running-low lens (chips + threshold) ---- */
+.inv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.inv-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ink-300);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-700);
+  font-size: 13px;
+}
+
+.inv-chip:hover {
+  text-decoration: none;
+  border-color: var(--accent-600);
+}
+
+.inv-chip--warn:not(.is-active) {
+  color: var(--warning-700);
+}
+
+.inv-chip--bad:not(.is-active) {
+  color: var(--negative-700);
+}
+
+.inv-chip.is-active {
+  background: var(--action);
+  border-color: transparent;
+  color: var(--white);
+}
+
+.inv-low-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 41px;
+  font-size: 13.5px;
+}
+
+.inv-low-field .field__control {
+  display: inline-block;
+  width: 64px;
+  text-align: center;
+}
+
+/* ---- G013: inventory table rhythm (groups, pinned product, share bar, headline card) ---- */
+.stats--inventory {
+  grid-template-columns: 2fr 1fr 1fr 1.4fr;
+}
+
+.stats--inventory .stat-card {
+  align-content: start;
+}
+
+@media (max-width: 900px) {
+  .stats--inventory {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stats--inventory .stat-card--primary {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Column groups: product | stock | purchase cost (3-4) | selling prices (5-6) | value (7-8) | action. */
+.data-table--inventory td:nth-child(3), .data-table--inventory th:nth-child(3),
+.data-table--inventory td:nth-child(5), .data-table--inventory th:nth-child(5),
+.data-table--inventory td:nth-child(7), .data-table--inventory th:nth-child(7) {
+  border-inline-start: 1px solid var(--ink-200);
+}
+
+/* Selling prices are what the owner changes: a light tint marks that group. */
+.data-table--inventory td:nth-child(5),
+.data-table--inventory td:nth-child(6) {
+  background: color-mix(in srgb, var(--accent-100) 35%, transparent);
+}
+
+.data-table--inventory td:nth-child(7) {
+  font-weight: 600;
+}
+
+/* The product keeps its name on one line and stays pinned while the figures scroll. */
+.data-table--inventory .cell-product {
+  min-width: 150px;
+}
+
+.data-table--inventory .cell-product strong {
+  white-space: nowrap;
+}
+
+.data-table--inventory td:first-child,
+.data-table--inventory th:first-child {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: 1px 0 0 var(--ink-200);
+}
+
+.data-table--inventory th:first-child {
+  background: var(--ink-100);
+}
+
+.data-table--inventory tbody tr:hover td:first-child {
+  background: var(--surface-sunken);
+}
+
+/* Row actions never clip: stacked, compact, no wrapping inside a button. */
+.data-table--inventory .cell-action {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.data-table--inventory .cell-action .btn {
+  display: flex;
+  justify-content: center;
+  min-height: 30px;
+  padding: 2px var(--space-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.data-table--inventory .cell-action .btn + .btn {
+  margin-top: var(--space-1);
+}
+
+/* Share of total value as a hairline bar under the percentage. */
+.inv-share {
+  display: grid;
+  gap: 4px;
+  min-width: 56px;
+}
+
+.inv-share__bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-200);
+  overflow: hidden;
+}
+
+.inv-share__bar > i {
+  display: block;
+  height: 100%;
+  width: min(var(--share, 0%), 100%);
+  background: var(--accent-500);
+  border-radius: inherit;
+}
+
+.data-table--inventory tr.is-void .inv-share__bar > i {
+  background: var(--ink-300);
+}
+
+/* ---- E088 / E087: phone stock cards (every column kept as a label/value pair) ---- */
+@media (max-width: 720px) {
+  .stats--inventory {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+
+  .stats--inventory .stat-card {
+    padding: var(--space-3);
+    gap: var(--space-1);
+  }
+
+  .stats--inventory .stat-card__value {
+    font-size: 16px;
+  }
+
+  .data-table--stack {
+    min-width: 0;
+    display: block;
+  }
+
+  /* The header row stays for screen readers; the labels come from data-label. */
+  .data-table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .data-table--stack tbody {
+    display: block;
+  }
+
+  .data-table--stack tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table--stack td {
+    display: block;
+    padding: 0;
+    border: 0;
+    font-size: 13px;
+  }
+
+  .data-table--stack td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .data-table--stack .stack-name,
+  .data-table--stack .stack-stock {
+    grid-column: 1 / -1;
+  }
+
+  .data-table--stack .stack-stock {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .data-table--stack .stack-action {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: var(--space-2);
+    width: auto;
+    white-space: normal;
+  }
+
+  .data-table--stack .stack-action .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  /* The desktop table rhythm (pinned column, group tints) is only for the real table. */
+  .data-table--inventory.data-table--stack td:first-child,
+  .data-table--inventory.data-table--stack th:first-child {
+    position: static;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .data-table--inventory.data-table--stack td:nth-child(3),
+  .data-table--inventory.data-table--stack td:nth-child(5),
+  .data-table--inventory.data-table--stack td:nth-child(6),
+  .data-table--inventory.data-table--stack td:nth-child(7) {
+    border-inline-start: 0;
+    background: transparent;
+  }
+
+  .data-table--inventory.data-table--stack .cell-product {
+    min-width: 0;
+  }
+
+  .data-table--inventory.data-table--stack .cell-product strong {
+    white-space: normal;
+  }
+
+  .data-table--inventory.data-table--stack .cell-action .btn + .btn {
+    margin-top: 0;
+  }
+
+  .data-table--stack .cell-action .btn {
+    display: inline-flex;
+    font-size: 13px;
+  }
+}
+
+/* ---- G014 / E033 / E034 / E037: product detail board, price assistant, anchors ---- */
+.price-board {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.7fr) minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  align-items: start;
+}
+
+.price-board .stat-card {
+  align-content: start;
+}
+
+.price-board__hero {
+  align-content: center;
+}
+
+.price-board__hero .stat-card__value {
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.price-board__group {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-sm);
+}
+
+.price-board__title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.price-board__subtitle {
+  margin: 0 0 var(--space-1);
+  font-size: 14px;
+}
+
+.price-board__list {
+  display: grid;
+  margin: 0;
+}
+
+.price-board__list > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+
+.price-board__list > div:first-child {
+  border-top: 0;
+}
+
+.price-board__list dt {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* Each label leads to the section that explains the number. */
+.price-board__list dt a {
+  color: inherit;
+}
+
+.price-board__list dt a:hover {
+  color: var(--accent-700);
+  text-decoration: underline;
+}
+
+.price-board__list dd {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.price-board__list small {
+  grid-column: 1 / -1;
+}
+
+.price-board__edit {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.price-board__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.price-board__fields .field + .field {
+  margin-top: 0;
+}
+
+.price-board__edit .btn[type="submit"] {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 960px) {
+  .price-board {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .price-board__hero {
+    grid-column: 1 / -1;
+  }
+
+  .price-board__group--sell {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Phone: the hero, then the price editor, then the cost figures. */
+@media (max-width: 600px) {
+  .price-board {
+    grid-template-columns: 1fr;
+  }
+
+  .price-board__hero {
+    order: -2;
+  }
+
+  .price-board__group--sell {
+    order: -1;
+  }
+}
+
+/* Percent chips + auto carton price */
+.price-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.price-chips .field__hint {
+  margin: 0;
+}
+
+.price-chips .btn {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+}
+
+.price-auto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: 13.5px;
+}
+
+/* Live before -> after read-back */
+.price-preview {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink-100);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.price-preview__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.price-preview__label {
+  min-width: 8em;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.price-preview__old {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.price-preview__new {
+  font-size: 16px;
+}
+
+.price-preview__delta {
+  font-size: 12px;
+}
+
+.price-preview__delta.is-up {
+  color: var(--positive-700);
+}
+
+.price-preview__delta.is-down {
+  color: var(--negative-700);
+}
+
+.price-preview__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.price-preview__warn {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  color: var(--negative-700);
+  border-inline-start: 3px solid var(--negative-700);
+  background: var(--surface);
+}
+
+/* Jump row + landing cue; the header is sticky so anchors must not hide under it. */
+.inv-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+#selling-price,
+#price-history,
+#fifo-layers,
+#movements {
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+
+#price-history:target,
+#fifo-layers:target,
+#movements:target,
+.price-board__group:target {
+  border-color: var(--accent-600);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---- E037 / E038: price history timeline and FIFO marker ---- */
+.price-history__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-3);
+  cursor: pointer;
+  list-style: none;
+}
+
+.price-history__summary::-webkit-details-marker {
+  display: none;
+}
+
+.price-history__summary::after {
+  content: "▾";
+  margin-inline-start: auto;
+  color: var(--text-muted);
+}
+
+.price-history:not([open]) > .price-history__summary::after {
+  content: "◂";
+}
+
+.price-history__summary h2 {
+  margin: 0;
+}
+
+.price-history__summary .field__hint {
+  margin: 0;
+}
+
+.inv-delta {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inv-delta--up {
+  background: var(--positive-100);
+  color: var(--positive-700);
+}
+
+.inv-delta--down {
+  background: var(--negative-100);
+  color: var(--negative-700);
+}
+
+.inv-row--muted td {
+  color: var(--text-muted);
+}
+
+.inv-fifo-next td {
+  background: var(--accent-100);
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): dues_cheques
+   ====================================================================== */
+/* ==========================================================================
+   dues_cheques: Receivables / Payables, cheques list + detail, "ثبت پرداخت"
+   (appended after app.css; tokens only, grouped by finding id)
+   ========================================================================== */
+
+:root {
+  /* G044: "today" sits between the amber tint and the solid red. */
+  --due-today-bg: #ffe08a;
+  --due-today-fg: #5c3f00;
+}
+
+/* --- E019 / E020 / E077 / E078: general payment form ------------------- */
+
+/* Chips only mean something once dues_cheques.js runs (it adds .pay-js to <html>). */
+.pay-js-only { display: none; }
+.pay-js .pay-js-only { display: flex; }
+
+.pay-chips {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.pay-chips .btn {
+  padding: var(--space-1) var(--space-3);
+  font-size: 12.5px;
+}
+
+.invoice-picker__label { font-weight: 600; }
+
+.invoice-picker__date {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* The remaining amount is what decides which boxes to tick: it sits at the far edge, bold. */
+.invoice-picker__due {
+  margin-inline-start: auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pay-summary {
+  margin: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border-inline-start: 3px solid var(--ink-300);
+  font-size: 13px;
+}
+
+.pay-summary:empty { display: none; }
+.pay-summary.is-ok { border-inline-start-color: var(--positive-600); }
+
+.pay-summary.is-bad {
+  border-inline-start-color: var(--negative-600);
+  background: var(--negative-100);
+  color: var(--negative-700);
+}
+
+.pay-summary__head {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pay-summary__list {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-4);
+}
+
+/* The button names the amount and the party, so it may need two lines. */
+.payment-form .btn--block { white-space: normal; }
+
+.pay-success__head {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+.pay-success__list {
+  margin: 0 0 var(--space-3);
+  padding-inline-start: var(--space-4);
+  font-size: 13px;
+}
+
+/* --- E039 / E040 / E042 / E046: pass / bounce on a pending cheque ------- */
+
+.clear-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+/* On the cheque page the select sits beside its button; labels above, so line up the bottoms. */
+.clear-split:not(.clear-split--compact) { align-items: flex-end; }
+.clear-split:not(.clear-split--compact) .clear-split__main { height: 41px; }
+
+.clear-split .field {
+  min-width: 220px;
+  margin-top: 0;
+}
+
+.clear-split--compact { max-width: 280px; }
+
+.clear-split__more > summary {
+  list-style: none;
+  cursor: pointer;
+  padding-inline: var(--space-3);
+  font-size: 12.5px;
+}
+
+.clear-split__more > summary::-webkit-details-marker { display: none; }
+
+.clear-split__more > summary > span {
+  display: inline-block;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clear-split__more > summary::after {
+  content: "▾";
+  margin-inline-start: var(--space-2);
+}
+
+.clear-split__more[open] { flex: 1 1 100%; }
+.clear-split__more[open] > summary::after { content: "▴"; }
+.clear-split__more[open] .field { margin-top: var(--space-2); }
+
+/* One plain sentence on what will be booked. In table rows it lives in the button's tooltip instead. */
+.clear-preview {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--accent-600);
+  border-radius: var(--radius-sm);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+
+.clear-preview:empty,
+.clear-split--compact .clear-preview { display: none; }
+
+.clear-preview.is-pending {
+  border-inline-start-color: var(--ink-300);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+
+/* Pass and bounce sit apart: one is routine, the other cannot be undone. */
+.dues-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-5);
+}
+
+.dues-actions > .inline-form { margin-top: 0; }
+.dues-actions > .dues-actions__bounce { margin-inline-start: auto; }
+
+.cheque-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
+}
+
+.cheque-actions__danger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+.cheque-actions__danger .inline-form { margin-top: 0; }
+
+/* --- E041 / E045: follow-up card, deep-linked rows --------------------- */
+
+.cheque-followup { border-inline-start: 4px solid var(--negative-700); }
+
+.data-table tr[id] { scroll-margin-top: 88px; }
+#dues-cheques,
+#dues-credit,
+#dues-parties,
+#first-overdue { scroll-margin-top: 88px; }
+
+/* The row a link landed on is unmistakable. */
+.data-table tr:target td {
+  background: var(--accent-100);
+  box-shadow: inset 0 -2px 0 var(--accent-600);
+}
+
+.dues-twin {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+  font-size: 13px;
+}
+
+/* --- G016 / G017: header with the total owed, the split and the late amount */
+
+.dues-hero {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.dues-hero__total { gap: var(--space-3); }
+
+.dues-hero__total .stat-card__value {
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.dues-bar {
+  display: flex;
+  height: 10px;
+  gap: 2px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 12%);
+}
+
+.dues-bar__seg {
+  display: block;
+  min-width: 0;
+}
+
+.dues-bar__seg--late { background: #ffb3ae; }
+.dues-bar__seg--cheque { background: var(--accent-500); }
+.dues-bar__seg--credit { background: var(--ink-200); }
+
+.dues-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--ink-200);
+}
+
+.dues-legend a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dues-legend a:hover { text-decoration: underline; }
+.dues-legend strong { color: var(--white); }
+
+.dues-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: var(--space-2);
+  border-radius: 50%;
+}
+
+.dues-dot--cheque { background: var(--accent-500); }
+.dues-dot--credit { background: var(--ink-200); }
+
+.dues-hero__late {
+  align-content: start;
+  color: inherit;
+  text-decoration: none;
+  background: var(--negative-100);
+  box-shadow: inset 0 3px 0 var(--negative-600), var(--shadow-sm);
+}
+
+.dues-hero__late .stat-card__label,
+.dues-hero__late .stat-card__value { color: var(--negative-700); }
+
+a.dues-hero__late:hover {
+  text-decoration: none;
+  box-shadow: inset 0 3px 0 var(--negative-600), var(--shadow-md);
+}
+
+.dues-hero__late.is-clear {
+  background: var(--surface);
+  box-shadow: inset 0 3px 0 var(--positive-600), var(--shadow-sm);
+}
+
+.dues-hero__late.is-clear .stat-card__label,
+.dues-hero__late.is-clear .stat-card__value { color: var(--positive-700); }
+
+@media (max-width: 720px) {
+  .dues-hero { grid-template-columns: 1fr; }
+  .dues-hero__total .stat-card__value { font-size: 24px; }
+}
+
+/* --- G018: cheques table ------------------------------------------------ */
+
+/* Colour + arrow + word, never colour alone. */
+.dir {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dir__ico {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.dir--in { color: var(--positive-700); }
+.dir--in .dir__ico { background: var(--positive-100); color: var(--positive-700); }
+.dir--out { color: var(--ink-800); }
+.dir--out .dir__ico { background: var(--negative-100); color: var(--negative-700); }
+
+.data-table td.cell-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table--cheques .cell-sub {
+  margin-top: 2px;
+  white-space: normal;
+}
+
+@media (max-width: 720px) {
+  .data-table.data-table--cheques { min-width: 560px; }
+}
+
+/* --- G019: cheque page, the cheque as the hero ---------------------------- */
+
+.cheque-face {
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent-500);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.cheque-face--cleared { border-top-color: var(--positive-600); }
+.cheque-face--bounced,
+.cheque-face--cancelled { border-top-color: var(--negative-600); }
+
+.cheque-face__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.cheque-face__eyebrow {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.cheque-face__no {
+  margin: 2px 0 0;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+}
+
+.cheque-face__amount {
+  margin: var(--space-4) 0 var(--space-3);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-900);
+}
+
+.cheque-face__amount::after {
+  content: " تومان";
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.cheque-face__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+
+.cheque-face__meta dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cheque-face__meta dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Registered -> pending -> cleared / bounced / cancelled. */
+.cheque-track {
+  display: flex;
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cheque-track li {
+  position: relative;
+  flex: 1;
+  padding-top: 14px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.cheque-track li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-200);
+}
+
+.cheque-track li + li::before { inset-inline-start: 4px; }
+.cheque-track .is-done::before { background: var(--accent-500); }
+.cheque-track .is-current { color: var(--text); font-weight: 600; }
+.cheque-track .is-current::before { background: var(--accent-600); }
+.cheque-track .is-cleared::before { background: var(--positive-600); }
+.cheque-track .is-bounced::before,
+.cheque-track .is-cancelled::before { background: var(--negative-600); }
+
+.cheque-grid {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .cheque-grid:has(.cheque-grid__side) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
+.cheque-grid__main,
+.cheque-grid__side { min-width: 0; }
+
+.cheque-grid .card + .card { margin-top: var(--space-5); }
+
+/* The label column hugs its text, so each value sits next to its label. */
+.cheque-grid .data-table th {
+  width: 9.5rem;
+  white-space: nowrap;
+}
+
+.cheque-grid__side form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.cheque-grid__side form .field { margin-top: 0; }
+.cheque-grid__side form > .btn,
+.cheque-grid__side form > .form-error { grid-column: 1 / -1; }
+.cheque-grid__side form > .btn { justify-self: start; }
+
+@media (max-width: 640px) {
+  .cheque-face__amount { font-size: 28px; }
+  .cheque-grid__side form { grid-template-columns: 1fr; }
+}
+
+/* --- G044: one graded due-state chip and row tint --------------------------- */
+
+/* Loudness only goes up: later (quiet text) < soon < today < late (solid red). */
+.badge--due-late { background: var(--negative-700); color: var(--white); }
+
+.badge--due-today {
+  background: var(--due-today-bg);
+  color: var(--due-today-fg);
+  font-weight: 700;
+}
+
+.badge--due-soon { background: var(--warning-100); color: var(--warning-700); }
+
+.badge--due-later {
+  padding-inline: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.badge--due-later::before { display: none; }
+
+.data-table tr.is-today td { background: var(--warning-100); }
+.data-table tr.is-today td:first-child,
+.data-table tr.is-soon td:first-child { box-shadow: inset -3px 0 0 var(--warning-600); }
+
+/* The dashboard's overdue strip gets the same edge as an overdue row. */
+.dues-overdue { border-inline-start: 3px solid var(--negative-600); }
+
+/* G044: a chip never touches the date beside it. */
+.badge[class*="badge--due-"] { margin-inline-start: var(--space-2); }
+
+
+/* ======================================================================
+   UI audit 200 (D-085): expenses_bank
+   ====================================================================== */
+/* =====================================================================
+   expenses_bank: new expense, expenses list, fixed costs, bank accounts.
+   Appended after app.css; every selector is new (exb-*) or scoped to a page
+   wrapper, so nothing here changes another module's look.
+   ===================================================================== */
+
+/* ---- G023: expense form as a paired "voucher" ------------------------ */
+.exb-voucher {
+  max-width: 880px;
+}
+
+.exb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+
+/* The grid gap replaces the stacked-field margin. */
+.exb-grid > .field + .field {
+  margin-top: 0;
+}
+
+.exb-grid--optional {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: var(--space-4);
+}
+
+.exb-voucher #id_amount {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.exb-method {
+  margin-top: var(--space-5);
+}
+
+/* Method cards: title plus the one-line consequence; the radio sits in the corner. */
+.exb-voucher .payment-mode {
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+}
+
+.exb-voucher .payment-mode__option {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-6) var(--space-3) var(--space-4);
+  padding-inline: var(--space-4) var(--space-6);
+  border-inline-start: 3px solid transparent;
+}
+
+.exb-voucher .payment-mode__option input {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  margin: 0;
+}
+
+.exb-voucher .payment-mode__option:has(input:checked) {
+  border-inline-start-color: var(--accent-700);
+  box-shadow: inset 0 0 0 1px var(--accent-700);
+}
+
+.exb-voucher .payment-mode__title {
+  font-weight: 600;
+}
+
+.exb-voucher .payment-mode__sub {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* The panel reads as the continuation of the chosen card and keeps a gap before what follows. */
+.exb-voucher [data-expense-panel] {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-inline-start: 3px solid var(--accent-600);
+}
+
+.exb-voucher [data-expense-panel] > .field__hint + .field {
+  margin-top: var(--space-3);
+}
+
+/* Branded file picker instead of the browser's English button. */
+.exb-voucher input[type="file"]::file-selector-button {
+  margin-inline-end: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--accent-700);
+  border-radius: var(--radius-sm);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.exb-voucher form > .btn {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .exb-grid,
+  .exb-grid--optional {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- E049: remembered reason presets --------------------------------- */
+.exb-note {
+  color: var(--accent-700);
+}
+
+.exb-amount-words:empty {
+  display: none;
+}
+
+.exb-amount-words {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- E050 / E052 / E054 / E058: live "what will happen" card --------- */
+.exb-preview {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 4px solid var(--accent-700);
+  border-radius: var(--radius-md);
+  background: var(--accent-100);
+}
+
+.exb-preview[hidden] {
+  display: none;
+}
+
+.exb-preview__line {
+  margin: 0;
+  font-weight: 600;
+}
+
+.exb-preview__sub {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.exb-preview__sub:empty {
+  display: none;
+}
+
+/* A balance about to go negative is a warning, not a block: the server decides. */
+.exb-preview--warn {
+  border-inline-start-color: var(--negative-700);
+  background: var(--negative-100);
+}
+
+.exb-preview--warn .exb-preview__sub {
+  color: var(--negative-700);
+}
+
+/* ---- E051 / E054 / E055: shortcut chips (due dates, quick start) ----- */
+.exb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.exb-chips:last-child {
+  margin-bottom: 0;
+}
+
+.exb-chips--start {
+  margin: 0 0 var(--space-4);
+}
+
+.exb-chips__label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.exb-chip {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-700);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.exb-chip:hover {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+}
+
+.exb-chip:focus-visible {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+/* ---- E058: settling a fixed cost banner ------------------------------ */
+.exb-settle {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--accent-100);
+}
+
+.exb-settle__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.exb-settle__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+
+.exb-settle__facts dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.exb-settle__facts dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.exb-settle > .field__hint {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .exb-settle__facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- E055 / E056: fixed-cost form ------------------------------------ */
+.exb-repeat {
+  display: grid;
+  grid-template-columns: minmax(5rem, 8rem) minmax(8rem, 16rem);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.exb-repeat > .field + .field {
+  margin-top: 0;
+}
+
+/* Hints sit between fields here, which breaks `.field + .field`: give them the gap. */
+#recurring-form > .field__hint {
+  margin-bottom: var(--space-4);
+}
+
+#recurring-form > .btn {
+  margin-top: var(--space-2);
+}
+
+/* ---- G024: guided empty state ---------------------------------------- */
+/* Without this the lone button stretches across the whole card. */
+.placeholder--centered {
+  justify-items: center;
+}
+
+.placeholder--centered > p {
+  max-width: 46ch;
+  margin: 0;
+}
+
+.placeholder--centered .placeholder__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+.preset-chip small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.preset-chip:hover {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+  text-decoration: none;
+}
+
+.preset-chip:focus-visible {
+  outline: 2px solid var(--accent-700);
+  outline-offset: 2px;
+}
+
+/* ---- E059 / E060: bank-account form ---------------------------------- */
+.exb-bank {
+  display: grid;
+  gap: var(--space-5);
+}
+
+@media (min-width: 900px) {
+  .exb-bank {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+.exb-bank__preview {
+  position: sticky;
+  top: var(--space-4);
+}
+
+/* The button no longer touches the last box. */
+.exb-bank__actions {
+  margin-top: var(--space-5);
+}
+
+.exb-bank__fields > .field__hint {
+  margin-bottom: 0;
+}
+
+.exb-type {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.exb-type__grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.exb-type__opt {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+/* The whole card is the target and stays keyboard-reachable. */
+.exb-type__opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.exb-type__opt:has(input:checked) {
+  border-color: var(--accent-700);
+  background: var(--accent-100);
+  box-shadow: inset 0 0 0 1px var(--accent-700);
+}
+
+.exb-type__opt:has(input:focus-visible) {
+  outline: 3px solid rgb(0 119 255 / 18%);
+}
+
+.exb-type__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.exb-type__desc {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.exb-pv-card__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.exb-pv-card .stat-card__value {
+  font-size: 22px;
+}
+
+/* ---- G020: bank account cards ---------------------------------------- */
+/* auto-fill keeps a lone account at card width instead of a full-width slab. */
+.stats:has(.stat-card--account) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 420px));
+}
+
+.stat-card--account {
+  gap: var(--space-3);
+  padding: var(--space-5);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.stat-card--account:hover {
+  border-color: var(--accent-600);
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-md);
+}
+
+.acct__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.acct__owner {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.acct__no {
+  flex: none;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-tint);
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* The label stays for screen readers; sighted users read the boxed number. */
+.acct__no-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.stat-card--account .stat-card__value {
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.acct__deltas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.acct__delta {
+  display: grid;
+  gap: 2px;
+  padding-inline: var(--space-3);
+  border-inline-start: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.acct__delta:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+
+.acct__delta-val {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.acct__delta--up .acct__delta-val {
+  color: var(--positive-700);
+}
+
+.acct__delta--down .acct__delta-val {
+  color: var(--negative-700);
+}
+
+@media (max-width: 420px) {
+  .acct__delta {
+    padding-inline: var(--space-2);
+  }
+
+  .acct__delta-val {
+    font-size: 12px;
+  }
+
+  .stat-card--account .stat-card__value {
+    font-size: 24px;
+  }
+}
+
+/* ---- G021 / E061 / E062: account page as a statement ----------------- */
+.exb-hero {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+}
+
+.exb-hero h1 {
+  margin: 0 0 var(--space-1);
+  color: var(--white);
+}
+
+.exb-hero__meta {
+  margin: 0 0 var(--space-3);
+  color: var(--ink-200);
+}
+
+.exb-hero__bal {
+  display: grid;
+  gap: var(--space-1);
+  text-align: end;
+}
+
+.exb-hero .stat-card__value {
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+.exb-hero__deltas {
+  grid-auto-flow: column;
+  gap: var(--space-4);
+}
+
+.exb-amount--in {
+  color: var(--positive-700);
+}
+
+.exb-amount--out {
+  color: var(--negative-700);
+}
+
+.exb-proof {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .exb-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .exb-hero__bal {
+    text-align: start;
+  }
+
+  .exb-hero__deltas {
+    grid-auto-flow: row;
+  }
+}
+
+/* ---- G022: expenses filter card and stat strip ----------------------- */
+.filters__search {
+  flex: 2 1 260px;
+}
+
+.filters__status {
+  flex: 1 1 180px;
+}
+
+.filters .btn {
+  flex: 0 0 auto;
+}
+
+.filters__more {
+  flex: 1 0 100%;
+}
+
+.filters__more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  color: var(--accent-700);
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.filters__more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.filters__more > summary::before {
+  content: "◂";
+}
+
+.filters__more[open] > summary::before {
+  content: "▾";
+}
+
+.filters__more-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: var(--space-3);
+}
+
+.filters__more-grid .field {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .filters__search,
+  .filters__status {
+    flex: 1 1 100%;
+  }
+}
+
+/* The due-soon card and the totals no longer touch. */
+.card + .exb-stats {
+  margin-top: var(--space-5);
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): partners
+   ====================================================================== */
+/* ===== partners: E079 / E080 statement-first customer page ===== */
+html { scroll-behavior: smooth; }
+#statement,
+#payments-section { scroll-margin-top: 80px; }
+
+.statement__head { align-items: center; margin-bottom: var(--space-3); }
+.statement__tools { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+/* The verdict says in words who owes whom; the colour edge is secondary. */
+.statement__verdict {
+  margin: var(--space-3) 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 4px solid var(--border);
+  background: var(--ink-100);
+  border-radius: var(--radius-sm);
+  font-size: 1.05rem;
+}
+.statement__verdict.is-owes { border-inline-start-color: var(--negative-700); }
+.statement__verdict.is-credit { border-inline-start-color: var(--positive-700); }
+
+/* Closing line of the statement. (Sticky was dropped: .table-card scrolls
+   horizontally, which would pin the row to the card, not the viewport.) */
+.statement-card .data-table tfoot td {
+  background: var(--ink-100);
+  font-weight: 700;
+  border-top: 2px solid var(--ink-200);
+  border-bottom: 0;
+}
+
+/* Print only the statement: chrome is hidden, the other cards carry .no-print. */
+@media print {
+  body.printing-statement .header,
+  body.printing-statement .sidebar,
+  body.printing-statement .nav-overlay,
+  body.printing-statement .messages { display: none !important; }
+  body.printing-statement .content { padding: 0; max-width: none; }
+  body.printing-statement .statement-card { box-shadow: none; border: 0; }
+  body.printing-statement .statement-card .table-card { overflow: visible; }
+}
+
+/* ===== partners: G012 customer hero ===== */
+/* Balance card is wider on desktop so it leads the row. */
+.stats--hero { grid-template-columns: 1.6fr repeat(3, 1fr); }
+.stats--hero .stat-card--primary .stat-card__value { font-size: 28px; }
+.stat-card--owed { box-shadow: inset 0 3px 0 var(--negative-700), var(--shadow-sm); }
+@media (max-width: 860px) {
+  .stats--hero { grid-template-columns: 1fr 1fr; }
+  .stats--hero .stat-card--primary { grid-column: 1 / -1; }
+}
+.page-head--hero .page-head__row { align-items: center; }
+
+/* Panels are opened by the header buttons; the summary stays in the DOM
+   (visually hidden) so the <details> remains valid for assistive tech. */
+.head-panel { position: relative; }
+.head-panel > summary {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.head-panel[open] { margin-top: var(--space-4); }
+.head-panel .quick-party,
+.head-panel .payment-form { max-width: 720px; }
+
+/* ===== partners: G011 customers list as ledger rows ===== */
+.data-table--ledger td {
+  padding-block: var(--space-4);
+  vertical-align: middle;
+}
+/* Name column takes the slack, the figures hug their header. */
+.data-table--ledger th:not(:first-child),
+.data-table--ledger td:not(:first-child) {
+  width: 1%;
+  min-width: 104px;
+  white-space: nowrap;
+}
+.party-cell { display: flex; align-items: center; gap: var(--space-3); }
+.party-cell__name { font-weight: 600; font-size: 14.5px; }
+.party-cell__sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.party-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-weight: 700;
+  font-size: 15px;
+}
+.balance-cell { display: flex; align-items: center; gap: var(--space-3); }
+.balance-cell__amount { font-weight: 700; font-size: 15px; color: var(--text-muted); }
+/* Debt: red figure, tinted avatar and a start-edge bar. */
+.data-table tr.is-owing .balance-cell__amount { color: var(--negative-700); }
+.data-table tr.is-owing .party-avatar { background: var(--negative-100); color: var(--negative-700); }
+.data-table tr.is-owing td:first-child { box-shadow: inset -3px 0 0 var(--negative-600); }
+
+
+/* ======================================================================
+   UI audit 200 (D-085): insight
+   ====================================================================== */
+/* ==========================================================================
+   insight group: dashboard, financial reports, user activity, backup.
+   Appended after app.css, so equal-specificity rules here win by order.
+   Tokens only; dashboard-tile rules are scoped to .stats--performance /
+   .stats--position so other pages' stat cards are untouched.
+   ========================================================================== */
+
+/* --- E063/E064: month-to-date comparison chip on the dashboard cards ------- */
+
+/* A card that is a link in the primary (dark) tone: .stat-card--link's `color: inherit`
+   comes later than .stat-card--primary and would turn the text dark on navy. */
+.stat-card--primary.stat-card--link {
+  color: var(--white);
+}
+
+.stat-card--link .stat-card__delta {
+  font-weight: 600;
+}
+
+/* --- E065/E066/G025: profit equation, verdict and bridge ------------------- */
+
+.stat-card__eq {
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--ink-200);
+}
+
+.stat-card__note {
+  font-size: 11.5px;
+  color: var(--accent-700);
+}
+
+.stat-card__more {
+  font-size: 12px;
+  color: var(--accent-500);
+}
+
+#profit-how,
+#sales-by-product {
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+
+#profit-how:target,
+#sales-by-product:target {
+  box-shadow: 0 0 0 2px var(--accent-500), var(--shadow-md);
+}
+
+.profit-verdict {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 4px solid var(--accent-500);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  line-height: 1.9;
+}
+
+.profit-verdict--loss {
+  border-inline-start-color: var(--negative-700);
+}
+
+/* Label | proportional bar | figure on one line, so the subtraction reads in one glance
+   instead of across a 1100px table row. */
+.bridge {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.bridge__row {
+  display: grid;
+  grid-template-columns: minmax(150px, 30%) 1fr minmax(120px, auto);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.bridge__row--sub,
+.bridge__row--result,
+.bridge__row--loss {
+  background: var(--surface-sunken);
+  font-weight: 600;
+}
+
+.bridge__row--result {
+  box-shadow: inset 3px 0 0 var(--accent-500);
+}
+
+.bridge__row--loss {
+  box-shadow: inset 3px 0 0 var(--negative-600);
+}
+
+.bridge__label small {
+  display: block;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.bridge__track {
+  display: flex;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--surface-tint);
+  overflow: hidden;
+}
+
+.bridge__bar {
+  display: block;
+  height: 100%;
+  min-inline-size: 2px;
+  border-radius: 3px;
+  background: var(--accent-500);
+}
+
+.bridge__row--minus .bridge__bar {
+  background: var(--negative-600);
+  opacity: 0.75;
+}
+
+.bridge__row--sub .bridge__bar,
+.bridge__row--result .bridge__bar {
+  background: var(--positive-600);
+}
+
+/* A loss is a hatched bar, not just a red number. */
+.bridge__row--loss .bridge__bar {
+  background: repeating-linear-gradient(45deg, var(--negative-600) 0 6px, var(--negative-100) 6px 12px);
+}
+
+.bridge__row--loss .bridge__value {
+  color: var(--negative-700);
+}
+
+.bridge__value {
+  white-space: nowrap;
+}
+
+.profit-note > summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .bridge__row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .bridge__track {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+/* --- E067/E068: sales by product ------------------------------------------ */
+
+html:has(#sales-by-product) {
+  scroll-behavior: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(#sales-by-product) {
+    scroll-behavior: smooth;
+  }
+}
+
+.card__range {
+  margin-inline-start: var(--space-3);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.row-link-secondary {
+  margin-inline-start: var(--space-2);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.report-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.report-filter .field__control {
+  width: auto;
+  max-width: 320px;
+  flex: 1 1 220px;
+}
+
+.report-filter .field__hint {
+  margin: 0;
+}
+
+/* Share of total sales, drawn as a bar behind the amount; `to left` grows it from the right edge (RTL). */
+.share-cell {
+  background: linear-gradient(to left, color-mix(in srgb, var(--accent-500) 16%, transparent) var(--share, 0%), transparent 0);
+}
+
+.share-cell__pct {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.data-table tfoot td {
+  border-top: 2px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+/* --- E069/G026: user activity ledger -------------------------------------- */
+
+.stats--activity {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.stat-card--idle {
+  box-shadow: inset 0 3px 0 var(--ink-200), var(--shadow-sm);
+}
+
+.stat-card--idle .stat-card__value {
+  color: var(--text-muted);
+}
+
+.actor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.actor:hover {
+  text-decoration: none;
+}
+
+.actor:hover .actor__name {
+  text-decoration: underline;
+}
+
+.actor__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ink-100);
+  color: var(--accent-700);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.actor__name {
+  font-weight: 600;
+}
+
+.actor__total {
+  margin-inline-start: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* A cell: count (a link when non-zero), its amount, and a thin bar sized against the busiest user. */
+.cell-meter {
+  position: relative;
+  vertical-align: top;
+  padding-bottom: var(--space-4);
+}
+
+.cell-meter::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: var(--space-4);
+  bottom: 6px;
+  height: 3px;
+  width: calc((100% - 2 * var(--space-4)) * var(--pct, 0) / 100);
+  border-radius: 2px;
+  background: var(--accent-500);
+  opacity: 0.85;
+}
+
+.cell-meter--zero::after {
+  display: none;
+}
+
+.cell-meter__n {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cell-meter--zero .cell-meter__n {
+  font-weight: 400;
+  color: var(--ink-400);
+}
+
+.count-link {
+  color: var(--accent-700);
+  border-bottom: 1px dotted currentColor;
+}
+
+.count-link:hover {
+  text-decoration: none;
+  border-bottom-style: solid;
+}
+
+.cell-meter__amt {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-700);
+}
+
+/* One divider, not two: the toolbar rule already separates filters from the table. */
+.card .toolbar + .table-card .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.filter-chip a {
+  font-size: 16px;
+  line-height: 1;
+}
+
+@media (max-width: 720px) {
+  .stats--activity {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* --- E076: USD rate card, in-place refresh -------------------------------- */
+
+.stat-card--usd .usd-busy {
+  display: none;
+}
+
+#usd-rate-card.htmx-request .usd-idle {
+  display: none;
+}
+
+#usd-rate-card.htmx-request .usd-busy {
+  display: inline;
+}
+
+/* The old number is visibly "being replaced". */
+#usd-rate-card.htmx-request .stat-card__value {
+  opacity: 0.45;
+}
+
+.stat-card.is-warn {
+  box-shadow: inset 0 3px 0 var(--warning-600), var(--shadow-sm);
+}
+
+.stat-card--usd form {
+  justify-self: start;
+}
+
+.field__hint--error {
+  color: var(--negative-700);
+}
+
+.usd-reason {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #usd-rate-card .badge[role="status"] {
+    animation: usd-pop 0.25s ease-out;
+  }
+}
+
+@keyframes usd-pop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* --- E091/E092: first-steps card ------------------------------------------ */
+
+.setup {
+  margin-bottom: var(--space-5);
+  border-inline-start: 4px solid var(--accent-500);
+}
+
+.setup__bar {
+  height: 6px;
+  margin: var(--space-3) 0 var(--space-4);
+  border-radius: 3px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.setup__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-600);
+}
+
+.setup__steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup__step {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+}
+
+.setup__step p {
+  margin: 2px 0 0;
+}
+
+.setup__step.is-next {
+  border-color: var(--accent-600);
+  background: var(--accent-100);
+}
+
+.setup__step.is-done {
+  background: var(--positive-100);
+}
+
+.setup__step.is-done strong {
+  color: var(--positive-700);
+}
+
+.setup__tick {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--white);
+  font-weight: 700;
+}
+
+.setup__step.is-next .setup__tick {
+  border-color: var(--accent-600);
+  background: var(--accent-600);
+  color: var(--white);
+}
+
+.setup__step.is-done .setup__tick {
+  border-color: var(--positive-600);
+  background: var(--positive-600);
+  color: var(--white);
+}
+
+@media (max-width: 640px) {
+  .setup__step {
+    grid-template-columns: 32px 1fr;
+  }
+
+  .setup__step .btn {
+    grid-column: 1 / -1;
+  }
+}
+
+/* --- G001: dashboard tiles, figure and unit ------------------------------- */
+
+/* Large figures are proportional (tabular digits gap out at 26px+); the unit steps back. */
+.stats--performance .stat-card__value,
+.stats--position .stat-card__value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  font-variant-numeric: proportional-nums;
+  font-feature-settings: "tnum" 0;
+}
+
+.money__unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.stat-card--primary .money__unit {
+  color: var(--ink-200);
+}
+
+.stats--performance .stat-card__label,
+.stats--position .stat-card__label {
+  font-size: 13px;
+}
+
+/* "Today" becomes a footer strip, so the month is the headline. */
+.stats--performance .stat-card > .field__hint:last-child {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.stats--performance .stat-card--primary > .field__hint:last-child {
+  border-top-color: rgb(255 255 255 / 18%);
+}
+
+/* Profit answers the three tiles before it: it gets the extra width. */
+.stats--performance {
+  grid-template-columns: repeat(3, 1fr) 1.5fr;
+}
+
+.stats--performance .stat-card--primary .stat-card__value {
+  font-size: 32px;
+}
+
+/* The cyan rule marks the focal tile; plain tiles show it on hover so the identity stays. */
+.stats--performance .stat-card:not(.stat-card--primary),
+.stats--position .stat-card {
+  box-shadow: var(--shadow-sm);
+}
+
+.stats--performance .stat-card--link:hover,
+.stats--position .stat-card--link:hover {
+  box-shadow: inset 0 3px 0 var(--accent-500), var(--shadow-md);
+}
+
+@media (max-width: 900px) {
+  .stats--performance {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats--performance .stat-card--primary {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats--performance,
+  .stats--position {
+    grid-template-columns: 1fr;
+  }
+
+  .stats--performance .stat-card__value,
+  .stats--position .stat-card__value {
+    font-size: 22px;
+  }
+
+  .stats--performance .stat-card--primary .stat-card__value {
+    font-size: 28px;
+  }
+}
+
+/* --- G027: backup page ---------------------------------------------------- */
+
+.backup-card {
+  overflow: hidden;
+}
+
+.backup-card__hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(to left, var(--accent-100), var(--surface) 70%);
+}
+
+.backup-card__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--ink-900);
+  color: var(--surface);
+  box-shadow: inset 0 -3px 0 var(--accent-500);
+}
+
+.backup-card__file {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--text-muted);
+  font: 12.5px/1.6 ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-align: start;
+  unicode-bidi: isolate;
+}
+
+.backup-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.backup-card__chips li {
+  padding: 2px 10px;
+  border: 1px solid var(--ink-200);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-700);
+  font-size: 12px;
+}
+
+.backup-card__h {
+  margin: 0 0 var(--space-3);
+  font-size: 14px;
+  color: var(--ink-700);
+}
+
+.backup-card__h:not(:first-child) {
+  margin-top: var(--space-5);
+}
+
+.backup-card__rules {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.backup-card__rule {
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--accent-500);
+  border-radius: var(--radius-sm);
+  background: var(--ink-050);
+  color: var(--text-muted);
+  line-height: 1.9;
+}
+
+.backup-card__rule b {
+  color: var(--ink-900);
+}
+
+/* The confidentiality warning is the most important sentence on the page. */
+.backup-card__rule--warn {
+  border-inline-start-color: var(--warning-600);
+  background: var(--warning-100);
+  color: var(--warning-700);
+}
+
+.backup-card__rule--warn b {
+  color: var(--warning-700);
+}
+
+.backup-card__cmd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--ink-900);
+  color: var(--ink-100);
+}
+
+.backup-card__cmd code {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.btn--sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: 12.5px;
+}
+
+@media (max-width: 640px) {
+  .backup-card__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .backup-card__icon {
+    display: none;
+  }
+
+  .backup-card__hero .btn {
+    width: 100%;
+  }
+}
+
+/* --- E099/E100: printing the financial report ----------------------------- */
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  /* Scoped to the report page (it has the print button), so invoice print sheets keep their own layout. */
+  body:has([data-report-print]) :is(.sidebar, .nav-overlay, .header, .daterange, .messages) {
+    display: none !important;
+  }
+
+  body:has([data-report-print]) {
+    background: #fff;
+    font-size: 11px;
+  }
+
+  body:has([data-report-print]) .print-only {
+    display: block;
+    margin: 0 0 var(--space-3);
+    font-size: 12px;
+    color: #000;
+  }
+
+  body:has([data-report-print]) .content {
+    padding: 0;
+    max-width: none;
+  }
+
+  body:has([data-report-print]) :is(.card, .stat-card) {
+    box-shadow: none;
+    break-inside: avoid;
+    border: 1px solid #c6c6c6;
+  }
+
+  body:has([data-report-print]) .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* The navy fill wastes ink and hides the loss sign. */
+  body:has([data-report-print]) .stat-card--primary {
+    background: #fff;
+    color: #000;
+  }
+
+  body:has([data-report-print]) .stat-card--primary :is(.stat-card__label, .field__hint, .stat-card__value) {
+    color: #000;
+  }
+
+  body:has([data-report-print]) .table-card {
+    overflow: visible;
+  }
+
+  body:has([data-report-print]) .data-table thead {
+    display: table-header-group;
+  }
+
+  body:has([data-report-print]) .data-table tr {
+    break-inside: avoid;
+  }
+
+  body:has([data-report-print]) .data-table th {
+    background: #eee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body:has([data-report-print]) .page-head__lede {
+    font-size: 13px;
+    font-weight: 700;
+    color: #000;
+  }
+
+  body:has([data-report-print]) a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+
+/* ======================================================================
+   UI audit 200 (D-085): print
+   ====================================================================== */
+/* group «print»: E016, D020 (merged), D021, G005.
+   All of these rules live in apps/shared/static/shared/css/print_invoice.css,
+   which loads AFTER app.css and would override anything appended here; the
+   printed-document styles are page-scoped, so nothing is needed in app.css. */
+
+
+/* ======================================================================
+   UI audit 200 (D-085): leftovers
+   ====================================================================== */
+/* ---- D033: required marker and error summary ---- */
+.field__req {
+  margin-inline-start: 2px;
+  color: var(--negative-700);
+  font-weight: 700;
+}
+
+.form-error {
+  border-inline-start: 3px solid var(--negative-700);
+}
+
+.form-error:focus {
+  outline: 3px solid rgb(201 48 44 / 25%);
+  outline-offset: 2px;
+}
+
+.form-error__title {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 700;
+}
+
+.form-error__list {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+
+.form-error__list a {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+/* A grid track defaults to min-content: the five date presets pushed the sales filter panel 15px past the viewport. */
+.toolbar--panel > * {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .toolbar--panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .toolbar--panel .daterange__presets {
+    flex-wrap: wrap;
+  }
+}
+
+/* Inventory: nine columns must fit a laptop card without hiding the action column. */
+.data-table--inventory th,
+.data-table--inventory td {
+  padding-inline: var(--space-3);
+}
+
+.data-table--inventory td:nth-child(2) {
+  white-space: normal;
+  min-width: 150px;
+}
+
+.data-table--inventory td:nth-child(6) .badge {
+  display: flex;
+  width: max-content;
+  margin-top: var(--space-1);
+}
+
+/* Laptop widths: tighter cell padding keeps ledger tables inside their card instead of scrolling. */
+@media (max-width: 1180px) {
+  .data-table th,
+  .data-table td {
+    padding-inline: var(--space-2);
+  }
+
+  .data-table .btn {
+    padding-inline: var(--space-3);
+  }
+}
+
+.dues-col .data-table th,
+.dues-col .data-table td {
+  padding-inline: var(--space-2);
+}
+
+/* ---- D-087: party credit (prepayment) ---------------------------------------- */
+.credit-note {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent-600);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-100);
+  color: var(--text);
+  line-height: 1.9;
+}
+
+.payment-form .pay-credit {
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+/* ---- D-089: returns ------------------------------------------------------------ */
+.ret-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.ret-tabs__tab {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ret-tabs__tab.is-active {
+  border-bottom-color: var(--action);
+  color: var(--text);
+}
+
+.ret-qty {
+  max-width: 6.5rem;
+}
+
+tr.is-over .ret-qty {
+  border-color: var(--negative-600);
+}
+
+/* ---- D-090: sale type picker and the below-cost hint ---------------------------- */
+.tier-pick__opts {
+  display: inline-flex;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.tier-pick__opt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tier-pick__opt + .tier-pick__opt {
+  border-inline-start: 1px solid var(--control-border);
+}
+
+.tier-pick__opt:has(input:checked) {
+  background: var(--action);
+  color: var(--white);
+}
+
+.item-row__cost-warn {
+  font-size: 12px;
+  color: var(--warning-700);
+}

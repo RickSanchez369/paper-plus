@@ -32,8 +32,16 @@ python manage.py shell -c "exec(open('tools/qa/qa_02_purchase.py', encoding='utf
 | qa_21_units | carton + pack lines, stock in packs, average price apart from FIFO, printing (D-081) |
 | qa_23_convert_units | report, dry run and merge of carton products into packs (D-081) |
 | qa_22_freight | freight in the total owed, split by packs, landed cost per pack/carton, cancel (D-082) |
+| qa_24_ui_audit | numeric widgets, status tones, percent/units wording, error pages, filter/range plumbing, `?customer=` prefill, sidebar state (D-084) |
 | qa_14_invoice_print | printed invoice: words, company header, stamp boxes, watermark (D-061) |
 
 `OK`/`FAIL` per check and `n/N passed` at the end. JavaScript behaviour
 (item rows, payment rows, date picker, htmx forms) cannot be seen from here:
 that part is checked in the browser pane.
+
+## Looking at the UI
+
+`.\tools\qa\preview.ps1` (Windows, repo root) builds a throwaway SQLite database with demo data (`seed_qa_db.py` +
+`seed_demo_data.py`: paid, part-paid and overdue sales, a cancelled invoice, a purchase with freight, cheques, expenses)
+and serves it on http://localhost:8001. It never touches PostgreSQL or `.env`. On SQLite run the scripts above with
+`DEBUG=True` (otherwise `ALLOWED_HOSTS` is empty and the test client gets 400).

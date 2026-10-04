@@ -11,6 +11,8 @@ simply show no link), timestamp -- newest first.
 {% block title %}فعالیت {{ actor }}{% endblock %}
 {% block header %}فعالیت کاربر: {{ actor }}{% endblock %}
 
+{% block head %}<script src="{% static_v 'shared/js/insight.js' %}" defer></script>{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'user_activity:index' %}">فعالیت کاربران</a> / {{ actor }}
@@ -20,6 +22,8 @@ simply show no link), timestamp -- newest first.
   <div class="page-head__row">
     <h1>{{ actor }}</h1>
     <form method="get">
+      {# The filter form below is a separate GET form: carry its values so a preset does not drop them. #}
+      {% for key, value in request.GET.items %}{% if key == "user" or key == "event_type" or key == "bucket" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       {% include "shared/_date_range.html" with form=range_form %}
     </form>
   </div>
@@ -30,34 +34,44 @@ simply show no link), timestamp -- newest first.
 
 <div class="card">
   <div class="card__body">
-    <form method="get" class="toolbar">
+    <form method="get" class="toolbar" data-autosubmit>
+      {# ...and the other way round: applying a filter keeps the chosen range. #}
+      {% for key, value in request.GET.items %}{% if key == "preset" or key == "start" or key == "end" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.event_type %}
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
       </div>
     </form>
 
+    {% if bucket %}
+      {# The group the summary table counted; × clears it back to every event. #}
+      <p class="filter-chip">{{ bucket_label }} <a href="?{{ clear_bucket_qs }}" aria-label="حذف فیلتر {{ bucket_label }}">&times;</a></p>
+    {% endif %}
+
     {% if feed %}
-      <table class="data-table">
+      <p class="field__hint">{{ feed|length|fa_number }} رویداد در این بازه، تازه‌ترین بالا</p>
+      <div class="table-card"><table class="data-table">
         <thead>
-          <tr><th>زمان</th><th>رویداد</th><th>هدف</th></tr>
+          <tr><th>زمان</th><th>رویداد</th><th>مورد</th><th>مبلغ</th></tr>
         </thead>
         <tbody>
           {% for row in feed %}
             <tr>
               <td class="num">{{ row.entry.created_at|jalali_at }}</td>
-              <td>{{ row.entry.get_event_type_display }}</td>
+              <td><span class="badge badge--{{ row.tone }}">{{ row.entry.get_event_type_display }}</span></td>
               <td>
                 {% if row.target_url %}
-                  <a href="{{ row.target_url }}">{{ row.entry.target_type }}</a>
+                  <a href="{{ row.target_url }}">{{ row.target_label }}{% if row.subject %}: {{ row.subject }}{% endif %} ‹</a>
                 {% else %}
-                  {{ row.entry.target_type }}
+                  {{ row.target_label }}{% if row.subject %}: {{ row.subject }}{% endif %}
+                  <span class="field__hint">(صفحهٔ جداگانه ندارد)</span>
                 {% endif %}
               </td>
+              <td class="num">{% if row.amount %}{{ row.amount|toman }}{% else %}<span class="field__hint">—</span>{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">در این بازه رویدادی برای این کاربر ثبت نشده است.</p>
     {% endif %}

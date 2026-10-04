@@ -1267,3 +1267,178 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   separators, price, stock grade and a focus state. (7) The invoice line grid gets a mid-width two-row layout (721-1100px).
 - Not done on purpose: no change to money logic; the audit claim that numeric table columns are misaligned was rejected
   (right-aligned cells already stack the units digit).
+
+### D-084: Fifty-critic UI audit, batch 1 (global fixes)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (50 read-only critic agents, one angle each; findings verified, then applied in the browser)
+- Decision: identity and drawer menu (D-065) stay. Applied: (1) stacked `.card`s get a gap, card edge/surface tokens
+  darken one step and `--shadow-sm` is a hairline; form controls use `--control-border` (3:1); stat-card stripe is an inset
+  shadow (no crescent corners). (2) Tabular figures on the whole body (Persian digits are proportional), no letter-spacing
+  on Persian labels, h1 weight 700, nothing below 12px. (3) Buttons: real `:disabled`, `:active`, and `.btn--danger` on every
+  cancel/bounce; focus ring on `--accent-700` (accent-500 only on navy); selected date/preset on `--accent-700`. (4) Fields:
+  `.field--invalid` + `aria-invalid`, alerts have `role=alert`, flash messages are a live region with a side stripe. (5) New
+  `shared/js/ui.js`: failed htmx calls and an expired session show a toast instead of silence or a login card in a dropdown;
+  Persian/Arabic digits typed into numeric boxes become Latin. Numeric boxes are `NumericInput` (`type=text`,
+  `inputmode=numeric`): `type=number` silently dropped Persian digits. (6) Error pages 404/403/CSRF/500 exist, standalone,
+  Persian. (7) Invoice form: product search picks with Enter, focus moves to cartons then back to the next row's search,
+  editing the name after a pick clears the stale product, results close on Esc/outside click, double submit is blocked,
+  confirm bar is sticky, live totals use the same thousands separator as the server. (8) Date picker reopens on click and
+  ArrowDown, flips above the input when low, bigger cells on touch. (9) `_STATUS_TONES["invoice"]` was keyed `active`
+  (a dead key; real values are draft/confirmed/cancelled): fixed. Lists show the document status only when it is not
+  confirmed, a cancelled row is dimmed with no payment badge, and an empty filtered list offers "clear filters" instead of
+  "register your first invoice". (10) Inventory list: search (`q`), in-stock filter, out-of-stock count and badge, name and
+  code on two lines. (11) Dashboard: an attention strip for overdue/incomplete first, month figure leads each tile with
+  today beneath, net profit tile is primary and red on loss, tiles that are links are whole-tile links, dues card retitled.
+- Batch 2, same decision: expense receipts are a real link; the expense form is narrow with method cards and tinted panels;
+  user-activity range and filter forms carry each other's values; filter forms keep the chosen sort and show «clear filters»;
+  reports: `fa_percent` (was truncating +12.9% to +12), cost cards no longer paint a rise green, net profit is the primary
+  tile, new presets «ماه قبل» and «امسال»; oversold stock reads «منفی ...»; bank cards put the name first and the whole card
+  links, balance strip on the detail page; supplier detail opens with a debt tile; tables always sit in `.table-card`
+  (scroll inside the card on phones, the table keeps its roles); overdue dues rows are tinted; cheque detail words
+  pass/clear by direction; customer page has «فاکتور فروش جدید» (`/sales/new/?customer=`) and the invoice links to its
+  customer; sidebar marks the current page (`aria-current`, edge) and the drawer makes the page inert; login at 16px;
+  static assets cache one day (`STATIC_MAX_AGE`), the font is preloaded, print waits for the font.
+- Not done on purpose (needs Sina): desktop permanent sidebar (contradicts D-065); merging the customer and date cards on
+  the sale form; one anatomy for all detail pages; a keyboard-navigable calendar; thousands separators inside inputs;
+  required-field markers; admin theming.
+
+### D-085: Two-hundred-critic UI audit (ease, detail, design)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (asked for 100 ease-of-use, 50 fine-detail and 50 design findings, all to be fixed; ease must never remove a capability)
+- Decision: 196 critics (100 ease, 50 detail, 46 design; the design set has 28 screens + 18 themes, not 50) each wrote one finding;
+  13 implementers, each owning a file group, applied 147 and merged 37 duplicates. Everything is presentation: templates, CSS, JS,
+  template tags, extra read-only context in views. No model, migration, service or data-writing endpoint changed. Highlights: sticky
+  invoice dock with a live "what will be posted" sentence, remembered payment choices (localStorage, applied only on a fresh form),
+  due-term chips, discount segmented control, customer type-ahead, cheque shortcut row, named cancel/bounce dialogs, print in place,
+  Ctrl+K quick-jump palette (pages and actions only), compact-table switch, record-cards for tables on phones, ledger tables, hero
+  bands and split bars on dues/bank/supplier pages, KPI compare lines, reports profit bridge, brand mark, empty-state component,
+  sort/pager/badge/select/checkbox details, error pages, toasts, print rules. CSS from the 13 groups sits in app.css under
+  "UI audit 200" headers (about 160 KB; consolidation is a later task).
+- Not done on purpose: 64 deferred entries in `docs/UI_AUDIT_200_DEFERRED.md` (CSV export, reissue-invoice copy, remembered last
+  backup, server-side global search, all-dates search default, two-column sale workbench, invoice-summary partial rewrite, and similar).
+  Each needs Sina's decision before work starts.
+
+### D-086: Sales invoices are numbered by day and Persian letter
+- Status: Final (amends D-064 for sales; purchases keep D-064)
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: a sales invoice number is "<letter>/<Jalali yyyymmdd of the invoice date>": the first sale of 12 Mehr 1405 is
+  `الف/14050712`, the second `ب/14050712`, and so on through the 32 letters of the Persian alphabet. After «ی» the
+  alphabet starts again with a round number (Sina's choice): 33rd = `الف2/14050712`, 65th = `الف3/...`. The day is the
+  invoice's own date, so a backdated invoice takes its own day's next letter. `DocumentSequence` gains `day` (Jalali
+  MMDD; 0 = a whole-year counter) and is unique on (`doc_type`, `year`, `day`); one row per sales day, created and locked
+  exactly like D-064's rows. Purchases stay `1405/0001`.
+- Display: digits are stored ASCII and shown Persian (`fa_digits`). A lettered round needs an Arabic letter mark
+  (U+061C) between its digit and the slash, or the bidi algorithm glues the digit to the date; it is added on display
+  only (`display_document_number`), never stored. The sales list search accepts Persian digits.
+- Existing invoices keep their numbers (`1405/0001`, `9956001`): they are written into append-only ledger notes (D-014).
+- Schema: migration `shared.0019`.
+
+### D-087: Party credit: money beyond the open invoices is kept on purpose, shown, and used first
+- Status: Final (amends D-042)
+- Date: 2026-10-04
+- Decided by: Sina (the "combined" option, after the bug was reproduced)
+- Context: a payment could be recorded for a customer with nothing open (or with no invoice ticked); it reached the
+  bank balance and the statement table but no balance figure (customer card, lists, Receivables, dashboard) and was
+  never used by the next invoice, so the customer was in effect billed twice. Same on the supplier side.
+- Decision:
+  - «ثبت پرداخت»: with no invoice ticked, the amount settles every open invoice oldest first (D-042 left it
+    unallocated). Ticked invoices still cap the amount. What is left beyond all open invoices is accepted only with
+    the new tick «مازاد به‌عنوان بستانکاری (پیش‌دریافت) / پیش‌پرداخت ثبت شود»; otherwise the form refuses it.
+  - Credit = Σ unallocated amount of the party's non-reversal payments in its normal direction (`get_party_credit`,
+    `get_credit_payments`, `get_credit_balances`); derived, never stored (D-025). A refund (D-055) is never credit.
+  - `confirm_sale` / `confirm_purchase` call `apply_party_credit` first: oldest credit payment first, one ordinary
+    `allocate_payment` each, audit event `apply_credit`. Payment rows may then cover only total - credit; a due date is
+    needed only if something is still unpaid. `plan_full_payment` books total - credit (nothing when credit covers all).
+  - Shown: customer/supplier page (own card), customer/supplier lists (badge), Receivables «بستانکاران» and Payables
+    «پیش‌پرداخت به تأمین‌کننده» sections, and a notice on the new invoice form (`party_credit.js`) that also lowers the
+    full-settlement amount.
+  - Cancelling an invoice paid from credit refunds that part like any payment (D-055), not back into credit.
+- Schema: migration `shared.0020` (audit event choice only).
+
+### D-088: The printed sales invoice is a one-page brand sheet; the USD rate is not printed
+- Status: Final (replaces D-061's layout; its stamp boxes, words, watermark and COMPANY_* source stay)
+- Date: 2026-10-04
+- Decided by: Sina (reference picture, brand «کاغذ پلاس», phones, email, colours light green + navy + white)
+- Decision: `sales/print.html` + `sales/css/invoice_print.css`: brand head with a drawn paper logo (inline SVG, no file
+  needed), invoice details (number, invoice date, credit due date, print date) and buyer, a navy pill header over pale
+  green pill rows, a «روش پرداخت و تسویه» box (money received by method and date, earlier credit used, pending cheques
+  with due dates, open نسیه with its due date: `apps/sales/printing.settlement_rows`), short terms, totals with the
+  amount in words, seller/buyer stamp boxes, a thank-you line picked from 12 by the invoice id (varied across invoices,
+  the same on a reprint), and a navy footer band with phones (name + number), email and social glyphs (a handle prints
+  only when set). A «سیاه‌وسفید» switch (remembered per browser) turns it into an ink-saving black-and-white sheet.
+- One page: the sheet is exactly A4; the server picks a row density from the line count (>10 compact, >18 dense, >30
+  tiny) and a small script steps tighter until the sheet fits; checked in the browser with 1, 22 and 38 lines.
+  Only if even the smallest rows overflow does it flow onto a second sheet, with a notice on screen.
+- New `.env` keys (blank = the owner's defaults): `COMPANY_BRAND` (کاغذ پلاس), `COMPANY_PHONES`
+  ("خندانی:09145572511,حقگو:09145589832"), `COMPANY_EMAIL` (kaghazplus1@gmail.com), `COMPANY_INSTAGRAM`,
+  `COMPANY_TELEGRAM`, `COMPANY_WHATSAPP`, `COMPANY_TERMS` ("|"-separated lines).
+- The USD rate (D-080) stays frozen on every invoice and visible on the sales and purchase detail pages, but is no longer
+  printed on either invoice: it is for the owner, not the customer.
+
+### D-089: Sales and purchase returns
+- Status: Final (ROADMAP 4.6, out of scope since 2026-09-24, brought in by Sina)
+- Date: 2026-10-04
+- Decided by: Sina (returns linked to an invoice, money first off the invoice, the rest refunded or kept as credit, chosen
+  on each return)
+- Decision: new app `apps.returns` with `SalesReturn`/`SalesReturnItem` and `PurchaseReturn`/`PurchaseReturnItem`, written
+  only by `record_sales_return` / `record_purchase_return` (one transaction each) and never edited. A return is started from
+  a confirmed invoice («ثبت مرجوعی»); each line can give back at most what that line sold/bought minus earlier returns
+  (cartons + packs typed, stored in packs). Numbers: own yearly series per kind (`1405/0001`, `DocumentSequence` types
+  `sales_return` / `purchase_return`). Menu item «مرجوعی» lists both kinds in two tabs.
+- Value: a line's share of what it really brought in (sales: net of the invoice discount, D-048; purchases: the goods price,
+  freight is not refunded), taken on the running total so returning a line in pieces adds up to exactly the whole line.
+- Stock (FIFO stays exact, D-036): a sales return puts the packs back as a NEW layer (source `sales_return`) at that line's
+  own FIFO cost per pack; a purchase return draws that purchase line's own layer down with a consumption row (so only what
+  is still on the shelf from that purchase can go back). Movements `sales_return` (in) / `purchase_return` (out). The
+  original invoice, its consumptions and its profit are never touched (D-014).
+- Money: the value first comes off what is still open on the invoice outside pending cheques (a pending cheque's part stays
+  open so the cheque can still clear) through a credit-note `Payment` (`is_credit_note`, no bank account, allocated to the
+  invoice; kept out of statements, the return itself is the statement line). The surplus is either refunded through a
+  current account (a reversal payment; a card reader never pays out, D-069) or left as the party's credit (the unallocated
+  rest of the credit note), which D-087 then shows everywhere and uses on the next invoice.
+- Reports: returns are booked on their own date and shown beside sales/purchases, not netted into them: «مرجوعی‌ها» card,
+  and net profit = gross profit - profit given back by sales returns (value - cost back on the shelf) - expenses.
+- An invoice with a return can no longer be cancelled (the return already moved part of its goods and money).
+- Schema: `returns.0001`, `inventory.0007/0008` (layer source + `sales_return_item`, nullable `sale_item` + `purchase_return_item`
+  on consumptions, new movement types and constraints), `payments.0013` (`is_credit_note` + check), `shared.0021`.
+
+### D-090: Four selling prices and the sale type chosen on the invoice (amends D-075, D-081)
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina asked for 10 independent proposals and took the recommended synthesis (all ten agreed on the core)
+- Decision:
+  - Each product has a 2x2 price grid: retail/wholesale x pack/carton. The two existing columns keep their names and
+    D-081 meanings (`default_selling_price` = retail pack, `wholesale_selling_price` = wholesale carton); new
+    `retail_carton_price` and `wholesale_pack_price` (0 = unset). `Product.price_for(tier, unit)` is the single reader;
+    an unset cell is derived only from cells that are set, never as a guessed discount: retail carton = retail pack x
+    ratio; wholesale carton = wholesale pack x ratio, else the retail carton; wholesale pack = wholesale carton / ratio
+    rounded up, else the retail pack. A product with any derived cell is flagged «قیمت ناقص» in Inventory.
+  - The sale type is chosen once per invoice again («فروش خرد / فروش عمده», D-075's switch) and `confirm_sale` keeps it
+    (D-081's "any carton = wholesale" is gone). Both line prices follow it: a retail customer buying a whole carton pays the
+    retail carton price, a wholesale buyer taking loose packs pays the wholesale pack price. One invoice, one type.
+  - `Customer.price_tier` («نوع مشتری», default retail) preselects the type when the customer is picked, until the cashier
+    touches the switch. A POST without a type takes the customer's type, then retail; an unknown value is refused.
+  - Switching type reprices the lines still on the old type's prices and keeps typed ones, saying how many (D-075 rule,
+    derived from the numbers). Blank prices are filled on the server from the invoice's type (form and admin paths).
+  - A line priced below the product's average purchase cost per pack shows a hint; it never blocks.
+  - Kept apart: sales list filter and badge by type, the existing «فروش عمده و خرد» report (still adds up to the totals),
+    print subtitle. One invoice number series for both (D-086).
+  - `update_selling_prices` takes `retail_carton` / `wholesale_pack` too; one audit row per changed cell; the product page
+    edits all four and the price history shows four columns.
+- Existing data: nothing is rewritten. Old invoices keep the type D-081 gave them; until the owner sets the two new cells,
+  a wholesale invoice prices exactly as before and a retail carton is pack x ratio.
+- Schema: `products.0010`, `partners.0003`.
+
+### D-091: The production host runs SQLite
+- Status: Final (confirms D-066 for the live app)
+- Date: 2026-10-04
+- Decided by: Sina (the shared host that was bought does not offer PostgreSQL)
+- Decision: the live database is one SQLite file (`DATABASE_URL=sqlite:////abs/path/db.sqlite3`, outside `public_html`).
+  Every change is therefore tested on SQLite: the whole `tools/qa` suite runs on a throwaway SQLite database, and the
+  D-086..D-090 migrations were rehearsed on a SQLite copy built with the current `deploy` branch code and data, then
+  migrated with this code (numbers, sale types, stock and balances unchanged; an old unallocated payment became visible
+  credit). PostgreSQL stays supported for development; no PostgreSQL-only feature may be used. `deploy/UPDATING.md` and
+  `deploy/CHECKLIST.md` say so; the scheduled `backup_db` cron (D-077) is what protects the single file.

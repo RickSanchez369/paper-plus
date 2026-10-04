@@ -1,0 +1,62 @@
+{% comment %}
+Quick-jump palette (Ctrl+K) and the shortcut cheat sheet ("?"). Purely a second,
+faster route to destinations that already exist: the module list comes from the
+same `navigation` context the drawer uses, the "new ..." actions are plain
+links to existing pages. Native <dialog>: focus trap, Esc and the top layer
+come for free. Kept outside .main, which the drawer makes inert.
+{% endcomment %}
+<dialog class="cmdk" id="cmdk" aria-label="پرش سریع">
+  <div class="cmdk__box">
+    <input class="cmdk__input" type="search" role="combobox" aria-expanded="true" aria-controls="cmdk-list"
+           aria-label="پرش سریع به بخش‌ها و کارها" autocomplete="off" spellcheck="false" enterkeyhint="go"
+           placeholder="نام بخش یا کار را بنویسید، مثلاً «فاکتور» یا «چک»">
+    <ul class="cmdk__list" id="cmdk-list" role="listbox" aria-label="بخش‌ها و کارها">
+      <li class="cmdk__group" role="presentation">کارهای سریع</li>
+      <li role="option"><a href="{% url 'sales:new' %}" data-k="فاکتور فروش جدید ثبت فروش">فاکتور فروش جدید</a></li>
+      <li role="option"><a href="{% url 'purchasing:new' %}" data-k="فاکتور خرید جدید ثبت خرید">فاکتور خرید جدید</a></li>
+      <li role="option"><a href="{% url 'expenses:new' %}" data-k="ثبت هزینه جدید">هزینهٔ جدید</a></li>
+      <li role="option"><a href="{% url 'recurring_expenses:new' %}" data-k="هزینه ثابت جدید">هزینهٔ ثابت جدید</a></li>
+      <li role="option"><a href="{% url 'inventory:product_new' %}" data-k="کالا جدید محصول انبار">کالای جدید</a></li>
+      <li role="option"><a href="{% url 'purchasing:supplier_new' %}" data-k="تامین کننده جدید">تأمین‌کنندهٔ جدید</a></li>
+      <li role="option"><a href="{% url 'bank_accounts:new' %}" data-k="حساب بانکی جدید">حساب بانکی جدید</a></li>
+      <li class="cmdk__group" role="presentation">بخش‌ها</li>
+      {% for g in navigation %}
+        {% if g.items %}
+          {% for i in g.items %}
+            <li role="option"><a href="{% url i.url_name %}" data-k="{{ g.label }} {{ i.label }}"><span>{{ i.label }}</span><small>{{ g.label }}</small></a></li>
+          {% endfor %}
+        {% else %}
+          <li role="option"><a href="{% url g.url_name %}" data-k="{{ g.label }}"><span>{{ g.label }}</span></a></li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+    <p class="cmdk__empty" hidden>موردی پیدا نشد. عبارت کوتاه‌تری امتحان کنید.</p>
+    <div class="cmdk__foot">
+      <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> حرکت</span>
+      <span><kbd class="kbd">Enter</kbd> رفتن</span>
+      <span><kbd class="kbd">Esc</kbd> بستن</span>
+      <button type="button" class="cmdk__help" data-kbd-help-open>همهٔ میان‌برها (؟)</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="cmdk kbd-help" id="kbd-help" aria-labelledby="kbd-help-title">
+  <div class="cmdk__box kbd-help__box">
+    <h2 id="kbd-help-title" class="kbd-help__title">میان‌برهای صفحه‌کلید</h2>
+    <p class="kbd-help__lede">روی هر صفحه‌کلیدی، حتی با زبان فارسی، کار می‌کنند.</p>
+    <table class="kbd-help__table">
+      <tbody>
+        <tr><th scope="row"><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">K</kbd></th><td>پرش سریع به هر بخش یا کار</td></tr>
+        <tr><th scope="row"><kbd class="kbd">/</kbd></th><td>رفتن به جست‌وجوی همین صفحه (اگر نبود، پرش سریع)</td></tr>
+        <tr><th scope="row"><kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">Enter</kbd></th><td>ثبت فاکتور (فقط در صفحهٔ فاکتور؛ Enter تنها هرگز ثبت نمی‌کند)</td></tr>
+        <tr><th scope="row"><kbd class="kbd">Alt</kbd> + <kbd class="kbd">N</kbd></th><td>افزودن ردیف تازه به فاکتور</td></tr>
+        <tr><th scope="row"><kbd class="kbd">Enter</kbd></th><td>در جست‌وجوی کالا: انتخاب اولین نتیجه</td></tr>
+        <tr><th scope="row"><kbd class="kbd">Esc</kbd></th><td>بستن منو، نتایج یا پنجره</td></tr>
+        <tr><th scope="row"><kbd class="kbd">?</kbd></th><td>همین راهنما</td></tr>
+      </tbody>
+    </table>
+    <div class="kbd-help__actions">
+      <button type="button" class="btn btn--quiet" data-kbd-help-close>بستن</button>
+    </div>
+  </div>
+</dialog>

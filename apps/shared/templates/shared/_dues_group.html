@@ -1,35 +1,47 @@
 {% comment %}
 One group (cheques or credit) of a column of the dashboard dues card (D-079).
 Context: title, group ({items, total, overdue_total}), empty (text when none).
+Each row's main button goes straight to that row's settle form on Receivables /
+Payables (#chq- / #inv- anchors, opened by dues_cheques.js); the old detail /
+invoice link stays beside it.
 {% endcomment %}
-{% load paper %}
+{% load paper dues_ui %}
 <h4>{{ title }}</h4>
 {% if group.items %}
-  <table class="data-table">
+  <div class="table-card"><table class="data-table">
     <thead><tr><th>سررسید</th><th>بابت</th><th>مبلغ</th><th></th></tr></thead>
     <tbody>
       {% for item in group.items %}
-        <tr>
+        {% with tier=item.days_left|due_tier %}
+        <tr{% if item.overdue %} class="is-overdue"{% elif tier == "today" %} class="is-today"{% elif tier == "soon" %} class="is-soon"{% endif %}>
           <td class="num">
             {{ item.due_date|jalali }}
-            {% if item.overdue %}{% flag_badge "bad" "سررسید گذشته" %}
-            {% elif item.days_left == 0 %}{% flag_badge "pending" "امروز" %}
-            {% else %}<span class="field__hint">{{ item.days_left|fa_number }} روز دیگر</span>{% endif %}
+            {% due_chip item.days_left %}
           </td>
-          <td>{{ item.label }}</td>
-          <td class="num">{{ item.amount|toman }}</td>
+          <td>{{ item.label|fa_digits }}</td>
+          <td class="num">{{ item.amount|money }}</td>
           <td>
-            {% if item.kind == "cheque" %}<a class="btn btn--quiet" href="{% url 'cheques:detail' item.obj.pk %}">مشاهده</a>
-            {% elif item.kind == "recurring" %}<a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">ثبت پرداخت</a>
-            {% elif item.kind == "expense" %}<a class="btn btn--quiet" href="{% url 'expenses:list' %}#expense-{{ item.obj.pk }}">پرداخت</a>
-            {% elif item.kind == "customer_credit" %}<a class="btn btn--quiet" href="{% url 'sales:detail' item.obj.pk %}">فاکتور</a>
-            {% else %}<a class="btn btn--quiet" href="{% url 'purchasing:detail' item.obj.pk %}">فاکتور</a>{% endif %}
+            {% if item.kind == "cheque" %}<div class="dues-actions">
+              <a class="btn btn--quiet" href="{% if item.obj.direction == 'in' %}{% url 'receivables:list' %}{% else %}{% url 'payables:list' %}{% endif %}#chq-{{ item.obj.pk }}">{% icon "check" %}{% if item.obj.direction == 'in' %}وصول شد{% else %}پاس شد{% endif %}</a>
+              <a class="field__hint" href="{% url 'cheques:detail' item.obj.pk %}">جزئیات</a>
+            </div>
+            {% elif item.kind == "recurring" %}<a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">{% icon "pay" %}ثبت پرداخت</a>
+            {% elif item.kind == "expense" %}<a class="btn btn--quiet" href="{% url 'expenses:list' %}#expense-{{ item.obj.pk }}">{% icon "pay" %}پرداخت</a>
+            {% elif item.kind == "customer_credit" %}<div class="dues-actions">
+              <a class="btn btn--quiet" href="{% url 'receivables:list' %}#inv-{{ item.obj.pk }}">{% icon "pay" %}ثبت دریافت</a>
+              <a class="field__hint" href="{% url 'sales:detail' item.obj.pk %}">فاکتور</a>
+            </div>
+            {% else %}<div class="dues-actions">
+              <a class="btn btn--quiet" href="{% url 'payables:list' %}#inv-{{ item.obj.pk }}">{% icon "pay" %}ثبت پرداخت</a>
+              <a class="field__hint" href="{% url 'purchasing:detail' item.obj.pk %}">فاکتور</a>
+            </div>{% endif %}
           </td>
         </tr>
+        {% endwith %}
       {% endfor %}
       <tr><td colspan="2"><strong>جمع {{ title }}</strong></td><td class="num"><strong>{{ group.total|toman }}</strong></td><td></td></tr>
     </tbody>
-  </table>
+  </table></div>
 {% else %}
   <p class="field__hint">{{ empty }}</p>
 {% endif %}

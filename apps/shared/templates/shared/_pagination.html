@@ -4,16 +4,25 @@ The one pager. Context: page_obj, query (the current filters without `page`,
 already followed by "&" when not empty).
 {% endcomment %}
 <nav class="pagination" aria-label="صفحه‌بندی">
-  <span class="field__hint">{{ page_obj.paginator.count|fa_number }} مورد</span>
+  <span class="pagination__count">{{ page_obj.paginator.count|fa_number }} مورد</span>
   {% if page_obj.paginator.num_pages > 1 %}
+  {# Unavailable controls stay as disabled slots so nothing moves between clicks. #}
+  <div class="pagination__nav">
     {% if page_obj.has_previous %}
-      <a class="btn btn--quiet" href="?{{ query }}page=1" aria-label="صفحهٔ اول">«</a>
-      <a class="btn btn--quiet" href="?{{ query }}page={{ page_obj.previous_page_number }}">قبلی</a>
+      <a class="btn btn--quiet pagination__btn pagination__btn--icon" href="?{{ query }}page=1" aria-label="صفحهٔ اول">«</a>
+      <a class="btn btn--quiet pagination__btn" rel="prev" href="?{{ query }}page={{ page_obj.previous_page_number }}">قبلی</a>
+    {% else %}
+      <span class="btn btn--quiet pagination__btn pagination__btn--icon" role="link" aria-disabled="true" aria-label="صفحهٔ اول">«</span>
+      <span class="btn btn--quiet pagination__btn" role="link" aria-disabled="true">قبلی</span>
     {% endif %}
-    <span class="field__hint">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
+    <span class="pagination__page" aria-current="page">صفحهٔ {{ page_obj.number|fa_number }} از {{ page_obj.paginator.num_pages|fa_number }}</span>
     {% if page_obj.has_next %}
-      <a class="btn btn--quiet" href="?{{ query }}page={{ page_obj.next_page_number }}">بعدی</a>
-      <a class="btn btn--quiet" href="?{{ query }}page={{ page_obj.paginator.num_pages }}" aria-label="صفحهٔ آخر">»</a>
+      <a class="btn btn--quiet pagination__btn" rel="next" href="?{{ query }}page={{ page_obj.next_page_number }}">بعدی</a>
+      <a class="btn btn--quiet pagination__btn pagination__btn--icon" href="?{{ query }}page={{ page_obj.paginator.num_pages }}" aria-label="صفحهٔ آخر">»</a>
+    {% else %}
+      <span class="btn btn--quiet pagination__btn" role="link" aria-disabled="true">بعدی</span>
+      <span class="btn btn--quiet pagination__btn pagination__btn--icon" role="link" aria-disabled="true" aria-label="صفحهٔ آخر">»</span>
     {% endif %}
+  </div>
   {% endif %}
 </nav>

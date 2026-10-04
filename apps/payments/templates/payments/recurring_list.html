@@ -55,7 +55,7 @@ expense. Nothing is booked here -- this page only reminds.
                 <td>{{ item.remind_days_before|fa_number }} روز قبل</td>
                 <td>
                   {% if item.is_active %}
-                    <a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.pk }}">ثبت پرداخت</a>
+                    <a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.pk }}&amp;next=recurring">ثبت پرداخت</a>
                     <form method="post" action="{% url 'recurring_expenses:skip' item.pk %}" class="inline-form"
                           onsubmit="return confirm('این نوبت بدون ثبت هزینه رد شود؟');">
                       {% csrf_token %}
@@ -75,9 +75,15 @@ expense. Nothing is booked here -- this page only reminds.
         </table>
       </div>
     {% else %}
-      <div class="placeholder">
-        <p>هنوز هزینهٔ ثابتی تعریف نشده است.</p>
-        <a href="{% url 'recurring_expenses:new' %}" class="btn">ثبت اولین هزینهٔ ثابت</a>
+      <div class="placeholder placeholder--centered">
+        <p class="placeholder__title">هنوز هزینهٔ ثابتی تعریف نشده است.</p>
+        <p>از یکی از موارد رایج شروع کنید؛ فقط مبلغ و تاریخ سررسید را کامل می‌کنید.</p>
+        <ul class="preset-row">
+          {% for p in presets %}
+            <li><a class="preset-chip" href="{% url 'recurring_expenses:new' %}?reason={{ p.reason|urlencode }}&amp;every={{ p.every }}&amp;unit={{ p.unit }}&amp;remind={{ p.remind }}{% if p.amount %}&amp;amount={{ p.amount }}{% endif %}">{{ p.label }} <small>{% if p.every == 1 %}ماهانه{% else %}هر {{ p.every|fa_number }} ماه{% endif %}</small></a></li>
+          {% endfor %}
+        </ul>
+        <a href="{% url 'recurring_expenses:new' %}" class="btn btn--quiet">یا از صفر شروع کنید</a>
       </div>
     {% endif %}
   </div>

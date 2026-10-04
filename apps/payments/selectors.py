@@ -5,6 +5,7 @@
 import datetime
 
 from django.db.models import BigIntegerField, Case, F, Sum, When
+from django.db.models.functions import Coalesce
 
 from .models import Payment
 
@@ -63,6 +64,64 @@ def get_customer_outstanding(customer):
         customer=customer, status=SalesInvoice.Status.CONFIRMED,
     ).prefetch_related("payment_allocations")
     return sum(invoice.outstanding for invoice in invoices)
+
+
+def get_credit_payments(customer=None, supplier=None):
+    """
+    The party's money that no invoice has absorbed yet (D-087): prepayments
+    and leftovers, oldest first -- the order `apply_party_credit` uses them in.
+
+    Only the party's normal direction counts (a customer pays IN, a supplier
+    is paid OUT); a refund (D-055) is never credit. A reversed allocation still
+    counts as allocated, so money already refunded on a cancelled invoice is
+    not offered again.
+    """
+    if bool(customer) == bool(supplier):
+        raise ValueError("Exactly one of customer/supplier is required.")
+    direction = Payment.Direction.IN if customer else Payment.Direction.OUT
+    party = {"customer": customer} if customer else {"supplier": supplier}
+    payments = (
+        Payment.objects.filter(direction=direction, is_reversal=False, **party)
+        .annotate(allocated=Coalesce(Sum("allocations__amount"), 0, output_field=BigIntegerField()))
+        .filter(allocated__lt=F("amount"))
+        .order_by("payment_date", "created_at")
+    )
+    return list(payments)
+
+
+def get_party_credit(customer=None, supplier=None):
+    """Toman this party has paid (or been paid) beyond its invoices: their credit with us, or our advance to them."""
+    return sum(p.amount - p.allocated for p in get_credit_payments(customer=customer, supplier=supplier))
+
+
+def get_credit_balances(model):
+    """
+    ``[{"party", "credit"}]`` for every Customer (or Supplier) with credit, largest first,
+    for the Receivables/Payables pages and the party lists (D-087). One query.
+    """
+    from apps.partners.models import Customer
+
+    field = "customer" if model is Customer else "supplier"
+    direction = Payment.Direction.IN if model is Customer else Payment.Direction.OUT
+    rows = (
+        Payment.objects.filter(direction=direction, is_reversal=False, **{f"{field}__isnull": False})
+        .annotate(allocated=Coalesce(Sum("allocations__amount"), 0, output_field=BigIntegerField()))
+        .filter(allocated__lt=F("amount"))
+        .values_list(f"{field}_id", "amount", "allocated")
+    )
+    totals = {}
+    for party_id, amount, allocated in rows:
+        totals[party_id] = totals.get(party_id, 0) + amount - allocated
+    parties = model.objects.in_bulk(list(totals))
+    return sorted(
+        ({"party": parties[pk], "credit": credit} for pk, credit in totals.items()),
+        key=lambda row: -row["credit"],
+    )
+
+
+def get_credit_map(model):
+    """``{str(party pk): credit}`` for the new-invoice page's credit notice (D-087)."""
+    return {str(row["party"].pk): row["credit"] for row in get_credit_balances(model)}
 
 
 def get_total_receivables_as_of(as_of):

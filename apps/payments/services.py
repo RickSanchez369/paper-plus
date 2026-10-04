@@ -108,9 +108,10 @@ def record_payment(payment, user):
     # otherwise surface as a raw IntegrityError.
     if payment.customer_id and payment.supplier_id:
         raise ValidationError("یک پرداخت نمی‌تواند هم‌زمان مشتری و تأمین‌کننده داشته باشد.")
-    if payment.customer_id and payment.direction != Payment.Direction.IN:
+    # A refund (D-055, D-089 returns) runs against the party's usual direction on purpose.
+    if payment.customer_id and payment.direction != Payment.Direction.IN and not payment.is_reversal:
         raise ValidationError("فقط دریافتی می‌تواند به مشتری نسبت داده شود.")
-    if payment.supplier_id and payment.direction != Payment.Direction.OUT:
+    if payment.supplier_id and payment.direction != Payment.Direction.OUT and not payment.is_reversal:
         raise ValidationError("فقط پرداختی می‌تواند به تأمین‌کننده نسبت داده شود.")
     payment.created_by = user
     payment.save()
@@ -188,6 +189,44 @@ def allocate_payment(allocation, user):
         payload={"amount": allocation.amount},
     )
     return allocation
+
+
+@transaction.atomic
+def apply_party_credit(invoice, user):
+    """
+    Use the party's unabsorbed money on a just-confirmed invoice (D-087).
+
+    A prepayment, or what was left of an earlier payment, is money already in
+    hand: it pays the new invoice before anything else, oldest payment first,
+    one ordinary `allocate_payment` per payment (so the usual locks and checks
+    apply and every Toman stays traceable). Never more than the invoice still owes.
+
+    Returns:
+        int: the Toman applied (0 when the party had no credit).
+    """
+    from .selectors import get_credit_payments
+
+    if isinstance(invoice, SalesInvoice):
+        party, invoice_field, total = {"customer": invoice.customer}, "sales_invoice", invoice.total
+    else:
+        party, invoice_field, total = {"supplier": invoice.supplier}, "purchase_invoice", invoice.total_amount
+    need = total - invoice.paid_amount
+    applied = 0
+    for payment in get_credit_payments(**party):
+        if need <= 0:
+            break
+        take = min(payment.amount - payment.allocated, need)
+        allocate_payment(PaymentAllocation(payment=payment, amount=take, **{invoice_field: invoice}), user)
+        applied += take
+        need -= take
+    if applied:
+        log_event(
+            actor=user,
+            event_type="apply_credit",
+            target=invoice,
+            payload={"amount": applied, "invoice": invoice.invoice_number},
+        )
+    return applied
 
 
 @transaction.atomic

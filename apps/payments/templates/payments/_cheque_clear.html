@@ -1,0 +1,34 @@
+{% load paper %}
+{% comment %}
+"وصول / پاس شد" for one pending cheque, shared by Receivables/Payables rows
+(compact) and the cheque page. The account is answered for you -- the cheque's
+own, else the one the last cheque went into, else the only current account --
+and stays one click away ("حساب: ..." opens the select). dues_cheques.js fills
+the sentence, keeps the button off until an account exists and confirms with
+that same sentence; without it the form is a plain select + button.
+Context: cheque, clear_form, default_account, party, label, next_url (optional),
+compact (rows inside a table).
+{% endcomment %}
+<form method="post" action="{% url 'cheques:clear' cheque.pk %}" class="clear-split{% if compact %} clear-split--compact{% endif %}"
+      data-clear-form
+      data-sentence="{{ cheque.amount|toman }} {% if cheque.direction == 'in' %}از «{{ party|default:'طرف حساب' }}» به حساب «{bank}» وارد می‌شود{% else %}{% if party %}به «{{ party }}» {% endif %}از حساب «{bank}» خارج می‌شود{% endif %}{% if cheque.sales_invoice %} و به فاکتور {{ cheque.sales_invoice.invoice_number|fa_digits }} تخصیص می‌یابد{% elif cheque.purchase_invoice %} و به فاکتور {{ cheque.purchase_invoice.invoice_number|fa_digits }} تخصیص می‌یابد{% endif %}.">
+  {% csrf_token %}
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  {% if compact %}
+    {% if default_account %}
+      <button type="submit" class="btn clear-split__main" data-clear-submit>{{ label }}</button>
+      <details class="clear-split__more">
+        <summary class="btn btn--quiet clear-split__caret"><span data-clear-account-label>حساب: {{ default_account }}</span></summary>
+        {% include "shared/_field.html" with field=clear_form.bank_account %}
+      </details>
+    {% else %}
+      {# Nothing to pre-pick: the choice is shown, and the button waits for it. #}
+      {% include "shared/_field.html" with field=clear_form.bank_account %}
+      <button type="submit" class="btn clear-split__main" data-clear-submit>{{ label }}</button>
+    {% endif %}
+  {% else %}
+    {% include "shared/_field.html" with field=clear_form.bank_account %}
+    <button type="submit" class="btn clear-split__main" data-clear-submit>{{ label }}</button>
+  {% endif %}
+  <p class="clear-preview" data-clear-sentence aria-live="polite"></p>
+</form>

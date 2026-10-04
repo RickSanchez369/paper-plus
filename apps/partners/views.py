@@ -22,7 +22,8 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.payments.forms import RecordPaymentForm
 from apps.payments.models import Payment
-from apps.payments.selectors import get_customer_outstanding, get_open_invoices
+from apps.payments.selectors import get_customer_outstanding, get_open_invoices, get_party_credit
+from apps.returns.models import SalesReturn
 from apps.sales.models import SalesInvoice
 from apps.shared.listing import paginate, sort_rows
 
@@ -83,6 +84,7 @@ def _customer_row(customer):
         "customer": customer,
         "outstanding": outstanding,
         "owes": outstanding > 0,
+        "credit": get_party_credit(customer=customer),  # paid ahead (D-087)
         "invoice_count": confirmed.count(),
         "last_purchase": last_purchase,
     }
@@ -176,17 +178,23 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             .order_by("-invoice_date")
         )
         confirmed = [i for i in invoices if i.status == SalesInvoice.Status.CONFIRMED]
+        # A return's credit note is bookkeeping, not money (D-089): the return itself is the statement line.
         payments = list(
-            Payment.objects.filter(customer=customer)
+            Payment.objects.filter(customer=customer, is_credit_note=False)
             .select_related("bank_account")
             .order_by("-payment_date", "-created_at")
         )
+        returns = list(SalesReturn.objects.filter(invoice__customer=customer).select_related("invoice"))
         cheques = customer.cheques.order_by("-created_at")
 
         ledger = sorted(
             [
                 {"date": i.invoice_date, "kind": "debit", "label": f"فاکتور {i.invoice_number or '(تأیید نشده)'}", "amount": i.total, "url": reverse("sales:detail", args=[i.pk])}
                 for i in confirmed
+            ] + [
+                {"date": r.return_date, "kind": "credit", "label": f"مرجوعی فروش {r.return_number} (فاکتور {r.invoice.invoice_number})",
+                 "amount": r.total_amount, "url": reverse("returns:sales_detail", args=[r.pk])}
+                for r in returns
             ] + [
                 {
                     "date": p.payment_date,
@@ -199,6 +207,7 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
                 }
                 for p in payments
             ],
+            # Same day: invoices, then returns, then money (a return's refund follows the return).
             key=lambda row: row["date"],
         )
         balance = 0
@@ -206,15 +215,29 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             balance += row["amount"] if row["kind"] == "debit" else -row["amount"]
             row["balance"] = balance
 
+        # Display-only footer/verdict for the statement; the ledger's own
+        # running balance, so the footer always equals the last row.
+        statement = {
+            "debit": sum(r["amount"] for r in ledger if r["kind"] == "debit"),
+            "credit": sum(r["amount"] for r in ledger if r["kind"] == "credit"),
+            "closing": ledger[-1]["balance"] if ledger else 0,
+            "closing_abs": abs(ledger[-1]["balance"]) if ledger else 0,
+            "as_of": ledger[-1]["date"] if ledger else None,
+        }
+
         outstanding = get_customer_outstanding(customer)
+        credit = get_party_credit(customer=customer)
         open_invoices = get_open_invoices(SalesInvoice, customer=customer)
         context.update({
             "invoices": invoices,
             "payments": payments,
             "cheques": cheques,
             "ledger": ledger,
+            "statement": statement,
             "outstanding": outstanding,
+            "credit": credit,
             "cards": {
+                "credit": credit,
                 "lifetime_purchases": sum(i.total for i in confirmed),
                 "outstanding": outstanding,
                 "invoice_count": len(confirmed),

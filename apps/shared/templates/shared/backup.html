@@ -1,4 +1,5 @@
 {% extends "shared/base.html" %}
+{% load paper %}
 
 {% comment %}
 Backup: one button, one zip, for any signed-in user (BackupView). The file is built
@@ -7,6 +8,8 @@ on the fly and streamed; nothing is stored on the server by this page.
 
 {% block title %}پشتیبان‌گیری{% endblock %}
 {% block header %}پشتیبان‌گیری{% endblock %}
+
+{% block head %}<script src="{% static_v 'shared/js/insight.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -18,18 +21,37 @@ on the fly and streamed; nothing is stored on the server by this page.
 </div>
 
 <div class="card backup-card">
-  <div class="card__body">
-    <form method="post">
+  <div class="backup-card__hero">
+    <span class="backup-card__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    </span>
+    <div class="backup-card__hero-text">
+      <h2>یک فایل ZIP، شامل همه‌چیز</h2>
+      <p class="backup-card__file" dir="ltr">{{ filename_example|default:"paper-plus-backup-YYYY-MM-DD_HHMM.zip" }}</p>
+      <ul class="backup-card__chips" aria-label="محتوای فایل">
+        <li>فاکتورها</li><li>پرداخت‌ها</li><li>چک‌ها</li><li>انبار</li><li>مشتریان</li><li>کاربران</li><li>رسیدهای آپلودشده</li>
+      </ul>
+    </div>
+    <form method="post" data-busy-label="در حال ساخت فایل…">
       {% csrf_token %}
       <button type="submit" class="btn btn--lg">دانلود پشتیبان کامل</button>
     </form>
+  </div>
 
-    <ul class="backup-card__notes">
-      <li>فایل را جایی امن و بیرون از هاست نگه دارید (کامپیوتر خودتان یا فضای ابری).</li>
-      <li>این فایل شامل همهٔ اطلاعات مالی و نشانی مشتریان است؛ آن را در اختیار دیگران نگذارید.</li>
-      <li>پیشنهاد: پس از هر روز کاری، یا دست‌کم هفته‌ای یک‌بار، یک پشتیبان بگیرید.</li>
-      <li>بازیابی روی یک پایگاه دادهٔ خالی انجام می‌شود: <code>python manage.py restore_db فایل.zip</code></li>
+  <div class="card__body">
+    <h2 class="backup-card__h">قبل از اینکه فایل را کنار بگذارید</h2>
+    <ul class="backup-card__rules">
+      <li class="backup-card__rule backup-card__rule--warn"><b>محرمانه است.</b> این فایل شامل همهٔ اطلاعات مالی و نشانی مشتریان است؛ آن را در اختیار دیگران نگذارید.</li>
+      <li class="backup-card__rule"><b>بیرون از هاست.</b> فایل را جایی امن و بیرون از هاست نگه دارید (کامپیوتر خودتان یا فضای ابری).</li>
+      <li class="backup-card__rule"><b>پیشنهاد:</b> پس از هر روز کاری، یا دست‌کم هفته‌ای یک‌بار، یک پشتیبان بگیرید.</li>
     </ul>
+
+    <h2 class="backup-card__h">بازیابی (روی یک پایگاه دادهٔ خالی)</h2>
+    <div class="backup-card__cmd" dir="ltr">
+      <code id="restore-cmd">python manage.py restore_db paper-plus-backup.zip</code>
+      <button type="button" class="btn btn--sm" data-copy="#restore-cmd" data-copied="کپی شد">کپی</button>
+    </div>
+    <p class="field__hint">به‌جای <span dir="ltr">paper-plus-backup.zip</span> نام فایلی را که دانلود کرده‌اید بنویسید.</p>
   </div>
 </div>
 {% endblock %}

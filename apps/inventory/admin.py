@@ -158,6 +158,8 @@ class InventoryConsumptionAdmin(admin.ModelAdmin):
     def invoice_display(self, obj):
         if obj is None:
             return "-"
+        if obj.sale_item_id is None:  # a purchase return drew this layer down (D-089)
+            return f"مرجوعی خرید {obj.purchase_return_item.purchase_return.return_number}"
         invoice = obj.sale_item.invoice
         opts = invoice._meta
         url = reverse(f"admin:{opts.app_label}_{opts.model_name}_change", args=[invoice.pk])

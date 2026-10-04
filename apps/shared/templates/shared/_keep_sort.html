@@ -1,0 +1,2 @@
+{# A filter form must carry the chosen sort, or applying a filter silently resets the column order. #}
+{% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}"><input type="hidden" name="dir" value="{{ request.GET.dir }}">{% endif %}

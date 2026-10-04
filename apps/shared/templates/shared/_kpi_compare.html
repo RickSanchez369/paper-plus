@@ -1,0 +1,14 @@
+{% load paper %}
+{% comment %}
+Dashboard KPI card: month so far against the same days of last Jalali month.
+Context: c (dashboard._compare result), label (where last month's span ends).
+Arrow + sign carry the direction, so it never rides on colour alone.
+{% endcomment %}
+{% if c.change is not None %}
+  <span class="stat-card__delta{% if c.tone %} stat-card__delta--{{ c.tone }}{% endif %}">
+    {% if c.direction > 0 %}▲ +{% elif c.direction < 0 %}▼ {% else %}● {% endif %}{{ c.change|fa_percent }} نسبت به همین مدت ماه قبل
+  </span>
+{% elif c.diff %}
+  <span class="stat-card__delta">ماه قبل مبنایی برای درصد نداشت</span>
+{% endif %}
+<span class="field__hint">ماه قبل تا {{ label }}: <strong class="num">{{ c.prev|toman }}</strong></span>

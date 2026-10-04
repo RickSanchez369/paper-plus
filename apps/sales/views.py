@@ -17,21 +17,27 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, TemplateView
 
-from apps.inventory.selectors import get_stock_map
+from apps.inventory.selectors import get_average_cost_map, get_stock_map
 from apps.partners.forms import QuickCustomerForm
+from apps.partners.models import Customer
 from apps.products.forms import excluded_product_ids
-from apps.products.models import Product
+from apps.products.models import PriceTier, Product
+from apps.payments.selectors import get_credit_map
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
+from apps.shared.services import display_document_number
 from apps.shared.utils import format_toman
 
 from .forms import SaleInvoiceForm, SaleItemFormSet, SalesFilterForm, SalesPaymentEntryFormSet
 from .models import SalesInvoice
+from .printing import company_print_info, settlement_rows, thank_you_line
 from .services import cancel_sale, confirm_sale, percent_to_amount, plan_full_payment
 
 
@@ -56,35 +62,57 @@ class SalesListView(LoginRequiredMixin, TemplateView):
         filter_form = SalesFilterForm(self.request.GET or None)
         date_range = range_form.range
 
-        qs = (
+        data = filter_form.cleaned_data if filter_form.is_valid() else {}
+        # The box searches two things; saying so spares the owner guessing.
+        filter_form.fields["q"].widget.attrs.setdefault("placeholder", "شمارهٔ فاکتور یا نام مشتری")
+
+        def run_filters(qs):
+            """Apply the search/product filters in SQL and the derived-value filters in Python."""
+            if data.get("q"):
+                # Numbers are stored with ASCII digits (D-086); a typed Persian
+                # "الف/۱۴۰۵۰۷۱۲" or a copied number with its bidi mark must still match.
+                number = dates.to_ascii_digits(data["q"]).replace("؜", "")
+                qs = qs.filter(Q(invoice_number__icontains=number) | Q(customer__name__icontains=data["q"]))
+            if data.get("product"):
+                qs = qs.filter(items__product=data["product"]).distinct()
+            if data.get("price_tier"):
+                qs = qs.filter(price_tier=data["price_tier"])
+            rows = list(qs.order_by("-invoice_date", "-created_at"))
+
+            # payment_status/total are derived properties (D-025), not DB
+            # columns -- filtered in Python. The invoice count this ever runs
+            # over is small (one business, one ledger); a materialized view is
+            # a problem for when that stops being true, not now.
+            if data.get("payment_status"):
+                rows = [i for i in rows if i.payment_status == data["payment_status"]]
+            lo, hi = data.get("amount_min"), data.get("amount_max")
+            if lo is not None:
+                rows = [i for i in rows if i.total >= lo]
+            if hi is not None:
+                rows = [i for i in rows if i.total <= hi]
+            return rows
+
+        base_qs = (
             SalesInvoice.objects.exclude(status=SalesInvoice.Status.DRAFT)
             .select_related("customer")
             .prefetch_related("items__consumptions__layer", "payment_allocations")
-            .filter(invoice_date__gte=date_range[0], invoice_date__lte=date_range[1])
         )
+        invoices = run_filters(base_qs.filter(invoice_date__gte=date_range[0], invoice_date__lte=date_range[1]))
 
-        if filter_form.is_valid():
-            data = filter_form.cleaned_data
-            if data.get("q"):
-                qs = qs.filter(Q(invoice_number__icontains=data["q"]) | Q(customer__name__icontains=data["q"]))
-            if data.get("product"):
-                qs = qs.filter(items__product=data["product"]).distinct()
-
-        invoices = list(qs.order_by("-invoice_date", "-created_at"))
-
-        # payment_status/total are derived properties (D-025), not DB
-        # columns -- filtered in Python. The invoice count this ever runs
-        # over is small (one business, one ledger); a materialized view is
-        # a problem for when that stops being true, not now.
-        if filter_form.is_valid():
-            data = filter_form.cleaned_data
-            if data.get("payment_status"):
-                invoices = [i for i in invoices if i.payment_status == data["payment_status"]]
-            lo, hi = data.get("amount_min"), data.get("amount_max")
-            if lo is not None:
-                invoices = [i for i in invoices if i.total >= lo]
-            if hi is not None:
-                invoices = [i for i in invoices if i.total <= hi]
+        # An old invoice typed into the search box reads as "not found" when the
+        # date window is what hides it; offer the same search over the dates its
+        # matches span, as an explicit custom range (the default window is unchanged).
+        widen = None
+        if not invoices and data.get("q"):
+            outside = run_filters(base_qs)
+            if outside:
+                params = self.request.GET.copy()
+                for key in ("preset", "start", "end", "page"):
+                    params.pop(key, None)
+                params["preset"] = DateRangeForm.Preset.CUSTOM.value
+                params["start"] = dates.format_date(min(i.invoice_date for i in outside))
+                params["end"] = dates.format_date(max(i.invoice_date for i in outside))
+                widen = {"count": len(outside), "url": f"?{params.urlencode()}"}
 
         invoices, sort_key, sort_dir = sort_rows(self.request, invoices, {
             "number": lambda i: i.invoice_number,
@@ -102,6 +130,7 @@ class SalesListView(LoginRequiredMixin, TemplateView):
             "sort_key": sort_key,
             "sort_dir": sort_dir,
             "invoices": page_obj.object_list,
+            "widen": widen,
             "cards": self._cards(),
         })
         return context
@@ -147,18 +176,45 @@ class ProductSearchView(LoginRequiredMixin, View):
             products = products.filter(Q(name__icontains=q) | Q(sku__icontains=q))
         products = list(products.order_by("name")[:15])
         stock_map = get_stock_map([p.pk for p in products])
+        # Average purchase cost per pack: only for the below-cost warning on the line (D-090).
+        cost_map = get_average_cost_map([p.pk for p in products])
         rows = [
             {
                 "product": p,
                 "stock": stock_map.get(p.pk, 0),
-                # Both prices ride on the result so the row can price cartons and
-                # packs without a second request (D-081).
-                "pack_price": p.pack_price,
-                "carton_price": p.carton_price,
+                # All four prices ride on the result so the row can price cartons and packs
+                # on either sale type, and switch type, without a second request (D-081, D-090).
+                "prices": {key: cell["price"] for key, cell in p.price_grid.items()},
+                "cost": cost_map.get(p.pk),
             }
             for p in products
         ]
         return render(request, "sales/_product_search_results.html", {"rows": rows})
+
+
+def _is_uuid(value):
+    """True for a well-formed UUID string; keeps a junk ?customer= from reaching the ORM."""
+    import uuid
+    try:
+        uuid.UUID(str(value))
+    except ValueError:
+        return False
+    return True
+
+
+def _posted_tier(data):
+    """The sale type a posted sale form asks for: its radio, else the chosen customer's type, else retail."""
+    tier = data.get("price_tier")
+    if tier in PriceTier.values:
+        return tier
+    pk = data.get("customer", "")
+    customer = Customer.objects.filter(pk=pk).only("price_tier").first() if _is_uuid(pk) else None
+    return customer.price_tier if customer else PriceTier.RETAIL
+
+
+def _customer_tiers():
+    """{customer pk: default sale type} for the new-sale page: picking a customer preselects it (D-090)."""
+    return {str(pk): tier for pk, tier in Customer.objects.filter(is_active=True).values_list("pk", "price_tier")}
 
 
 def _empty_forms():
@@ -170,6 +226,8 @@ def _empty_forms():
         "payment_formset": SalesPaymentEntryFormSet(prefix="payments"),
         "quick_customer_form": QuickCustomerForm(),
         "quick_customer_url": reverse("customers:quick_new"),
+        "party_credits": get_credit_map(Customer),
+        "customer_tiers": _customer_tiers(),
     }
 
 
@@ -191,11 +249,20 @@ class SalesCreateView(LoginRequiredMixin, View):
     template_name = "sales/new.html"
 
     def get(self, request):
-        return render(request, self.template_name, _empty_forms())
+        context = _empty_forms()
+        # "New sale" from a customer page arrives with ?customer=<pk>; an unknown or inactive id is ignored.
+        pre = request.GET.get("customer", "")
+        if pre:
+            form = context["invoice_form"]
+            valid = form.fields["customer"].queryset.filter(pk=pre).first() if _is_uuid(pre) else None
+            if valid:
+                form.initial["customer"] = valid.pk
+        return render(request, self.template_name, context)
 
     def post(self, request):
         invoice_form = SaleInvoiceForm(request.POST)
-        item_formset = SaleItemFormSet(request.POST, prefix="items")
+        # Blank line prices are filled from the sale type (D-090): the posted one, else the customer's.
+        item_formset = SaleItemFormSet(request.POST, prefix="items", form_kwargs={"price_tier": _posted_tier(request.POST)})
         payment_formset = SalesPaymentEntryFormSet(request.POST, prefix="payments")
 
         forms_valid = invoice_form.is_valid() and item_formset.is_valid()
@@ -237,7 +304,7 @@ class SalesCreateView(LoginRequiredMixin, View):
             except ValidationError as exc:
                 error = "؛ ".join(exc.messages)
             else:
-                messages.success(request, f"فاکتور {invoice.invoice_number} ثبت شد.")
+                messages.success(request, f"فاکتور {display_document_number(invoice.invoice_number)} ثبت شد.")
                 return redirect("sales:detail", pk=invoice.pk)
 
         context = {
@@ -247,6 +314,8 @@ class SalesCreateView(LoginRequiredMixin, View):
             "error": error,
             "quick_customer_form": QuickCustomerForm(),
             "quick_customer_url": reverse("customers:quick_new"),
+            "party_credits": get_credit_map(Customer),
+            "customer_tiers": _customer_tiers(),
         }
         return render(request, self.template_name, context)
 
@@ -276,6 +345,7 @@ class SalesDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["can_cancel"] = (
             self.object.status == SalesInvoice.Status.CONFIRMED and is_privileged(self.request.user)
+            and not self.object.returns.exists()  # a return blocks cancelling (D-089)
         )
         return context
 
@@ -296,10 +366,12 @@ class SalesCancelView(LoginRequiredMixin, View):
         return redirect("sales:detail", pk=pk)
 
 
+@method_decorator(xframe_options_sameorigin, name="dispatch")
 class SalesPrintView(LoginRequiredMixin, DetailView):
     """A print-friendly render of the same invoice (RULES.md excludes PDF
     generation from scope -- this is a plain page for the browser's own
-    print dialog, not a generated file)."""
+    print dialog, not a generated file). Framable by our own pages only: the
+    list/detail "چاپ" links print it through a hidden same-origin iframe."""
 
     model = SalesInvoice
     template_name = "sales/print.html"
@@ -309,3 +381,18 @@ class SalesPrintView(LoginRequiredMixin, DetailView):
         return SalesInvoice.objects.select_related("customer", "created_by").prefetch_related(
             "items__product", "items__consumptions__layer",
         )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        invoice = self.object
+        items = list(invoice.items.all())
+        context.update({
+            "company": company_print_info(),
+            "items": items,
+            # Long invoices shrink their rows so the paper stays one A4 sheet (D-088).
+            "density": "dense inv--tiny" if len(items) > 30 else "dense" if len(items) > 18 else "compact" if len(items) > 10 else "",
+            "settlement": settlement_rows(invoice),
+            "thank_you": thank_you_line(invoice),
+            "printed_on": timezone.localdate(),
+        })
+        return context

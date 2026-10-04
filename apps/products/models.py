@@ -111,6 +111,18 @@ class Product(BaseModel):
         verbose_name="قیمت فروش عمده - هر کارتن (تومان)",
         help_text="قیمت یک کارتن کامل. صفر یعنی تعیین نشده؛ در این صورت قیمت کارتن = قیمت هر بسته × تعداد بسته در کارتن.",
     )
+    # D-090: the other two cells of the price grid (sale type x unit). 0 = unset;
+    # `price_for` then suggests a value from the prices that are set, never a free item.
+    retail_carton_price = models.BigIntegerField(
+        default=0,
+        verbose_name="قیمت فروش خرد - هر کارتن (تومان)",
+        help_text="صفر یعنی تعیین نشده؛ در این صورت قیمت بسته خرد × تعداد بسته در کارتن.",
+    )
+    wholesale_pack_price = models.BigIntegerField(
+        default=0,
+        verbose_name="قیمت فروش عمده - هر بسته (تومان)",
+        help_text="صفر یعنی تعیین نشده؛ در این صورت قیمت کارتن عمده ÷ تعداد بسته در کارتن (یا قیمت بسته خرد).",
+    )
 
     history = HistoricalRecords()
 
@@ -135,6 +147,10 @@ class Product(BaseModel):
                 condition=models.Q(pack_per_carton__gte=1),
                 name="product_pack_per_carton_positive",
             ),
+            models.CheckConstraint(
+                condition=models.Q(retail_carton_price__gte=0, wholesale_pack_price__gte=0),
+                name="product_tier_unit_prices_non_negative",
+            ),
         ]
 
     @property
@@ -152,6 +168,53 @@ class Product(BaseModel):
         if self.wholesale_selling_price > 0:
             return self.wholesale_selling_price
         return self.default_selling_price * self.pack_per_carton
+
+    def price_for(self, tier, unit):
+        """
+        The suggested price of one ``unit`` ("pack"/"carton") on a ``tier`` (PriceTier) invoice (D-090):
+        the one place the four-cell grid is read. An unset cell (0) is derived only from cells
+        the owner did set, in a fixed order, and never comes out lower than a set cell implies:
+
+        - retail pack: the retail pack price;
+        - retail carton: set, else retail pack x ratio;
+        - wholesale carton: set, else wholesale pack x ratio, else the retail carton;
+        - wholesale pack: set, else wholesale carton / ratio (rounded up to a Toman), else retail pack.
+        """
+        ratio = self.pack_per_carton or 1
+        retail_pack = self.default_selling_price
+        retail_carton = self.retail_carton_price or retail_pack * ratio
+        if tier == PriceTier.WHOLESALE:
+            if unit == "carton":
+                return self.wholesale_selling_price or (self.wholesale_pack_price * ratio) or retail_carton
+            if self.wholesale_pack_price:
+                return self.wholesale_pack_price
+            if self.wholesale_selling_price:
+                return -(-self.wholesale_selling_price // ratio)
+            return retail_pack
+        return retail_carton if unit == "carton" else retail_pack
+
+    def price_is_set(self, tier, unit):
+        """True when that cell of the grid was typed by the owner, not derived."""
+        field = {
+            (PriceTier.RETAIL, "pack"): "default_selling_price",
+            (PriceTier.RETAIL, "carton"): "retail_carton_price",
+            (PriceTier.WHOLESALE, "pack"): "wholesale_pack_price",
+            (PriceTier.WHOLESALE, "carton"): "wholesale_selling_price",
+        }[(tier, unit)]
+        return getattr(self, field) > 0
+
+    @property
+    def price_grid(self):
+        """The four suggested prices with a set/derived flag each, for pages and data-* attributes."""
+        return {
+            f"{tier}_{unit}": {"price": self.price_for(tier, unit), "set": self.price_is_set(tier, unit)}
+            for tier in (PriceTier.RETAIL, PriceTier.WHOLESALE) for unit in ("pack", "carton")
+        }
+
+    @property
+    def prices_incomplete(self):
+        """True while any of the four cells is derived rather than set -- flagged in Inventory (D-090)."""
+        return not all(cell["set"] for cell in self.price_grid.values())
 
     @property
     def wholesale_is_unset(self):

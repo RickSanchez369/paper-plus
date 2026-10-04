@@ -13,7 +13,9 @@ from django.utils import timezone
 from apps.inventory.models import InventoryLayer, InventoryMovement
 from apps.inventory.services import cancel_layer
 from apps.payments.models import Cheque, Payment, PaymentAllocation
+from apps.payments.selectors import get_party_credit
 from apps.payments.services import (
+    apply_party_credit,
     allocate_payment,
     record_cheque,
     record_payment,
@@ -25,6 +27,7 @@ from apps.shared.audit import log_event
 from apps.shared.exchange import latest_valid_rate
 from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
+from apps.shared.utils import format_toman
 
 from .models import PurchaseInvoice, PurchasePaymentEntry
 
@@ -144,10 +147,18 @@ def confirm_purchase(invoice, user):
     # simply the نسیه/credit portion; payment_status already shows it.
     entries = list(locked_invoice.payment_entries.all())
     paid_by_rows = sum(entry.amount for entry in entries)
-    if paid_by_rows > locked_invoice.total_amount:
+    # Money the supplier already paid beyond earlier invoices pays this one first (D-087).
+    credit_used = apply_party_credit(locked_invoice, user)
+    due = locked_invoice.total_amount - credit_used
+    if paid_by_rows > due:
+        if credit_used:
+            raise ValidationError(
+                f"جمع ردیف‌های پرداخت از مبلغ باقی‌ماندهٔ فاکتور بیشتر است "
+                f"({format_toman(credit_used)} از بستانکاری قبلی کسر شد؛ باقی‌مانده {format_toman(due)})."
+            )
         raise ValidationError("جمع ردیف‌های پرداخت از مبلغ کل فاکتور بیشتر است.")
     # What the rows leave unpaid is credit (نسیه) and needs a due date (D-069).
-    if paid_by_rows < locked_invoice.total_amount:
+    if paid_by_rows < due:
         if locked_invoice.credit_due_date is None:
             raise ValidationError("برای مبلغ نسیه، تاریخ سررسید را وارد کنید.")
     elif locked_invoice.credit_due_date is not None:
@@ -213,7 +224,8 @@ def plan_full_payment(invoice, parts):
     when the total is not positive. Must be called inside the caller's
     transaction, before confirm_purchase.
     """
-    total = invoice.total_amount
+    # What earlier credit will not cover (D-087): confirm applies the credit first.
+    total = invoice.total_amount - get_party_credit(supplier=invoice.supplier)
     if total <= 0:
         return []
     if any(method == "card" for method, _, _ in parts):
@@ -258,6 +270,11 @@ def cancel_purchase(invoice, user):
 
     if not is_privileged(user):
         raise ValidationError("فقط ابرکاربر می‌تواند فاکتور را لغو کند.")
+
+    # A return already moved part of this invoice's goods and money (D-089); undoing
+    # the whole invoice on top of it would count those twice.
+    if locked_invoice.returns.exists():
+        raise ValidationError("این فاکتور مرجوعی دارد و قابل لغو نیست.")
 
     items = list(locked_invoice.items.select_related("product").all())
 

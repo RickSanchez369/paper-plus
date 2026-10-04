@@ -11,6 +11,10 @@ flattened, so it stays clear which payment settled which purchase.
 {% block title %}{{ supplier.name }}{% endblock %}
 {% block header %}تأمین‌کننده: {{ supplier.name }}{% endblock %}
 
+{% block head %}
+  <script src="{% static_v 'purchasing/js/supplier_ledger.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs">
   <a href="{% url 'purchasing:list' %}">خرید</a> /
@@ -23,30 +27,91 @@ flattened, so it stays clear which payment settled which purchase.
     <div>
       <h1>{{ supplier.name }}</h1>
       <p class="page-head__lede">
-        {% if supplier.phone %}تلفن: {{ supplier.phone }} · {% endif %}
-        {% if not supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %} · {% endif %}
-        بدهی باز: <strong class="num">{{ outstanding|toman }}</strong>
+        {% if supplier.phone %}تلفن: {{ supplier.phone|ident }} · {% endif %}
+        {% if not supplier.is_active %}{% flag_badge "neutral" "غیرفعال" %}{% endif %}
       </p>
     </div>
-    <details class="quick-party-disclosure">
-      <summary class="btn btn--quiet">ویرایش</summary>
-      <form method="post" action="{% url 'purchasing:supplier_edit' supplier.pk %}" class="quick-party">
-        {% csrf_token %}
-        {% include "shared/_form_errors.html" with form=edit_form %}
-        {% for field in edit_form %}
-          {% include "shared/_field.html" with field=field %}
-        {% endfor %}
-        <button type="submit" class="btn btn--block">ذخیره</button>
-      </form>
+    <div class="page-head__actions">
+      <a href="{% url 'purchasing:new' %}?supplier={{ supplier.pk }}" class="btn">+ خرید جدید از این تأمین‌کننده</a>
+      <details class="quick-party-disclosure">
+        <summary class="btn btn--quiet">ویرایش</summary>
+        <form method="post" action="{% url 'purchasing:supplier_edit' supplier.pk %}" class="quick-party">
+          {% csrf_token %}
+          {% include "shared/_form_errors.html" with form=edit_form %}
+          {% for field in edit_form %}
+            {% include "shared/_field.html" with field=field %}
+          {% endfor %}
+          <button type="submit" class="btn btn--block">ذخیره</button>
+        </form>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div class="stats stats--hero">
+  <div class="stat-card stat-card--primary stat-card--hero">
+    <span class="stat-card__label">بدهی باز به این تأمین‌کننده</span>
+    <span class="stat-card__value num{% if outstanding > 0 %} is-loss{% endif %}">{{ outstanding|toman_split }}</span>
+    {% if outstanding > 0 %}
+      <span class="field__hint">{{ summary.open_count|fa_number }} فاکتور باز · پرداخت را در کارت «ثبت پرداخت» زیر همین بخش ثبت کنید.</span>
+    {% else %}
+      <span class="field__hint">{% if credit %}فاکتور بازی ندارد.{% else %}حساب تسویه است.{% endif %}</span>
+    {% endif %}
+  </div>
+  {% if credit %}
+  {# D-087: money we paid ahead; it pays this supplier's next invoice first. #}
+  <div class="stat-card stat-card--credit">
+    <span class="stat-card__label">پیش‌پرداخت نزد تأمین‌کننده</span>
+    <span class="stat-card__value num">{{ credit|toman_split }}</span>
+    <span class="field__hint">از فاکتور خرید بعدی خودکار کسر می‌شود.</span>
+  </div>
+  {% endif %}
+  <div class="stat-card">
+    <span class="stat-card__label">جمع خرید</span>
+    <span class="stat-card__value num">{{ summary.total|toman_split }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">پرداخت‌شده</span>
+    <span class="stat-card__value num">{{ summary.paid|toman_split }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">فاکتورهای خرید</span>
+    <span class="stat-card__value num">{{ summary.count|fa_number }}</span>
+    <span class="field__hint">{{ cheques|length|fa_number }} چک صادرشده</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-card__label">آخرین خرید</span>
+    <span class="stat-card__value num">{{ summary.last_date|jalali|dash }}</span>
+  </div>
+</div>
+
+{# The debt figure above links here from the suppliers list (#pay); open by default while something is owed. #}
+<div class="card" id="pay">
+  <div class="card__body">
+    <h2>ثبت پرداخت</h2>
+    <details class="quick-party-disclosure"{% if outstanding > 0 %} open{% endif %}>
+      <summary class="btn btn--quiet">ثبت پرداخت به {{ supplier.name }}</summary>
+      {% if outstanding > 0 %}
+        <p class="field__hint">مبلغ، تاریخ و حساب پیش‌پر شده و همهٔ فاکتورهای باز تیک خورده‌اند؛ برای پرداخت بخشی، مبلغ را کم کنید (قدیمی‌ترین فاکتورها اول تسویه می‌شوند) یا فاکتورها را تیک بزنید.</p>
+      {% endif %}
+      {% include "payments/_record_payment_form.html" with form=payment_form post_url=payment_form_post_url %}
     </details>
   </div>
 </div>
+{{ open_invoice_amounts|json_script:"open-invoice-amounts" }}
 
 <div class="card">
   <div class="card__body">
     <h2>تاریخچهٔ خرید</h2>
     {% if invoices %}
-      <table class="data-table">
+      {# Show/hide filter only (supplier_ledger.js); every row stays in the page and without JS all show. #}
+      <div class="pur-chips pur-chips--filter" role="group" aria-label="فیلتر فاکتورها" data-ledger-filter="#supplier-ledger" hidden>
+        <button type="button" class="pur-chip" data-f="all" aria-pressed="true">همه ({{ invoices|length|fa_number }})</button>
+        <button type="button" class="pur-chip" data-f="open" aria-pressed="false">باز ({{ summary.open_count|fa_number }})</button>
+        <button type="button" class="pur-chip" data-f="paid" aria-pressed="false">تسویه‌شده</button>
+        <button type="button" class="pur-chip" data-f="cancelled" aria-pressed="false">لغوشده</button>
+      </div>
+      <div class="table-card"><table class="data-table" id="supplier-ledger">
         <thead>
           <tr>
             <th>شماره فاکتور</th>
@@ -59,21 +124,33 @@ flattened, so it stays clear which payment settled which purchase.
         </thead>
         <tbody>
           {% for invoice in invoices %}
-            <tr>
+            {% with paid=invoice.paid_amount %}
+            <tr{% if invoice.status == 'cancelled' %} class="is-void"{% endif %}
+                data-state="{% if invoice.status == 'cancelled' %}cancelled{% elif invoice.total_amount > paid %}open{% else %}paid{% endif %}"
+                data-total="{{ invoice.total_amount }}" data-paid="{{ paid }}">
               <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
               <td class="num">{{ invoice.invoice_date|jalali }}</td>
               <td class="num">{{ invoice.total_amount|toman }}</td>
-              <td class="num">{{ invoice.paid_amount|toman }}</td>
+              <td class="num">{{ paid|toman }}</td>
               <td>
-                {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
+                {% if invoice.status == 'cancelled' %}—{% else %}{% status_badge "payment" invoice.payment_status invoice.payment_status.label %}{% endif %}
               </td>
               <td>
                 {% status_badge "invoice" invoice.status invoice.get_status_display %}
               </td>
             </tr>
+            {% endwith %}
           {% endfor %}
         </tbody>
-      </table>
+        <tfoot hidden data-ledger-total>
+          <tr>
+            <td colspan="2">جمع نمایش‌داده‌شده (بدون لغوشده)</td>
+            <td class="num" data-sum="total"></td>
+            <td class="num" data-sum="paid"></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table></div>
     {% else %}
       <p class="field__hint">هنوز فاکتور خریدی از این تأمین‌کننده ثبت نشده است.</p>
     {% endif %}
@@ -84,7 +161,7 @@ flattened, so it stays clear which payment settled which purchase.
   <div class="card__body">
     <h2>چک‌های صادرشده</h2>
     {% if cheques %}
-      <table class="data-table">
+      <div class="table-card"><table class="data-table">
         <thead>
           <tr>
             <th>شماره چک</th>
@@ -97,9 +174,9 @@ flattened, so it stays clear which payment settled which purchase.
         <tbody>
           {% for cheque in cheques %}
             <tr>
-              <td>{{ cheque.cheque_number|default:"—" }}</td>
-              <td>{{ cheque.issuer|default:"—" }}</td><td>{{ cheque.bank_name|default:"—" }}</td>
-              <td class="num">{{ cheque.due_date|jalali|default:"—" }}</td>
+              <td>{{ cheque.cheque_number|ident|dash }}</td>
+              <td>{{ cheque.issuer|dash }}</td><td>{{ cheque.bank_name|dash }}</td>
+              <td class="num">{{ cheque.due_date|jalali|dash }}</td>
               <td class="num">{{ cheque.amount|toman }}</td>
               <td>
                 {% status_badge "cheque" cheque.status cheque.get_status_display %}
@@ -107,7 +184,7 @@ flattened, so it stays clear which payment settled which purchase.
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <p class="field__hint">چکی برای این تأمین‌کننده ثبت نشده است.</p>
     {% endif %}

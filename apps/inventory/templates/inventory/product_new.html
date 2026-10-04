@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% load paper %}
+{% load static paper %}
 
 {% comment %}"+ کالای جدید" as a full page -- unlike
 the inline mid-invoice version, Inventory is not mid-transaction. The
@@ -9,26 +9,67 @@ entered here, at creation, or never -- afterwards only invoices move stock.{% en
 {% block title %}کالای جدید{% endblock %}
 {% block header %}کالای جدید{% endblock %}
 
+{% block head %}
+  <script src="{% static_v 'shared/js/units.js' %}" defer></script>
+  <script src="{% static_v 'inventory/js/product_new.js' %}" defer></script>
+{% endblock %}
+
 {% block content %}
 <p class="breadcrumbs"><a href="{% url 'inventory:list' %}">انبار</a> / کالای جدید</p>
 
-<div class="card">
-  <div class="card__body">
-    <h1>ثبت کالای جدید</h1>
-    <form method="post" novalidate>
-      {% csrf_token %}
-      {% include "shared/_form_errors.html" with form=form %}
-      {% include "shared/_field.html" with field=form.name %}
-      {% include "shared/_field.html" with field=form.sku %}
-      {% include "shared/_field.html" with field=form.pack_per_carton %}
-      {% include "shared/_field.html" with field=form.default_selling_price %}
-      {% include "shared/_field.html" with field=form.wholesale_selling_price %}
-      <h2>موجودی فعلی انبار (اختیاری، فقط همین یک‌بار)</h2>
-      {% include "shared/_field.html" with field=form.opening_cartons %}
-      {% include "shared/_field.html" with field=form.opening_packs %}
-      {% include "shared/_field.html" with field=form.opening_unit_cost %}
-      <button type="submit" class="btn">ثبت کالا</button>
-    </form>
+<div class="pn-layout">
+  <div class="card">
+    <div class="card__body">
+      <h1>ثبت کالای جدید</h1>
+      <form method="post" novalidate class="pn-form" id="product-form">
+        {% csrf_token %}
+        {% include "shared/_form_errors.html" with form=form %}
+
+        <fieldset class="pn-section">
+          <legend class="pn-section__title">مشخصات کالا</legend>
+          <div class="pn-grid">
+            <div class="pn-grid__wide">{% include "shared/_field.html" with field=form.name %}</div>
+            {% include "shared/_field.html" with field=form.sku %}
+            {% include "shared/_field.html" with field=form.pack_per_carton %}
+          </div>
+        </fieldset>
+
+        <fieldset class="pn-section">
+          <legend class="pn-section__title">قیمت فروش</legend>
+          <div class="pn-grid">
+            {% include "shared/_field.html" with field=form.default_selling_price %}
+            {% include "shared/_field.html" with field=form.retail_carton_price %}
+            {% include "shared/_field.html" with field=form.wholesale_pack_price %}
+            {% include "shared/_field.html" with field=form.wholesale_selling_price %}
+          </div>
+          <p class="field__hint">قیمت بسته خرد الزامی است؛ هر قیمتی که خالی بماند از قیمت‌های واردشده محاسبه و در انبار با «قیمت ناقص» مشخص می‌شود (D-090).</p>
+        </fieldset>
+
+        <fieldset class="pn-section">
+          <legend class="pn-section__title">
+            موجودی فعلی انبار <span class="pn-section__tag">اختیاری، فقط همین یک‌بار</span>
+          </legend>
+          <div class="pn-grid">
+            {% include "shared/_field.html" with field=form.opening_cartons %}
+            {% include "shared/_field.html" with field=form.opening_packs %}
+            <div class="pn-grid__wide">{% include "shared/_field.html" with field=form.opening_unit_cost %}</div>
+          </div>
+        </fieldset>
+
+        {# The primary button stays first in the DOM so Enter in any field keeps the old behaviour. #}
+        <div class="pn-footer">
+          <button type="submit" class="btn btn--lg" id="product-submit" data-default-label="ثبت کالا">ثبت کالا</button>
+          <button type="submit" name="again" value="1" class="btn btn--quiet">ثبت و کالای بعدی</button>
+          <a class="btn btn--quiet" href="{% url 'inventory:list' %}">انصراف</a>
+        </div>
+      </form>
+    </div>
   </div>
+
+  {# Read-only restatement of what will be saved; filled and unhidden by product_new.js, the server redoes every number. #}
+  <aside class="pn-summary" aria-live="polite" aria-label="خلاصهٔ کالا" hidden>
+    <h2 class="pn-summary__title">خلاصه‌ای از آنچه ثبت می‌شود</h2>
+    <ul class="pn-summary__list" id="product-summary"></ul>
+  </aside>
 </div>
 {% endblock %}

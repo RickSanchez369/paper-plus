@@ -1,4 +1,5 @@
 {% extends "shared/base.html" %}
+{% load static paper %}
 
 {% comment %}
 New / edit a fixed, repeating cost (D-073). "تکرار هر N روز/ماه": monthly is
@@ -7,6 +8,10 @@ Jalali months (rent due on the 1st stays on the 1st); days are plain days.
 
 {% block title %}{% if item %}ویرایش هزینهٔ ثابت{% else %}هزینهٔ ثابت جدید{% endif %}{% endblock %}
 {% block header %}{% if item %}ویرایش: {{ item.reason }}{% else %}هزینهٔ ثابت جدید{% endif %}{% endblock %}
+
+{% block head %}
+  <script src="{% static_v 'shared/js/recurring_form.js' %}" defer></script>
+{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs">
@@ -18,19 +23,41 @@ Jalali months (rent due on the 1st stays on the 1st); days are plain days.
 <div class="card">
   <div class="card__body">
     <h1>{% if item %}ویرایش هزینهٔ ثابت{% else %}ثبت هزینهٔ ثابت{% endif %}</h1>
-    <form method="post" novalidate>
+    {% if not item and presets %}
+      <p class="page-head__lede">فقط مبلغ و تاریخ سررسید بعدی را کامل کنید؛ برای شروع سریع یکی از موارد رایج را بزنید.</p>
+      <div class="exb-chips exb-chips--start" role="group" aria-label="شروع سریع">
+        <span class="exb-chips__label">شروع سریع:</span>
+        {% for p in presets %}
+          <button type="button" class="exb-chip" data-reason="{{ p.reason }}" data-every="{{ p.every }}"
+                  data-unit="{{ p.unit }}" data-remind="{{ p.remind }}" data-amount="{{ p.amount }}">{{ p.label }}</button>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" novalidate id="recurring-form">
       {% csrf_token %}
       {% include "shared/_form_errors.html" with form=form %}
       {% include "shared/_field.html" with field=form.reason %}
       {% include "shared/_field.html" with field=form.amount %}
-      <div class="payment-full">
+      <div class="exb-repeat">
         {% include "shared/_field.html" with field=form.repeat_every %}
         {% include "shared/_field.html" with field=form.repeat_unit %}
       </div>
+      <p class="field__hint exb-repeat__hint">«ماه» یعنی ماه شمسی؛ روز ۳۱ در ماه‌های کوتاه‌تر به آخرین روز ماه می‌رود.</p>
       {% include "shared/_field.html" with field=form.next_due_date %}
+      <p class="field__hint">اولین تاریخی که باید پرداخت شود؛ پس از هر ثبت پرداخت، خودکار یک دوره جلو می‌رود.</p>
+      {% if not item and due_suggestions %}
+        <div class="exb-chips" role="group" aria-label="میان‌بر سررسید" data-chip-target="{{ form.next_due_date.id_for_label }}">
+          {% for d in due_suggestions %}<button type="button" class="exb-chip" data-value="{{ d.value }}">{{ d.label }}</button>{% endfor %}
+        </div>
+      {% endif %}
       {% include "shared/_field.html" with field=form.remind_days_before %}
+      <p class="field__hint">چند روز مانده به سررسید، یادآوری نشان داده شود. فقط یادآوری است؛ چیزی ثبت یا کم نمی‌شود.</p>
       {% include "shared/_field.html" with field=form.note %}
       <button type="submit" class="btn">ذخیره</button>
+      {% if past_reasons %}
+        <datalist id="reason-history">{% for reason in past_reasons %}<option value="{{ reason }}">{% endfor %}</datalist>
+        {{ past_amounts|json_script:"recurring-past-amounts" }}
+      {% endif %}
     </form>
   </div>
 </div>

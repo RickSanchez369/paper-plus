@@ -1,6 +1,6 @@
 # STATE — paper-plus
 
-Updated 2026-10-04 (fourth batch: D-078..D-082 — payment ticks, dues card, USD rate, one product with pack/carton, freight). Per-module build history was dropped from this file on
+Updated 2026-10-04 (sixth batch: D-086..D-091 — day/letter sale numbers, party credit, brand print, returns, four prices, SQLite host). Per-module build history was dropped from this file on
 purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
 `DECISIONS.md` the why.
 
@@ -37,7 +37,7 @@ sign-in is throttled, inactive suppliers can be listed.
 stamp boxes (company details still to come from Sina: fill `COMPANY_*` in `.env`, logo
 box is a placeholder), hostiran.net visual identity, hosting-ready update path
 (`deploy/UPDATING.md`). A fresh-database `migrate` bug was fixed on the way. Sina has
-not picked a host yet: ask the host for Python >= 3.12 and PostgreSQL first.
+since bought a shared host without PostgreSQL, so the live app runs SQLite (D-091).
 
 **Batch 2026-10-03 (D-067..D-076), from Sina's list of ten:** bank accounts are card reader or current
 account; cheques carry an issuer; sales discount can be a percent; cash is gone — card reader / bank transfer /
@@ -69,18 +69,51 @@ still offer no card-reader option (a card reader only receives money, D-069).
 
 **Batch 2026-10-04 UI audit (D-083):** ten read-only agents audited the data-dense UI; accepted fixes are in: RTL numbers with units, one `status_badge`/`flag_badge` map, AA contrast tokens + focus ring, invoice summary strip, shared pager + column sort on the growing lists, two-level product search rows, mid-width invoice line layout. Checked: `qa_02..08`, `qa_14`, `qa_19`, `qa_21` pass; browser-checked at 768/1024/1440 on `paper-plus-qa`. Not done: dues boards, bank cards and fixed costs stay unpaged; `--ink-400` 11px sidebar label and input focus ring contrast not touched; Python/template changes need a restart of the `--noreload` QA server.
 
+**Batch 2026-10-04 fifty-critic UI audit (D-084):** 50 read-only critics (one angle each) produced ~300 findings; the verified
+ones are applied in two commits (see D-084 for the list and for what was left to Sina). Checked: `qa_02..24` pass on a throwaway
+SQLite except `qa_13` BK12, which also fails on the commit before this batch (SQLite only, not investigated); `qa_24_ui_audit`
+is new; browser-checked the invoice keyboard flow and the date picker with Playwright. QA scripts need `DEBUG=True` when run on
+SQLite (empty `ALLOWED_HOSTS` otherwise gives 400). Phone width (390px) checked on dashboard and inventory; **not checked:** other pages at phone width, print preview.
+
+**Batch 2026-10-04 two-hundred-critic UI audit (D-085):** 196 findings, 147 applied + 37 merged, 64 deferred entries
+(`docs/UI_AUDIT_200_DEFERRED.md`, need Sina). Preview with `.\tools\qa\preview.ps1` (demo data on a throwaway SQLite). Checked: `qa_02..24`
+pass on SQLite except `qa_13` BK12 (pre-existing); Playwright on 33 pages at 1280 and 390: no JS errors, no page-level horizontal
+overflow except the A4 print page; tables scan at 1280/1024. **Not checked:** real PostgreSQL, real keyboard/touch flows beyond
+the sale form, print preview, localStorage behaviour across sessions. Known: a few wide tables still scroll inside their card at 1024px.
+
+**Batch 2026-10-04 (D-086..D-091), from Sina's list of six:** sales numbers «الف/14050712» per invoice day (after «ی»: «الف2»);
+party credit fixes the "payment for a customer with nothing open disappears" bug (unticked payments settle oldest invoices,
+surplus only with the «بستانکاری/پیش‌پرداخت» tick, credit shown on party pages/lists/dues and used first by the next invoice);
+one-page A4 brand print («کاغذ پلاس», green/navy, B&W switch, settlement box, rotating thank-you line, contacts; USD rate no longer
+printed, still on detail pages); sales and purchase returns (new app `apps.returns`, menu «مرجوعی», FIFO back/out, money off the
+invoice first then refund or credit, invoices with returns cannot be cancelled); four selling prices with the sale type chosen on the
+invoice and preset from `Customer.price_tier` (10 proposals compared, the recommended synthesis taken); the host DB is SQLite
+(D-091). Checks: all 26 `tools/qa` scripts pass on a throwaway SQLite (new: `qa_25_party_credit` 36, `qa_26_returns` 49,
+`qa_27_tier_prices` 27; `qa_13` BK12 passes again); upgrade rehearsed on SQLite: `deploy`-branch code + data, then this code's
+migrations (`shared.0019..0021`, `payments.0013`, `returns.0001`, `inventory.0007/0008`, `products.0010`, `partners.0003`) --
+numbers, tiers, stock and balances unchanged, key scripts pass on the upgraded copy. Browser-checked (port 8002 throwaway server):
+credit tick refusal/acceptance, credit notice and reduced full-settlement amount, print at 1/22/38 lines and B&W, return form with
+live over-limit and refund account, wholesale/retail switch with kept manual price, below-cost hint, customer-type preset, phone width.
+**Not run:** PostgreSQL (not used on the host any more), real host. Not merged into `deploy` (deploy only on Sina's word).
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
 `MASTER_PROMPT` section numbers (removed 2026-09-30).
+
+## Deployment runbooks (2026-10-04)
+`deploy/CHECKLIST.md` (order, revert point, live test list), `deploy/UNIT_CONVERSION.md` (rehearse on a restored backup copy, then live),
+cron lines for `backup_db --keep 14` and `fetch_usd_rate`, HSTS ramp, `COMPANY_*`. The rehearsal flow (backup, restore_db,
+inventory_unit_report, convert_units --dry-run) was run end to end on the demo database. Host is cPanel without SSH and its database is SQLite
+(confirmed by Sina, D-091; the shared host has no PostgreSQL). Nothing was run on the host.
 
 ## Open items (raise with Sina before touching)
 - **Real company details/logo for the printed invoice** — Sina will send them.
 - **USD rate on the host** — tgju is read with stdlib `urllib` (D-080); whether the shared host allows outbound HTTPS is
   untested, and the cron line `manage.py fetch_usd_rate` still has to be added there.
 - **Drop `Product.unit`** — only after `convert_units` has run on every database (D-081).
-- **ROADMAP 4.6 returns (sales/purchase returns)** — explicitly out of scope
-  (Sina, 2026-09-24). Do not design around it.
+- **Quick-created customer and the sale type**: a customer added from the new-sale page does not preset the sale type until
+  the page is reloaded (its type is not in the page's customer map yet) (Minor).
 - **No scheduled backup on the host** (Critical): the live database is one SQLite file; until a cron job
   runs `manage.py backup_db`, backups are manual. HSTS is not set yet (Major).
 - **No write-off path** for physical loss/breakage since D-044 removed manual

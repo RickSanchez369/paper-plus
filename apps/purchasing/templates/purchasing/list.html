@@ -15,19 +15,19 @@ profit card -- profit is sales-only.
     <h1>فاکتورهای خرید</h1>
     <div class="page-head__actions">
       <a href="{% url 'purchasing:suppliers' %}" class="btn btn--quiet">تأمین‌کنندگان</a>
-      <a href="{% url 'purchasing:new' %}" class="btn">+ فاکتور خرید جدید</a>
+      <a href="{% url 'purchasing:new' %}" class="btn">{% icon "plus" %}فاکتور خرید جدید</a>
     </div>
   </div>
 </div>
 
 <div class="stats">
-  <div class="stat-card">
+  <div class="stat-card stat-card--out">
     <span class="stat-card__label">خرید امروز</span>
-    <span class="stat-card__value num">{{ cards.today_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.today_total|toman_split }}</span>
   </div>
-  <div class="stat-card">
+  <div class="stat-card stat-card--out">
     <span class="stat-card__label">خرید این ماه</span>
-    <span class="stat-card__value num">{{ cards.month_total|toman }}</span>
+    <span class="stat-card__value num">{{ cards.month_total|toman_split }}</span>
   </div>
   <div class="stat-card">
     <span class="stat-card__label">فاکتورهای باز (نیمه/نسیه)</span>
@@ -38,6 +38,7 @@ profit card -- profit is sales-only.
 <div class="card">
   <div class="card__body">
     <form method="get" class="toolbar">
+      {% include "shared/_keep_sort.html" %}
       <div class="filters">
         {% include "shared/_field.html" with field=filter_form.q %}
         {% include "shared/_field.html" with field=filter_form.payment_status %}
@@ -47,6 +48,7 @@ profit card -- profit is sales-only.
         <button type="submit" class="btn btn--quiet">اعمال فیلتر</button>
       </div>
       {% include "shared/_date_range.html" with form=range_form %}
+    {% include "shared/_filter_reset.html" %}
     </form>
 
     {% if invoices %}
@@ -59,25 +61,24 @@ profit card -- profit is sales-only.
               {% sort_th "تأمین‌کننده" "party" %}
               {% sort_th "مبلغ کل" "total" %}
               <th>وضعیت پرداخت</th>
-              <th>وضعیت سند</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for invoice in invoices %}
-              <tr>
-                <td><a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a></td>
+              <tr{% if invoice.status == 'cancelled' %} class="is-void"{% endif %}>
+                <td>
+                  <a href="{% url 'purchasing:detail' invoice.pk %}">{{ invoice.invoice_number|fa_digits }}</a>
+                  {% if invoice.status != 'confirmed' %}{% status_badge "invoice" invoice.status invoice.get_status_display %}{% endif %}
+                </td>
                 <td class="num">{{ invoice.invoice_date|jalali }}</td>
-                <td>{{ invoice.supplier.name }}</td>
+                <td><a class="name-clip" href="{% url 'purchasing:supplier_detail' invoice.supplier.pk %}" title="{{ invoice.supplier.name }} — مشاهدهٔ همهٔ خریدهای این تأمین‌کننده">{{ invoice.supplier.name }}</a></td>
                 <td class="num">{{ invoice.total_amount|toman }}</td>
                 <td>
-                  {% status_badge "payment" invoice.payment_status invoice.payment_status.label %}
+                  {% if invoice.status == 'cancelled' %}—{% else %}{% status_badge "payment" invoice.payment_status invoice.payment_status.label %}{% endif %}
                 </td>
                 <td>
-                  {% status_badge "invoice" invoice.status invoice.get_status_display %}
-                </td>
-                <td>
-                  <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ</a>
+                  <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">{% icon "print" %}چاپ</a>
                 </td>
               </tr>
             {% endfor %}
@@ -87,10 +88,13 @@ profit card -- profit is sales-only.
 
       {% pager page_obj %}
     {% else %}
-      <div class="placeholder">
-        <p>فاکتوری با این فیلترها پیدا نشد.</p>
-        <a href="{% url 'purchasing:new' %}" class="btn">ثبت اولین فاکتور خرید</a>
-      </div>
+      {% if request.GET %}
+        {% url 'purchasing:list' as clear_url %}
+        {% include "shared/_empty_state.html" with icon="report" title="در این بازه یا با این فیلترها فاکتوری پیدا نشد." cta_url=clear_url cta_label="پاک‌کردن فیلترها" cta_quiet=True %}
+      {% else %}
+        {% url 'purchasing:new' as new_url %}
+        {% include "shared/_empty_state.html" with icon="purchase" title="هنوز فاکتوری ثبت نشده است." hint="با ثبت فاکتور خرید، موجودی انبار بالا می‌رود و بدهی تأمین‌کننده ثبت می‌شود." cta_url=new_url cta_label="ثبت اولین فاکتور خرید" %}
+      {% endif %}
     {% endif %}
   </div>
 </div>

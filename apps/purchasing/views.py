@@ -29,9 +29,12 @@ from django.views.generic import DetailView, TemplateView
 from apps.inventory.selectors import get_last_known_cost_map, get_stock_map
 from apps.partners.forms import QuickSupplierForm, SupplierForm
 from apps.partners.models import Supplier
-from apps.payments.selectors import get_supplier_outstanding
+from apps.payments.forms import RecordPaymentForm
+from apps.payments.models import Payment
+from apps.payments.selectors import get_open_invoices, get_party_credit, get_supplier_outstanding
 from apps.products.forms import QuickProductForm, excluded_product_ids
 from apps.products.models import Product
+from apps.payments.selectors import get_credit_map
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
@@ -193,6 +196,17 @@ class QuickProductCreateView(LoginRequiredMixin, View):
         return HttpResponse(html)
 
 
+def _is_uuid(value):
+    """True for a well-formed UUID string; keeps a junk ?supplier= from reaching the ORM."""
+    import uuid
+
+    try:
+        uuid.UUID(str(value))
+    except ValueError:
+        return False
+    return True
+
+
 def _empty_forms():
     return {
         "invoice_form": PurchaseInvoiceForm(initial={"invoice_date": timezone.localdate()}),
@@ -200,6 +214,7 @@ def _empty_forms():
         "payment_formset": PurchasePaymentEntryFormSet(prefix="payments"),
         "quick_supplier_form": QuickSupplierForm(),
         "quick_supplier_url": reverse("purchasing:quick_supplier"),
+        "party_credits": get_credit_map(Supplier),
         "quick_product_form": QuickProductForm(auto_id=QUICK_PRODUCT_AUTO_ID),
         "quick_product_url": reverse("purchasing:quick_product"),
     }
@@ -216,7 +231,15 @@ class PurchaseCreateView(LoginRequiredMixin, View):
     template_name = "purchasing/new.html"
 
     def get(self, request):
-        return render(request, self.template_name, _empty_forms())
+        context = _empty_forms()
+        # "New purchase" from a supplier page arrives with ?supplier=<pk>; an unknown or inactive id is ignored.
+        pre = request.GET.get("supplier", "")
+        if pre:
+            form = context["invoice_form"]
+            valid = form.fields["supplier"].queryset.filter(pk=pre).first() if _is_uuid(pre) else None
+            if valid:
+                form.initial["supplier"] = valid.pk
+        return render(request, self.template_name, context)
 
     def post(self, request):
         invoice_form = PurchaseInvoiceForm(request.POST)
@@ -266,6 +289,7 @@ class PurchaseCreateView(LoginRequiredMixin, View):
             "error": error,
             "quick_supplier_form": QuickSupplierForm(),
             "quick_supplier_url": reverse("purchasing:quick_supplier"),
+            "party_credits": get_credit_map(Supplier),
             "quick_product_form": QuickProductForm(auto_id=QUICK_PRODUCT_AUTO_ID),
             "quick_product_url": reverse("purchasing:quick_product"),
         }
@@ -292,6 +316,7 @@ class PurchaseDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["can_cancel"] = (
             self.object.status == PurchaseInvoice.Status.CONFIRMED and is_privileged(self.request.user)
+            and not self.object.returns.exists()  # a return blocks cancelling (D-089)
         )
         return context
 
@@ -392,6 +417,7 @@ class SupplierListView(LoginRequiredMixin, TemplateView):
                 "supplier": supplier,
                 "total_purchased": sum(i.total_amount for i in confirmed),
                 "outstanding": get_supplier_outstanding(supplier),
+                "credit": get_party_credit(supplier=supplier),  # our advance (D-087)
             }
 
         # Row figures cost queries: only the page is computed unless the sort
@@ -472,5 +498,42 @@ class SupplierDetailView(LoginRequiredMixin, DetailView):
         )
         context["cheques"] = supplier.cheques.order_by("-created_at")
         context["outstanding"] = get_supplier_outstanding(supplier)
+        context["credit"] = get_party_credit(supplier=supplier)
         context["edit_form"] = SupplierForm(instance=supplier)
+
+        # Summary strip: only live (confirmed) invoices count; cancelled ones stay in the table, dimmed.
+        # Newest first, so the first live one is the last purchase.
+        live = [i for i in context["invoices"] if i.status == PurchaseInvoice.Status.CONFIRMED]
+        total = sum(i.total_amount for i in live)
+        paid = sum(i.paid_amount for i in live)
+        context["summary"] = {
+            "total": total,
+            "paid": paid,
+            "count": len(live),
+            "open_count": sum(1 for i in live if i.outstanding > 0),
+            "last_date": live[0].invoice_date if live else None,
+        }
+
+        # "Pay this supplier" where the debt is read: the shared record-payment form, pre-filled for
+        # "settle everything" (all open invoices ticked, full amount, today). Every value stays editable,
+        # and the unallocated-prepayment path is untouched (untick all invoices).
+        open_invoices = get_open_invoices(PurchaseInvoice, supplier=supplier)
+        payment_form = RecordPaymentForm(supplier=supplier, open_invoices=open_invoices)
+        accounts = list(payment_form.fields["bank_account"].queryset)
+        last_account = (
+            Payment.objects.filter(direction=Payment.Direction.OUT, supplier=supplier, bank_account__in=accounts)
+            .order_by("-created_at").values_list("bank_account_id", flat=True).first()
+        )
+        initial_account = last_account or (accounts[0].pk if len(accounts) == 1 else None)
+        payment_form.initial.update({
+            "amount": context["outstanding"] or None,
+            "payment_date": timezone.localdate(),
+            "invoices": [str(i.pk) for i in open_invoices],
+        })
+        if initial_account:
+            payment_form.initial["bank_account"] = initial_account
+        context["payment_form"] = payment_form
+        context["payment_form_post_url"] = reverse("payables:record_payment", args=[supplier.pk])
+        # Remaining amount per open invoice: the amount box follows the ticked invoices (supplier_ledger.js).
+        context["open_invoice_amounts"] = {str(i.pk): i.outstanding for i in open_invoices}
         return context

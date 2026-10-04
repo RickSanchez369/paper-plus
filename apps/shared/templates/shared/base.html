@@ -6,7 +6,12 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
+  <meta name="theme-color" content="#0a1f44">
+  <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
+  {% comment %} G031/G043: not deferred, so the remembered table density is on <html> before first paint. {% endcomment %}
+  <script src="{% static_v 'shared/js/design_system.js' %}"></script>
   {% comment %} D-047: every htmx form here answers a validation error with 422 + the
      same form re-rendered with its Persian errors (quick customer/supplier/
      product, "ثبت پرداخت"). htmx 2 swaps no 4xx by default, so those errors
@@ -19,6 +24,9 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <script src="{% static 'shared/js/htmx.min.js' %}" defer></script>
   <script src="{% static_v 'shared/js/jalali_picker.js' %}" defer></script>
   <script src="{% static_v 'shared/js/nav_drawer.js' %}" defer></script>
+  <script src="{% static_v 'shared/js/ui.js' %}" data-login-url="{% url 'login' %}" data-phone="{{ request.user.phone }}" defer></script>
+  <script src="{% static_v 'shared/js/palette.js' %}" defer></script>
+  <script src="{% static_v 'shared/js/file_pick.js' %}" defer></script>
   {% block head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -31,14 +39,26 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
           <button type="button" class="nav-toggle" data-nav-open aria-controls="site-nav" aria-expanded="false" aria-label="باز کردن منو">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
+          {# Home link with the brand mark: the product name is otherwise only inside the closed drawer. Hidden on phones. #}
+          <a class="header__brand" href="{% url 'dashboard' %}" aria-label="پیپر پلاس، داشبورد">{% include "shared/_brand_mark.html" %}</a>
           {% comment %} "بازگشت" goes one level UP (the parent list/page), never
-             history.back(): the previous page may be a validation error. {% endcomment %}
+             history.back(): the previous page may be a validation error. The chevron
+             points right: "up one level" in an RTL page. The word is kept for
+             everyone and only collapses to the icon on phones. {% endcomment %}
           {% parent_url request.path as back_url %}
-          {% block back %}{% if back_url %}<a href="{{ back_url }}" class="btn btn--quiet header__back">بازگشت</a>{% endif %}{% endblock %}
+          {% block back %}{% if back_url %}<a href="{{ back_url }}" class="header__back" aria-label="بازگشت به صفحهٔ بالاتر" title="بازگشت"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span class="header__back-label">بازگشت</span></a>{% endif %}{% endblock %}
           <div class="header__title">{% block header %}{{ page_title }}{% endblock %}</div>
         </div>
+        {# Quick jump (Ctrl+K): a second way to move around; the drawer stays. #}
+        <button type="button" class="cmdk-trigger" data-cmdk-open aria-haspopup="dialog" aria-keyshortcuts="Control+K" aria-label="پرش سریع به بخش‌ها و کارها">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          <span class="cmdk-trigger__text">پرش سریع به بخش‌ها و کارها…</span>
+          <kbd class="kbd" aria-hidden="true">Ctrl K</kbd>
+        </button>
         <div class="header__user">
-          <span>{{ request.user.get_full_name|default:request.user.phone }}</span>
+          <span>{% firstof request.user.get_full_name as who %}{% if who %}{{ who }}{% else %}{{ request.user.phone|ident }}{% endif %}</span>
+          {# Table density: a per-browser choice (Compact fits ~40% more rows per screen); design_system.js keeps aria-pressed in sync. #}
+          <button type="button" class="btn btn--quiet btn--sm header__density" data-density-toggle aria-pressed="false" title="جدول‌های فشرده: ردیف‌های کوتاه‌تر، ردیف بیشتر در هر صفحه">جدول فشرده</button>
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn--quiet">خروج</button>
@@ -48,9 +68,13 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
 
       <main class="content">
         {% if messages %}
+          {# The live role sits on each message (never nested in a wrapper, which announces twice or not at all); errors interrupt, the rest wait. #}
           <div class="messages">
             {% for message in messages %}
-              <div class="message message--{{ message.tags }}">{{ message }}</div>
+              <div class="message message--{{ message.level_tag|default:'info' }}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
+                <span class="message__text">{{ message }}</span>
+                <button type="button" class="message__close" aria-label="بستن پیام" onclick="this.parentElement.remove()">×</button>
+              </div>
             {% endfor %}
           </div>
         {% endif %}
@@ -58,6 +82,8 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
         {% block content %}{% endblock %}
       </main>
     </div>
+
+    {% include "shared/_palette.html" %}
   </div>
 </body>
 </html>

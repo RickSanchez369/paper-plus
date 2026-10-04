@@ -77,6 +77,30 @@ def gross_profit(start, end):
     )
 
 
+def sales_returns_total(start, end):
+    """Value of goods customers brought back, by return date (D-089); the sales they came from stay as they were."""
+    from apps.returns.models import SalesReturn
+
+    return SalesReturn.objects.filter(return_date__gte=start, return_date__lte=end).aggregate(
+        t=Sum("total_amount"))["t"] or 0
+
+
+def returns_profit(start, end):
+    """Profit the period's sales returns take back: their value minus the FIFO cost that came back to the shelf."""
+    from apps.returns.models import SalesReturn
+
+    returns = SalesReturn.objects.filter(return_date__gte=start, return_date__lte=end).prefetch_related("items")
+    return sum(r.profit_given_back for r in returns)
+
+
+def purchase_returns_total(start, end):
+    """Goods price of what went back to suppliers, by return date (D-089)."""
+    from apps.returns.models import PurchaseReturn
+
+    return PurchaseReturn.objects.filter(return_date__gte=start, return_date__lte=end).aggregate(
+        t=Sum("total_amount"))["t"] or 0
+
+
 def summary_cards(start, end):
     """The five headline cards, each with its % change vs. the equal-length
     prior period -- everything computed live, twice (this period, the one
@@ -87,13 +111,15 @@ def summary_cards(start, end):
     purchases = purchases_total(start, end)
     expenses = expenses_total(start, end)
     gross = gross_profit(start, end)
-    net = gross - expenses
+    sales_back = sales_returns_total(start, end)
+    profit_back = returns_profit(start, end)
+    net = gross - profit_back - expenses
 
     prev_sales = sales_total(prev_start, prev_end)
     prev_purchases = purchases_total(prev_start, prev_end)
     prev_expenses = expenses_total(prev_start, prev_end)
     prev_gross = gross_profit(prev_start, prev_end)
-    prev_net = prev_gross - prev_expenses
+    prev_net = prev_gross - returns_profit(prev_start, prev_end) - prev_expenses
 
     return {
         "sales": {"value": sales, "change": pct_change(sales, prev_sales)},
@@ -101,6 +127,10 @@ def summary_cards(start, end):
         "expenses": {"value": expenses, "change": pct_change(expenses, prev_expenses)},
         "gross_profit": {"value": gross, "change": pct_change(gross, prev_gross)},
         "net_profit": {"value": net, "change": pct_change(net, prev_net)},
+        # D-089: returns are booked on their own date and shown beside sales, never netted into them.
+        "sales_returns": {"value": sales_back},
+        "returns_profit": {"value": profit_back},
+        "purchase_returns": {"value": purchase_returns_total(start, end)},
         # What the goods that were actually sold cost (FIFO). Not the
         # period's purchases: those only fill the shelf, and cost nothing
         # until the goods leave it.

@@ -30,7 +30,8 @@ def scenarios(h):
     check("PR04 buyer name and address print", has(r, cust.name) and has(r, "تهران، خیابان آزادی"))
     check("PR05 amount in words: 3000-500 = 2500", has(r, "دو هزار و پانصد تومان"))
     check("PR06 discount line shows, note prints", has(r, "تخفیف") and has(r, "تحویل درب انبار"))
-    check("PR07 no company extras by default (no economic code label)", not has(r, "شمارهٔ اقتصادی"))
+    # The on-screen (no-print) note may name a missing field; the printed header must not carry the label.
+    check("PR07 no company extras by default (no economic code label)", "<dt>شمارهٔ اقتصادی" not in text(r))
     with override_settings(COMPANY={"name": "شرکت آزمون", "legal_name": "آزمون تجارت پارس", "economic_code": "411123456789",
                                     "registration_no": "", "national_id": "", "postal_code": "1234567890",
                                     "phone": "02111112222", "address": "تهران، ولیعصر", "footer_note": "کالای فروخته‌شده پس گرفته نمی‌شود"}):
@@ -39,6 +40,20 @@ def scenarios(h):
         check("PR09 …and a blank one is left off", not has(r, "شمارهٔ ثبت"))
         check("PR10 footer note prints", has(r, "پس گرفته نمی‌شود"))
     check("PR11 confirmed invoice shows paid/outstanding", has(r, "مانده"))
+
+    # ---- D-088: brand sheet
+    r = h.c.get(url)
+    check("PR14 brand, both phones with names and the email print", has(r, "کاغذ پلاس") and has(r, "09145572511") and
+          has(r, "خندانی") and has(r, "09145589832") and has(r, "حقگو") and has(r, "kaghazplus1@gmail.com"))
+    check("PR15 a black-and-white switch is offered", has(r, 'id="mono-toggle"') and has(r, "سیاه‌وسفید"))
+    from apps.sales.printing import THANK_YOU_LINES, settlement_rows, thank_you_line
+    check("PR16 a thank-you line prints, and the same one on a reprint",
+          has(r, thank_you_line(inv)) and thank_you_line(inv) == thank_you_line(SalesInvoice.objects.get(pk=inv.pk)))
+    check("PR17 terms and the payment box print", has(r, "شرایط و ضوابط") and has(r, "روش پرداخت و تسویه"))
+    rows = settlement_rows(inv)
+    check("PR18 settlement rows add up to what is paid plus what is still due",
+          sum(x["amount"] for x in rows) == inv.paid_amount + inv.outstanding, rows)
+    check("PR19 one sheet: the A4 sheet class and the fit script are there", has(r, 'class="inv') and has(r, "function fit()"))
 
     from apps.sales.services import cancel_sale
     cancel_sale(inv, h.su)

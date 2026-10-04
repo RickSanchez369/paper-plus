@@ -10,7 +10,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
   <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
 </head>
 <body class="print-page">
-  <button type="button" class="btn no-print print-page__trigger" onclick="window.print()">چاپ</button>
+  <button type="button" class="btn no-print print-page__trigger" onclick="(document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { window.print(); })">چاپ</button>
 
   <div class="print-invoice">
     <header class="print-invoice__head">
@@ -18,7 +18,6 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
       <div>
         <p>فاکتور خرید شمارهٔ {{ invoice.invoice_number|fa_digits }}</p>
         <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>
-        {% if invoice.usd_rate %}<p>نرخ دلار: {{ invoice.usd_rate.rate|toman }} ({{ invoice.usd_rate.fetched_at|jalali_at }})</p>{% endif %}
       </div>
     </header>
 
