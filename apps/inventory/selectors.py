@@ -44,28 +44,6 @@ def get_stock_map(product_ids):
     return {row["product_id"]: row["stock"] or 0 for row in rows}
 
 
-def get_negative_stock_products():
-    """
-    Every product whose current stock has gone negative (D-016: a sale is
-    allowed to oversell, superuser-only). Defensive only, for the
-    Dashboard's attention-needed row -- this should
-    normally be empty; if it isn't, someone oversold and it is worth
-    surfacing, not because the app treats it as an error.
-    """
-    rows = (
-        InventoryMovement.objects
-        .values("product_id")
-        .annotate(stock=Sum(_signed_quantity_expression()))
-        .filter(stock__lt=0)
-    )
-    from apps.products.models import Product
-
-    product_ids = [row["product_id"] for row in rows]
-    stock_map = {row["product_id"]: row["stock"] for row in rows}
-    products = Product.objects.filter(pk__in=product_ids)
-    return [{"product": product, "stock": stock_map[product.pk]} for product in products]
-
-
 def get_active_layers(product):
     """
     This product's still-sellable layers, oldest first (FIFO order).
@@ -101,6 +79,25 @@ def get_current_cost_map(product_ids):
     for row in rows:
         cost_map.setdefault(row["product_id"], row["unit_cost"])
     return cost_map
+
+
+def get_average_cost_map(product_ids):
+    """
+    Average purchase price of the stock still on the shelf: {product_id: Toman per pack}.
+
+    Σ(remaining × layer cost) ÷ Σ(remaining) over the active layers only, so
+    units already sold never weigh in (D-081). It is for showing and judging
+    stock, nothing else: cost of goods and profit keep drawing from the real
+    FIFO layers (`consume_fifo`), and no calculation reads this figure.
+    Rounded to the nearest Toman; products with no stock are absent.
+    """
+    rows = (
+        InventoryLayer.objects
+        .filter(product_id__in=product_ids, cancelled_at__isnull=True, quantity_remaining__gt=0)
+        .values("product_id")
+        .annotate(value=Sum(F("quantity_remaining") * F("unit_cost")), quantity=Sum("quantity_remaining"))
+    )
+    return {row["product_id"]: (2 * row["value"] + row["quantity"]) // (2 * row["quantity"]) for row in rows}
 
 
 def get_last_known_cost_map(product_ids):

@@ -36,12 +36,10 @@
 
   // ---- full settlement
   function syncFullAmounts(changed) {
-    var posAcc = field("pos_account");
     var posAmt = field("pos_amount");
-    var trAcc = field("transfer_account");
     var trAmt = field("transfer_amount");
-    var hasPos = !!(posAcc && posAcc.value);
-    var hasTr = !!(trAcc && trAcc.value);
+    var hasPos = !!(field("use_pos") && field("use_pos").checked);
+    var hasTr = !!(field("use_transfer") && field("use_transfer").checked);
     var t = total();
     if (hasPos && hasTr) {
       // Two methods: the amount just typed decides, the other takes the rest.
@@ -55,6 +53,21 @@
       trAmt.value = t || "";
       if (posAmt) posAmt.value = "";
     }
+  }
+
+  // A method's fields show only while its box is ticked; hidden ones are
+  // disabled so they are not posted and the server never sees stale values.
+  function applyTicks() {
+    document.querySelectorAll("[data-method-block]").forEach(function (block) {
+      var tick = block.querySelector('input[type="checkbox"]');
+      var panel = block.querySelector("[data-method-fields]");
+      if (!tick || !panel) return;
+      panel.hidden = !tick.checked;
+      panel.querySelectorAll("input, select").forEach(function (el) {
+        el.disabled = !tick.checked;
+        if (!tick.checked && el.type !== "hidden" && el.tagName !== "SELECT") el.value = "";
+      });
+    });
   }
 
   // ---- payment rows
@@ -71,6 +84,11 @@
     });
     var chosen = account.options[account.selectedIndex];
     if (chosen && chosen.value && chosen.disabled) account.value = "";
+    // A single card reader is the obvious account for a card row (D-078).
+    if (method.value === "card" && !account.value) {
+      var pos = Array.prototype.filter.call(account.options, function (o) { return o.value && !o.disabled; });
+      if (pos.length === 1) account.value = pos[0].value;
+    }
   }
 
   function syncCreditDue() {
@@ -93,7 +111,10 @@
 
   document.addEventListener("change", function (event) {
     var t = event.target;
-    if (t.id === "id_pos_account" || t.id === "id_transfer_account") syncFullAmounts();
+    if (t.id === "id_use_pos" || t.id === "id_use_transfer") {
+      applyTicks();
+      syncFullAmounts();
+    }
     if (t.matches && t.matches('select[name$="-method"]')) filterRowAccounts(t.closest("[data-payment-row]"));
   });
 
@@ -108,6 +129,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(filterRowAccounts);
+    applyTicks();
     syncCreditDue();
   });
 })();

@@ -142,3 +142,50 @@ class DocumentSequence(BaseModel):
 
     def __str__(self):
         return f"{self.get_doc_type_display()} {self.year} ({self.next_number})"
+
+
+class ExchangeRate(BaseModel):
+    """
+    One attempt to read the USD rate (D-080). Append-only, like AuditLog:
+    an old rate is never overwritten, and a failed attempt stores NO number
+    (``rate`` stays null), so a broken source can never put a made-up or zero
+    rate on an invoice. Amounts are whole Toman (D-043).
+
+    An invoice keeps a reference to the latest ``ok`` row at the moment it is
+    confirmed, which carries the rate, its date, the time it was read and
+    where it came from.
+    """
+
+    class Status(models.TextChoices):
+        OK = "ok", "موفق"
+        FAILED = "failed", "ناموفق"
+
+    rate = models.BigIntegerField(null=True, blank=True, verbose_name="نرخ دلار (تومان)")
+    rate_date = models.DateField(verbose_name="تاریخ نرخ")
+    fetched_at = models.DateTimeField(verbose_name="زمان دریافت")
+    source = models.CharField(max_length=40, verbose_name="منبع")
+    status = models.CharField(max_length=10, choices=Status.choices, verbose_name="وضعیت دریافت")
+    error = models.TextField(blank=True, verbose_name="خطا")
+
+    class Meta:
+        verbose_name = "نرخ دلار"
+        verbose_name_plural = "نرخ‌های دلار"
+        ordering = ["-fetched_at"]
+        indexes = [models.Index(fields=["status", "fetched_at"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(status="ok", rate__gt=0)
+                    | models.Q(status="failed", rate__isnull=True)
+                ),
+                name="exchange_rate_value_matches_status",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("نرخ ثبت‌شده قابل ویرایش نیست.")
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.rate or '—'} ({self.get_status_display()}, {self.source})"

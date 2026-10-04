@@ -1,0 +1,6 @@
+.venv/
+staticfiles/
+media/
+backups/
+*.zip
+tools/qa/.qa.sqlite3*

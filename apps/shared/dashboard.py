@@ -12,12 +12,13 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.inventory.selectors import get_negative_stock_products, get_total_inventory_value
+from apps.inventory.selectors import get_total_inventory_value
 from apps.payments.models import BankAccount, Cheque
 from apps.payments.selectors import (
     get_bank_account_balance,
     get_total_payables_as_of,
     get_upcoming_payments,
+    get_upcoming_receivables,
     get_total_receivables_as_of,
 )
 from apps.sales.models import SalesInvoice
@@ -56,18 +57,6 @@ def totals_now():
     }
 
 
-def cheques_due_soon(days=7, limit=5):
-    """Pending cheques due within `days`, INCLUDING ones already past their
-    due date (a cheque still pending after its date is the most urgent of
-    all): a handful shown, plus the real total so "see all" doesn't
-    undersell how many there are."""
-    today = timezone.localdate()
-    qs = Cheque.objects.filter(
-        status=Cheque.Status.PENDING, due_date__isnull=False, due_date__lte=today + datetime.timedelta(days=days),
-    ).select_related("customer", "supplier").order_by("due_date")
-    return {"cheques": list(qs[:limit]), "total_count": qs.count()}
-
-
 def cheques_needing_completion(limit=5):
     """Pending cheques entered incomplete from an invoice (no due date or no
     number yet). A missing due date can never fall inside a "due soon"
@@ -97,21 +86,48 @@ def overdue_credit_invoices(threshold_days=30, limit=5):
     return {"invoices": overdue[:limit], "total_count": len(overdue)}
 
 
-def negative_stock():
-    """Products whose stock has gone negative (defensive only, D-016 --
-    an oversell is allowed for a superuser, this just surfaces it)."""
-    return get_negative_stock_products()
+DUES_WINDOW_DAYS = 10
 
 
-def upcoming_payments(days=7):
+def _group(items):
+    """One list of due rows with its own total and the part already overdue."""
+    return {
+        "items": items,
+        "total": sum(i["amount"] for i in items),
+        "overdue_total": sum(i["amount"] for i in items if i["overdue"]),
+    }
+
+
+def _side(cheques, credit):
+    """A column of the dues card: cheques and credit groups plus the column totals."""
+    return {
+        "cheques": _group(cheques),
+        "credit": _group(credit),
+        "total": sum(i["amount"] for i in cheques + credit),
+        "overdue_total": sum(i["amount"] for i in cheques + credit if i["overdue"]),
+    }
+
+
+def dues_overview(days=DUES_WINDOW_DAYS):
     """
-    What has to be paid in the next ``days`` days (plus anything already
-    late), soonest first (D-074): cheques we issued, unpaid expenses, fixed
-    costs, supplier credit. Replaces the old recent-activity feed on the
-    dashboard -- the activity log keeps its own page.
+    One card for money coming in and going out (D-079): what customers owe
+    (cheques held, sale credit) and what the business owes (cheques issued,
+    supplier credit, credit expenses, fixed costs), each due within ``days``
+    days or already late, soonest first. Replaces the separate
+    "next week's payments" and "needs attention" cards.
     """
-    items = get_upcoming_payments(timezone.localdate(), days)
-    return {"items": items, "total": sum(i["amount"] for i in items), "days": days}
+    today = timezone.localdate()
+    incoming = get_upcoming_receivables(today, days)
+    outgoing = get_upcoming_payments(today, days)
+    return {
+        "days": days,
+        "receivable": _side(
+            [i for i in incoming if i["kind"] == "cheque"], [i for i in incoming if i["kind"] != "cheque"],
+        ),
+        "payable": _side(
+            [i for i in outgoing if i["kind"] == "cheque"], [i for i in outgoing if i["kind"] != "cheque"],
+        ),
+    }
 
 
 def recent_activity(limit=10):

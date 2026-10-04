@@ -25,6 +25,7 @@ from .forms import InventoryProductForm
 from .models import InventoryMovement
 from .selectors import (
     get_active_layers,
+    get_average_cost_map,
     get_current_cost_map,
     get_inventory_value_map,
     get_last_known_cost_map,
@@ -36,11 +37,13 @@ from .services import set_opening_stock
 
 class InventoryListView(LoginRequiredMixin, TemplateView):
     """
-    List: cards (total value, item count,
-    negative-stock warning, a USD placeholder), table (stock, current
-    FIFO cost, last purchase cost, selling price, value, % share of total
-    value). Every value figure is cost-based -- Σ active layers × their
-    own cost; the selling price is shown beside it, never multiplied in.
+    List: cards (total value, stock, a USD rate) and one table per product (D-081):
+    stock as cartons + packs, the average purchase price of what is still on the
+    shelf, the last purchase price, both selling prices, the stock's value at
+    cost and its share of the total. Every value figure is cost-based -- Σ active
+    layers × their own cost; the selling prices are shown beside it, never
+    multiplied in. The average is for reading the stock; profit and the cost of a
+    sale still come from the FIFO layers.
     """
 
     template_name = "inventory/list.html"
@@ -51,24 +54,19 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
         product_ids = [p.pk for p in products]
 
         stock_map = get_stock_map(product_ids)
-        current_cost_map = get_current_cost_map(product_ids)
+        average_cost_map = get_average_cost_map(product_ids)
         last_cost_map = get_last_known_cost_map(product_ids)
         value_map = get_inventory_value_map(product_ids)
         total_value = get_total_inventory_value()
 
         rows = []
-        negative_count = 0
         for product in products:
-            stock = stock_map.get(product.pk, 0)
-            if stock < 0:
-                negative_count += 1
             value = value_map.get(product.pk, 0)
             rows.append({
                 "product": product,
-                "stock": stock,
-                # the oldest active layer's cost -- what the next sale
-                # consumes (absent once stock hits zero: no layer left)
-                "current_cost": current_cost_map.get(product.pk),
+                "stock": stock_map.get(product.pk, 0),
+                # Σ(remaining x cost) / Σ(remaining) over what is still in stock
+                "average_cost": average_cost_map.get(product.pk),
                 # the most recent layer's cost, exhausted or not -- "what
                 # did we last buy it at", display-only
                 "last_cost": last_cost_map.get(product.pk),
@@ -76,24 +74,10 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
                 "share": (value * 100 // total_value) if total_value else 0,
             })
 
-        # Pack and carton products are shown apart, each with its own stock
-        # total (D-076): the two units are never added together.
-        groups = []
-        for unit_value, unit_label in Product.Unit.choices:
-            unit_rows = [r for r in rows if r["product"].unit == unit_value]
-            groups.append({
-                "unit": unit_label,
-                "rows": unit_rows,
-                "stock_total": sum(r["stock"] for r in unit_rows),
-                "value_total": sum(r["value"] for r in unit_rows),
-            })
-
         context.update({
             "rows": rows,
-            "groups": groups,
             "total_value": total_value,
             "item_count": len(products),
-            "negative_count": negative_count,
         })
         return context
 
@@ -173,7 +157,8 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         context["active_layers"] = get_active_layers(product)
         context["stock"] = get_stock_map([product.pk]).get(product.pk, 0)
         context["value"] = get_inventory_value_map([product.pk]).get(product.pk, 0)
-        context["current_cost"] = get_current_cost_map([product.pk]).get(product.pk)
+        context["average_cost"] = get_average_cost_map([product.pk]).get(product.pk)
+        context["fifo_cost"] = get_current_cost_map([product.pk]).get(product.pk)
         context["last_cost"] = get_last_known_cost_map([product.pk]).get(product.pk)
         context["price_form"] = SellingPriceForm(
             initial={

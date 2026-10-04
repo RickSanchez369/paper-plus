@@ -142,6 +142,12 @@ STATIC_ROOT = BASE_DIR / "staticfiles"   # filled by `manage.py collectstatic` (
 # Whole-business backups written by `backup_db` / `update` (gitignored).
 BACKUP_DIR = Path(env.str("BACKUP_DIR", default=str(BASE_DIR / "backups")))
 
+# USD rate (D-080): which registered source to read first, an optional URL override for it,
+# and how old the newest rate may be before the pages call it stale.
+USD_RATE_SOURCE = env.str("USD_RATE_SOURCE", default="tgju")
+USD_RATE_URL = env.str("USD_RATE_URL", default="")
+USD_RATE_STALE_HOURS = env.int("USD_RATE_STALE_HOURS", default=12)
+
 # Who issues the printed sales invoice. Read from .env so a host can change it
 # without a code update; an empty value simply leaves that line off the paper.
 COMPANY = {

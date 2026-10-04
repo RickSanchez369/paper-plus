@@ -8,7 +8,7 @@ PaperPlusAdminSite (apps/shared/admin_site.py) now, not here.
 """
 from django.contrib import admin
 
-from .models import AuditLog
+from .models import AuditLog, ExchangeRate
 
 # Fields inherited from BaseModel. Shown read-only so they are visible
 # for debugging but can never be edited by hand.
@@ -29,6 +29,24 @@ class AuditLogAdmin(admin.ModelAdmin):
     search_fields = ("target_id", "actor__phone")
     list_select_related = ("actor",)
     readonly_fields = SYSTEM_FIELDS + ("actor", "event_type", "target_type", "target_id", "payload")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ExchangeRate)
+class ExchangeRateAdmin(admin.ModelAdmin):
+    """Read-only history of USD rate reads (D-080); rows come from `fetch_usd_rate` only."""
+
+    list_display = ("rate", "status", "source", "rate_date", "fetched_at")
+    list_filter = ("status", "source")
+    readonly_fields = SYSTEM_FIELDS + ("rate", "rate_date", "fetched_at", "source", "status", "error")
 
     def has_add_permission(self, request):
         return False

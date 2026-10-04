@@ -135,3 +135,8 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-075 Retail price = `default_selling_price`, wholesale = `wholesale_selling_price`; the invoice's `price_tier` is picked once and frozen; typed prices are never overwritten.
 - D-076 Product unit is pack or carton; pack and carton are separate products with separate stock; no conversion ratio.
 - D-077 Scheduled host backup: cron `backup_db --keep 14` daily; copy a zip off the host weekly.
+- D-078 Full-settlement methods are ticked (`use_pos`/`use_transfer`); unticked = ignored; a lone active card reader is the default account.
+- D-079 Dashboard has one dues card: receivables and payables, each split cheques/credit, window 10 days plus overdue; settled-by-card/transfer never listed.
+- D-080 USD rate: append-only `ExchangeRate` (failed read = no number), fetched by `fetch_usd_rate`/button, frozen on the invoice at confirmation; confirmation never calls the network.
+- D-081 One product with `pack_per_carton`; everything stored in packs; lines hold cartons + packs; retail = per pack, wholesale = per carton; average price is display-only, FIFO decides cost and profit; sale type is derived.
+- D-082 Purchase freight is part of the total owed to the supplier and is spread over the lines by packs into their landed FIFO cost (`freight_share`).

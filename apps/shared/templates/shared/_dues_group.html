@@ -1,0 +1,35 @@
+{% comment %}
+One group (cheques or credit) of a column of the dashboard dues card (D-079).
+Context: title, group ({items, total, overdue_total}), empty (text when none).
+{% endcomment %}
+{% load paper %}
+<h4>{{ title }}</h4>
+{% if group.items %}
+  <table class="data-table">
+    <thead><tr><th>سررسید</th><th>بابت</th><th>مبلغ</th><th></th></tr></thead>
+    <tbody>
+      {% for item in group.items %}
+        <tr>
+          <td class="num">
+            {{ item.due_date|jalali }}
+            {% if item.overdue %}<span class="badge badge--pending">سررسید گذشته</span>
+            {% elif item.days_left == 0 %}<span class="badge badge--pending">امروز</span>
+            {% else %}<span class="field__hint">{{ item.days_left|fa_number }} روز دیگر</span>{% endif %}
+          </td>
+          <td>{{ item.label }}</td>
+          <td class="num">{{ item.amount|toman }}</td>
+          <td>
+            {% if item.kind == "cheque" %}<a class="btn btn--quiet" href="{% url 'cheques:detail' item.obj.pk %}">مشاهده</a>
+            {% elif item.kind == "recurring" %}<a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">ثبت پرداخت</a>
+            {% elif item.kind == "expense" %}<a class="btn btn--quiet" href="{% url 'expenses:list' %}#expense-{{ item.obj.pk }}">پرداخت</a>
+            {% elif item.kind == "customer_credit" %}<a class="btn btn--quiet" href="{% url 'sales:detail' item.obj.pk %}">فاکتور</a>
+            {% else %}<a class="btn btn--quiet" href="{% url 'purchasing:detail' item.obj.pk %}">فاکتور</a>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      <tr><td colspan="2"><strong>جمع {{ title }}</strong></td><td class="num"><strong>{{ group.total|toman }}</strong></td><td></td></tr>
+    </tbody>
+  </table>
+{% else %}
+  <p class="field__hint">{{ empty }}</p>
+{% endif %}

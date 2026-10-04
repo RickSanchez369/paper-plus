@@ -1,0 +1,3 @@
+{% load paper %}{% comment %}
+The USD rate frozen on an invoice when it was confirmed (D-080). Context: rate (ExchangeRate or None).
+{% endcomment %}{% if rate %}نرخ دلار در روز فاکتور: <strong class="num">{{ rate.rate|toman }}</strong> ({{ rate.fetched_at|jalali_at }}){% else %}نرخ دلار: برای این فاکتور ثبت نشده است{% endif %}

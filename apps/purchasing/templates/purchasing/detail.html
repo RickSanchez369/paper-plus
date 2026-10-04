@@ -27,6 +27,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
         {% if invoice.supplier_invoice_number %} · شماره فاکتور تأمین‌کننده: {{ invoice.supplier_invoice_number }}{% endif %}
         · ثبت‌کننده: {{ invoice.created_by.get_full_name|default:invoice.created_by.phone }}
       </p>
+      <p class="page-head__lede">{% include "shared/_usd_rate_note.html" with rate=invoice.usd_rate %}</p>
     </div>
     <div class="sale-detail__actions">
       <span class="badge{% if invoice.status == 'cancelled' %} badge--bad{% else %} badge--good{% endif %}">
@@ -52,23 +53,37 @@ stricter -- blocked once any of this purchase's stock has been sold).
         <tr>
           <th>کالا</th>
           <th>مقدار</th>
-          <th>قیمت واحد</th>
+          <th>قیمت خرید</th>
           <th>جمع</th>
+          {% if invoice.freight_amount %}<th>سهم کرایه</th>{% endif %}
+          <th>بهای تمام‌شده (هر بسته / هر کارتن)</th>
         </tr>
       </thead>
       <tbody>
         {% for item in invoice.items.all %}
           <tr>
             <td>{{ item.product.name }}</td>
-            <td class="num">{{ item.quantity|fa_number }}</td>
-            <td class="num">{{ item.unit_price|toman }}</td>
+            <td class="num">{{ item|line_units }}</td>
+            <td class="num">
+              {% if item.cartons %}<div>کارتن: {{ item.carton_price|toman }}</div>{% endif %}
+              {% if item.loose_packs %}<div>بسته: {{ item.unit_price|toman }}</div>{% endif %}
+            </td>
             <td class="num">{{ item.line_total|toman }}</td>
+            {% if invoice.freight_amount %}<td class="num">{{ item.freight_share|toman }}</td>{% endif %}
+            <td class="num">
+              <div>بسته: {{ item.unit_cost|toman }}</div>
+              <div>کارتن: {{ item.carton_cost|toman }}</div>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
     <div class="sale-form__totals">
+      {% if invoice.freight_amount %}
+        <div><span>جمع اقلام</span><span class="num">{{ invoice.items_total|toman }}</span></div>
+        <div><span>کرایه بار</span><span class="num">{{ invoice.freight_amount|toman }}</span></div>
+      {% endif %}
       <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num">{{ invoice.total_amount|toman }}</span></div>
     </div>
   </div>

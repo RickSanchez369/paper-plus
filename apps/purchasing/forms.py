@@ -13,7 +13,7 @@ from django import forms
 
 from apps.partners.models import Supplier
 from apps.payments.forms import ENTRY_METHOD_CHOICES, InvoicePaymentFields, PaymentEntryFormMixin
-from apps.products.forms import SelectedProductMixin
+from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
 from apps.products.models import Product
 from apps.shared.forms import JalaliDateField
 
@@ -63,9 +63,20 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     discount field -- the model has none."""
 
     invoice_date = JalaliDateField(label="تاریخ فاکتور")
+    # Freight (D-082): a tick reveals the amount. It is part of the total owed to the supplier and is
+    # spread over the lines in their cost; unticked, whatever was typed is ignored.
+    has_freight = forms.BooleanField(required=False, label="کرایه بار")
+    freight_amount = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="مبلغ کرایه بار (تومان)",
+        widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        error_messages={"min_value": "کرایه بار نمی‌تواند منفی باشد."},
+    )
+
     class Meta:
         model = PurchaseInvoice
-        fields = ("supplier", "invoice_date", "supplier_invoice_number", "credit_due_date")
+        fields = ("supplier", "invoice_date", "supplier_invoice_number", "credit_due_date", "freight_amount")
         widgets = {
             # form="purchase-form": rendered outside <form id="purchase-form">
             # on purpose, same reason and same fix as Sales' customer field
@@ -84,33 +95,35 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         self.fields["supplier"].empty_label = "— انتخاب تأمین‌کننده —"
         self.fields["supplier_invoice_number"].required = False
 
+    def clean_freight_amount(self):
+        # An empty box means no freight, 0 (the column is NOT NULL).
+        return self.cleaned_data.get("freight_amount") or 0
 
-class PurchaseItemForm(SelectedProductMixin, forms.ModelForm):
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("has_freight"):
+            if not cleaned.get("freight_amount") and "freight_amount" not in self.errors:
+                self.add_error("freight_amount", "مبلغ کرایه بار را وارد کنید.")
+        else:
+            cleaned["freight_amount"] = 0
+        return cleaned
+
+
+class PurchaseItemForm(CartonPackItemFormMixin, SelectedProductMixin, forms.ModelForm):
     """
-    One invoice line. `product` is a hidden input filled by the same
-    JS-driven search box Sales uses (apps/purchasing/static/purchasing/js/
-    purchase_form.js); `unit_price` is always typed by hand here -- a
-    purchase price is not a default to fall back to, it is what this
-    specific purchase actually cost (the last known cost is only ever a
-    placeholder hint, filled client-side from the search result).
+    One invoice line, typed as cartons + loose packs in a single row (D-081).
+    `product` is a hidden input filled by the same JS-driven search box Sales
+    uses. A price is never defaulted here: a purchase price is what this
+    specific purchase cost, so the price of each part that is used (carton
+    price for cartons, pack price for packs) must be typed. The last known
+    cost is only a placeholder hint, filled client-side from the search result.
     """
 
-    quantity = forms.IntegerField(
-        min_value=1,
-        label="مقدار",
-        widget=forms.NumberInput(attrs={"class": "field__control item-row__qty", "dir": "ltr", "inputmode": "numeric", "aria-label": "مقدار"}),
-        error_messages={"required": "مقدار الزامی است.", "min_value": "مقدار باید بزرگ‌تر از صفر باشد."},
-    )
-    unit_price = forms.IntegerField(
-        min_value=0,
-        label="قیمت واحد (تومان)",
-        widget=forms.NumberInput(attrs={"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric", "aria-label": "قیمت خرید واحد (تومان)"}),
-        error_messages={"required": "قیمت واحد الزامی است.", "min_value": "قیمت نمی‌تواند منفی باشد."},
-    )
+    price_required = True
 
     class Meta:
         model = PurchaseItem
-        fields = ("product", "quantity", "unit_price")
+        fields = ("product", "cartons", "unit_price", "carton_price")
         widgets = {"product": forms.HiddenInput()}
         error_messages = {
             "product": {"required": "یک کالا از فهرست جست‌وجو انتخاب کنید."},

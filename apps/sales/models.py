@@ -5,7 +5,7 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 from apps.partners.models import Customer
-from apps.products.models import PriceTier, Product
+from apps.products.models import CartonLine, PriceTier, Product
 from apps.shared.models import BaseModel
 
 
@@ -85,6 +85,16 @@ class SalesInvoice(BaseModel):
         null=True,
         blank=True,  # only meaningful when part of the invoice is left unpaid (نسیه), D-069
         verbose_name="تاریخ سررسید نسیه",
+    )
+    # The USD rate in force when the invoice was confirmed (D-080); null on older invoices.
+    usd_rate = models.ForeignKey(
+        "shared.ExchangeRate",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name="+",
+        verbose_name="نرخ دلار هنگام تأیید",
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -222,7 +232,7 @@ class SalesInvoice(BaseModel):
         return any(item.uncosted_quantity for item in self.items.all())
 
 
-class SaleItem(BaseModel):
+class SaleItem(CartonLine, BaseModel):
     """One line of a sales invoice."""
 
     invoice = models.ForeignKey(
@@ -238,11 +248,11 @@ class SaleItem(BaseModel):
         verbose_name="کالا",
     )
     quantity = models.PositiveIntegerField(
-        verbose_name="مقدار",
+        verbose_name="مقدار (بسته)",  # the total in packs, the base unit (D-081)
     )
     unit_price = models.BigIntegerField(
         blank=True,  # admin may leave it empty; filled from the product default (R 7, 17C)
-        verbose_name="قیمت واحد (تومان)",  # whole Toman (D-043)
+        verbose_name="قیمت هر بسته (تومان)",  # whole Toman (D-043)
     )
 
     class Meta:
@@ -256,6 +266,14 @@ class SaleItem(BaseModel):
             models.CheckConstraint(
                 condition=models.Q(unit_price__gte=0),
                 name="sale_item_price_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(carton_price__gte=0, pack_per_carton__gte=1),
+                name="sale_item_carton_fields_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=models.F("cartons") * models.F("pack_per_carton")),
+                name="sale_item_cartons_within_quantity",
             ),
             models.UniqueConstraint(
                 fields=["invoice", "product"],
@@ -274,19 +292,15 @@ class SaleItem(BaseModel):
         stored field -- later changes to Product.default_selling_price
         never touch it (it's a snapshot, not a live reference).
         """
-        if self.unit_price is None and self.product_id:
-            # The tier of the invoice this line belongs to (D-075). A form
-            # validating the line before the invoice exists passes it as a hint.
-            tier = getattr(self, "_tier_hint", None) or (self.invoice.price_tier if self.invoice_id else PriceTier.RETAIL)
-            self.unit_price = self.product.price_for(tier)
+        if self.product_id:
+            if self.unit_price is None:
+                self.unit_price = self.product.pack_price
+            if self.cartons and not self.carton_price:
+                self.carton_price = self.product.carton_price
         super().clean_fields(exclude=exclude)
 
     def __str__(self):
         return f"{self.product} x {self.quantity}"
-
-    @property
-    def line_total(self):
-        return self.quantity * self.unit_price
 
     @property
     def discount_share(self):

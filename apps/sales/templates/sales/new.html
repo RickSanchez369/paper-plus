@@ -20,6 +20,7 @@ appear only when chosen.
 {% block header %}فاکتور فروش جدید{% endblock %}
 
 {% block head %}
+  <script src="{% static_v 'shared/js/units.js' %}" defer></script>
   <script src="{% static_v 'sales/js/sale_form.js' %}" defer></script>
   <script src="{% static_v 'shared/js/invoice_payment.js' %}" defer></script>
 {% endblock %}
@@ -46,19 +47,6 @@ right there, so every field after it stopped belonging to any form at
 all (found by actually submitting, not by review: nothing in the item or
 payment rows ever reached the server).
 {% endcomment %}
-<div class="card">
-  <div class="card__body">
-    <h2>نوع فروش</h2>
-    <div class="payment-mode" role="radiogroup" aria-label="{{ invoice_form.price_tier.label }}" data-tier-switch>
-      {% for radio in invoice_form.price_tier %}
-        <label class="payment-mode__option">{{ radio.tag }} {{ radio.choice_label }}</label>
-      {% endfor %}
-    </div>
-    <p class="field__hint">قیمت کالاها بر اساس نوع فروش (عمده یا خرد) پیشنهاد می‌شود؛ هر قیمت را می‌توانید دستی تغییر دهید.</p>
-    <p class="field__hint" id="tier-note" hidden></p>
-  </div>
-</div>
-
 <div class="card">
   <div class="card__body">
     <h2>مشتری</h2>
@@ -96,8 +84,10 @@ payment rows ever reached the server).
       <div class="item-row item-row--head">
         <span>کالا</span>
         <span>موجودی</span>
-        <span>مقدار</span>
-        <span>قیمت واحد (تومان)</span>
+        <span>کارتن</span>
+        <span>بسته</span>
+        <span>قیمت هر کارتن (تومان)</span>
+        <span>قیمت هر بسته (تومان)</span>
         <span>جمع (تومان)</span>
         <span></span>
       </div>

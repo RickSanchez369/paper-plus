@@ -12,11 +12,11 @@ def scenarios(h):
     r = h.c.get("/inventory/")
     check("I01 list renders", r.status_code == 200)
     r = h.c.get("/inventory/products/new/")
-    check("I02 new-product page renders", r.status_code == 200 and has(r, "opening_quantity"))
+    check("I02 new-product page renders", r.status_code == 200 and has(r, "opening_cartons"))
 
     def new(**kw):
-        d = {"name": "QA-N-" + rnd(), "sku": "QS" + str(random.randint(10**6, 10**7)), "unit": "بسته",
-             "default_selling_price": "1000", "opening_quantity": "", "opening_unit_cost": ""}
+        d = {"name": "QA-N-" + rnd(), "sku": "QS" + str(random.randint(10**6, 10**7)), "pack_per_carton": "5",
+             "default_selling_price": "1000", "opening_packs": "", "opening_unit_cost": ""}
         d.update(kw)
         return h.c.post("/inventory/products/new/", d)
 
@@ -25,7 +25,7 @@ def scenarios(h):
     check("I03 product without stock created → redirects to its detail", r.status_code == 302 and "/inventory/" in r["Location"] and Product.objects.count() == n0 + 1)
     p = Product.objects.latest("created_at")
     check("I03 stock 0, no layer, no movement", h.stock(p) == 0 and not InventoryLayer.objects.filter(product=p).exists())
-    r = new(opening_quantity="12", opening_unit_cost="450")
+    r = new(opening_packs="12", opening_unit_cost="450")
     p = Product.objects.latest("created_at")
     lay = InventoryLayer.objects.get(product=p)
     check("I04 opening stock creates a layer at the given cost", r.status_code == 302 and h.stock(p) == 12 and lay.unit_cost == 450 and lay.source == "opening_stock")
@@ -35,13 +35,13 @@ def scenarios(h):
 
     n1 = Product.objects.count()
     bad = {
-        "qty without cost": dict(opening_quantity="5"),
+        "qty without cost": dict(opening_packs="5"),
         "cost without qty": dict(opening_unit_cost="100"),
-        "negative qty": dict(opening_quantity="-3", opening_unit_cost="10"),
-        "zero qty": dict(opening_quantity="0", opening_unit_cost="10"),
-        "negative cost": dict(opening_quantity="3", opening_unit_cost="-10"),
-        "text qty": dict(opening_quantity="abc", opening_unit_cost="10"),
-        "decimal qty": dict(opening_quantity="1.5", opening_unit_cost="10"),
+        "negative qty": dict(opening_packs="-3", opening_unit_cost="10"),
+        "zero qty": dict(opening_packs="0", opening_unit_cost="10"),
+        "negative cost": dict(opening_packs="3", opening_unit_cost="-10"),
+        "text qty": dict(opening_packs="abc", opening_unit_cost="10"),
+        "decimal qty": dict(opening_packs="1.5", opening_unit_cost="10"),
         "blank name": dict(name=""),
         "blank sku": dict(sku=""),
         "blank price": dict(default_selling_price=""),

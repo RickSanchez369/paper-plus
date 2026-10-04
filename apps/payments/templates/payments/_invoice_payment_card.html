@@ -23,20 +23,30 @@ due date. invoice_payment.js owns the live behaviour.
     <div data-payment-panel="full"{% if invoice_form.payment_mode.value == "split" %} hidden{% endif %}>
       <p class="field__hint">
         {{ party_word }} کل مبلغ فاکتور (<span class="num" id="sale-full-amount">۰</span> تومان) را پرداخت کرده است.
-        یک یا هر دو روش را انتخاب کنید؛ اگر هر دو را می‌زنید یکی از مبلغ‌ها را وارد کنید، دیگری خودکار پر می‌شود.
+        روش پرداخت را تیک بزنید؛ اگر هر دو را تیک بزنید یکی از مبلغ‌ها را وارد کنید، دیگری خودکار پر می‌شود.
       </p>
       <div class="payment-full">
         {% if show_pos %}
-        <div class="payment-full__method">
-          <h3>کارت‌خوان</h3>
-          {% include "shared/_field.html" with field=invoice_form.pos_account %}
-          {% include "shared/_field.html" with field=invoice_form.pos_amount %}
+        <div class="payment-full__method" data-method-block="pos">
+          <label class="payment-full__tick">{{ invoice_form.use_pos }} کارت‌خوان</label>
+          <div data-method-fields{% if not invoice_form.use_pos.value %} hidden{% endif %}>
+            {% if invoice_form.pos_default %}
+              {# One card reader: nothing to choose, the account rides along as a hidden value (D-078). #}
+              <input type="hidden" name="pos_account" id="id_pos_account" value="{{ invoice_form.pos_default.pk }}">
+              <p class="field__hint">حساب: {{ invoice_form.pos_default.name }}</p>
+            {% else %}
+              {% include "shared/_field.html" with field=invoice_form.pos_account %}
+            {% endif %}
+            {% include "shared/_field.html" with field=invoice_form.pos_amount %}
+          </div>
         </div>
         {% endif %}
-        <div class="payment-full__method">
-          <h3>حواله بانکی</h3>
-          {% include "shared/_field.html" with field=invoice_form.transfer_account %}
-          {% include "shared/_field.html" with field=invoice_form.transfer_amount %}
+        <div class="payment-full__method" data-method-block="transfer">
+          <label class="payment-full__tick">{{ invoice_form.use_transfer }} حواله بانکی</label>
+          <div data-method-fields{% if not invoice_form.use_transfer.value %} hidden{% endif %}>
+            {% include "shared/_field.html" with field=invoice_form.transfer_account %}
+            {% include "shared/_field.html" with field=invoice_form.transfer_amount %}
+          </div>
         </div>
       </div>
     </div>

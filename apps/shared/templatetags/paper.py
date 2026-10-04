@@ -14,11 +14,29 @@ from django.contrib.staticfiles import finders
 from django.templatetags.static import static
 from django.urls import Resolver404, resolve
 
+from apps.products.units import split_units, units_phrase
 from apps.shared import dates
 from apps.shared.utils import format_number, format_toman
 from apps.shared.words import number_to_words
 
 register = template.Library()
+
+
+@register.inclusion_tag("shared/_usd_rate_card.html", takes_context=True)
+def usd_rate_card(context):
+    """The «نرخ دلار» stat card: newest valid rate, its age, and a failed-last-try warning (D-080)."""
+    from apps.shared import exchange
+
+    row = exchange.latest_valid_rate()
+    attempt = exchange.latest_attempt()
+    request = context.get("request")
+    return {
+        "row": row,
+        "stale": exchange.is_stale(row),
+        "last_failed": bool(attempt and attempt.status == "failed"),
+        "csrf_token": context.get("csrf_token"),
+        "next": request.get_full_path() if request else "",
+    }
 
 
 @register.simple_tag
@@ -90,6 +108,29 @@ def fa_number(value):
     if value is None:
         return ""
     return dates.to_persian_digits(format_number(value)).replace(",", "٬")
+
+
+@register.filter(name="units")
+def units(quantity, pack_per_carton):
+    """A stock/quantity in packs as «۶ کارتن + ۴ بسته», plus «(۳۴ بسته)» once cartons are involved (D-081)."""
+    if quantity is None:
+        return ""
+    cartons, packs = split_units(quantity, pack_per_carton)
+    text = units_phrase(cartons, packs)
+    if cartons:
+        text += f" ({quantity} بسته)"
+    return dates.to_persian_digits(text)
+
+
+@register.filter(name="line_units")
+def line_units(item):
+    """An invoice line's quantity exactly as it was entered: cartons + loose packs, plus the pack total (D-081)."""
+    cartons = item.cartons
+    packs = item.loose_packs
+    text = units_phrase(cartons, packs)
+    if cartons:
+        text += f" ({item.quantity} بسته)"
+    return dates.to_persian_digits(text)
 
 
 @register.filter(name="fa_digits")

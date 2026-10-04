@@ -43,16 +43,36 @@
     return row;
   }
 
+  // A line is cartons x carton price + loose packs x pack price (D-081).
+  function lineQuantity(row) {
+    var ratio = parseInt(row.dataset.ratio, 10) || 1;
+    return intVal(row.querySelector('input[name$="-cartons"]')) * ratio + intVal(row.querySelector('input[name$="-packs"]'));
+  }
+
   function recomputeInvoice() {
     var total = 0;
     document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
-      var qty = intVal(row.querySelector('input[name$="-quantity"]'));
-      var price = intVal(row.querySelector('input[name$="-unit_price"]'));
-      var lineTotal = qty * price;
+      var lineTotal =
+        intVal(row.querySelector('input[name$="-cartons"]')) * intVal(row.querySelector('input[name$="-carton_price"]')) +
+        intVal(row.querySelector('input[name$="-packs"]')) * intVal(row.querySelector('input[name$="-unit_price"]'));
       var totalCell = row.querySelector("[data-item-row-total]");
       if (totalCell) totalCell.textContent = formatToman(lineTotal);
+      var after = row.querySelector("[data-item-row-after]");
+      var qty = lineQuantity(row);
+      if (after && row.dataset.stock !== undefined) {
+        after.textContent = qty > 0 ? "پس از این خرید: " + window.PaperUnits.phrase(parseInt(row.dataset.stock, 10) + qty, row.dataset.ratio) : "";
+      }
       total += lineTotal;
     });
+
+    // Freight counts only while its box is ticked (D-082); it is part of what the supplier is owed.
+    var freight = 0;
+    var tick = document.getElementById("id_has_freight");
+    if (tick && tick.checked) freight = intVal(document.getElementById("id_freight_amount"));
+    var panel = document.querySelector("[data-freight-fields]");
+    if (panel && tick) panel.hidden = !tick.checked;
+    setText("sale-subtotal", formatToman(total));
+    total += freight;
 
     setText("sale-total", formatToman(total));
     setText("sale-full-amount", formatToman(total));
@@ -89,11 +109,17 @@
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = source.dataset.name;
 
+    row.dataset.stock = source.dataset.stock || "0";
+    row.dataset.ratio = source.dataset.ratio || "1";
+    // The last known cost per pack is only a hint; a carton hint is that times the ratio.
+    var lastCost = parseInt(source.dataset.lastCost, 10);
     var priceInput = row.querySelector('input[name$="-unit_price"]');
-    if (priceInput) priceInput.placeholder = source.dataset.lastCost || "";
+    if (priceInput) priceInput.placeholder = isNaN(lastCost) ? "" : String(lastCost);
+    var cartonInput = row.querySelector('input[name$="-carton_price"]');
+    if (cartonInput) cartonInput.placeholder = isNaN(lastCost) ? "" : String(lastCost * parseInt(row.dataset.ratio, 10));
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
-    if (stockLabel) stockLabel.textContent = "موجودی: " + source.dataset.stock;
+    if (stockLabel) stockLabel.textContent = "موجودی: " + window.PaperUnits.phrase(row.dataset.stock, row.dataset.ratio);
 
     var results = row.querySelector(".item-row__results");
     if (results) results.innerHTML = "";
@@ -202,7 +228,7 @@
     if (dialog && dialog.open) dialog.close();
     if (row) {
       fillRow(row, created);
-      var qty = row.querySelector('input[name$="-quantity"]');
+      var qty = row.querySelector('input[name$="-cartons"]');
       if (qty) qty.focus();
     }
   });
@@ -274,12 +300,19 @@
 
   document.addEventListener("input", function (event) {
     if (
-      event.target.matches('input[name$="-quantity"]') ||
+      event.target.matches('input[name$="-cartons"]') ||
+      event.target.matches('input[name$="-packs"]') ||
+      event.target.matches('input[name$="-carton_price"]') ||
       event.target.matches('input[name$="-unit_price"]') ||
-      event.target.matches('input[name$="-amount"]')
+      event.target.matches('input[name$="-amount"]') ||
+      event.target.id === "id_freight_amount"
     ) {
       recomputeInvoice();
     }
+  });
+
+  document.addEventListener("change", function (event) {
+    if (event.target.id === "id_has_freight") recomputeInvoice();
   });
 
   // Enter inside a text/number box must not post the invoice: this form

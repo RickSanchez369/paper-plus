@@ -22,10 +22,34 @@ from apps.payments.services import (
     validate_entry_account,
 )
 from apps.shared.audit import log_event
+from apps.shared.exchange import latest_valid_rate
 from apps.shared.permissions import is_privileged
 from apps.shared.services import get_next_document_number
 
 from .models import PurchaseInvoice, PurchasePaymentEntry
+
+
+def allocate_freight(freight, items):
+    """
+    Split an invoice's freight over its lines in proportion to their packs
+    (D-082): ``{item pk: Toman}`` summing to exactly ``freight``. Each line's
+    share is floored, then the leftover Toman go one each to the lines with
+    the biggest remainders (ties by pk, so the same invoice always splits the
+    same way) -- the same rule as the sales discount allocation (D-048).
+    """
+    total_packs = sum(item.quantity for item in items)
+    if not freight or total_packs <= 0:
+        return {item.pk: 0 for item in items}
+    shares = {}
+    remainders = []
+    for item in items:
+        numerator = freight * item.quantity
+        shares[item.pk] = numerator // total_packs
+        remainders.append((numerator % total_packs, str(item.pk), item.pk))
+    leftover = freight - sum(shares.values())
+    for _, _, pk in sorted(remainders, key=lambda r: (-r[0], r[1]))[:leftover]:
+        shares[pk] += 1
+    return shares
 
 
 @transaction.atomic
@@ -64,6 +88,15 @@ def confirm_purchase(invoice, user):
     # Number assigned only now, at confirmation (D-022) — never while draft.
     locked_invoice.invoice_number = get_next_document_number("purchase")
 
+    # The freight is spread over the lines by packs before any cost is read (D-082), so the
+    # movement and the FIFO layer of each line carry its landed cost.
+    shares = allocate_freight(locked_invoice.freight_amount, items)
+    for item in items:
+        share = shares[item.pk]
+        if item.freight_share != share:
+            item.freight_share = share
+            item.save(update_fields=["freight_share", "updated_at"])
+
     # One ledger row per line. quantity stays positive; the type carries
     # the direction (D-012).
     
@@ -72,7 +105,7 @@ def confirm_purchase(invoice, user):
             product=item.product,
             movement_type=InventoryMovement.MovementType.PURCHASE,
             quantity=item.quantity,
-            unit_price=item.unit_price,
+            unit_price=item.unit_cost,
             purchase_item=item,
             created_by=user,
             note=f"فاکتور خرید {locked_invoice.invoice_number}",
@@ -90,7 +123,7 @@ def confirm_purchase(invoice, user):
             purchase_item=item,
             quantity=item.quantity,
             quantity_remaining=item.quantity,
-            unit_cost=item.unit_price,
+            unit_cost=item.unit_cost,
             created_by=user,
         )
         for item in items
@@ -98,8 +131,10 @@ def confirm_purchase(invoice, user):
 
     locked_invoice.status = PurchaseInvoice.Status.CONFIRMED
     locked_invoice.confirmed_at = timezone.now()
+    # Freeze today's USD rate on the invoice (D-080); None while no rate was ever read.
+    locked_invoice.usd_rate = latest_valid_rate()
     locked_invoice.save(
-        update_fields=["status", "confirmed_at", "invoice_number", "updated_at"]
+        update_fields=["status", "confirmed_at", "invoice_number", "usd_rate", "updated_at"]
     )
 
     # Payment entries drafted on the invoice (mirrors confirm_sale, 4.3b):
@@ -240,7 +275,7 @@ def cancel_purchase(invoice, user):
             product=item.product,
             movement_type=InventoryMovement.MovementType.ADJUSTMENT_OUT,
             quantity=item.quantity,
-            unit_price=item.unit_price,
+            unit_price=item.unit_cost,
             created_by=user,
             note=f"لغو فاکتور خرید {locked_invoice.invoice_number}",
         )

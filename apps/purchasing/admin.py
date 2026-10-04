@@ -125,7 +125,7 @@ class PurchaseInvoiceAdmin(SimpleHistoryAdmin, admin.ModelAdmin):
         "invoice_number", "status", "confirmed_at", "created_by", "payment_status_display",
     ) + SYSTEM_FIELDS
     fieldsets = (
-        ("اطلاعات فاکتور", {"fields": ("supplier", "supplier_invoice_number", "invoice_date")}),
+        ("اطلاعات فاکتور", {"fields": ("supplier", "supplier_invoice_number", "invoice_date", "freight_amount")}),
         # payment_method/payment_note (2.8) are superseded by the payment-entry
         # rows below (4.3b): one place to pick method + amount, not two (Sina,
         # 2026-09-24). The fields stay on the model, just unused from here on.

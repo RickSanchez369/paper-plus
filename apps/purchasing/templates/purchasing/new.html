@@ -13,6 +13,7 @@ and STATE.md (commit 6d4521a).
 {% block header %}فاکتور خرید جدید{% endblock %}
 
 {% block head %}
+  <script src="{% static_v 'shared/js/units.js' %}" defer></script>
   <script src="{% static_v 'purchasing/js/purchase_form.js' %}" defer></script>
   <script src="{% static_v 'shared/js/invoice_payment.js' %}" defer></script>
 {% endblock %}
@@ -74,8 +75,10 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
       <div class="item-row item-row--head">
         <span>کالا</span>
         <span>موجودی</span>
-        <span>مقدار</span>
-        <span>قیمت خرید واحد (تومان)</span>
+        <span>کارتن</span>
+        <span>بسته</span>
+        <span>قیمت خرید هر کارتن (تومان)</span>
+        <span>قیمت خرید هر بسته (تومان)</span>
         <span>جمع (تومان)</span>
         <span></span>
       </div>
@@ -96,6 +99,15 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
       </div>
 
       <div class="sale-form__totals">
+        <div><span>جمع اقلام</span><span class="num" id="sale-subtotal">۰</span></div>
+        <div class="sale-form__totals-discount" data-freight>
+          <label class="payment-full__tick" for="{{ invoice_form.has_freight.id_for_label }}">{{ invoice_form.has_freight }} کرایه بار</label>
+          <div data-freight-fields{% if not invoice_form.has_freight.value %} hidden{% endif %}>
+            {{ invoice_form.freight_amount }}
+            <span class="field__hint">به جمع فاکتور اضافه می‌شود و به نسبت تعداد بسته بین اقلام در بهای تمام‌شده می‌رود.</span>
+          </div>
+        </div>
+        {% for error in invoice_form.freight_amount.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
         <div class="sale-form__totals-final"><span>جمع نهایی</span><span class="num" id="sale-total">۰</span></div>
       </div>
     </div>

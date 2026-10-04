@@ -49,10 +49,10 @@ def audit(tag, start, end):
     # revenue: line totals minus each invoice discount
     revenue = 0
     for i in inv:
-        revenue += sum(it.quantity * it.unit_price for it in i.items.all()) - i.discount_amount
+        revenue += sum(it.line_total for it in i.items.all()) - i.discount_amount
     cogs = InventoryConsumption.objects.filter(sale_item__invoice__in=inv).aggregate(t=Sum(COST))["t"] or 0
     purchases = sum(
-        sum(it.quantity * it.unit_price for it in p.items.all())
+        sum(it.line_total for it in p.items.all())
         for p in PurchaseInvoice.objects.filter(status="confirmed", invoice_date__gte=start, invoice_date__lte=end)
     )
     expenses = Expense.objects.filter(cancelled_at__isnull=True, expense_date__gte=start, expense_date__lte=end).aggregate(t=Sum("amount"))["t"] or 0
@@ -113,7 +113,7 @@ try:
         c.force_login(u)
         cust = Customer.objects.filter(is_active=True).first()
         sup = Supplier.objects.filter(is_active=True).first()
-        acct = BankAccount.objects.filter(is_active=True).first()
+        acct = BankAccount.objects.filter(is_active=True, account_type="current").first()
         pa, pb = list(Product.objects.filter(is_active=True).order_by("name")[:2])
         today = datetime.date.today()
         start, end = today - datetime.timedelta(days=5), today + datetime.timedelta(days=5)
@@ -124,18 +124,18 @@ try:
                  "items-TOTAL_FORMS": len(items), "items-INITIAL_FORMS": 0, "items-MIN_NUM_FORMS": 0, "items-MAX_NUM_FORMS": 1000,
                  "payments-TOTAL_FORMS": 0, "payments-INITIAL_FORMS": 0, "payments-MIN_NUM_FORMS": 0, "payments-MAX_NUM_FORMS": 1000}
             for i, (p, q, price) in enumerate(items):
-                d.update({f"items-{i}-product": str(p.pk), f"items-{i}-quantity": str(q), f"items-{i}-unit_price": str(price)})
+                d.update({f"items-{i}-product": str(p.pk), f"items-{i}-packs": str(q), f"items-{i}-unit_price": str(price)})
             d.update(extra)
             return c.post(url, d)
 
-        r = post("/purchasing/new/", [(pa, 7, 999_001), (pb, 3, 12_345)], {"supplier": str(sup.pk), "transfer_account": str(acct.pk)})
+        r = post("/purchasing/new/", [(pa, 7, 999_001), (pb, 3, 12_345)], {"supplier": str(sup.pk), "transfer_account": str(acct.pk), "use_transfer": "on"})
         check("purchase created", r.status_code == 302)
         # discount 100,001 over 2 lines forces a largest-remainder split
         r = post("/sales/new/", [(pa, 4, 1_500_000), (pb, 2, 77_777)],
-                 {"customer": str(cust.pk), "discount_amount": "100001", "transfer_account": str(acct.pk)})
+                 {"customer": str(cust.pk), "discount_amount": "100001", "transfer_account": str(acct.pk), "use_transfer": "on"})
         check("sale with odd discount created", r.status_code == 302)
         s1 = SalesInvoice.objects.order_by("-created_at").first()
-        r = post("/sales/new/", [(pa, 1, 1_600_000)], {"customer": str(cust.pk), "discount_amount": "", "transfer_account": str(acct.pk)})
+        r = post("/sales/new/", [(pa, 1, 1_600_000)], {"customer": str(cust.pk), "discount_amount": "", "transfer_account": str(acct.pk), "use_transfer": "on"})
         s2 = SalesInvoice.objects.order_by("-created_at").first()
         check("second sale created", r.status_code == 302 and s2.pk != s1.pk)
         after_sales = audit("after sales", start, end)
@@ -150,7 +150,7 @@ try:
         audit("after expenses", start, end)
         bank_identity("synthetic")
         check("cancelled sale contributes nothing", reports.sales_total(start, end) - base[0] ==
-              sum(it.quantity * it.unit_price for it in s1.items.all()) - s1.discount_amount)
+              sum(it.line_total for it in s1.items.all()) - s1.discount_amount)
         raise _Rollback()
 except _Rollback:
     pass

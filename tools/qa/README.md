@@ -25,7 +25,13 @@ python manage.py shell -c "exec(open('tools/qa/qa_02_purchase.py', encoding='utf
 | qa_13_backup | backup page access rules and zip contents (D-060) |
 | qa_15_numbering | invoice numbers year/running, per type, yearly reset (D-064) |
 | qa_16_payment_rework | account types, issuer, percent discount, card/transfer settlement, credit due dates, Receivables/Payables split, cheque/credit expenses, fixed costs, dashboard reminders (D-067..D-074) |
-| qa_17_pricing_units | wholesale/retail prices, the invoice sale type, Inventory edits, pack/carton sections (D-075, D-076) |
+| qa_17_pricing_units | pack and carton prices, blank prices filled from the product, report by sale type (D-075, D-081) |
+| qa_18_payment_ticks | tick boxes for card/transfer, single card reader default (D-078) |
+| qa_19_dashboard_dues | the single dues card, 10-day window, cheque/credit split (D-079) |
+| qa_20_usd_rate | rate parsing, history, failures store no number, per-invoice snapshot, refresh button (D-080) |
+| qa_21_units | carton + pack lines, stock in packs, average price apart from FIFO, printing (D-081) |
+| qa_23_convert_units | report, dry run and merge of carton products into packs (D-081) |
+| qa_22_freight | freight in the total owed, split by packs, landed cost per pack/carton, cancel (D-082) |
 | qa_14_invoice_print | printed invoice: words, company header, stamp boxes, watermark (D-061) |
 
 `OK`/`FAIL` per check and `n/N passed` at the end. JavaScript behaviour

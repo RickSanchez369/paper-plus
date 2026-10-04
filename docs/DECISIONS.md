@@ -1123,7 +1123,7 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   The activity feed leaves the dashboard (its own page stays).
 
 ### D-075: Wholesale and retail prices, chosen once on the sales invoice
-- Status: Final
+- Status: Final, except that D-081 drops the sale-type choice on the invoice and changes what the two prices mean
 - Date: 2026-10-03
 - Decided by: Sina (the idea); design chosen after comparing 12 independent proposals judged on owner fit,
   live-data safety, correctness/tests, extensibility and counter UX.
@@ -1146,7 +1146,7 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   default tier, per-line tier, quantity breaks, renaming the retail column (rebuilds the table on SQLite).
 
 ### D-076: A product is counted in pack or carton; the two are separate products
-- Status: Final
+- Status: Superseded by D-081 (2026-10-04)
 - Date: 2026-10-03
 - Decided by: Sina
 - Decision: `Product.unit` is one of `بسته` / `کارتن` (the stored value is the Persian word, so every page that
@@ -1162,3 +1162,90 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Decision: The host's one SQLite file is protected by a cPanel cron job running `manage.py backup_db --keep 14`
   daily (the command prunes only files named `paper-plus-backup-*.zip` in the target folder). Setup steps are in
   `deploy/HOSTIRAN.md` (deploy branch). Copying a backup off the host stays a manual weekly habit.
+
+### D-078: Full settlement is ticked per method; a single card reader is the default
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: on the full-settlement panel of a sales/purchase invoice, «کارت‌خوان» and «حواله بانکی» are tick boxes
+  (`use_pos`, `use_transfer`). Only a ticked method shows its fields and counts; an unticked method's account and
+  amount are ignored by the server even if sent. Both ticked keeps the two-amount rule of D-069. When exactly one
+  active card-reader account exists the account is not asked for: the page shows its name, and the form falls back
+  to it if none is posted; with several the choice stays. Card rows in split mode preselect a lone card reader too.
+  Purchase invoices still have no card option (D-069: a card reader only receives money).
+
+### D-079: One dashboard card for receivables and payables
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: «پرداخت‌های هفتهٔ آینده» (D-074) and «نیازمند توجه» are replaced by one card, «مطالبات و بدهی‌ها», with two
+  columns. Receivables: cheques we hold (IN) and customer credit (نسیه). Payables: cheques we issued, and credit
+  (supplier credit, credit expenses, fixed costs). Each group lists what is overdue or due within 10 days, soonest first,
+  with group, column and overdue totals. Money settled by card reader or transfer is not owed and never shown.
+  Cheques missing a number or due date stay a one-line notice (they have no date to place them); the
+  negative-stock block is gone with D-052. `get_upcoming_receivables` mirrors `get_upcoming_payments`.
+
+### D-080: USD rate history, read from an Iranian price site, frozen on each invoice
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (the need; the source and the moment were left to the implementer)
+- Decision: `shared.ExchangeRate` is an append-only log of rate reads (`rate` in Toman or NULL, `rate_date`,
+  `fetched_at`, `source`, `status` ok/failed, `error`); a DB check makes ok ⇒ rate > 0 and failed ⇒ no rate, so
+  a broken source cannot put a made-up or zero number anywhere, and old rows are never edited. Source: the live
+  price on tgju.org's dollar page (Rial ÷ 10), with tgju's JSON history table as fallback; both are tried in order
+  starting from `USD_RATE_SOURCE` (`USD_RATE_URL` overrides its address). A read far from the last valid rate
+  (over 2x either way) is stored as a failure, not a rate. stdlib `urllib` only, 8 s timeout.
+- Reading: `manage.py fetch_usd_rate` from a cron job every few hours, and a «بروزرسانی نرخ» button on the Inventory
+  and Reports cards. Invoice confirmation never makes a network call.
+- Snapshot: `confirm_sale` / `confirm_purchase` store the latest valid row in `SalesInvoice.usd_rate` /
+  `PurchaseInvoice.usd_rate` (null for older invoices and when no rate was ever read). Detail and print pages show
+  the rate with the time it was read; a later rate never changes a confirmed invoice.
+- Cards show the newest valid rate with its age, flag it «قدیمی» after `USD_RATE_STALE_HOURS` (12), and say when the
+  last attempt failed. Unknown: whether the shared host allows outbound HTTPS; test from the host before relying on it.
+
+### D-081: One product, two trade units: pack (base) and carton
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina
+- Decision: a product is ONE product again. Its base unit is the pack; `Product.pack_per_carton` (default 5, editable
+  per product, never below 1) says how many packs make a carton. Stock, FIFO layers, movements, consumptions and every
+  cost are counted in packs only, so there is one stock figure and FIFO code is unchanged. The carton + pack split is how
+  a quantity is typed and shown: an invoice line (`SaleItem`/`PurchaseItem`) has `cartons`, `pack_per_carton` (a snapshot,
+  so changing the ratio later never rewrites an old line) and `carton_price`; `quantity` stays the stored total in packs;
+  loose packs = quantity - cartons x ratio; `line_total = cartons x carton_price + loose packs x unit_price` (`unit_price`
+  = price of one pack), so a carton priced as a whole is never rounded through a per-pack figure. A user types cartons
+  and packs in one row; one row per product per invoice stays.
+- Prices: `default_selling_price` = retail = price of one pack; `wholesale_selling_price` = wholesale = price of one whole
+  carton (0 = unset, suggested as pack price x ratio). A sales line prices cartons at the carton price and packs at the
+  pack price, both editable, a blank one filled from the product. The sale type on the invoice form is gone;
+  `SalesInvoice.price_tier` is set when the invoice is confirmed (wholesale if any line has cartons) so the
+  wholesale/retail report keeps working and old invoices read as before.
+- Average vs FIFO: inventory shows «میانگین قیمت خرید» = Σ(remaining x layer cost) / Σ(remaining) over active layers only
+  (`get_average_cost_map`), for reading stock. Cost of goods, profit and layer consumption stay on real FIFO
+  (`consume_fifo`); no calculation reads the average. The product page shows both, plus the next FIFO layer cost.
+- Display: stock and quantities print as «۶ کارتن + ۴ بسته (۳۴ بسته)» (inventory, product search, invoice rows with the
+  stock left after the line, detail and printed invoices; the printed line shows what was typed). The negative-stock
+  card/section is removed from Inventory and the dashboard; oversell protection in forms and `confirm_sale` is unchanged.
+  The pack/carton sections and the unit column are gone. No «empty carton» item exists (cartons = 0 just means none).
+- Purchase line cost: the FIFO layer cost per pack is the line's money / its packs, rounded to the nearest Toman
+  (`PurchaseItem.unit_cost`); invoice totals stay exact.
+- Existing data: migration `products.0009` turns a pack product's old wholesale price into a carton price (x ratio; a
+  price that only equalled retail becomes unset). Carton-counted products are converted by a command, never guessed:
+  `inventory_unit_report` (read-only) shows every product, uneven costs and look-alike pairs; the owner writes a map of
+  merges; `convert_units [--map FILE] [--dry-run] [--allow-rounding]` rewrites stock, layers, movements, consumptions
+  and invoice lines into packs in one transaction (invoice totals must stay exactly equal, stock must match, uneven
+  costs are refused unless rounding is allowed and the drift is printed). `Product.unit` stays until every database has
+  been converted, then a later migration drops it.
+
+### D-082: Freight on a purchase invoice
+- Status: Final
+- Date: 2026-10-04
+- Decided by: Sina (paid to the same supplier, split by quantity)
+- Decision: `PurchaseInvoice.freight_amount` (Toman, default 0) is entered by ticking «کرایه بار» on the purchase form.
+  It is part of `total_amount` (= lines + freight), so it is part of what the supplier is owed and of every payment,
+  payable and report figure that already reads `total_amount`. At confirmation it is spread over the lines in
+  proportion to their packs (`allocate_freight`, largest remainder, exact sum) and stored per line in
+  `PurchaseItem.freight_share`; the FIFO layer cost and the purchase movement price per pack become
+  (line goods + freight share) / packs, rounded to the nearest Toman (`PurchaseItem.unit_cost`; `carton_cost` = the same
+  per carton). The invoice detail shows items total, freight, total and the landed cost per pack and per carton; the
+  print shows the freight line. Cancelling keeps working because it reads the stored layer. Unticked = the amount is ignored.

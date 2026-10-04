@@ -1,13 +1,14 @@
 {% comment %}
-One invoice-item row. Mirrors sales/_item_row.html,
-except `unit_price` is never auto-filled -- picking a product only sets a
-*placeholder* from its last known cost (a purchase price is what this
-purchase actually cost, not a default). Used both for each bound form
-already in the formset and, wrapped in a <template> by new.html, as what
-"افزودن ردیف" clones (`form` is `item_formset.empty_form`, prefix
+One invoice-item row (D-081). Mirrors sales/_item_row.html, except prices are
+never auto-filled -- picking a product only sets a *placeholder* from its last
+known cost (a purchase price is what this purchase actually cost, not a
+default). Cartons and loose packs are typed in the same row. Used both for each
+bound form already in the formset and, wrapped in a <template> by new.html, as
+what "افزودن ردیف" clones (`form` is `item_formset.empty_form`, prefix
 __prefix__, swapped for a real index by purchase_form.js).
 {% endcomment %}
-<div class="item-row" data-item-row>
+{% load paper %}
+<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}" data-ratio="{{ form.selected_product.pack_per_carton }}"{% endif %}>
   {{ form.product }}
   <div class="item-row__search">
     <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"
@@ -23,15 +24,26 @@ __prefix__, swapped for a real index by purchase_form.js).
   </div>
   {% comment %} Refilled from the bound row on a re-render (SelectedProductMixin, C.fix-2);
      same text the JS writes when a search result is picked. {% endcomment %}
-  <div class="item-row__stock" data-item-row-stock data-label="موجودی">{% if form.selected_product %}موجودی: {{ form.selected_stock }}{% endif %}</div>
-  <div class="item-row__qty" data-label="مقدار">
-    {{ form.quantity }}
-    {% for error in form.quantity.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  <div class="item-row__stock" data-item-row-stock data-label="موجودی">{% if form.selected_product %}موجودی: {{ form.selected_stock|units:form.selected_product.pack_per_carton }}{% endif %}</div>
+  <div class="item-row__cartons" data-label="کارتن">
+    {{ form.cartons }}
+    {% for error in form.cartons.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
   </div>
-  <div class="item-row__price" data-label="قیمت واحد (تومان)">
+  <div class="item-row__packs" data-label="بسته">
+    {{ form.packs }}
+    {% for error in form.packs.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="item-row__price" data-label="قیمت هر کارتن (تومان)">
+    {{ form.carton_price }}
+    {% for error in form.carton_price.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+  <div class="item-row__price" data-label="قیمت هر بسته (تومان)">
     {{ form.unit_price }}
     {% for error in form.unit_price.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
   </div>
   <span class="item-row__total num" data-item-row-total data-label="جمع (تومان)">۰</span>
   <button type="button" class="btn btn--quiet item-row__remove" data-item-row-remove>حذف</button>
+  <div class="item-row__note">
+    <span class="field__hint" data-item-row-after></span>
+  </div>
 </div>

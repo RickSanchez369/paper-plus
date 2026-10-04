@@ -15,14 +15,18 @@ import uuid
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.utils.functional import cached_property
 
 from .models import Product
+from .units import to_packs
 
 _WIDGETS = {
     "name": forms.TextInput(attrs={"class": "field__control", "autocomplete": "off"}),
     "sku": forms.TextInput(attrs={"class": "field__control", "dir": "ltr", "autocomplete": "off"}),
-    "unit": forms.Select(attrs={"class": "field__control"}),
+    "pack_per_carton": forms.NumberInput(
+        attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric", "min": "1"}
+    ),
     "default_selling_price": forms.NumberInput(
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
@@ -91,13 +95,106 @@ class SelectedProductMixin:
         return get_stock(self.selected_product)
 
 
+# What a PositiveIntegerField column holds; a line's total in packs may not pass it.
+MAX_QUANTITY = 2_147_483_647
+
+_COUNT_ATTRS = {"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
+_PRICE_ATTRS = {"class": "field__control item-row__price", "dir": "ltr", "inputmode": "numeric"}
+
+
+class CartonPackItemFormMixin(forms.Form):
+    """
+    The carton + pack part of an invoice line form (D-081), shared by the
+    sales and purchase lines. A line is typed as cartons and loose packs in
+    ONE row; `quantity` (the stored total in packs) and the ratio snapshot are
+    derived here from the product's `pack_per_carton`, so no row ever has to
+    be split in two for one product.
+
+    It subclasses `forms.Form` only so its declared fields are collected by
+    Django (the same trick as `InvoicePaymentFields`); put it before
+    `SelectedProductMixin`/`forms.ModelForm` in the bases and list "cartons",
+    "unit_price" and "carton_price" in `Meta.fields`. Subclasses
+    say, through `price_required`, whether a price may be left blank (a sale
+    fills it from the product; a purchase never does).
+    """
+
+    price_required = False
+
+    cartons = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="کارتن",
+        widget=forms.NumberInput(attrs={**_COUNT_ATTRS, "class": "field__control item-row__cartons", "aria-label": "تعداد کارتن"}),
+        error_messages={"min_value": "تعداد کارتن نمی‌تواند منفی باشد."},
+    )
+    packs = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="بسته",
+        widget=forms.NumberInput(attrs={**_COUNT_ATTRS, "class": "field__control item-row__packs", "aria-label": "تعداد بسته"}),
+        error_messages={"min_value": "تعداد بسته نمی‌تواند منفی باشد."},
+    )
+    carton_price = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="قیمت هر کارتن (تومان)",
+        widget=forms.NumberInput(attrs={**_PRICE_ATTRS, "class": "field__control item-row__carton-price", "aria-label": "قیمت هر کارتن (تومان)"}),
+        error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
+    )
+    unit_price = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="قیمت هر بسته (تومان)",
+        widget=forms.NumberInput(attrs={**_PRICE_ATTRS, "aria-label": "قیمت هر بسته (تومان)"}),
+        error_messages={"min_value": "قیمت نمی‌تواند منفی باشد."},
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A re-rendered row shows what was typed, and a stored line shows its cartons + loose packs.
+        instance = self.instance
+        if not self.is_bound and not instance._state.adding:
+            self.initial.setdefault("packs", instance.loose_packs)
+
+    def clean(self):
+        cleaned = super().clean()
+        product = cleaned.get("product")
+        if product is None:
+            return cleaned
+        cartons = cleaned.get("cartons") or 0
+        packs = cleaned.get("packs") or 0
+        ratio = product.pack_per_carton
+        quantity = to_packs(cartons, packs, ratio)
+        if quantity <= 0:
+            self.add_error("cartons", "تعداد کارتن یا بسته را وارد کنید.")
+            return cleaned
+        # `quantity` is not a form field, so the model's own range check never sees it.
+        if quantity > MAX_QUANTITY:
+            self.add_error("cartons", "مقدار واردشده بیش از حد بزرگ است.")
+            return cleaned
+        cleaned["cartons"] = cartons
+        cleaned["quantity"] = quantity
+        # The stored total and the ratio snapshot are not form fields; set them on the instance.
+        self.instance.quantity = quantity
+        self.instance.pack_per_carton = ratio
+        for count, price, label in ((cartons, "carton_price", "کارتن"), (packs, "unit_price", "بسته")):
+            if cleaned.get(price) is None:
+                if count and self.price_required:
+                    self.add_error(price, f"قیمت هر {label} الزامی است.")
+                elif price == "carton_price":
+                    cleaned[price] = product.carton_price if count else 0
+                else:
+                    cleaned[price] = product.pack_price if (count or not self.price_required) else 0
+        return cleaned
+
+
 class QuickProductForm(forms.ModelForm):
     """New product, inline. Reused wherever a purchase or (later) the
     Inventory module needs to create one without leaving the page."""
 
     class Meta:
         model = Product
-        fields = ("name", "sku", "unit", "default_selling_price", "wholesale_selling_price")
+        fields = ("name", "sku", "pack_per_carton", "default_selling_price", "wholesale_selling_price")
         widgets = _WIDGETS
         error_messages = {
             "name": {"required": "نام کالا الزامی است."},
@@ -105,13 +202,17 @@ class QuickProductForm(forms.ModelForm):
                 "required": "کد کالا الزامی است.",
                 "unique": "کالای دیگری با همین کد ثبت شده است.",
             },
-            "unit": {"required": "واحد کالا الزامی است."},
+            "pack_per_carton": {
+                "required": "تعداد بسته در هر کارتن الزامی است.",
+                "min_value": "تعداد بسته در هر کارتن باید حداقل ۱ باشد.",
+            },
         }
 
     def clean(self):
         cleaned = super().clean()
+        # Blank carton price = unset (0): a carton is then suggested at pack price x ratio (D-081).
         if cleaned.get("wholesale_selling_price") is None:
-            cleaned["wholesale_selling_price"] = cleaned.get("default_selling_price") or 0
+            cleaned["wholesale_selling_price"] = 0
         return cleaned
 
     def __init__(self, *args, **kwargs):
@@ -120,11 +221,13 @@ class QuickProductForm(forms.ModelForm):
         # and an untouched 0 passes "required" -- exactly the accidental
         # free sale gap #6 is about. Starting empty makes someone type it.
         self.fields["default_selling_price"].initial = None
-        # Wholesale is optional here: left blank it starts equal to retail
-        # (the owner sets the real one in Inventory, D-075).
+        # The carton price is optional here: left blank it follows the pack price
+        # (the owner sets the real one in Inventory, D-075, D-081).
         self.fields["wholesale_selling_price"].required = False
         self.fields["wholesale_selling_price"].initial = None
-        self.fields["wholesale_selling_price"].help_text = "اگر خالی بماند، برابر قیمت خرد ثبت می‌شود."
+        self.fields["wholesale_selling_price"].help_text = "اگر خالی بماند، قیمت کارتن = قیمت هر بسته × تعداد بسته در کارتن."
+        self.fields["pack_per_carton"].min_value = 1
+        self.fields["pack_per_carton"].validators.append(MinValueValidator(1))
         # Already required (the model field has no blank=True); only the
         # message changes, since Django's generic one gives no hint why a
         # *purchase* flow is asking for a *selling* price.
@@ -144,14 +247,14 @@ class SellingPriceForm(forms.Form):
     default_selling_price = forms.IntegerField(
         required=False,
         min_value=0,
-        label="قیمت فروش خرد (تومان)",
+        label="قیمت فروش خرد - هر بسته (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
     )
     wholesale_selling_price = forms.IntegerField(
         required=False,
         min_value=0,
-        label="قیمت فروش عمده (تومان)",
+        label="قیمت فروش عمده - هر کارتن (تومان)",
         widget=forms.NumberInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
     )

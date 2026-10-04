@@ -11,10 +11,12 @@ from .views import (
     ReportsView,
     UserActivityDetailView,
     UserActivityView,
+    UsdRateRefreshView,
 )
 
 urlpatterns = [
     path("", DashboardView.as_view(), name="dashboard"),
+    path("usd-rate/refresh/", UsdRateRefreshView.as_view(), name="usd_rate_refresh"),
     # Fed to the Jalali picker; see DatePickerMonthView for why the calendar
     # is computed here rather than in the browser.
     path("date-picker/month/", DatePickerMonthView.as_view(), name="date_picker_month"),
