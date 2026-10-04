@@ -9,6 +9,7 @@ import sys
 root = pathlib.Path(__file__).resolve().parents[2]
 db = pathlib.Path(os.environ.get("QA_DB", root / "tools" / "qa" / ".qa.sqlite3"))
 os.environ["DATABASE_URL"] = "sqlite:///" + db.as_posix()
+os.environ.setdefault("SECRET_KEY", "throwaway-qa")
 sys.path.insert(0, str(root))
 os.chdir(root)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")

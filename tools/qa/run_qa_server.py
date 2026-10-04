@@ -16,6 +16,8 @@ root = pathlib.Path(__file__).resolve().parents[2]
 db = pathlib.Path(os.environ.get("QA_DB", root / "tools" / "qa" / ".qa.sqlite3"))
 os.environ["DATABASE_URL"] = "sqlite:///" + db.as_posix()
 os.environ.setdefault("DEBUG", "True")
+# A throwaway database needs no real secret; this keeps the script working without the real .env.
+os.environ.setdefault("SECRET_KEY", "throwaway-qa")
 sys.path.insert(0, str(root))
 os.chdir(root)
 
