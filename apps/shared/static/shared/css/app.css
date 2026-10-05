@@ -3110,6 +3110,8 @@ h3 {
 /* Light-on-dark money colours come from tokens instead of literals. */
 .stat-card--primary .stat-card__delta--up { color: var(--positive-300); }
 .stat-card--primary .stat-card__delta--down { color: var(--negative-300); }
+/* The neutral delta line (e.g. "no base for a percent") kept the light-theme grey: 1.9-2.4:1 on navy. */
+.stat-card--primary .stat-card__delta { color: var(--ink-200); }
 
 /* Half pixels (12.5 / 13.5) were noise, not hierarchy: snap them to the scale. */
 .field__hint,

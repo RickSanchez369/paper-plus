@@ -96,3 +96,17 @@ Metrics: page overflow, contrast, and WCAG 2.5.8 target size with its spacing ex
   qa_14 (32), qa_24 (25), qa_08 (3) pass.
 Print preview: not re-measured here (the pane cannot render print media); covered by qa_14 and the D-088 browser check.
 Open for a later sweep only if Sina points at a page: dashboard hero/gradient surfaces (contrast skipped for gradients).
+
+### 2026-10-05 sweep 7: contrast on gradient surfaces (login, dashboard)
+Method: text on a gradient is tested against the WORST plausible background (opaque base stops, plus each translucent glow
+stop composited over them). Conservative on purpose; every flag is then checked against the real geometry.
+- Login `.auth__kicker` (cyan on the navy panel): flagged 2.39:1 only because the cyan glow sits bottom-left (circle at 15%
+  110%); the text is top-right on plain navy, 4.5:1 against the lightest base stop. Verdict: no change required.
+- Dashboard hero date line (rgb 200,208,222, 14px): flagged 3.81:1 from the glow (circle at 12% 120%, radius 45%); the text
+  is on the right, beyond the glow radius, on plain navy (~7:1). Verdict: no change required.
+- Dashboard primary card («سود خالص این ماه») neutral delta line "ماه قبل مبنایی برای درصد نداشت": kept the light-theme muted
+  grey (85,97,122) on the navy gradient = 1.94:1 (lightest stop) to 2.41:1 at 12px; visibly dim in the browser. Task: understand
+  why the month card shows no percent. Baseline 1.94-2.41 -> after rgb(227,233,243) (`--ink-200`, same token as the unit in
+  that card), well above 4.5:1; up/down delta colours unaffected (lower specificity). Level L1, Preservation 10, UX 3.
+  Verdict: changed (app.css). qa_19 (11), qa_24 (25), qa_08 (3) pass.
+Still unmeasured: the open drawer's text (second pass), print preview.
