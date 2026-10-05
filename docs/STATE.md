@@ -34,7 +34,6 @@ purpose: `git log` is the record, `PROJECT_MAP.md` the live schema,
    (Sina said "later").
 6. **Drop `Product.unit`** -- no products left on the host after the reset, so it is safe once Sina agrees (new decision + migration).
 7. **64 deferred UI items** in `docs/UI_AUDIT_200_DEFERRED.md` -- need Sina's choices.
-8. Minor: a customer quick-created on the new-sale page does not preset the sale type until reload.
 
 ## Next
 **Phase D is done (D-050):** IBM Carbon-inspired identity applied app-wide by
@@ -134,8 +133,6 @@ inventory_unit_report, convert_units --dry-run) was run end to end on the demo d
 - **USD rate on the host** — tgju is read with stdlib `urllib` (D-080); whether the shared host allows outbound HTTPS is
   untested, and the cron line `manage.py fetch_usd_rate` still has to be added there.
 - **Drop `Product.unit`** — only after `convert_units` has run on every database (D-081).
-- **Quick-created customer and the sale type**: a customer added from the new-sale page does not preset the sale type until
-  the page is reloaded (its type is not in the page's customer map yet) (Minor).
 - **No scheduled backup on the host** (Critical): the live database is one SQLite file; until a cron job
   runs `manage.py backup_db`, backups are manual. HSTS is not set yet (Major).
 - **No write-off path** for physical loss/breakage since D-044 removed manual

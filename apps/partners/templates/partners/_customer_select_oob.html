@@ -7,6 +7,6 @@ _quick_party_create_success.html by QuickCustomerCreateView.
 <select id="id_customer" name="customer" class="field__control" form="sale-form" hx-swap-oob="true">
   <option value="">— انتخاب مشتری —</option>
   {% for c in customers %}
-    <option value="{{ c.pk }}"{% if c.pk == selected.pk %} selected{% endif %}>{{ c.name }}</option>
+    <option value="{{ c.pk }}" data-tier="{{ c.price_tier }}"{% if c.pk == selected.pk %} selected{% endif %}>{{ c.name }}</option>
   {% endfor %}
 </select>

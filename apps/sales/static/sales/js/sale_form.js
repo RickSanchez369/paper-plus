@@ -628,7 +628,9 @@
       document.querySelectorAll('#payment-rows input[name$="-issuer"][data-auto]').forEach(function (issuer) {
         issuer.value = customerName();
       });
-      var preset = customerTier(event.target.value);
+      // The quick-created customer is not in the page's tier map yet; its option carries the tier.
+      var chosen = event.target.selectedOptions && event.target.selectedOptions[0];
+      var preset = customerTier(event.target.value) || (chosen && chosen.dataset.tier) || "";
       if (preset && !tierTouched) setTier(preset);
     }
     if (event.target.matches('input[name="price_tier"]')) {

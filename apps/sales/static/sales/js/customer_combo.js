@@ -218,9 +218,13 @@
 
     // The quick-create success swaps a NEW <select id="id_customer"> in (out-of-band) with the
     // new customer selected: fold it again, show the name, close the panel, carry on.
+    // Tracked by identity, not by the folded class: htmx carries the old element's classes over
+    // while it settles, so the class is present on the new node yet gone again after the settle.
+    var folded = sel;
     new MutationObserver(function () {
       var fresh = select();
-      if (!fresh || fresh.classList.contains("cust-combo__native")) return;
+      if (!fresh || fresh === folded) return;
+      folded = fresh;
       fold(fresh);
       input.value = selectedText(fresh);
       var open = disclosure();
@@ -228,6 +232,11 @@
       fresh.dispatchEvent(new Event("change", { bubbles: true }));
       toProducts();
     }).observe(field, { childList: true });
+    // The settle resets the class list: fold again so the native select stays hidden.
+    document.body.addEventListener("htmx:afterSettle", function () {
+      var current = select();
+      if (current && current === folded) fold(current);
+    });
 
     // A fresh invoice starts at the customer; with one chosen already (?customer=) the product box leads.
     if (!sel.value) input.focus();
