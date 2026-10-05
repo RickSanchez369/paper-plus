@@ -2449,7 +2449,7 @@ input[type="radio"]:focus-visible {
 .summary-strip__item--owed .summary-strip__value .money__unit,
 .summary-strip__item--settled .summary-strip__value .money__unit {
   color: inherit;
-  opacity: 0.8;
+  opacity: 1; /* the old 0.8 fade dropped the 12px unit to 3.9:1 on the tinted card; size and weight keep it quiet */
 }
 
 .summary-strip__status {

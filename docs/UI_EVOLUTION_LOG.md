@@ -81,3 +81,18 @@ Not yet measured: purchase form shortcut, detail pages (invoice, cheque), print 
 - Level L3, Preservation 10, UX 6. Verdict: changed (purchase_form.js, purchasing/new.html).
   qa_02 (129), qa_22 (28), qa_24 (25) pass.
 Not yet measured: detail pages (invoice, cheque), print preview.
+
+### 2026-10-05 sweep 6: detail pages (sale, purchase, cheque, customer, bank account), 362 px pane
+Metrics: page overflow, contrast, and WCAG 2.5.8 target size with its spacing exception (a target under 24 px passes when a
+24 px circle on its centre touches no other target; inline links in sentences are exempt). Controls inside a CLOSED
+<details> are excluded: Chromium still reports layout rects for them (this inflated the first spacing run with 6 false hits).
+- Overflow 0 on all five. Cell links 21-22 px high (party, invoice, cheque links): 0 spacing violations after the exclusion.
+  Verdict: no change required for target size.
+- Contrast: customer, bank account, cheque pages 0 real failures (only the aria-hidden "—", see sweep 2).
+- Sale detail 3.91:1 and purchase detail 4.09:1: the 12px unit "تومان" in the summary strip («مانده»/«تسویه») inherits the
+  status colour and was faded to opacity .8. Task: read what is still owed on an invoice. Baseline 3.91 / 4.09 -> after
+  >= 4.5 (opacity 1, same colour as the figure; size 12px / weight 400 keep it subordinate), 0 failures on both pages.
+  Level L1, Preservation 10, UX 3. Verdict: changed (app.css `.summary-strip__item--owed/--settled .money__unit`).
+  qa_14 (32), qa_24 (25), qa_08 (3) pass.
+Print preview: not re-measured here (the pane cannot render print media); covered by qa_14 and the D-088 browser check.
+Open for a later sweep only if Sina points at a page: dashboard hero/gradient surfaces (contrast skipped for gradients).
