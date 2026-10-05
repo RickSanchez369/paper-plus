@@ -23,3 +23,16 @@ radios/checkboxes via their label.
   ticks 44), all above 24 px; the 1 px select is the folded customer combo (intentional). Verdict: no change required.
 Not yet measured: contrast ratios, click/keystroke counts for the main tasks (sale entry, payment, return), detail pages,
 print. Next sweep must measure those before any change is proposed.
+
+### 2026-10-05 sweep 2: text contrast (computed on 17 pages, demo SQLite)
+Metric: WCAG contrast of every visible text node (4.5:1 normal, 3:1 large); gradient backgrounds skipped (hero, drawer, login).
+- Dashboard, sales (list/new), purchasing, inventory, returns, recurring, reports, activity, backup: 0 failures. No change required.
+- Empty-value marker "—" (receivables, payables, cheques, expenses, customers): 3.06:1 at 12-13.5px. It is `aria-hidden`
+  with an sr-only twin "ثبت نشده"; a deliberately quiet placeholder carrying no information. No task is harmed.
+  Verdict: no change required (the sr-only twin shows up as a checker false positive).
+- Bank accounts, negative balance: the unit "تومان" (12px) rendered at 3.94:1 because `.is-negative .money__unit` fades it to
+  opacity .8 on top of the muted caption colour. Task: read an overdrawn account's balance. Baseline 3.94:1 -> after 6.5:1
+  (opacity 1, same colour as every other card's unit); no other metric changed (0 failures on the page, 54 nodes checked).
+  Level L1, Preservation 10, UX 3 (small but strictly positive, zero visual disruption). Verdict: changed (app.css).
+Note: a QA server started before a migration serves OperationalError; restart it after Python/migration changes.
+Still not measured: click/keystroke counts for sale entry, payment and return; detail pages; print.

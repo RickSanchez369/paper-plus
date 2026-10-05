@@ -2505,6 +2505,12 @@ input[type="radio"]:focus-visible {
   opacity: 0.8;
 }
 
+/* Where the muted caption colour above wins, the 0.8 fade only drops it to 3.9:1 (12px text): keep it solid. */
+.stats:not(.stats--performance, .stats--position) .stat-card__value.is-loss .money__unit,
+.stats:not(.stats--performance, .stats--position) .stat-card__value.is-negative .money__unit {
+  opacity: 1;
+}
+
 /* ------------------------------------------------------ D025 textarea, D032 rhythm */
 
 /* A textarea is inline-block (a descender gap under it) and resizes both ways (can overflow
