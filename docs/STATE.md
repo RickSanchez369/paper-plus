@@ -116,6 +116,14 @@ then `reset_business_data` emptied all business data at Sina's request (users ke
 D-081 unit conversion is no longer needed on the host (no old products remain). Next on the host: cron jobs (`backup_db --keep 14`,
 `fetch_usd_rate`), HSTS ramp, then re-entering products with the four prices and customers with their type.
 
+**Batch 2026-10-05 (D-093, D-094), on `dev` only (not on `deploy`, not on the host):** `Product.unit` and the one-time unit-conversion
+tooling are gone (migration `products.0011`, rehearsed on a SQLite copy with data and on an empty one); a customer quick-created on the
+sale page now presets the sale type and its combo re-folds after the htmx swap; UI work follows evolution mode (`docs/UI_EVOLUTION.md`,
+evidence in `docs/UI_EVOLUTION_LOG.md`): three AA-contrast fixes, Ctrl+Enter finishes the sale and purchase forms, initial focus on
+the purchase supplier and the first return quantity. Everything else measured as no change required. Checked: `manage.py check`,
+`makemigrations --check`, all 25 `tools/qa` scripts pass on SQLite (`DEBUG=True`). **Before deploying:** `manage.py update` backs the
+SQLite file up first (D-092) and applies `products.0011`; browser-check the four touched forms on the host once.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
