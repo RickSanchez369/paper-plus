@@ -36,3 +36,21 @@ Metric: WCAG contrast of every visible text node (4.5:1 normal, 3:1 large); grad
   Level L1, Preservation 10, UX 3 (small but strictly positive, zero visual disruption). Verdict: changed (app.css).
 Note: a QA server started before a migration serves OperationalError; restart it after Python/migration changes.
 Still not measured: click/keystroke counts for sale entry, payment and return; detail pages; print.
+
+### 2026-10-05 sweep 3: keyboard flow of the sale form (task: enter one sale line and confirm, 390 px pane)
+Measured with real key presses on the demo DB. Customer: 2 chars + Down + Enter = 4 keys, focus jumps to the product box.
+Product: 2 chars + Enter = 3 keys, focus lands in cartons. Quantity: Tab + digit = 2 keys; Enter walks to the price boxes.
+Already well designed: no change required for any of those steps.
+- Finish: from the last price box the first 12 Tab stops (remove, add row, discount mode, discount amount, payment mode,
+  cheque button, card tick, transfer tick, three settle buttons ...) still do not reach «ثبت و تأیید»; baseline >= 13 Tab
+  presses (mouse: 1 click on the sticky dock). No keyboard shortcut existed (only Ctrl+K palette and Ctrl+P on sales pages).
+- Change: Ctrl/Cmd+Enter presses the same submit button via `requestSubmit` (so the disabled state, the "tick a payment
+  method" guard and the double-submit lock still apply); `aria-keyshortcuts` + title on the button. Plain Enter is unchanged
+  (it never posts, by design).
+- After: 1 key press. Empty invoice + Ctrl+Enter: refused with the existing inline message, URL unchanged. No payment ticked +
+  Ctrl+Enter: refused. Valid line + card tick + Ctrl+Enter: exactly one confirmed invoice, redirect to its detail page.
+- Level L3, Preservation 10 (no visual change except a tooltip), UX 7 (>= 13 keys -> 1 for keyboard users, per invoice).
+  Verdict: changed (sale_form.js, sales/new.html). Not extended to purchase/return forms: not measured yet.
+Note: the first attempt (Tab then Enter right after choosing a product) once landed on the dashboard; not reproducible in
+three further runs, treated as a pane artifact.
+Still not measured: payment receipt and return keyboard/click counts, detail pages, print.

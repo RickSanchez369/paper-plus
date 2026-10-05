@@ -806,6 +806,15 @@
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") closeResults();
     if (event.key !== "Enter") return;
+    // Ctrl/Cmd+Enter is the deliberate "finish" chord: the same button, so a blocked or busy form still refuses.
+    if (event.ctrlKey || event.metaKey) {
+      var finish = document.querySelector('#sale-form button[type="submit"], button[type="submit"][form="sale-form"]');
+      if (finish && !finish.disabled) {
+        event.preventDefault();
+        document.getElementById("sale-form").requestSubmit(finish);
+      }
+      return;
+    }
     var t = event.target;
     // Enter in the product box picks the first result instead of doing nothing.
     if (t.matches && t.matches("[data-item-row-search]")) {
