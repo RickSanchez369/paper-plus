@@ -67,3 +67,17 @@ Still not measured: payment receipt and return keyboard/click counts, detail pag
 Pane note: `location.reload()` run from the JS tool sends the pane to the dashboard; navigate instead. This also explains
 the earlier unexplained jump in sweep 3.
 Not yet measured: purchase form shortcut, detail pages (invoice, cheque), print preview.
+
+### 2026-10-05 sweep 5: purchase form (task: record a purchase and confirm, keyboard)
+- Baseline: focus on BODY at load, 5 Tab stops to the supplier select; from the last row field 12 Tab stops (remove, add row,
+  new product, freight tick/amount, payment modes, cheque button, transfer tick, settle button, cancel) before the submit
+  button. Same gap as the sale form (sweep 3), same shared row/Enter code.
+- Change: Ctrl/Cmd+Enter presses the same submit button through `requestSubmit` (server validation and the double-submit
+  lock still run); `aria-keyshortcuts` + title on the button; the supplier select takes focus on a fresh form (not when a
+  supplier is preset).
+- After: 0 Tab stops to the supplier, 1 key to finish. Empty form + Ctrl+Enter: refused with the existing message, focus on
+  the offending control. Transfer ticked without an account + Ctrl+Enter: server refusal with its normal field error, no
+  document. Valid line + account + Ctrl+Enter: one purchase confirmed (۱۴۰۵/۰۰۰۲), redirect to its detail page.
+- Level L3, Preservation 10, UX 6. Verdict: changed (purchase_form.js, purchasing/new.html).
+  qa_02 (129), qa_22 (28), qa_24 (25) pass.
+Not yet measured: detail pages (invoice, cheque), print preview.
