@@ -110,3 +110,13 @@ stop composited over them). Conservative on purpose; every flag is then checked 
   that card), well above 4.5:1; up/down delta colours unaffected (lower specificity). Level L1, Preservation 10, UX 3.
   Verdict: changed (app.css). qa_19 (11), qa_24 (25), qa_08 (3) pass.
 Still unmeasured: the open drawer's text (second pass), print preview.
+
+### 2026-10-05 sweep 8: open drawer and form error states
+- Open navigation drawer (navy gradient chrome), 18 text nodes against the worst-case background: 0 failures. No change required.
+- Sale form after a refused Ctrl+Enter (inline error visible): 58 text nodes, 0 failures. Purchase form in the same state:
+  47 nodes, 0 failures. No change required.
+- Not covered: recurring-expense form error state (the pane dropped the session mid-test), print preview. Neither has any
+  earlier finding pointing at it; left unmeasured rather than changed.
+Summary of this pass (all L1/L3, identity untouched): contrast fixed in 3 places (negative stat-card unit, summary-strip unit,
+navy dashboard card delta line), keyboard finish shortcut on the sale and purchase forms, initial focus on the purchase
+supplier and the return quantity. Everything else measured as no change required.
