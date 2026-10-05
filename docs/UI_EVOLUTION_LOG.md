@@ -54,3 +54,16 @@ Already well designed: no change required for any of those steps.
 Note: the first attempt (Tab then Enter right after choosing a product) once landed on the dashboard; not reproducible in
 three further runs, treated as a pane artifact.
 Still not measured: payment receipt and return keyboard/click counts, detail pages, print.
+
+### 2026-10-05 sweep 4: receive a payment, record a return (390 px pane)
+- Receivables «ثبت پرداخت کلی»: opening the disclosure focuses the amount box; prefilled date and last account; «کل مانده»
+  chip; Enter in the amount records it and focus lands on the autofocused «بروزرسانی فهرست» button. Keyboard: open + digits
+  + Enter. Verified: a 1000-Toman payment recorded that way. Verdict: no change required.
+- Return form: on load focus was on BODY; baseline = 8 Tab stops (menu, back, quick jump, logout, two breadcrumb links, the
+  items scroller) before the first quantity box, while the invoice forms start in their first field.
+  Change: focus the first quantity box on load, but not when an error is visible (the hidden per-row over-limit note is
+  ignored via offsetHeight). After: 0 Tab stops, focus on the first quantity box. Level L3, Preservation 10 (no visual
+  change), UX 5. Verdict: changed (returns/return_form.js). qa_26 (49) and qa_24 pass.
+Pane note: `location.reload()` run from the JS tool sends the pane to the dashboard; navigate instead. This also explains
+the earlier unexplained jump in sweep 3.
+Not yet measured: purchase form shortcut, detail pages (invoice, cheque), print preview.

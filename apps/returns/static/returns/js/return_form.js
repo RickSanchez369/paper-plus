@@ -47,5 +47,12 @@
     });
     syncAccount(form);
     form.querySelectorAll("[data-return-row]").forEach(checkRow);
+    // Typing the quantity is the whole job: start there (like the invoice forms) instead of eight Tab stops
+    // away, unless the page came back with errors the user has to read first.
+    var firstQty = form.querySelector(".ret-qty");
+    var shownError = Array.prototype.some.call(document.querySelectorAll(".field__error, [role=alert]"), function (el) {
+      return el.offsetHeight > 0; // the per-row over-limit note exists in the DOM but starts hidden
+    });
+    if (firstQty && !shownError) firstQty.focus();
   });
 })();
