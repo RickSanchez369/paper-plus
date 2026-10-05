@@ -1466,3 +1466,12 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   are deleted with it, as no host database holds a carton-counted product any more (reset, D-092). Old migrations 0007/0009
   still read `unit` on their own historical models, so a fresh database migrates cleanly. Checked on a SQLite copy with data
   (migrate, all `tools/qa` scripts pass) and on an empty one.
+
+### D-094: UI changes are evolution only, and need proof
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina (dropped the 64 deferred audit items; asked for a refinement pass under an "evolution mode" brief)
+- Decision: the existing UI is the design DNA and is refined, never replaced (changes graded L1..L5, L5 prohibited without
+  approval, Design Preservation Score >= 8). Golden rule: a change that cannot be PROVEN, by before/after measurement in the
+  real browser, to improve the real user experience may not be made; "no change required" is a valid result. Evidence goes in
+  `docs/UI_EVOLUTION_LOG.md`; rules and DNA inventory in `docs/UI_EVOLUTION.md`. `docs/UI_AUDIT_200_DEFERRED.md` stays unbuilt.

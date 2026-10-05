@@ -151,3 +151,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-091 The live host runs SQLite (shared host without PostgreSQL): test every change on SQLite, no PostgreSQL-only features.
 - D-092 `update` on SQLite copies the DB file before migrating; `reset_business_data` wipes all business data, keeps users (file backup first).
 - D-093 `Product.unit` is gone (packs are the only counting unit since D-081); the unit-conversion tooling was removed.
+- D-094 UI work is evolution only: preserve the design DNA, every change needs measured proof of a real UX gain (docs/UI_EVOLUTION.md).
