@@ -1455,3 +1455,14 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   (`before-reset-<time>.sqlite3`), then empties every table of the business apps (products, parties, invoices, payments,
   cheques, expenses, returns, stock, audit log, counters; numbers restart) and keeps users, permissions and the schema.
   Rehearsed on a SQLite copy built with the old `deploy` code: update, reset, then the QA scripts pass on the empty database.
+
+### D-093: `Product.unit` is dropped
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina
+- Decision: since D-081 every product is counted in packs (a carton is `pack_per_carton` packs), so the `unit` column
+  (and its `HistoricalProduct` twin) carried nothing. Migration `products.0011` drops both; `Product.Unit`, the one-time
+  conversion tooling (`unit_conversion.py`, `convert_units`, `inventory_unit_report`, `qa_23`, `deploy/UNIT_CONVERSION.md`)
+  are deleted with it, as no host database holds a carton-counted product any more (reset, D-092). Old migrations 0007/0009
+  still read `unit` on their own historical models, so a fresh database migrates cleanly. Checked on a SQLite copy with data
+  (migrate, all `tools/qa` scripts pass) and on an empty one.

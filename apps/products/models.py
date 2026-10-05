@@ -59,12 +59,6 @@ class Product(BaseModel):
     pack split is only how it is entered and shown.
     """
 
-    class Unit(models.TextChoices):
-        # Retired by D-081 (a product is no longer counted in one chosen unit); the column
-        # stays until the data conversion has run, then a later migration drops it.
-        PACK = "بسته", "بسته"
-        CARTON = "کارتن", "کارتن"
-
     name = models.CharField(
         max_length=200,
         verbose_name="نام کالا",
@@ -72,12 +66,6 @@ class Product(BaseModel):
     sku = models.CharField(
         max_length=50,
         verbose_name="کد کالا",
-    )
-    unit = models.CharField(
-        max_length=20,
-        choices=Unit.choices,
-        default=Unit.PACK,
-        verbose_name="واحد",
     )
     description = models.TextField(
         blank=True,

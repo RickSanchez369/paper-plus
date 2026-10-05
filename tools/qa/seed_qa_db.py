@@ -33,7 +33,7 @@ BankAccount.objects.create(name="جاری ملت", account_number="QA-CUR-1", ac
 BankAccount.objects.create(name="جاری ملی", account_number="QA-CUR-2", account_type="current", owner="شرکت")
 BankAccount.objects.create(name="کارت‌خوان صندوق", account_number="QA-POS-1", account_type="pos", owner="شرکت")
 for i, (name, price) in enumerate((("کاغذ A4", 250000), ("کاغذ A3", 480000), ("پوشه", 15000)), 1):
-    product = Product.objects.create(name=name, sku=f"QA-P{i}", unit="بسته", default_selling_price=price)
+    product = Product.objects.create(name=name, sku=f"QA-P{i}", default_selling_price=price)
     set_opening_stock(product, 100, user, int(price * 0.7))
 Customer.objects.create(name="مشتری آزمایشی ۱")
 Customer.objects.create(name="مشتری آزمایشی ۲")

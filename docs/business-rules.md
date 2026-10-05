@@ -150,3 +150,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-090 Four prices (retail/wholesale x pack/carton, unset = derived, `price_for`); sale type chosen on the invoice, preset from `Customer.price_tier`, kept at confirmation; below-cost line hint.
 - D-091 The live host runs SQLite (shared host without PostgreSQL): test every change on SQLite, no PostgreSQL-only features.
 - D-092 `update` on SQLite copies the DB file before migrating; `reset_business_data` wipes all business data, keeps users (file backup first).
+- D-093 `Product.unit` is gone (packs are the only counting unit since D-081); the unit-conversion tooling was removed.

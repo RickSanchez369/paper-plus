@@ -107,7 +107,7 @@ class Harness:
 
     def product(self, name=None, price=1000, stock=0, cost=500, sku=None, **kw):
         p = Product.objects.create(name=name or f"QA-P-{rnd()}", sku=sku or f"QA{random.randint(10**7, 10**8)}",
-                                   unit="بسته", default_selling_price=price, **kw)
+                                   default_selling_price=price, **kw)
         if stock:
             set_opening_stock(p, stock, self.su, cost)
         return p
