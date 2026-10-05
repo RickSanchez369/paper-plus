@@ -3,7 +3,7 @@
 Browser QA needs real invoices, cheques and expenses, and those can never be
 deleted once booked (append-only). So this wrapper points the app at
 `QA_DB` (default: tools/qa/.qa.sqlite3, git-ignored) before Django starts,
-leaves the PostgreSQL dev data alone, and serves on port 8001.
+leaves the PostgreSQL dev data alone, and serves on port 8001 (or `QA_PORT`, so several throwaway servers can run at once).
 
     python tools/qa/run_qa_server.py            # serve
     python tools/qa/run_qa_server.py migrate    # (re)build the schema first
@@ -27,4 +27,4 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 if len(sys.argv) > 1 and sys.argv[1] == "migrate":
     execute_from_command_line(["manage.py", "migrate"])
 else:
-    execute_from_command_line(["manage.py", "runserver", "8001", "--noreload"])
+    execute_from_command_line(["manage.py", "runserver", os.environ.get("QA_PORT", "8001"), "--noreload"])

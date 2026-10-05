@@ -120,3 +120,16 @@ Still unmeasured: the open drawer's text (second pass), print preview.
 Summary of this pass (all L1/L3, identity untouched): contrast fixed in 3 places (negative stat-card unit, summary-strip unit,
 navy dashboard card delta line), keyboard finish shortcut on the sale and purchase forms, initial focus on the purchase
 supplier and the return quantity. Everything else measured as no change required.
+
+## Mobile pass (D-095)
+### Baseline scorecard 2026-10-05 (`mobile_audit.py`, demo DB, headless Chrome, touch emulation below 600 px)
+26 pages (20 lists/forms + 6 detail pages). Counts are sums over pages.
+| width | pages with page overflow | primary actions < 44 px | taps < 24 px | inputs < 16 px |
+|---|---|---|---|---|
+| 360 | 5 (purchasing list 28, bank accounts 29, expenses 28, reports 3, activity 3 px) | 206 | 43 | 64 |
+| 390 | 0 | 208 | 43 | 64 |
+| 430 | 1 (bank accounts 5 px) | 211 | 41 | 64 |
+| 1024 / 1440 (desktop guard) | 0 / 0 | 242 / 242 | 40 / 41 | 64 / 64 |
+Shell: no `viewport-fit=cover`, no manifest, no apple-touch-icon. `.btn` controls are 40 px (`--ctl-sm`), the 44 px line is the
+Apple/WCAG-AAA guideline, so the 208 is a ceiling to reduce on the daily flows first, not a bug count. The 64 inputs under 16 px
+are a real defect class on iPhone (focus zoom). Next: 100 read-only critics, then grouped implementation.

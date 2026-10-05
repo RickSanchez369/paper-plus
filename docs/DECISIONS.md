@@ -1475,3 +1475,13 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   approval, Design Preservation Score >= 8). Golden rule: a change that cannot be PROVEN, by before/after measurement in the
   real browser, to improve the real user experience may not be made; "no change required" is a valid result. Evidence goes in
   `docs/UI_EVOLUTION_LOG.md`; rules and DNA inventory in `docs/UI_EVOLUTION.md`. `docs/UI_AUDIT_200_DEFERRED.md` stays unbuilt.
+
+### D-095: Mobile pass to 9/10, structure may change, models and data may not
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina (rates the site 7/10, wants the phone experience at 9/10; allowed structural change wherever models and data are
+  untouched; chose 100 read-only critics then grouped implementation)
+- Decision: evolution rules of D-094 stay (golden rule: no measured proof, no change; drawer and identity frozen). Mobile changes
+  go in new `mobile_*.css` files and, only when CSS cannot do it, in templates/JS without breaking any hook the JS and `tools/qa`
+  rely on. Progress is measured by `tools/qa/mobile_audit.py` (Playwright dev tool, not in requirements.txt) against the
+  baseline in `docs/UI_EVOLUTION_LOG.md`; throwaway servers per critic via `tools/qa/mobile_env.py` (`QA_PORT`, per-database login file).

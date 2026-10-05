@@ -28,6 +28,8 @@ phone = f"09{random.randint(100000000, 999999999)}"
 password = secrets.token_urlsafe(10)
 user = User.objects.create_superuser(phone=phone, password=password)
 (db.parent / ".qa_login.txt").write_text(f"{phone}\n{password}\n", encoding="utf-8")
+# One login file per database too, so parallel throwaway servers never read each other's credentials.
+(db.parent / (db.name + ".login.txt")).write_text(f"{phone}\n{password}\n", encoding="utf-8")
 
 BankAccount.objects.create(name="جاری ملت", account_number="QA-CUR-1", account_type="current", owner="شرکت")
 BankAccount.objects.create(name="جاری ملی", account_number="QA-CUR-2", account_type="current", owner="شرکت")
