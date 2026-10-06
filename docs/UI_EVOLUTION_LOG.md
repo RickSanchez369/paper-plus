@@ -202,3 +202,16 @@ screen at 360; it now applies only to badges that carry a figure.
 Not done: live amount echo under pay fields, customer name filter on /receivables/, sticky submit of the pay form, price-form sticky bar,
 item-row compaction (c101-F7, c102-F2..F4/F8, c103-F4, c104-F8): each is a larger layout change whose gain I could not prove strongly enough.
 
+### Mobile pass, desktop regression and shell checks (done by me: the c105 critic died on the usage limit)
+- Desktop pixel diff: the pre-layer build (commit bf7f0ea in a temporary worktree, same DB copy) against the current build, full-page
+  screenshots at 1440x900 and 1024x768 of 14 pages. 12 pages 0.00 % different (sales, sales/new, purchasing, purchasing/new, inventory,
+  cheques, customers, expenses, reports, bank accounts, returns). Differences, all intended: dashboard (stock-out strip, third hero button,
+  one anchor per overdue figure; +92 px tall), receivables/payables 0.02 % (the action column header is now visually hidden).
+- Shell on a phone: login and 404 at 360, dashboard / sale form / receivables / inventory in portrait 360 and in landscape 844x390 and
+  740x360, and with the root font size at 200 %: 0 px page overflow everywhere. Landscape sale dock 70 px (18-19 % of the height).
+- Final checks: manage.py check, makemigrations --check, 1551 QA checks (qa_02..28) pass, mobile scorecard: overflow pages 0 / 0 / 0
+  at 360 / 390 / 430, primary actions under 44 px 4, inputs under 16 px 1, installable.
+- Phone score (my reading of the critics' own scores and measurements): sale 7.5 -> about 8, payment 7 -> about 8, inventory 7 -> about 8.5,
+  dashboard 7.5 -> about 8.5, lists/forms 7.5 -> about 8.5 after the fixes above. The remaining distance to 9 is the "Not done" list
+  (live amount echo, receivables customer filter, sticky pay/price submit bars, item-row compaction) and needs a real device pass
+  (iOS numeric pad has no Return key, real keyboard animation: none of that can be measured headless).

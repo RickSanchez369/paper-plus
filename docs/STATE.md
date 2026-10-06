@@ -124,6 +124,15 @@ the purchase supplier and the first return quantity. Everything else measured as
 `makemigrations --check`, all 25 `tools/qa` scripts pass on SQLite (`DEBUG=True`). **Before deploying:** `manage.py update` backs the
 SQLite file up first (D-092) and applies `products.0011`; browser-check the four touched forms on the host once.
 
+**Batch 2026-10-06 mobile pass (D-095), on `dev` only (not on `deploy`, not on the host):** phone layer in `apps/shared/static/shared/css/mobile_*.css`
+and `shared/js/mobile.js`: dashboard dues card readable (its buttons were off-screen), 44 px controls, 16 px inputs, compact sale/purchase confirm
+bar (no cancel next to confirm, «نسیه» shortcut, one-row warning), inventory first screen + sort chips + folded list filters + stretched card links,
+installable manifest (no service worker), logout/leave confirms on touch, inventory search folding Persian/Arabic digits and letters. Measured with
+`tools/qa/mobile_audit.py` (baseline and result in `docs/UI_EVOLUTION_LOG.md`); desktop pixel-identical except the intended dashboard additions.
+Critics: 24 launched in wave 1 and 5 in the re-audit; 9 reports delivered, the rest lost to the account usage limit and not re-run. 1551 QA checks pass.
+**Before deploying:** `manage.py update` (it collects static files), then open the dashboard, a sale and /receivables/ on a real phone (add to home
+screen, rotate, numeric keypad): none of that could be verified headless.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
