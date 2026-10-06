@@ -129,4 +129,6 @@ class CustomerFilterForm(forms.Form):
 
     q = forms.CharField(required=False, label="جست‌وجو (نام یا تلفن)")
     account_status = forms.ChoiceField(required=False, label="وضعیت حساب", choices=ACCOUNT_STATUS_CHOICES)
-    is_active = forms.ChoiceField(required=False, label="وضعیت فعالیت", choices=ACTIVE_CHOICES, initial="true")
+    # data-fold-default: the phone filter fold (mobile.js) must not read the default «فعال» as an applied filter.
+    is_active = forms.ChoiceField(required=False, label="وضعیت فعالیت", choices=ACTIVE_CHOICES, initial="true",
+                                  widget=forms.Select(attrs={"data-fold-default": "true"}))

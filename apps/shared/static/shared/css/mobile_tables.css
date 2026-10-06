@@ -93,3 +93,50 @@
 
   .balance-cell .badge { white-space: nowrap; }
 }
+
+@media (max-width: 720px) {
+  /* A marked footer row (reports, ledgers) is a summary line in card mode, like the dues totals. */
+  table.data-table[data-cards] tfoot,
+  table.data-table[data-cards] tfoot tr[data-card-skip] { display: flex; }
+
+  table.data-table[data-cards] tfoot { flex-direction: column; }
+
+  table.data-table[data-cards] tfoot tr[data-card-skip] {
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-sunken);
+    border-top: 1px solid var(--border);
+  }
+
+  table.data-table[data-cards] tfoot td { display: block; padding: 0; }
+
+  table.data-table[data-cards] tfoot td:empty { display: none; }
+
+  /* The card's one document link (invoice, cheque, customer) opens the whole card: it was a 90x21 px target in a
+     294x279 px card. Every other link and control stays above the overlay. */
+  table.data-table[data-cards] tbody tr { position: relative; }
+
+  table.data-table[data-cards] .card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  table.data-table[data-cards] tbody tr a:not(.card-link),
+  table.data-table[data-cards] tbody tr button,
+  table.data-table[data-cards] tbody tr details,
+  table.data-table[data-cards] tbody tr input,
+  table.data-table[data-cards] tbody tr select,
+  table.data-table[data-cards] tbody tr label {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* A settlement badge («کسر از فاکتور ۳۵۰٬۰۰۰ تومان») needs the card width, like the balance cell. */
+  table.data-table[data-cards] td:has(> .badge .num) { grid-column: 1 / -1; }
+
+  table.data-table[data-cards] td:has(> .badge .num) > .badge { white-space: nowrap; }
+}

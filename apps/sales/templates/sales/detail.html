@@ -76,8 +76,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
   {% include "shared/_invoice_summary.html" with total=invoice.total paid=invoice.paid_amount outstanding=invoice.outstanding payment_status=invoice.payment_status %}
 {% endif %}
 
-<div class="card">
-  {% if invoice.returns.all %}
+{% if invoice.returns.all %}
 {# D-089: goods and money that came back on this invoice. #}
 <div class="card">
   <div class="card__body">
@@ -90,6 +89,8 @@ cancel_sale -- D-023, this view never writes stock/money itself).
   </div>
 </div>
 {% endif %}
+
+<div class="card">
 
 <div class="card__body">
     <h2>اقلام فاکتور</h2>

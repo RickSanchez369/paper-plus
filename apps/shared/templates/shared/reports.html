@@ -204,7 +204,7 @@ this range alone.
         </tbody>
         {# The unfiltered total is the server's own figure, so the table visibly ties to «جمع فروش» above. #}
         <tfoot>
-          <tr>
+          <tr data-card-skip>
             <td><strong>جمع <span id="product-totals-label">همهٔ کالاها</span></strong></td>
             <td></td>
             <td class="num"><strong id="tot-amount">{{ cards.sales.value|toman }}</strong></td>

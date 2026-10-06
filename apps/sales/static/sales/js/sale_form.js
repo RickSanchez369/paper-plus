@@ -579,6 +579,11 @@
 
     // Recap shortcut: "choose a payment method" buttons tick the box exactly like a click on it.
     var quick = event.target.closest("[data-quick-method]");
+    if (quick && quick.dataset.quickMethod === "credit") {
+      var allCredit = document.querySelector("[data-credit-all]");
+      if (allCredit) allCredit.click();
+      return;
+    }
     if (quick) {
       var box = document.getElementById("id_" + quick.dataset.quickMethod);
       if (box && !box.checked) {
@@ -733,10 +738,15 @@
     var signature = message + "|" + warn + "|" + quick;
     if (el.dataset.signature === signature) return;
     el.dataset.signature = signature;
-    el.textContent = message;
+    el.textContent = "";
+    var msg = document.createElement("span");
+    msg.className = "sale-dock__msg";
+    msg.textContent = message;
+    el.appendChild(msg);
     el.className = "sale-dock__recap" + (warn ? " is-warn" : "");
     if (quick) {
-      [["use_pos", "کارت‌خوان"], ["use_transfer", "حواله بانکی"]].forEach(function (pair) {
+      // «نسیه» is the third real way a shop sells (and the one that is never remembered): it jumps to the terms.
+      [["use_pos", "کارت‌خوان"], ["use_transfer", "حواله بانکی"], ["credit", "نسیه"]].forEach(function (pair) {
         var button = document.createElement("button");
         button.type = "button";
         button.className = "sale-dock__link";

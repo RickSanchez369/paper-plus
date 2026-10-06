@@ -136,3 +136,35 @@
 
   .filters.is-folded [data-fold] { display: none; }
 }
+
+/* ---- Cheque detail: bounce and cancel were two identical red buttons 12 px apart; keep them a full row apart ---- */
+@media (max-width: 720px) {
+  .cheque-actions__danger {
+    justify-content: space-between;
+    inline-size: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+/* ---- Dashboard alert strip: now one link per figure; each is a full-height tap target ---- */
+.alert-strip > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+}
+
+.alert-strip > a:hover { text-decoration: none; filter: brightness(0.95); }
+
+@media (max-width: 720px) {
+  /* ---- Inventory: while the search is being typed the answer must not sit under the keyboard ---- */
+  .content:has(#q:focus) .page-head__lede,
+  .content:has(#q:not(:placeholder-shown)) .page-head__lede,
+  #inv-filter:has(#q:focus) .filters > .check,
+  #inv-filter:has(#q:not(:placeholder-shown)) .filters > .check,
+  #inv-filter:has(#q:focus) .filters > button.btn,
+  #inv-filter:has(#q:not(:placeholder-shown)) .filters > button.btn,
+  #inv-filter:has(#q:focus) ~ #inv-results .sort-chips__label {
+    display: none;
+  }
+}

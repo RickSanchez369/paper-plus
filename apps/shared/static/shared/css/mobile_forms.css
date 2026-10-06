@@ -42,9 +42,6 @@
     white-space: nowrap;
   }
 
-  /* While a field is being typed in, the keyboard leaves ~300 px: drop the idle recap, keep warnings. */
-  #sale-form:has(:is(input, select, textarea):focus) .sale-dock .sale-dock__recap:not(.is-warn) { display: none; }
-
   /* Purchase confirm bar: same single row. */
   .sale-form__submit .sale-form__consequence {
     flex: 1 0 100%;
@@ -89,4 +86,29 @@
   :root:root .undo-bar { bottom: calc(var(--dock-h, 96px) + var(--space-3)); }
 
   body:has(.sale-form__submit) .toast { bottom: calc(var(--dock-h, 64px) + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---- Pay forms on /receivables/ and /payables/ (D-095, c102) ---- */
+@media (max-width: 720px) {
+  /* A Jalali date wrapped mid-number ("۱۴۰۵/۰ / ۷/۰۷") in the invoice picker row. */
+  .invoice-picker__date { white-space: nowrap; }
+}
+
+/* ---- Review fixes (c101 / c104 re-audit) ---- */
+@media (max-width: 720px) {
+  /* The recap ("for whom, paid how") is the last check before an irreversible confirm, so it is never hidden while
+     typing (an earlier rule did, on every focus including a ticked checkbox: the payment card was never seen). */
+  /* "Choose a payment method": the message gets its own line and the three quick buttons share one row under it
+     (it was 166 px: text, then two buttons on separate rows, 6 px above the confirm). */
+  .sale-dock__recap.is-warn { gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2); }
+
+  .sale-dock__msg { flex: 1 0 100%; font-size: 12.5px; }
+
+  .sale-dock__recap.is-warn > .sale-dock__link { flex: 1 1 0; margin: 0; justify-content: center; min-width: 0; padding-inline: var(--space-2); }
+
+  /* The purchase confirm bar shows what confirming does (it was display:none: the bar said nothing). */
+  .sale-form__submit .sale-form__consequence:not(:empty) { display: block; }
+
+  /* Return form: cancel sat 4 px from confirm. */
+  .form-actions { flex-wrap: wrap; gap: var(--space-4); }
 }

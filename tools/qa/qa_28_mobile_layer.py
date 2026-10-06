@@ -57,6 +57,22 @@ def scenarios(h):
           'rel="manifest"' in body and 'rel="apple-touch-icon"' in body and "serviceWorker" not in body)
     check("ML15 the dashboard hero offers the one-tap «ثبت دریافت»", "/receivables/" in body and "ثبت دریافت از مشتری" in body)
 
+    # ---------------------------------------------------------------- sort chips follow the live search
+    r = h.c.get("/inventory/", {"q": "QAML", "sort": "value", "dir": "asc"})
+    page = text(r)
+    inside = page.split('id="inv-results"', 1)[-1]
+    check("ML16 the phone sort chips live inside the swapped results and keep the search in their links",
+          "sort-chips" in inside and "q=QAML" in inside.split("sort-chips", 1)[-1][:900])
+    check("ML17 the live-search form carries the chosen sort", 'name="sort" value="value"' in page.split('id="inv-results"', 1)[0])
+    check("ML18 the dues columns have their own anchors", 'id="dues-receivable"' in body and 'id="dues-payable"' in body)
+
+    # ---------------------------------------------------------------- footers that must not veto card mode
+    rep = text(h.c.get("/reports/"))
+    check("ML19 the reports product table marks its total row so it can become cards", "<tfoot>" in rep and "data-card-skip" in rep.split("<tfoot>", 1)[1][:200])
+    check("ML20 the customers filter marks its default activity value for the phone fold", 'data-fold-default="true"' in text(h.c.get("/customers/")))
+    check("ML21 the dashboard alert strip links each figure to its own column when something is overdue",
+          'id="dues-receivable"' in body and 'id="dues-payable"' in body)
+
     # ---------------------------------------------------------------- confirm buttons advertise the chord
     check("ML12 the sale confirm button names Ctrl+Enter", "Control+Enter" in text(h.c.get("/sales/new/")))
     check("ML13 the purchase confirm button names Ctrl+Enter", "Control+Enter" in text(h.c.get("/purchasing/new/")))

@@ -174,3 +174,31 @@ Not done on purpose (no proof strong enough or too risky): item-row prices behin
 price-form sticky bar and select-on-focus (c003-F7), dashboard section reordering (two critics argued opposite orders), viewport-fit=cover
 (no measured harm without it). Checks: manage.py check, makemigrations --check, 1545 QA checks pass (qa_02..28), desktop scorecard unchanged.
 
+### Mobile pass, re-audit wave (5 critics on the new build: c101 sale, c102 payment, c103 inventory+dashboard, c104 lists/forms, c105 desktop regression/shell)
+Scores before fixes (their own 10-point scale for a phone): sale 7.5, payment 7, inventory 7, dashboard 7.5, lists/forms 7.5.
+Fixed from their evidence (each one measured again afterwards):
+- Receivables/payables pay forms were squeezed into half a card column (inputs 94 px, a 12,500,000 amount showed "500000"): the action
+  column header is now sr-only so the cell becomes a full-width action cell (c102-F1). L1.
+- Dashboard cheque links read "وصول شد/پاس شد" like the real action but only opened the page: relabelled «ثبت وصول/ثبت پاس» (c102-F6). L1.
+- Cheque detail: bounce and cancel pushed a full row apart (c102-F7). Invoice-picker date no longer wraps mid-number (c102-F5). L1.
+- Inventory: sort chips live inside the swapped results and the search form carries the sort (the chips used to drop the search and show a
+  stale active chip: c103-F1); while the search is focused the lede, checkbox row and apply button hide (first card 499 -> 405 of a 504 px
+  keyboard viewport: c103-F2); `#selling-price` landed 160 px down because scroll-padding and scroll-margin doubled (now 80, c103-F3);
+  stock/sort chips 44 px (c103-F9). L1/L2.
+- Dashboard: one anchor per overdue figure (payables were 1,300 px below the landing: c103-F6), the hero receive button lands on the
+  customer list (c103-F8). L1.
+- Sale dock: the recap is never hidden (it hid on every focus, even a ticked checkbox: c101-F1); the payment-method warning is one
+  message line plus one row of three buttons (166 -> 142 px) and gained «نسیه» (it needed a 1,100 px scroll: c101-F3); a due chip refreshes
+  the recap (it kept a false amber warning: c101-F4); header back control 44 px; leaving a half-entered invoice by the back control asks
+  once (c101-F6); the purchase bar shows its consequence line again (it was display:none on phones: c104-F5). L2/L3.
+- Lists: the fold stays closed even with a filter applied (label counts them; an open fold made a filtered list start 1,200 px down),
+  the page scrolls to the results after a search/period button, five presets fit one row from 380 px (c104-F1), the customers default
+  «فعال» no longer counts as a filter (c104-F2), the document link of a card stretches over the card (73 % of its area instead of 2 %,
+  c104-F3), reports product table and ledgers become cards with a total line (the money columns were 346 px off-screen: c104-F4),
+  settlement badge on returns uses the card width (c104-F6), titled card bands no longer poke 7 px outside the card, returns card on
+  invoice details no longer nested inside the items card (c104-F7). L1/L2.
+Regression found by my own audit and fixed the same hour: a blanket `td > .badge {white-space: nowrap}` pushed an invoice detail 21 px past the
+screen at 360; it now applies only to badges that carry a figure.
+Not done: live amount echo under pay fields, customer name filter on /receivables/, sticky submit of the pay form, price-form sticky bar,
+item-row compaction (c101-F7, c102-F2..F4/F8, c103-F4, c104-F8): each is a larger layout change whose gain I could not prove strongly enough.
+

@@ -6400,12 +6400,8 @@ form[hx-post].htmx-request::after {
   margin-bottom: var(--space-5);
 }
 
-#selling-price,
-#price-history,
-#fifo-layers,
-#movements {
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
-}
+/* (D-095) No scroll-margin here: `html { scroll-padding-top }` already clears the header, and adding both landed
+   these sections 80 px too low (the price form was off-screen after "تغییر قیمت‌ها"). */
 
 #price-history:target,
 #fifo-layers:target,
@@ -7786,10 +7782,7 @@ html { scroll-behavior: smooth; }
   color: var(--accent-500);
 }
 
-#profit-how,
-#sales-by-product {
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
-}
+/* (D-095) see the note at #selling-price: the root scroll-padding is the only offset. */
 
 #profit-how:target,
 #sales-by-product:target {

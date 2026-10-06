@@ -122,7 +122,7 @@ component reused as-is from Receivables.
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr class="data-table__total">
+          <tr class="data-table__total" data-card-skip>
             <td colspan="2">جمع / مانده نهایی</td>
             <td class="num">{{ statement.debit|toman }}</td>
             <td class="num">{{ statement.credit|toman }}</td>

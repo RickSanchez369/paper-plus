@@ -39,7 +39,9 @@
       var query = new URLSearchParams(window.location.search);
       var active = extra.filter(function (el) {
         return Array.prototype.some.call(el.querySelectorAll("input, select"), function (c) {
-          var sent = c.name && query.getAll(c.name).some(function (v) { return v !== "" && v !== "all"; });
+          var sent = c.name && query.getAll(c.name).some(function (v) {
+            return v !== "" && v !== "all" && v !== c.dataset.foldDefault; // the page default is not a user filter
+          });
           return c.type !== "hidden" && sent;
         });
       }).length;
@@ -48,14 +50,47 @@
       var toggle = document.createElement("button");
       toggle.type = "button";
       toggle.className = "btn btn--quiet filters__toggle";
-      toggle.setAttribute("aria-expanded", active ? "true" : "false");
+      toggle.setAttribute("aria-expanded", "false");
       toggle.textContent = "فیلترهای بیشتر" + (active ? " (" + active.toLocaleString("fa-IR") + " فعال)" : "");
       fields[0].insertAdjacentElement("afterend", toggle);
-      filters.classList.toggle("is-folded", !active);
+      // Closed even when a filter is applied (an open fold made a filtered list start 1,200 px down); the label
+      // counts the active ones and the page's own "clear filters" link stays visible.
+      filters.classList.add("is-folded");
       toggle.addEventListener("click", function () {
         var folded = filters.classList.toggle("is-folded");
         toggle.setAttribute("aria-expanded", folded ? "false" : "true");
       });
+    });
+  }
+
+  // A save redirects to an anchor (e.g. #selling-price) and the browser scrolls past the success message at the top,
+  // so a successful save looked like nothing happened. If the message ended up above the screen, bring it back.
+  if (phone) {
+    window.addEventListener("load", function () {
+      window.requestAnimationFrame(function () {
+        var message = document.querySelector(".messages .message, .messages [role=status], .messages [role=alert]");
+        if (message && message.getBoundingClientRect().bottom < 0) message.scrollIntoView({ block: "center" });
+      });
+    });
+  }
+
+  // After a search or a period button the page reloads at the top of a 300-700 px toolbar; the answer is the list, so
+  // bring its card to the top (unless the address already points at an anchor).
+  if (phone && !window.location.hash) {
+    var applied = false;
+    new URLSearchParams(window.location.search).forEach(function (value, key) {
+      if (value !== "" && key !== "page" && key !== "sort" && key !== "dir") applied = true;
+    });
+    var results = document.querySelector("form.toolbar ~ .table-card");
+    if (applied && results) window.requestAnimationFrame(function () { results.scrollIntoView({ block: "start" }); });
+  }
+
+  // A half-entered invoice has no draft: the header's back control (an edge-swipe's neighbour) asked nothing.
+  var back = document.querySelector(".header__back");
+  if (phone && back && document.querySelector("#sale-form, #purchase-form")) {
+    back.addEventListener("click", function (event) {
+      var picked = Array.prototype.some.call(document.querySelectorAll('input[name$="-product"]'), function (i) { return i.value; });
+      if (picked && !window.confirm("فاکتور هنوز ثبت نشده است. از این صفحه خارج می‌شوید؟")) event.preventDefault();
     });
   }
 })();
