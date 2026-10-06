@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.inventory.selectors import get_total_inventory_value
+from apps.inventory.selectors import get_stock_map, get_total_inventory_value
 from apps.payments.models import BankAccount, Cheque
 from apps.payments.selectors import (
     get_bank_account_balance,
@@ -21,8 +21,19 @@ from apps.payments.selectors import (
     get_upcoming_receivables,
     get_total_receivables_as_of,
 )
+from apps.products.models import Product
 from apps.sales.models import SalesInvoice
 from apps.shared import dates, reports, user_activity
+
+
+def out_of_stock_count():
+    """Active products with nothing on the shelf (stock <= 0): the dashboard's "what needs action" stock alert (D-095).
+
+    Same population and rule as the inventory list's «ناموجود» chip, so the number and the page it links to agree.
+    """
+    ids = list(Product.objects.filter(is_active=True).values_list("pk", flat=True))
+    stock = get_stock_map(ids)
+    return sum(1 for pk in ids if stock.get(pk, 0) <= 0)
 
 
 def _prev_month_span(jalali_today):

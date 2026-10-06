@@ -341,6 +341,22 @@ def pager(context, page_obj):
     return {"page_obj": page_obj, "query": _query_without(context["request"], "page")}
 
 
+@register.inclusion_tag("shared/_sort_chips.html", takes_context=True)
+def sort_chips(context, *pairs):
+    """Sort links as chips ("label:key" each) for phones, where card layouts hide the sortable table header (D-095)."""
+    request = context["request"]
+    direction = context.get("sort_dir", "asc")
+    chips = []
+    for pair in pairs:
+        label, key = pair.rsplit(":", 1)
+        active = context.get("sort_key") == key
+        chips.append({
+            "label": label, "key": key, "active": active, "direction": direction,
+            "next_dir": "desc" if active and direction == "asc" else "asc",
+        })
+    return {"chips": chips, "query": _query_without(request, "sort", "dir", "page")}
+
+
 @register.inclusion_tag("shared/_sort_th.html", takes_context=True)
 def sort_th(context, label, key):
     """A sortable column header: click toggles asc/desc and returns to page 1."""

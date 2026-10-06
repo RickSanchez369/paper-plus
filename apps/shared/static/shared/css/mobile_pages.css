@@ -1,0 +1,108 @@
+/* ==========================================================================
+   D-095 phone layer: page-specific layout (inventory list, dashboard hero). Phone only; desktop untouched.
+   ========================================================================== */
+.sort-chips { display: none; }
+
+@media (max-width: 720px) {
+  /* ---- Inventory list: the answer to "do we have X, at what price?" belongs on the first screen ---- */
+  .sort-chips {
+    display: flex;
+    margin-block: var(--space-2) var(--space-3);
+  }
+
+  .sort-chips__label {
+    font-size: var(--fs-100);
+    color: var(--text-muted);
+  }
+
+  /* Results first, the KPI block (value, count, USD rate) after them; the lede keeps two lines. */
+  .content:has(> .stats--inventory) { display: flex; flex-direction: column; }
+
+  .content:has(> .stats--inventory) > #inv-results { order: 1; }
+
+  .content:has(> .stats--inventory) > .stats--inventory { order: 2; margin-top: var(--space-5); }
+
+  .content:has(> .stats--inventory) .page-head__lede {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* The whole card opens the product (it was a 292x20 px link: ~18 % of the card), buttons stay on top. */
+  .data-table--inventory.data-table--stack tr { position: relative; }
+
+  .data-table--inventory.data-table--stack .cell-product a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .data-table--inventory.data-table--stack .stack-action { position: relative; z-index: 1; }
+
+  /* What a counter conversation needs first: stock, then the four sale prices; costs, value and share after. */
+  .data-table--inventory.data-table--stack td:nth-child(5),
+  .data-table--inventory.data-table--stack td:nth-child(6) { order: 1; }
+
+  .data-table--inventory.data-table--stack td:nth-child(3),
+  .data-table--inventory.data-table--stack td:nth-child(4) { order: 2; }
+
+  .data-table--inventory.data-table--stack td:nth-child(7),
+  .data-table--inventory.data-table--stack td:nth-child(8) { order: 3; }
+
+  .data-table--inventory.data-table--stack .stack-action { order: 4; }
+
+  .data-table--inventory.data-table--stack td:nth-child(5),
+  .data-table--inventory.data-table--stack td:nth-child(6) {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* ---- Dashboard hero: it took 32 % of the first screen and pushed today's numbers below the fold ---- */
+  .hero { padding: var(--space-4); }
+
+  .hero__text p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .hero__actions { display: flex; gap: var(--space-2); }
+
+  .hero__actions .btn { flex: 1 1 0; min-width: 0; padding-inline: var(--space-2); }
+
+  /* ---- Dashboard KPI tiles: four 192-247 px tiles were 870 px (26 % of the page). Label and figure share the first
+     line; the comparison, last month and "today" lines stay, just closer together. ---- */
+  .stats--performance .stat-card:not(.stat-card--primary) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 2px var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .stats--performance .stat-card:not(.stat-card--primary) > * { grid-column: 1 / -1; }
+
+  .stats--performance .stat-card:not(.stat-card--primary) > .stat-card__label { grid-column: 1; grid-row: 1; }
+
+  .stats--performance .stat-card:not(.stat-card--primary) > .stat-card__value {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 20px;
+  }
+
+  .stats--performance .stat-card:not(.stat-card--primary) > .field__hint:last-child {
+    margin-top: 2px;
+    padding-top: var(--space-1);
+  }
+
+  /* The four "right now" figures as a 2 x 2 block instead of a 4-row column. */
+  .stats--position { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+
+  .stats--position .stat-card { padding: var(--space-3); }
+
+  .stats--position .stat-card__value { font-size: 17px; }
+
+  .stats--position .stat-card__label { font-size: 12px; }
+}

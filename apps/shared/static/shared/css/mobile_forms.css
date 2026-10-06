@@ -1,0 +1,92 @@
+/* ==========================================================================
+   D-095 phone layer: forms. iOS Safari zooms the page when a focused field is under 16 px, which
+   shoves the layout sideways (64 fields on 26 pages measured in the baseline). Only touch or narrow
+   screens are touched; desktop keeps its 14 px controls.
+   ========================================================================== */
+@media (max-width: 720px), (pointer: coarse) {
+  /* `:root:root` out-ranks the (0,2,1) `.field > input:not(...)` rule in app.css without !important. */
+  :root:root input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="submit"], [type="button"], [type="file"]),
+  :root:root select,
+  :root:root textarea {
+    font-size: 16px;
+  }
+}
+
+/* ---- Sale / purchase confirm dock (D-095, c005): evidence in docs/UI_EVOLUTION_LOG.md ------------------ */
+@media (max-width: 720px) {
+  /* Cancel sat 12 px from the irreversible confirm in the easiest thumb zone; one tap on it dropped a filled
+     invoice (no draft exists). The header's back control already leaves the page. */
+  .sale-form__submit .btn--quiet { display: none; }
+
+  /* One compact row: the total at the start, the confirm filling the rest. */
+  :root:root .sale-dock {
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sale-dock__btns { flex: 1 1 0; min-width: 0; }
+
+  .sale-dock__btns .btn:not(.btn--quiet) { flex: 1; min-width: 0; }
+
+  .sale-dock__total { flex: none; }
+
+  .sale-dock__total-value .num { font-size: 18px; }
+
+  /* The ordinary recap ("for whom, paid how") stays visible as ONE truncated line; it hid completely before,
+     so at the irreversible tap the screen did not say who was being invoiced. */
+  .sale-dock .sale-dock__recap:not(.is-warn) {
+    display: block;
+    overflow: hidden;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* While a field is being typed in, the keyboard leaves ~300 px: drop the idle recap, keep warnings. */
+  #sale-form:has(:is(input, select, textarea):focus) .sale-dock .sale-dock__recap:not(.is-warn) { display: none; }
+
+  /* Purchase confirm bar: same single row. */
+  .sale-form__submit .sale-form__consequence {
+    flex: 1 0 100%;
+    margin: 0;
+    overflow: hidden;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sale-form__submit:not(.sale-dock) { flex-wrap: wrap; }
+
+  .sale-form__submit:not(.sale-dock) > .btn:not(.btn--quiet) { flex: 1 1 100%; }
+
+  /* Money-critical controls: 44 px and no edge-to-edge neighbours (a mis-tap on the neighbouring discount
+     segment changed a 3,625,000 total to 3,725,000). */
+  :root:root .sale-dock__link,
+  :root:root .sale-dock__blocked .sale-dock__link {
+    min-height: 44px;
+    padding-inline: var(--space-3);
+  }
+
+  .sale-dock__recap.is-warn { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+  :root:root .sf-seg__opt,
+  :root:root .tier-pick__opt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  :root:root .cust-combo__list li {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  :root:root .undo-bar__action { min-height: 44px; padding-inline: var(--space-4); }
+
+  /* The undo bar and the toast sit above the REAL height of the dock (set by mobile.js), not above a guess. */
+  :root:root .undo-bar { bottom: calc(var(--dock-h, 96px) + var(--space-3)); }
+
+  body:has(.sale-form__submit) .toast { bottom: calc(var(--dock-h, 64px) + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
+}

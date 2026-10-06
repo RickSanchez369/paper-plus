@@ -65,6 +65,7 @@ class DashboardView(DateRangeMixin, LoginRequiredMixin, TemplateView):
             "totals": dashboard.totals_now(),
             "cheques_incomplete": dashboard.cheques_needing_completion(),
             "dues": dashboard.dues_overview(),
+            "out_of_stock": dashboard.out_of_stock_count(),
         })
         return context
 

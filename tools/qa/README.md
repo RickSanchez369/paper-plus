@@ -44,3 +44,9 @@ that part is checked in the browser pane.
 `seed_demo_data.py`: paid, part-paid and overdue sales, a cancelled invoice, a purchase with freight, cheques, expenses)
 and serves it on http://localhost:8001. It never touches PostgreSQL or `.env`. On SQLite run the scripts above with
 `DEBUG=True` (otherwise `ALLOWED_HOSTS` is empty and the test client gets 400).
+
+## Mobile layer (D-095)
+- `qa_28_mobile_layer`: search folding (digits, ك/ي, word order), dashboard stock alert, phone stylesheets linked, dues card hook.
+- `python tools/qa/mobile_env.py NAME PORT` builds a throwaway demo DB under `tools/qa/.mobile/` and serves it (several can run at once).
+- `python tools/qa/mobile_audit.py --base http://localhost:PORT --login tools/qa/.mobile/NAME.sqlite3.login.txt --label X` is the phone
+  scorecard (needs `pip install playwright` and Chrome; a dev tool, not in requirements.txt). Baseline and results: `docs/UI_EVOLUTION_LOG.md`.

@@ -1,0 +1,85 @@
+/* ==========================================================================
+   D-095 phone layer: tables and lists. Loaded after app.css; every rule is inside a
+   media query so desktop output does not move. Evidence for each block: docs/UI_EVOLUTION_LOG.md "Mobile pass".
+   ========================================================================== */
+@media (max-width: 720px) {
+  /* A totals row (data-card-skip) no longer vetoes card mode; it reads as one summary line, not as a card. */
+  table.data-table[data-cards] tr[data-card-skip] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-sunken);
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+  }
+
+  table.data-table[data-cards] tr[data-card-skip] td {
+    padding: 0;
+    font-weight: var(--fw-heading);
+  }
+
+  table.data-table[data-cards] tr[data-card-skip] td:empty { display: none; }
+
+  /* Dashboard dues card: date + amount on one line, what it is for under it, then the action row.
+     The generic card is 149-236 px per row; this is the same data in about a third less height. */
+  #dues table.data-table[data-cards] tr:not([data-card-skip]) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-block: var(--space-3);
+  }
+
+  #dues table.data-table[data-cards] td[data-label]::before { display: none; }
+
+  #dues table.data-table[data-cards] td:nth-child(1) { grid-column: 1; grid-row: 1; }
+
+  #dues table.data-table[data-cards] td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: end;
+    font-weight: var(--fw-heading);
+  }
+
+  #dues table.data-table[data-cards] td:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    color: var(--text-muted);
+  }
+
+  #dues table.data-table[data-cards] td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; }
+
+  #dues .dues-actions { gap: var(--space-2); }
+
+  #dues .dues-actions .btn { flex: 1 1 auto; }
+
+  #dues .dues-actions a.field__hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    margin: 0;
+    padding-inline: var(--space-3);
+  }
+
+  /* Stacked product cards: both columns may shrink below their content, so a long value wraps instead of
+     pushing the card 6-12 px past its edge (seen at 360 px). */
+  .data-table--stack tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .data-table--stack td { min-width: 0; overflow-wrap: anywhere; }
+}
+
+/* The pager is 344 px wide at its natural size; a 360 px phone has 278 px inside the card. */
+@media (max-width: 420px) {
+  .pagination__nav { gap: var(--space-1); max-width: 100%; }
+
+  .pagination__page { min-width: 0; padding-inline: var(--space-1); }
+
+  .pagination__btn { min-width: 48px; padding-inline: var(--space-2); }
+
+  .pagination__btn--icon { min-width: 40px; }
+}
+
+@media (max-width: 720px) {
+  table.data-table[data-cards] td.cell-actions .btn { min-height: 44px; }
+}

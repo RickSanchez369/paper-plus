@@ -1,0 +1,10 @@
+{% comment %}
+Sort links as chips, shown on phones only (the table header with the sort links is hidden when rows become cards).
+Context from the `sort_chips` tag: chips [{label, key, active, direction, next_dir}], query (the other filters, ending in & when set).
+{% endcomment %}
+<div class="inv-chips sort-chips" role="group" aria-label="مرتب‌سازی">
+  <span class="sort-chips__label">مرتب‌سازی:</span>
+  {% for c in chips %}
+    <a class="inv-chip{% if c.active %} is-active{% endif %}" href="?{{ query }}sort={{ c.key }}&amp;dir={{ c.next_dir }}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }}{% if c.active %}<span aria-hidden="true"> {% if c.direction == "desc" %}↓{% else %}↑{% endif %}</span>{% endif %}</a>
+  {% endfor %}
+</div>

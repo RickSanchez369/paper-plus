@@ -22,6 +22,7 @@ from apps.products.forms import SellingPriceForm
 from apps.products.models import Product
 from apps.products.services import update_selling_prices
 from apps.shared.listing import paginate, sort_rows
+from apps.shared.text import search_key
 
 from .forms import InventoryProductForm
 from .models import InventoryMovement
@@ -94,8 +95,9 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
             r["is_low"] = 0 < r["stock"] <= low_cartons * r["product"].pack_per_carton
         low_count = sum(1 for r in rows if r["stock"] <= low_cartons * r["product"].pack_per_carton)
         if q:
-            needle = q.lower()
-            rows = [r for r in rows if needle in r["product"].name.lower() or needle in r["product"].sku.lower()]
+            # Digits, ك/ي and word order must not decide whether "we have it" (D-095): fold both sides.
+            terms = search_key(q).split()
+            rows = [r for r in rows if all(t in search_key(f'{r["product"].name} {r["product"].sku}') for t in terms)]
         if in_stock:
             rows = [r for r in rows if r["stock"] > 0]
         if stock_filter == "out":

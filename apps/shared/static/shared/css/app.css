@@ -1848,6 +1848,13 @@ form + .card {
   filter: brightness(0.97);
 }
 
+/* A stock-out is a warning, not a money loss: amber instead of red, same strip. */
+.alert-strip--stock {
+  border-inline-start-color: var(--warning-700);
+  background: var(--warning-100);
+  color: var(--warning-700);
+}
+
 /* The number the owner reads first gets the weight; a loss is red, never a quiet number. */
 .stat-card--primary {
   background: var(--chrome);

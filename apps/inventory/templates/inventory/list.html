@@ -33,7 +33,7 @@ changes through purchase and sales invoices only (D-044).
 <form method="get" class="toolbar" id="inv-filter"
       hx-get="{% url 'inventory:list' %}"
       hx-trigger="input changed delay:250ms from:#q, change"
-      hx-target="#inv-results" hx-select="#inv-results" hx-swap="outerHTML" hx-push-url="true" hx-sync="this:replace">
+      hx-target="#inv-results" hx-select="#inv-results" hx-swap="outerHTML" hx-replace-url="true" hx-sync="this:replace">
   {# Live filtering is an enhancement: the button below stays the no-JS path (and Enter still submits). #}
   <div class="filters">
     <div class="field">
@@ -57,6 +57,9 @@ changes through purchase and sales invoices only (D-044).
     <a class="inv-chip inv-chip--bad{% if stock_filter == 'out' %} is-active{% endif %}" href="?stock=out">ناموجود <span class="num">{{ out_of_stock_count|fa_number }}</span></a>
   </div>
 </form>
+
+{# Phones only (CSS): the table header with the sort links is not shown on a card layout. #}
+{% sort_chips "نام:name" "موجودی:stock" "ارزش:value" %}
 
 <div class="stats stats--inventory">
   <div class="stat-card stat-card--primary">

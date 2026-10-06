@@ -239,7 +239,10 @@
     });
 
     // A fresh invoice starts at the customer; with one chosen already (?customer=) the product box leads.
-    if (!sel.value) input.focus();
+    // Not on a touchscreen: focusing opens the result list, which then covers the "+ مشتری جدید" button and the
+    // first thing a phone user sees; they tap the box when they are ready (D-095).
+    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (!sel.value && !touch) input.focus();
   }
 
   // Opening the manual "+ مشتری جدید" panel puts the cursor in the name box (toggle does not bubble).

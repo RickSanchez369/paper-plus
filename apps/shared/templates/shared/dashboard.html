@@ -59,22 +59,29 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
   </a>
 {% endif %}
 
+{% if out_of_stock %}
+  {# A stock-out is also "what needs action today"; it used to be visible only after opening the inventory page. #}
+  <a class="alert-strip alert-strip--stock" href="{% url 'inventory:list' %}?stock=out">
+    <span><strong class="num">{{ out_of_stock|fa_number }}</strong> کالا ناموجود است</span>
+  </a>
+{% endif %}
+
 <h2 class="section-label">عملکرد · این ماه و امروز</h2>
 <div class="stats stats--performance">
-  {# Month-to-date vs the same days of last Jalali month (like for like); the card opens last month's full report. #}
-  <a class="stat-card stat-card--in stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
+  {# Month-to-date vs the same days of last Jalali month (like for like); the card opens THIS month's report (it used to open last month's, which read as 0 sales). #}
+  <a class="stat-card stat-card--in stat-card--link" href="{% url 'reports:index' %}?preset=month" title="دیدن گزارش کامل این ماه">
     <span class="stat-card__label">فروش این ماه</span>
     <span class="stat-card__value num">{{ kpi.month.sales|toman_split }}</span>
     {% include "shared/_kpi_compare.html" with c=kpi.compare.sales label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.sales|toman }}</strong></span>
   </a>
-  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
+  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=month" title="دیدن گزارش کامل این ماه">
     <span class="stat-card__label">خرید این ماه</span>
     <span class="stat-card__value num">{{ kpi.month.purchases|toman_split }}</span>
     {% include "shared/_kpi_compare.html" with c=kpi.compare.purchases label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.purchases|toman }}</strong></span>
   </a>
-  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
+  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=month" title="دیدن گزارش کامل این ماه">
     <span class="stat-card__label">هزینه‌های این ماه</span>
     <span class="stat-card__value num">{{ kpi.month.expenses|toman_split }}</span>
     {% include "shared/_kpi_compare.html" with c=kpi.compare.expenses label=kpi.compare_label %}

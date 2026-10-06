@@ -10,6 +10,11 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
   <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
+  {% comment %} D-095: phone layer. Every rule sits in a media query, so desktop output is unchanged. {% endcomment %}
+  <link rel="stylesheet" href="{% static_v 'shared/css/mobile_tables.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/mobile_forms.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/mobile_shell.css' %}">
+  <link rel="stylesheet" href="{% static_v 'shared/css/mobile_pages.css' %}">
   {% comment %} G031/G043: not deferred, so the remembered table density is on <html> before first paint. {% endcomment %}
   <script src="{% static_v 'shared/js/design_system.js' %}"></script>
   {% comment %} D-047: every htmx form here answers a validation error with 422 + the
@@ -25,6 +30,7 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <script src="{% static_v 'shared/js/jalali_picker.js' %}" defer></script>
   <script src="{% static_v 'shared/js/nav_drawer.js' %}" defer></script>
   <script src="{% static_v 'shared/js/ui.js' %}" data-login-url="{% url 'login' %}" data-phone="{{ request.user.phone }}" defer></script>
+  <script src="{% static_v 'shared/js/mobile.js' %}" defer></script>
   <script src="{% static_v 'shared/js/palette.js' %}" defer></script>
   <script src="{% static_v 'shared/js/file_pick.js' %}" defer></script>
   {% block head %}{% endblock %}

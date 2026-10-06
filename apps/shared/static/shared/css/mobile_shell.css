@@ -1,0 +1,52 @@
+/* ==========================================================================
+   D-095 phone layer: shell (header, controls, card padding). Desktop is untouched.
+   ========================================================================== */
+/* Control height: 41 px (and 40 px for row buttons) become 44 px, the Apple/WCAG-AAA touch line. */
+@media (max-width: 720px), (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --ctl-sm: 44px;
+  }
+
+  .btn { min-height: 44px; }
+
+  .nav-toggle,
+  .cmdk-trigger {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Nested paddings (page 16 + card 24 + table card) left 77-79 % of a phone's width for content. */
+@media (max-width: 720px) {
+  .card__body { padding: var(--space-4); }
+}
+
+/* Chips, presets and disclosure buttons that app.css pins at 32-42 px: same 44 px line as .btn. */
+@media (max-width: 720px), (pointer: coarse) {
+  :root:root .daterange__preset,
+  :root:root .sf-chip,
+  :root:root .price-chips .btn,
+  :root:root .preset-chip,
+  :root:root .filters__more > summary,
+  :root:root .btn--remove,
+  :root:root .quick-party__match .btn,
+  :root:root summary.btn,
+  :root:root .sale-form__totals-discount [data-freight-suggest] {
+    min-height: 44px;
+  }
+}
+
+/* The period presets are 5 buttons in a row: wider than a 360 px card (20-28 px page overflow on purchasing/expenses). */
+@media (max-width: 720px) {
+  .daterange__presets {
+    display: flex;
+    flex-wrap: wrap;
+    max-inline-size: 100%;
+  }
+
+  .daterange__preset {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

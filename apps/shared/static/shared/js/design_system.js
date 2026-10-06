@@ -59,6 +59,7 @@
     for (var b = 0; b < table.tBodies.length; b++) {
       for (var r = 0; r < table.tBodies[b].rows.length; r++) {
         var row = table.tBodies[b].rows[r];
+        if (row.hasAttribute("data-card-skip")) { continue; } // a totals row spans columns: it must not veto the cards
         rows++;
         if (row.cells.length !== cols) { return false; }
         for (var c = 0; c < row.cells.length; c++) {
@@ -73,6 +74,7 @@
     var heads = Array.prototype.map.call(table.tHead.rows[0].cells, headerText);
     Array.prototype.forEach.call(table.tBodies, function (body) {
       Array.prototype.forEach.call(body.rows, function (row) {
+        if (row.hasAttribute("data-card-skip")) { return; }
         Array.prototype.forEach.call(row.cells, function (td, i) {
           if (td.tagName !== "TD" || td.hasAttribute("data-label") || td.classList.contains("cell-actions")) { return; }
           // A header-less (or screen-reader-only) column that holds buttons is the card's action row.

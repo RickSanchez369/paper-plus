@@ -51,7 +51,7 @@ METRICS_JS = r"""
   const tg = [...document.querySelectorAll('a[href],button,input:not([type=hidden]),select,textarea,summary')].filter(shown);
   const primary = tg.filter(e => e.matches('.btn,button[type=submit],summary,.nav-toggle,.cmdk-trigger'));
   const small44 = primary.filter(e => { const r = e.getBoundingClientRect(); return r.height < 44; })
-    .map(e => (e.textContent || e.name || '').trim().slice(0, 14) + ' ' + Math.round(e.getBoundingClientRect().height));
+    .map(e => e.tagName.toLowerCase() + '.' + String(e.className).split(' ')[0] + ' ' + Math.round(e.getBoundingClientRect().height));
   const small24 = tg.filter(e => { const r = e.getBoundingClientRect(); if (r.width >= 24 && r.height >= 24) return false;
     if (e.matches('input[type=checkbox],input[type=radio]')) { const l = e.closest('label') || document.querySelector('label[for="' + e.id + '"]');
       if (l) { const q = l.getBoundingClientRect(); return q.width < 24 || q.height < 24; } }
