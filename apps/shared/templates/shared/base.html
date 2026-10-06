@@ -8,6 +8,11 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
   <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
   <meta name="theme-color" content="#0a1f44">
   <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  {% comment %} D-095: installable on a phone home screen (standalone window, own icon). No service worker: a ledger must never be served stale from a cache. {% endcomment %}
+  <link rel="manifest" href="{% static 'shared/manifest.webmanifest' %}">
+  <link rel="apple-touch-icon" href="{% static 'shared/img/apple-touch-icon.png' %}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="پیپر پلاس">
   <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   {% comment %} D-095: phone layer. Every rule sits in a media query, so desktop output is unchanged. {% endcomment %}

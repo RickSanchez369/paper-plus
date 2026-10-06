@@ -22,6 +22,8 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
   <div class="hero__actions">
     <a href="{% url 'sales:new' %}" class="btn btn--light">{% icon "plus" %}فاکتور فروش جدید</a>
     <a href="{% url 'purchasing:new' %}" class="btn btn--ghost">{% icon "plus" %}فاکتور خرید جدید</a>
+    {# Collecting a debt is the most frequent job after selling; it was 4-5 gestures from here (strip, scroll, swipe, tap). #}
+    <a href="{% url 'receivables:list' %}" class="btn btn--ghost">{% icon "pay" %}ثبت دریافت از مشتری</a>
   </div>
 </section>
 

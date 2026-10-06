@@ -133,3 +133,44 @@ supplier and the return quantity. Everything else measured as no change required
 Shell: no `viewport-fit=cover`, no manifest, no apple-touch-icon. `.btn` controls are 40 px (`--ctl-sm`), the 44 px line is the
 Apple/WCAG-AAA guideline, so the 208 is a ceiling to reduce on the daily flows first, not a bug count. The 64 inputs under 16 px
 are a real defect class on iPhone (focus zoom). Next: 100 read-only critics, then grouped implementation.
+
+### Mobile pass, critic wave 1 (2026-10-05/06) and what was done about it
+Critics launched: 24. The account's usage limit killed 15 of them mid-run; 5 delivered full reports (c003 inventory lookup,
+c004 dashboard glance, c005 sales-new thumb, c008 dashboard thumb, c010 inventory list thumb). The remaining 76 were NOT run:
+relaunching them would hit the limit again, so the proven findings below were implemented and every other page was checked by me
+with `mobile_audit.py` plus screenshots. Findings with evidence are in the git-ignored `tools/qa/.mobile/FINDINGS.md`.
+
+Scorecard (same tool, same demo DB), baseline -> now:
+| width | pages with overflow | primary actions < 44 px | inputs < 16 px | manifest / apple icon |
+|---|---|---|---|---|
+| 360 | 5 -> 0 | 206 -> 4 | 64 -> 1 (a file input) | none -> yes |
+| 390 | 0 -> 0 | 208 -> 4 | 64 -> 1 | none -> yes |
+| 430 | 1 -> 0 | 211 -> 4 | 64 -> 1 | none -> yes |
+| 1024 / 1440 (desktop guard) | 0 / 0 | 242 -> 243 (the new hero button) | 64 / 64 unchanged | |
+Taps under 24 px: 43 -> 36 (the rest are cell links with enough spacing, see sweep 6).
+
+Changes (each measured; level; desktop unchanged unless noted):
+- Dashboard dues card (c004-F1 Critical, c008-F1): amount and action buttons of every row were off-screen (tables 640 px in a 308 px
+  scroller) because the totals row's colspan vetoed card mode. Fix: `data-card-skip` rows are ignored by `eligible()`; compact dues card
+  CSS. After: every button inside the viewport at 360 and 390, 44 px actions, about 120 px per row. L2.
+- All controls 44 px (c005-F4, c008-F5): `--control-h`/`--ctl-sm` 44 px and chips/presets/summary buttons on phones: 208 -> 4. L1.
+- Inputs 16 px on touch/narrow screens (iOS focus zoom): 64 -> 1. L1.
+- 360 px overflow (c010-F1, c021 baseline): date-range presets wrap, stacked cards use minmax(0,1fr), pager fits 278 px: 5 pages -> 0. L1.
+- Sale/purchase dock (c005-F1..F5): cancel removed from the phone dock (a tap on it dropped a filled invoice), one compact row (119 -> 86 px
+  idle, recap line kept and hidden while typing), real height published as --dock-h so the undo bar/toast never overlap. L3.
+- Customer combo no longer auto-focuses on touch (its list covered the quick-add button) (c005-F7). L1.
+- Logout asks once on touchscreens (c008-F4: taps at 70-78 px left the page). L2.
+- Dashboard: month tiles open THIS month's report (they opened last month's, showing 0) (c004-F6, c008-F3); stock-out alert strip
+  (c004-F2, all widths); hero compact with one-tap «ثبت دریافت از مشتری» (c008-F2, all widths); KPI tiles label+figure on one line
+  (192 -> about 150 px each); 2x2 position grid. L2/L3.
+- Inventory list (c003, c010): first card from y=863 to y=499 (stock + prices on the first screen), phone sort chips (the sortable header
+  is hidden on cards), whole card is the link (18 % -> 100 % tappable), prices before costs, `hx-replace-url` (search no longer pushes a
+  history entry per pause), search folds Persian/Arabic digits, ك/ي, ZWNJ and word order (q=۴ found 0 rows, q=4 found 2). L1/L2.
+- Customer cards: balance and status badge get the full card width (the badge broke mid-word, the figure was clipped). L1.
+- List pages: extra filters fold behind one button (opens by itself when the address carries a filter): first row of the list moved
+  from y=1116 to 689 (sales), 1079 to 738 (purchasing), 585 to 329 (cheques), 522 to 351 (customers). 2x2 summary tiles on list pages. L2.
+- Installable: manifest + icons + apple-touch-icon, no service worker (Chrome installability check: no errors besides incognito). L3.
+Not done on purpose (no proof strong enough or too risky): item-row prices behind a disclosure (c005-F6), moving remove out of the row,
+price-form sticky bar and select-on-focus (c003-F7), dashboard section reordering (two critics argued opposite orders), viewport-fit=cover
+(no measured harm without it). Checks: manage.py check, makemigrations --check, 1545 QA checks pass (qa_02..28), desktop scorecard unchanged.
+

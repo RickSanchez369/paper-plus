@@ -52,6 +52,11 @@ def scenarios(h):
           "dues rows absent in this DB" if "dues-total" not in body else "")
     check("ML11 the dashboard month tiles open THIS month's report", "preset=prev_month" not in body and "preset=month" in body)
 
+    # ---------------------------------------------------------------- installable on a phone
+    check("ML14 the shell links a manifest, an apple-touch-icon and no service worker",
+          'rel="manifest"' in body and 'rel="apple-touch-icon"' in body and "serviceWorker" not in body)
+    check("ML15 the dashboard hero offers the one-tap «ثبت دریافت»", "/receivables/" in body and "ثبت دریافت از مشتری" in body)
+
     # ---------------------------------------------------------------- confirm buttons advertise the chord
     check("ML12 the sale confirm button names Ctrl+Enter", "Control+Enter" in text(h.c.get("/sales/new/")))
     check("ML13 the purchase confirm button names Ctrl+Enter", "Control+Enter" in text(h.c.get("/purchasing/new/")))

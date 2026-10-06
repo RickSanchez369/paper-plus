@@ -83,3 +83,13 @@
 @media (max-width: 720px) {
   table.data-table[data-cards] td.cell-actions .btn { min-height: 44px; }
 }
+
+@media (max-width: 720px) {
+  /* Customer / supplier balance: the figure and its status badge need the whole card width; squeezed into half a
+     column the badge broke mid-word («تسویه‌ش ده») and the figure was clipped. */
+  table.data-table[data-cards] td:has(> .balance-cell) { grid-column: 1 / -1; }
+
+  .balance-cell { flex-wrap: wrap; }
+
+  .balance-cell .badge { white-space: nowrap; }
+}

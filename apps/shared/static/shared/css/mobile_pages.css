@@ -68,9 +68,15 @@
     -webkit-line-clamp: 1;
   }
 
-  .hero__actions { display: flex; gap: var(--space-2); }
+  .hero__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
 
-  .hero__actions .btn { flex: 1 1 0; min-width: 0; padding-inline: var(--space-2); }
+  .hero__actions .btn { min-width: 0; padding-inline: var(--space-2); }
+
+  .hero__actions .btn:nth-child(3) { grid-column: 1 / -1; }
 
   /* ---- Dashboard KPI tiles: four 192-247 px tiles were 870 px (26 % of the page). Label and figure share the first
      line; the comparison, last month and "today" lines stay, just closer together. ---- */
@@ -105,4 +111,28 @@
   .stats--position .stat-card__value { font-size: 17px; }
 
   .stats--position .stat-card__label { font-size: 12px; }
+}
+
+/* ---- Summary tiles on list pages (sales, expenses, ...): four 100 px tiles in a column pushed the list a full
+   screen down. Two columns, smaller figure; the dashboard's own grids are handled above. ---- */
+@media (max-width: 600px) {
+  .stats:not(.stats--performance, .stats--position, :has(.stat-card--account)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .stats:not(.stats--performance, .stats--position, :has(.stat-card--account)) .stat-card { padding: var(--space-3); }
+
+  .stats:not(.stats--performance, .stats--position, :has(.stat-card--account)) .stat-card__value { font-size: 18px; }
+
+  .stats:not(.stats--performance, .stats--position, :has(.stat-card--account)) .stat-card__label { font-size: 12px; }
+}
+
+/* ---- Folded list filters (mobile.js): search + one toggle instead of a 650-750 px toolbar ---- */
+.filters__toggle { display: none; }
+
+@media (max-width: 720px) {
+  .filters__toggle { display: inline-flex; align-self: flex-start; }
+
+  .filters.is-folded [data-fold] { display: none; }
 }
