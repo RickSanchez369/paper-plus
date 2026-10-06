@@ -196,6 +196,9 @@
     // Settling a fixed cost: only the amount may change. Otherwise start at the reason.
     var recurring = form.elements.recurring;
     var target = recurring && recurring.value ? field("amount") : field("reason");
+    // A touch screen would open the keyboard (and cover the form) before anything was read.
+    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (touch && !(recurring && recurring.value)) return;
     if (target) { target.focus(); if (recurring && recurring.value) target.select(); }
   });
 })();

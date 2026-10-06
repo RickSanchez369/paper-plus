@@ -215,3 +215,18 @@ item-row compaction (c101-F7, c102-F2..F4/F8, c103-F4, c104-F8): each is a large
   dashboard 7.5 -> about 8.5, lists/forms 7.5 -> about 8.5 after the fixes above. The remaining distance to 9 is the "Not done" list
   (live amount echo, receivables customer filter, sticky pay/price submit bars, item-row compaction) and needs a real device pass
   (iOS numeric pad has no Return key, real keyboard animation: none of that can be measured headless).
+
+## D-095 round 2 (Sina: "find 10-20 more flaws, fix them all")
+
+Eighteen flaws found from 390x844 screenshots of 14 pages plus measurements; fixed on phones only (desktop markup identical, new rules inside
+`max-width: 720px`). Measured: dashboard alert strip 120 -> 96 px (links stay 44 px), stock strip 47 -> 44 px; text under 12 px on the dashboard
+7 -> 0; primary targets under 44 px 4 -> 2 (the remaining two are checkbox inputs inside labels); overflow pages still 0 at 360/390/430.
+Changes: customer field and "+ new customer" share one row and the mobile placeholder is short; sale type is one segmented control; the
+Enter-key hint is hidden on phones; logout is a 44 px icon in the header (touch confirm kept); a page `h1` that repeats the header title is
+hidden (its buttons stay); expense form no longer autofocuses on touch, has a reason placeholder and three equal method rows; filter fold now
+also works for lists with search + one filter (expenses); an odd last stat tile spans the row; "no percentage" KPI lines are hidden (the
+previous-period figure remains); empty `.cell-sub`/`—` card cells are hidden; page-level "+ new" buttons lost the disclosure arrow; secondary
+links and disclosure headings 20-22 px -> 44 px; search boxes get `enterkeyhint=search`.
+Not done / wrong in my own list: #4 (dock height) is sticky behaviour, not overlap, and I found no measured gain, so it is unchanged;
+#6 the expense amount already echoes the amount in words; #9/#13/#17 only partly (card heights unchanged, profit-card link recoloured,
+"apply filter" button kept).

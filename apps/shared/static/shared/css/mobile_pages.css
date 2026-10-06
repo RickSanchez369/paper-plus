@@ -168,3 +168,40 @@
     display: none;
   }
 }
+
+/* ---- Round 2 (D-095): alert strip, small text, small links, reports cards ---- */
+@media (max-width: 720px) {
+  /* Two stacked 44 px links plus 8 px gap and 24 px padding made 120 px; the gap goes, the targets stay 44 px. */
+  :root:root .alert-strip { gap: 0; padding-block: var(--space-1); }
+
+  /* 10.8-11.5 px figures under 12 px are the small print owners squint at. */
+  :root:root .money__unit,
+  :root:root .stat-card__eq,
+  :root:root .stat-card__note { font-size: 12px; }
+
+  /* Secondary links that were 20-22 px high. */
+  :root:root .row-link-secondary,
+  :root:root .stat-card__note,
+  :root:root .stat-card__more,
+  :root:root .dues-legend a,
+  :root:root .stat-card > a,
+  :root:root .page-head__lede + p > a:only-child {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* On the dark profit card the explanation link was cyan on navy and the negative figure a thin red. */
+  .stat-card--primary .stat-card__more,
+  .stat-card--primary .stat-card__note { color: var(--ink-100, #e8eefb); text-decoration: underline; }
+}
+
+@media (max-width: 720px) {
+  .alert-strip--stock { min-height: 44px; align-items: center; }
+
+  /* Sentence-ending links and disclosure headings were 20-22 px high. */
+  .profit-verdict a,
+  :root:root .dues-twin a { display: flex; align-items: center; min-height: 44px; }
+
+  .content details > summary:not(.btn) { padding-block: 12px; }
+}

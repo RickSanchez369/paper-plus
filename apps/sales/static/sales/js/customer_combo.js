@@ -189,7 +189,10 @@
     input.setAttribute("aria-expanded", "false");
     input.setAttribute("aria-controls", "cust-combo-list");
     input.setAttribute("aria-autocomplete", "list");
-    input.placeholder = "نام مشتری را بنویسید؛ اگر نبود، Enter = ثبت مشتری جدید";
+    // Enter means nothing on a phone keyboard, and the long hint was cut mid-sentence at 390 px.
+    input.placeholder = window.matchMedia && window.matchMedia("(max-width: 720px)").matches
+      ? "جستجوی نام مشتری"
+      : "نام مشتری را بنویسید؛ اگر نبود، Enter = ثبت مشتری جدید";
     list = document.createElement("ul");
     list.className = "cust-combo__list";
     list.id = "cust-combo-list";

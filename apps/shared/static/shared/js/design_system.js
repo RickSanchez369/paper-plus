@@ -80,8 +80,16 @@
         // The one document link of a card (invoice no., cheque no., customer) gets a stretched hit area on phones.
         var first = row.cells[0];
         if (first && first.querySelectorAll("a[href]").length === 1) { first.querySelector("a[href]").classList.add("card-link"); }
+        Array.prototype.forEach.call(row.querySelectorAll(".cell-sub"), function (sub) {
+          var shown = sub.cloneNode(true);
+          Array.prototype.forEach.call(shown.querySelectorAll(".sr-only"), function (x) { x.remove(); });
+          if (/^[\s—-]*$/.test(shown.textContent)) { sub.setAttribute("data-empty", ""); }
+        });
         Array.prototype.forEach.call(row.cells, function (td, i) {
           if (td.tagName !== "TD" || td.hasAttribute("data-label") || td.classList.contains("cell-actions")) { return; }
+          // An empty cell ("—") would print its label over nothing in a card; CSS hides it on phones.
+          var plain = td.textContent.replace(/\s/g, "");
+          if ((plain === "" || plain === "—" || plain === "-") && !td.querySelector("a, button, input, select, details")) { td.setAttribute("data-empty", ""); }
           // A header-less (or screen-reader-only) column that holds buttons is the card's action row.
           if (!heads[i] && td.querySelector(ACTION_SEL)) {
             td.classList.add("cell-actions");

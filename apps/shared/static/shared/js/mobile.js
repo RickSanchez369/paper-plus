@@ -30,8 +30,8 @@
   var phone = window.matchMedia && window.matchMedia("(max-width: 720px)").matches;
   if (phone) {
     document.querySelectorAll("form.toolbar .filters").forEach(function (filters) {
-      var fields = Array.prototype.filter.call(filters.children, function (el) { return el.classList.contains("field"); });
-      if (fields.length < 3) return;
+      var fields = Array.prototype.filter.call(filters.children, function (el) { return el.classList.contains("field") || el.classList.contains("filters__search") || el.classList.contains("filters__status"); });
+      if (fields.length < 2) return;
       var extra = fields.slice(1);
       var apply = filters.querySelector(":scope > .btn:not(.btn--quiet)");
       // "Active" = the address carries a value for one of the folded fields. (A select's rendered value cannot say
@@ -62,6 +62,20 @@
       });
     });
   }
+
+  // The phone keyboard's Enter key says "search" on a list's search box (it said "return").
+  document.querySelectorAll('form.toolbar input[name="q"]').forEach(function (i) { i.setAttribute("enterkeyhint", "search"); });
+
+  // A page title that only repeats the header's title is dropped on phones (the page-head keeps its action buttons).
+  if (phone) {
+    var headerTitle = document.querySelector(".header__title");
+    var h1 = document.querySelector(".content > .page-head h1, .content > .page-head .page-head__row > h1");
+    if (headerTitle && h1 && h1.textContent.trim() === headerTitle.textContent.trim()) h1.classList.add("is-dup-title");
+  }
+
+  // The expense reason is a free-text box with a history list; empty, it showed only the list's arrow.
+  var reason = document.querySelector("#expense-form input[list=expense-reasons]");
+  if (phone && reason && !reason.placeholder) reason.placeholder = "مثلاً اجاره، حقوق، قبض…";
 
   // A save redirects to an anchor (e.g. #selling-price) and the browser scrolls past the success message at the top,
   // so a successful save looked like nothing happened. If the message ended up above the screen, bring it back.

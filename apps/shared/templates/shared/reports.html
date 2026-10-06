@@ -47,7 +47,7 @@ this range alone.
         {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
@@ -59,7 +59,7 @@ this range alone.
         {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
@@ -70,7 +70,7 @@ this range alone.
         {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
@@ -81,7 +81,7 @@ this range alone.
         {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card stat-card--primary">
@@ -93,7 +93,7 @@ this range alone.
         {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   {% if cards.sales_returns.value or cards.purchase_returns.value %}

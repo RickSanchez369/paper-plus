@@ -81,3 +81,31 @@
 
   .daterange__preset { flex: 1 1 0; padding-inline: 4px; font-size: 12.5px; white-space: nowrap; }
 }
+
+/* ---- Round 2 (D-095): header, empty card cells, KPI noise, chevrons ---- */
+.header__logout-icon { display: none; }
+
+@media (max-width: 720px) {
+  /* Logout was a 76 px word button in the header's best spot; a 44 px icon gives the title the room. The touch confirm stays. */
+  :root:root .header__logout { min-width: 44px; padding-inline: 0; justify-content: center; }
+  .header__logout-label { display: none; }
+  .header__logout-icon { display: block; inline-size: 22px; block-size: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* A title that repeats the header's title; its action buttons stay. */
+  .is-dup-title { display: none; }
+  .page-head:has(> .is-dup-title:only-child) { display: none; }
+  .page-head__row:has(> .is-dup-title) { justify-content: flex-start; }
+
+  /* Card cells with nothing in them ("—") printed a label over a dash. */
+  table[data-cards] [data-empty] { display: none; }
+
+  /* "No percentage" lines said the same thing in every KPI card (50-60 px each); the previous-period figure under it stays. */
+  .stat-card__delta--none { display: none; }
+
+  /* Odd last tile spans the row instead of leaving half a row empty. */
+  .stats:not(.stats--hero) > .stat-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  /* The disclosure arrow on a page-level "+ new" button pointed the wrong way for an RTL "go". */
+  .page-head .quick-party-disclosure > summary.btn::after,
+  .sale-form__customer .quick-party-disclosure > summary::after { content: none; }
+}

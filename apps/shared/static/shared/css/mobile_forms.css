@@ -112,3 +112,27 @@
   /* Return form: cancel sat 4 px from confirm. */
   .form-actions { flex-wrap: wrap; gap: var(--space-4); }
 }
+
+/* ---- Round 2 (D-095) ---- */
+@media (max-width: 720px) {
+  /* Customer field and "+ new customer" share one row; the mini form (open) takes the full width. */
+  .sale-form__customer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-2); align-items: end; }
+  .sale-form__customer > .quick-party-disclosure { margin-top: 0; }
+  .sale-form__customer:has(> .quick-party-disclosure[open]) { grid-template-columns: minmax(0, 1fr); }
+  .sale-form__customer > .field { margin-bottom: 0; }
+  .sale-form__customer .quick-party-disclosure > summary { white-space: nowrap; }
+
+  /* Sale type: one segmented control, no fieldset frame and legend-on-the-border. */
+  .tier-pick { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+  .tier-pick .field__label { padding: 0; }
+  .tier-pick__opts { display: flex; inline-size: 100%; }
+  .tier-pick__opt { flex: 1; justify-content: center; }
+
+  /* Expense method cards: three equal rows (two columns pushed «چک» half out of the card). */
+  .exb-voucher .payment-mode { display: grid; grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+  /* "Enter moves to the next cell" is keyboard advice; a phone keyboard has no such flow. */
+  .sale-form__keys { display: none; }
+}
