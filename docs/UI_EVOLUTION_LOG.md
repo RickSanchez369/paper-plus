@@ -230,3 +230,42 @@ links and disclosure headings 20-22 px -> 44 px; search boxes get `enterkeyhint=
 Not done / wrong in my own list: #4 (dock height) is sticky behaviour, not overlap, and I found no measured gain, so it is unchanged;
 #6 the expense amount already echoes the amount in words; #9/#13/#17 only partly (card heights unchanged, profit-card link recoloured,
 "apply filter" button kept).
+
+## D-095 round 3: the mobile test suite (`tools/qa/mobile_suite/`), 2026-10-07
+
+Sina asked for every part of the product to be tested on a phone, "if an invoice needs 100 ways, all 100". Built a Playwright suite
+(touch emulation, throwaway SQLite, rich seed: 40 parties, 17 products, 40+ invoices of every shape, cheques in every status, returns,
+recurring costs). Final run: **60,117 checks in 69 groups**, 164 red, all accounted for below.
+
+| module | checks | red |
+|---|---|---|
+| pages: 140 page states x 8 viewports (320 to 768, landscape, 200 % text) x ~25 checks | 26,840 | 138 (134 are the A4 print sheets, 4 are load time-outs under machine load) |
+| empty: the same on a fresh install, plus empty-state sentences | 13,893 | 0 |
+| forms: every writing form x every field x ~15 hostile inputs; 14 lists x 26 query parameters x 12 hostile values | 11,637 | 0 |
+| sale: ~230 scenarios (tiers, item shapes, discounts, 11 payment shapes, dates, refusals) with DB oracles | 3,570 | 2 (open questions) |
+| purchase: ~110 scenarios, freight, quick-create dialogs | 1,030 | 1 (open question) |
+| payments: party and invoice payments, cheques with confirm dialogs both ways, returns, cancels, edits | 477 | 0 |
+| links: every anchor, aria reference, form action, internal link and asset | 1,443 | 0 |
+| interact: drawer x 22 pages x 4 ways, palette, filter fold, presets, date picker, pagination, keyboard over the dock, rotation, offline | 1,048 | 23 (22 are the frozen drawer's 37 px rows, 1 is a 3 px tolerance) |
+| states: login page x 8 viewports, bad logins, redirects, lock-out, session expiry mid-form, double taps | 179 | 0 |
+
+Defects found and fixed (each reproduced with a number before the change):
+- Bank cards with real balances were 47-117 px wider than a 390 px phone (three delta columns); now one row each.
+- A long party name or a 120-character supplier invoice number widened invoice, ledger and customer pages by 125-1,116 px
+  (`white-space: nowrap` on `.cell-sub` and `.ident`); text now wraps on phones.
+- 721-900 px (tablets, phones in landscape): customers and sales lists made Chrome widen the whole page (215-291 px); cells may wrap there.
+- Product search never fired for pasted, voice or swipe input (`hx-trigger` listened to `keyup` only); now `input`.
+- Purchase print sheet rendered at 980 px (no viewport meta, no back button); now readable with a scrolling table.
+- Cheque detail repeated `id_bank_account`; `aria-describedby` pointed at ids that did not exist on 15 pages (`_field.html`); the
+  freight field had no label; «more» links on cards had 2.68:1 contrast; cheque cards were only tappable on a badge.
+- `repeat_every = 1,000,000 months` was accepted and then crashed "skip" and "pay" with a 500; bounded to ten years, reminders to 365 days.
+- A 20-digit opening stock quantity or cost on a new product was a 500 (OverflowError); bounded.
+- Date-picker «today» / «clear» were 31 px; a dock taller than 88 px could cover a focused field (scroll padding now follows the dock);
+  «repeat every» overflowed at the largest text size; account numbers could not wrap.
+- Phone-only extras from the same pass: amount echo under money fields, find-box on long receivables/payables, sticky save on price and
+  payment forms, search keyboards say «search».
+
+Not changed, reported to Sina (STATE.md "Open items"): price 0 accepted on a sale or purchase line (a purchase books stock at cost 0 and
+inflates profit); an invoice dated 11 years ahead is accepted; drawer rows are 37 px and its close button 40 px (frozen, D-065); a
+purchase is cancelled by a plain `confirm()` while a sale gets a dialog listing every effect.
+Not measurable here: real iOS/Android keyboards, the Android back button, glide typing; the production 404 page (DEBUG shows Django's).

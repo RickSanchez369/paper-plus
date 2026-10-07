@@ -1485,3 +1485,14 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   go in new `mobile_*.css` files and, only when CSS cannot do it, in templates/JS without breaking any hook the JS and `tools/qa`
   rely on. Progress is measured by `tools/qa/mobile_audit.py` (Playwright dev tool, not in requirements.txt) against the
   baseline in `docs/UI_EVOLUTION_LOG.md`; throwaway servers per critic via `tools/qa/mobile_env.py` (`QA_PORT`, per-database login file).
+
+### D-096: Mobile test suite, input bounds, four owner questions left open
+- Status: Final (suite and bounds); the four questions are listed under "Open items" in STATE.md
+- Date: 2026-10-07
+- Decided by: Sina (asked for every part tested on a phone, thousands of cases if needed)
+- Decision: `tools/qa/mobile_suite/` (README in `tools/qa`) is the phone regression suite; it only ever touches throwaway SQLite
+  copies. Defects it found are fixed under the D-094 golden rule with the numbers in `docs/UI_EVOLUTION_LOG.md` ("round 3"). Two
+  server-side bounds were added because SQLite does not enforce column ranges and the inputs crashed with a 500: a fixed cost may
+  repeat at most every 3,650 days / 120 months and remind at most 365 days ahead (`RecurringExpenseForm`), and an opening stock is
+  limited to 10^8 packs at 10^10 Toman per pack (`InventoryProductForm`). Not decided here, left to Sina: a sale or purchase line priced
+  0, an invoice dated years ahead, the 37 px drawer rows, and the purchase-cancel confirmation.

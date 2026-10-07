@@ -133,6 +133,14 @@ Critics: 24 launched in wave 1 and 5 in the re-audit; 9 reports delivered, the r
 **Before deploying:** `manage.py update` (it collects static files), then open the dashboard, a sale and /receivables/ on a real phone (add to home
 screen, rotate, numeric keypad): none of that could be verified headless.
 
+**Batch 2026-10-07 mobile test suite and round 3 (D-095, D-096), on `dev` only:** `tools/qa/mobile_suite/` ran 60,117 phone checks (pages x 8
+viewports, forms x hostile input, ~340 invoice scenarios with DB oracles, payments/cheques/returns/cancels, login and session expiry, a fresh
+install); numbers per module and every fix are in `docs/UI_EVOLUTION_LOG.md` ("round 3"). Real defects fixed: bank cards and long names/numbers
+widening pages, 721-900 px tablet/landscape widening, product search ignoring pasted/voice input, two server 500s (huge fixed-cost period,
+huge opening stock), duplicate ids and dangling `aria-describedby`, purchase print sheet on phones, small targets. Checked: all `tools/qa`
+scripts on SQLite. **Before deploying:** `manage.py update`, then on a real phone: sale entry with the keyboard open, a receivables payment,
+the purchase print sheet.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
@@ -145,6 +153,11 @@ inventory_unit_report, convert_units --dry-run) was run end to end on the demo d
 (confirmed by Sina, D-091; the shared host has no PostgreSQL). Nothing was run on the host.
 
 ## Open items (raise with Sina before touching)
+- **Zero price on an invoice line (decision needed, found 2026-10-07):** a sale line typed with price 0 books a free line; a purchase
+  line with price 0 books stock at cost 0 (inflates profit later). Options: refuse, or ask for a confirmation. Same for opening stock cost 0.
+- **No upper bound on the invoice date:** an invoice dated 2037 is accepted (a typo of the year). Option: refuse more than N days ahead.
+- **Drawer rows are 37 px, its close button 40 px** (below the 44 px touch line); the drawer is frozen (D-065), so only Sina can lift it.
+- **Purchase cancel is a plain `confirm()`**, a sale gets a dialog listing stock, money and cheques; make them alike?
 - **Real company details/logo for the printed invoice** — Sina will send them.
 - **USD rate on the host** — tgju is read with stdlib `urllib` (D-080); whether the shared host allows outbound HTTPS is
   untested, and the cron line `manage.py fetch_usd_rate` still has to be added there.

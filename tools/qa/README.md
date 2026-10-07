@@ -46,7 +46,19 @@ and serves it on http://localhost:8001. It never touches PostgreSQL or `.env`. O
 `DEBUG=True` (otherwise `ALLOWED_HOSTS` is empty and the test client gets 400).
 
 ## Mobile layer (D-095)
+- `qa_29_input_bounds`: huge fixed-cost periods and opening stock are refused, never a 500 (D-096).
 - `qa_28_mobile_layer`: search folding (digits, ك/ي, word order), dashboard stock alert, phone stylesheets linked, dues card hook.
 - `python tools/qa/mobile_env.py NAME PORT` builds a throwaway demo DB under `tools/qa/.mobile/` and serves it (several can run at once).
 - `python tools/qa/mobile_audit.py --base http://localhost:PORT --login tools/qa/.mobile/NAME.sqlite3.login.txt --label X` is the phone
   scorecard (needs `pip install playwright` and Chrome; a dev tool, not in requirements.txt). Baseline and results: `docs/UI_EVOLUTION_LOG.md`.
+
+## Mobile test suite (`tools/qa/mobile_suite/`)
+A Playwright suite that drives the real pages on phone emulation (touch, 8 viewports from 320x568 to landscape and 200% text) against
+throwaway SQLite databases only. `python tools/qa/mobile_suite/run.py [--only sale,forms] [--smoke] [--rebuild]` builds `base.sqlite3`
+(demo data + `seed_rich.py`: 40 parties, 17 products, 40+ invoices of every shape, cheques in every status, returns, recurring costs), gives
+every writing module its own DB copy and server, runs shards in parallel and prints totals (`summarize.py` groups failures).
+Modules: `pages` (every page state x viewport x ~25 checks), `links` (anchors, aria, form actions, every internal link and asset),
+`sale` / `purchase` (scenario matrices with DB oracles: prices from `Product.price_for`, totals, stock, payments), `forms` (every field x ~15
+hostile inputs; list filters with hostile query strings), `payments` (party/invoice payments, cheques with the confirm dialogs, returns,
+cancels, edit panels), `interact` (drawer, palette, filter fold, presets, date picker, keyboard over the dock, rotation, offline),
+`states` (login page, lock-out, session expiry mid-form, double taps), `empty` (a fresh install). The real DB and `.env` are never read.
