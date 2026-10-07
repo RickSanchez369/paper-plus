@@ -32,3 +32,8 @@ graphify-out/manifest.json
 # per-database login files of parallel throwaway QA servers
 tools/qa/*.login.txt
 tools/qa/.mobile/
+
+# generated deploy bundle and graphify local state (not source)
+/paper-plus-deploy.zip
+graphify-out/.graphify_*
+graphify-out/20*/
