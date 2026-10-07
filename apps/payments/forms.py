@@ -605,3 +605,19 @@ class RecurringExpenseForm(forms.ModelForm):
         if value < 1:
             raise forms.ValidationError("تعداد تکرار باید حداقل ۱ باشد.")
         return value
+
+    # A period is a day count up to ten years or a month count up to ten years: "every 1,000,000 months" was accepted (SQLite does not
+    # enforce the 16-bit column limit) and then crashed "skip" and "pay" with a 500 when the next date left the calendar.
+    MAX_EVERY = {"day": 3650, "month": 120}
+    MAX_REMIND_DAYS = 365
+
+    def clean(self):
+        cleaned = super().clean()
+        every, unit = cleaned.get("repeat_every"), cleaned.get("repeat_unit")
+        limit = self.MAX_EVERY.get(unit)
+        if every and limit and every > limit:
+            self.add_error("repeat_every", f"تعداد تکرار نمی‌تواند از {limit} بیشتر باشد.")
+        remind = cleaned.get("remind_days_before")
+        if remind is not None and remind > self.MAX_REMIND_DAYS:
+            self.add_error("remind_days_before", f"یادآوری حداکثر {self.MAX_REMIND_DAYS} روز قبل ممکن است.")
+        return cleaned

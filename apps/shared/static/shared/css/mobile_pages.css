@@ -203,5 +203,29 @@
   .profit-verdict a,
   :root:root .dues-twin a { display: flex; align-items: center; min-height: 44px; }
 
-  .content details > summary:not(.btn) { padding-block: 12px; }
+  .content details:not(.head-panel) > summary:not(.btn) { padding-block: 12px; }
+}
+
+/* ---- Round 3: bank cards with real balances ------------------------------------------------------------------------
+   Three delta columns (label + a 7-8 digit figure with ▲ and a sign) need ~330 px; a 390 px phone has 250, so the card poked
+   47-117 px outside the page when balances were in the millions. One row per comparison instead. */
+@media (max-width: 720px) {
+  .acct__deltas { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+
+  .acct__delta,
+  .acct__delta:first-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-inline: 0;
+    border-inline-start: 0;
+  }
+}
+
+/* ---- Round 3: a long account number (an IBAN is 26 characters, the field allows more) is a no-wrap badge on the card: 45 px overflow ---- */
+@media (max-width: 720px) {
+  .acct__head { flex-wrap: wrap; }
+
+  .acct__no { flex: 0 1 auto; min-width: 0; max-inline-size: 100%; overflow-wrap: anywhere; word-break: break-all; }
 }

@@ -7782,6 +7782,11 @@ html { scroll-behavior: smooth; }
   color: var(--accent-500);
 }
 
+/* accent-500 on the tinted card measured 2.68:1 (AA needs 4.5); the dark primary card keeps its own colour. */
+.stat-card:not(.stat-card--primary) .stat-card__more {
+  color: var(--accent-700);
+}
+
 /* (D-095) see the note at #selling-price: the root scroll-padding is the only offset. */
 
 #profit-how:target,

@@ -13,7 +13,7 @@ which sale_form.js swaps for a real index before inserting it.
     <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"
            data-item-row-search
            hx-get="{% url 'sales:product_search' %}"
-           hx-trigger="keyup changed delay:300ms, focus"
+           hx-trigger="input changed delay:300ms, focus"
            hx-target="next .item-row__results"
            hx-swap="innerHTML"
            name="q"

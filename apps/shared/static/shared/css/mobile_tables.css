@@ -140,3 +140,39 @@
 
   table.data-table[data-cards] td:has(> .badge .num) > .badge { white-space: nowrap; }
 }
+
+/* ---- Round 3: unbreakable text inside a card ----------------------------------------------------------------------
+   A ledger row's source line ("... settlement of invoice ...", an issuer or bank written without spaces) was one 311 px word in a
+   146 px cell and widened the whole page by 132 px (bank account page with real data). Cards let any cell break anywhere. */
+@media (max-width: 720px) {
+  table[data-cards] td,
+  table[data-cards] .cell-sub,
+  .stat-card,
+  .card__body { overflow-wrap: anywhere; }
+
+  /* A long party name is a normal sub-line in a card; app.css keeps it on one line for the wide table. */
+  table[data-cards] .cell-sub { white-space: normal; }
+}
+
+/* A 120-character supplier invoice number or a 200-character name with no spaces widened the whole page by 125-1116 px (invoice /
+   customer detail). Anything typed by a person may be unbreakable; on a phone every text in the content area may wrap anywhere. */
+@media (max-width: 720px) {
+  .content { overflow-wrap: anywhere; }
+}
+
+/* ---- Round 3: tablets and phones in landscape (721-900 px) -----------------------------------------------------------------
+   Above 720 px the tables are not turned into cards, and their no-wrap columns (customers' ledger, sales list) are 1026 px wide inside
+   a 762 px card. The card scrolls, but Chrome on a phone then widens the whole page (215 px at 844x390, 291 px at 768x1024 with real
+   data) so everything shrinks or slides. Cells may wrap at these widths; 1024 px and up are untouched. */
+@media (min-width: 721px) and (max-width: 900px) {
+  :root:root .data-table td,
+  :root:root .data-table th { white-space: normal; min-width: 0; }
+
+  .balance-cell { flex-wrap: wrap; }
+}
+
+/* ---- Round 3: identifiers (phone, SKU, cheque and supplier-invoice numbers) are no-wrap runs; a 120-character supplier invoice number made
+   the invoice page 1,214 px wide. They stay in one piece while they fit the line and break only when they cannot. ---- */
+@media (max-width: 720px) {
+  .ident { white-space: normal; overflow-wrap: anywhere; }
+}

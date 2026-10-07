@@ -77,6 +77,72 @@
   var reason = document.querySelector("#expense-form input[list=expense-reasons]");
   if (phone && reason && !reason.placeholder) reason.placeholder = "مثلاً اجاره، حقوق، قبض…";
 
+
+  // ---- Round 3: live amount echo under money fields, and a find-a-party box on long dues pages -----------------------
+  // A 7-digit amount typed on a phone keyboard cannot be proofread ("1250000"); the field shows the grouped figure under it.
+  // Only fields that hold Toman are echoed (counts, percentages and dates are not), and desktop never gets the element.
+  var MONEY = /(^|[-_])(amount|amount_min|amount_max|default_selling_price|wholesale_selling_price|retail_carton_price|wholesale_pack_price|unit_price|carton_price|freight|opening_balance|credit_limit)$/;
+  var groupFa = new Intl.NumberFormat("fa-IR");
+  function echoFor(input) {
+    var next = input.nextElementSibling;
+    if (next && next.classList.contains("amount-echo")) return next;
+    if (input.closest(".field") && input.closest(".field").querySelector(":scope > .amount-echo")) return input.closest(".field").querySelector(":scope > .amount-echo");
+    return null;
+  }
+  function isMoney(input) {
+    return input.matches('input[inputmode="numeric"]:not(.js-jalali-date)') && MONEY.test(input.name || "")
+      && !input.closest(".item-row") && !document.getElementById("expense-amount-words");
+  }
+  function renderEcho(input) {
+    if (!isMoney(input)) return;
+    var digits = (input.value || "").replace(/[^0-9]/g, "");
+    var echo = echoFor(input);
+    if (!digits) { if (echo) echo.hidden = true; return; }
+    if (!echo) {
+      echo = document.createElement("div");
+      echo.className = "amount-echo num";
+      echo.setAttribute("aria-hidden", "true");   // the field's own value is read aloud; the echo only helps the eye
+      input.insertAdjacentElement("afterend", echo);
+    }
+    echo.textContent = groupFa.format(Number(digits)) + " تومان";
+    echo.hidden = false;
+  }
+  if (phone) {
+    document.addEventListener("input", function (e) { if (e.target.matches && e.target.matches("input")) renderEcho(e.target); });
+    var primeEchoes = function (root) { (root || document).querySelectorAll('input[inputmode="numeric"]').forEach(function (i) { if (i.value) renderEcho(i); }); };
+    primeEchoes(document);
+    document.body.addEventListener("htmx:afterSettle", function (e) { primeEchoes(e.target); });
+  }
+
+  // Receivables / payables: with 20+ customers the party list is a long scroll. A box filters the cards on screen (names,
+  // phones, invoice numbers); the totals stay the whole truth, and the box says so.
+  var dues = document.getElementById("dues-parties");
+  if (phone && dues) {
+    var rowsAll = function () { return Array.prototype.slice.call(document.querySelectorAll(".content .data-table tbody tr:not([data-card-skip])")); };
+    if (rowsAll().length >= 6) {
+      var fold = function (t) {
+        return t.replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 1776); })
+          .replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 1632); })
+          .replace(/ك/g, "ک").replace(/ي/g, "ی").replace(/\s+/g, " ").trim().toLowerCase();
+      };
+      var box = document.createElement("div");
+      box.className = "dues-find";
+      box.innerHTML = '<input type="search" class="field__control" inputmode="search" enterkeyhint="search" autocomplete="off" aria-label="یافتن در این صفحه" placeholder="یافتن نام، تلفن یا شمارهٔ فاکتور"><p class="field__hint" role="status"></p>';
+      var field = box.querySelector("input"), status = box.querySelector("p");
+      var card = dues.closest(".card");
+      card.parentNode.insertBefore(box, card);
+      field.addEventListener("input", function () {
+        var q = fold(field.value), shown = 0, all = rowsAll();
+        all.forEach(function (tr) {
+          var hit = !q || fold(tr.textContent).indexOf(q) !== -1;
+          tr.hidden = !hit;
+          if (hit) shown++;
+        });
+        status.textContent = q ? shown.toLocaleString("fa-IR") + " مورد از " + all.length.toLocaleString("fa-IR") + " · فقط نمایش فیلتر شده؛ جمع‌ها کل صفحه‌اند." : "";
+      });
+    }
+  }
+
   // A save redirects to an anchor (e.g. #selling-price) and the browser scrolls past the success message at the top,
   // so a successful save looked like nothing happened. If the message ended up above the screen, bring it back.
   if (phone) {
@@ -95,7 +161,7 @@
     new URLSearchParams(window.location.search).forEach(function (value, key) {
       if (value !== "" && key !== "page" && key !== "sort" && key !== "dir") applied = true;
     });
-    var results = document.querySelector("form.toolbar ~ .table-card");
+    var results = document.querySelector("form.toolbar ~ .table-card, form.toolbar ~ .placeholder, form.toolbar ~ .empty-state, form.toolbar ~ p.field__hint");
     if (applied && results) window.requestAnimationFrame(function () { results.scrollIntoView({ block: "start" }); });
   }
 

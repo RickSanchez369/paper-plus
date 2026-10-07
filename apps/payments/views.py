@@ -479,7 +479,8 @@ class ChequeDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["completion_form"] = ChequeCompletionForm(instance=self.object)
+        # own id prefix: the clear form below also has a bank_account field (two #id_bank_account broke label association)
+        context["completion_form"] = ChequeCompletionForm(instance=self.object, auto_id="cmp_%s")
         accounts, default_id = clear_account_defaults(self.object.direction)
         context["clear_form"], context["default_account"] = clear_form_for(self.object, accounts, default_id)
         context["party"] = self.object.customer or self.object.supplier

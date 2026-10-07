@@ -32,6 +32,8 @@
 
   .sale-dock__total-value .num { font-size: 18px; }
 
+  .sale-dock__total-value small { font-size: 12px; }
+
   /* The ordinary recap ("for whom, paid how") stays visible as ONE truncated line; it hid completely before,
      so at the irreversible tap the screen did not say who was being invoiced. */
   .sale-dock .sale-dock__recap:not(.is-warn) {
@@ -135,4 +137,49 @@
 @media (max-width: 720px) {
   /* "Enter moves to the next cell" is keyboard advice; a phone keyboard has no such flow. */
   .sale-form__keys { display: none; }
+}
+
+/* ---- Round 3 (D-095) ---- */
+.amount-echo { display: none; }
+
+@media (max-width: 720px) {
+  /* Grouped figure under a money field; the field itself stays plain digits. */
+  .amount-echo:not([hidden]) { display: block; margin-top: var(--space-1); color: var(--text-muted); font-size: 13px; font-weight: 600; }
+
+  /* The stock line printed its label twice ("موجودی" above "موجودی: 18 carton"). */
+  .item-row__stock[data-label]::before { display: none; }
+
+  /* The save buttons of the price and payment forms stay under the thumb while the fields scroll. */
+  #price-form { position: relative; }
+  #price-save,
+  .payment-form:not(.data-table .payment-form) [data-pay-submit] {
+    position: sticky;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    box-shadow: 0 6px 18px rgb(10 31 68 / 28%);
+  }
+  #price-save { inline-size: 100%; }
+
+  .data-table tr[hidden] { display: none !important; }
+
+  .dues-find { margin-bottom: var(--space-4); }
+  .dues-find .field__hint { margin: var(--space-1) 0 0; }
+}
+
+/* ---- Round 3: the confirm dock is taller than the 88 px root scroll-padding when it carries a warning (142 px): a tapped or focused
+   field near the end of the form was scrolled to just under it. The real height is published by mobile.js. */
+@media (max-width: 720px) {
+  html:has(.sale-form__submit) { scroll-padding-bottom: calc(var(--dock-h, 88px) + var(--space-3)); }
+}
+
+/* ---- Round 3: the date picker's «today» and «clear» were 31 px high (prev/next/day cells are 40) ---- */
+@media (max-width: 720px), (pointer: coarse) {
+  :root:root .jdp [data-jdp="today"],
+  :root:root .jdp [data-jdp="clear"] { min-height: 44px; }
+}
+
+/* ---- Round 3: «repeat every [n] [unit]» sat in two columns; with the largest OS text size they were 71 px wider than the card ---- */
+@media (max-width: 720px) {
+  .exb-repeat { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .exb-repeat > .field { min-width: 0; }
 }

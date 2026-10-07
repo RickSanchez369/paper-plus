@@ -71,7 +71,7 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         required=False,
         min_value=0,
         label="مبلغ کرایه بار (تومان)",
-        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
+        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric", "aria-label": "مبلغ کرایه بار (تومان)"}),
         error_messages={"min_value": "کرایه بار نمی‌تواند منفی باشد."},
     )
 
