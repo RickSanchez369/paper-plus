@@ -73,6 +73,38 @@
   });
   out.low_contrast = lowC.slice(0, 6); out.low_contrast_n = lowC.length;
 
+  // Round 4 (D-098): the header title shows in full (two lines at most), a short document number or date is never split across
+  // lines, and a card row is tinted as one block (no painted cell next to an unpainted one).
+  const ht = document.querySelector('.header__title');
+  out.title_cut = phone && ht ? (ht.scrollWidth > ht.clientWidth + 1 || ht.scrollHeight > ht.clientHeight + 1) : false;
+  out.split_tokens = [];
+  if (phone) {
+    const w = document.createTreeWalker(document.querySelector('main') || document.body, NodeFilter.SHOW_TEXT), re = /[^\s]*[0-9۰-۹][^\s]*/g;
+    let n;
+    while ((n = w.nextNode())) {
+      const el = n.parentElement;
+      if (!el || ['SCRIPT', 'STYLE', 'OPTION', 'TEXTAREA'].includes(el.tagName) || !shown(el)) continue;
+      let m; const t = n.textContent;
+      while ((m = re.exec(t))) {
+        const tok = m[0];
+        if (tok.length < 4 || tok.length > 22 || /[-()]/.test(tok)) continue;      // a hyphen is a normal break point
+        let at = m.index;      // each piece between slashes must stay on one line; a break right after a slash is a normal one
+        for (const piece of tok.split('/')) {
+          if (piece.length >= 2) {
+            const r = document.createRange(); r.setStart(n, at); r.setEnd(n, at + piece.length);
+            const rects = [...r.getClientRects()].filter(x => x.width > 0);
+            if (rects.length > 1 && new Set(rects.map(x => Math.round(x.top / 4))).size > 1) { out.split_tokens.push(tok); break; }
+          }
+          at += piece.length + 1;
+        }
+      }
+    }
+    out.split_tokens = out.split_tokens.slice(0, 5);
+  }
+  out.card_notch = phone ? [...document.querySelectorAll('table[data-cards] tbody tr:not([data-card-skip]) > td')].filter(shown)
+    .filter(td => { const c = getComputedStyle(td).backgroundColor; const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return false; const a = m[1].split(',').map(parseFloat); return a.length === 3 ? true : a[3] > 0.01; })
+    .map(td => label(td)).slice(0, 4) : [];
+
   // bottom clearance: scrolled to the end, the last piece of content must not sit under a fixed/sticky bottom bar
   scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'});
   const bars = [...document.querySelectorAll('.sale-dock, .undo-bar, [class*=dock], .toast')].filter(e => shown(e) && ['fixed', 'sticky'].includes(getComputedStyle(e).position));

@@ -173,4 +173,50 @@
       if (picked && !window.confirm("فاکتور هنوز ثبت نشده است. از این صفحه خارج می‌شوید؟")) event.preventDefault();
     });
   }
+  // Round 4 (D-098). A cell, link or badge that holds ONE short token with digits (a document number, a date, a code) must not
+  // wrap in the middle: the long-text safety net (overflow-wrap) left a date on one line and its last digit on the next.
+  function markTokens(root) {
+    if (!phone) return;
+    (root || document).querySelectorAll("main a, main td, main .num, main .badge, main .ident, main .cell-sub").forEach(function (el) {
+      var nested = Array.prototype.some.call(el.children, function (c) { return c.tagName.toLowerCase() !== "svg"; });   // an icon beside the text is fine
+      if (nested || el.classList.contains("is-token")) return;
+      var t = el.textContent.trim();
+      if (t.length >= 4 && t.length <= 22 && !/\s/.test(t) && /[0-9۰-۹]/.test(t)) el.classList.add("is-token");
+    });
+  }
+  markTokens();
+  document.body.addEventListener("htmx:afterSettle", function (e) { markTokens(e.target); });
+
+  // The dashboard dues card lists every overdue and upcoming row: 9,177 px (11 screens) with the demo data. Each group keeps its
+  // first rows (earliest due date first) and a button reveals the rest. Without JS everything shows.
+  if (phone) {
+    var LIMIT = 5;
+    document.querySelectorAll("#dues .table-card").forEach(function (card) {
+      var rows = Array.prototype.filter.call(card.querySelectorAll("tbody tr"), function (r) { return !r.hasAttribute("data-card-skip"); });
+      if (rows.length <= LIMIT + 1) return;
+      var hidden = rows.slice(LIMIT);
+      hidden.forEach(function (r) { r.setAttribute("data-more", ""); });
+      card.classList.add("is-folded");
+      var more = document.createElement("button");
+      more.type = "button";
+      more.className = "btn btn--quiet dues-more";
+      more.setAttribute("aria-expanded", "false");
+      var label = "نمایش " + hidden.length.toLocaleString("fa-IR") + " مورد دیگر";
+      more.textContent = label;
+      card.insertAdjacentElement("afterend", more);
+      more.addEventListener("click", function () {
+        var folded = card.classList.toggle("is-folded");
+        more.setAttribute("aria-expanded", folded ? "false" : "true");
+        more.textContent = folded ? label : "نمایش کمتر";
+      });
+    });
+    // A link into a folded row (#chq-..., #inv-...) must still land on something visible.
+    var target = window.location.hash && document.querySelector("#dues " + window.location.hash.replace(/[^#\w-]/g, ""));
+    if (target && target.closest && target.closest("tr[data-more]")) {
+      var holder = target.closest(".table-card");
+      holder.classList.remove("is-folded");
+      var btn = holder.nextElementSibling;
+      if (btn && btn.classList.contains("dues-more")) { btn.setAttribute("aria-expanded", "true"); btn.textContent = "نمایش کمتر"; }
+    }
+  }
 })();

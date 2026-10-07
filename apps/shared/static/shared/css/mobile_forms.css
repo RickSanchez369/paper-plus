@@ -183,3 +183,28 @@
   .exb-repeat { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .exb-repeat > .field { min-width: 0; }
 }
+
+/* ---- Round 4 (D-098): invoice picker rows (the daily "record a payment" form): checkbox + label + date + amount shared one
+   line, squeezed the label and split the number (111 breaks on /receivables/ and /payables/). Two lines: the number and the date
+   on the start side, the amount at the far edge, the whole row a 44 px target. ---- */
+@media (max-width: 720px) {
+  .invoice-picker__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: var(--space-3);
+    row-gap: 0;
+    align-items: center;
+    min-height: 44px;
+  }
+  .invoice-picker__row > input { grid-row: 1 / span 2; }
+  .invoice-picker__label { grid-column: 2; }
+  .invoice-picker__date { grid-column: 2; grid-row: 2; }
+  .invoice-picker__due { grid-column: 3; grid-row: 1 / span 2; margin-inline-start: 0; }
+}
+
+/* ---- Round 4: Chrome on Android reloads the page when the finger drags down at the very top; on a long invoice that discards
+   everything typed (the back and logout controls already ask first). The invoice pages keep the drag to themselves.
+   Documented browser behaviour: not measurable in headless Chrome, so this is the one change here without a number. ---- */
+@media (max-width: 720px) {
+  html:has(#sale-form), html:has(#purchase-form) { overscroll-behavior-y: contain; }
+}

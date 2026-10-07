@@ -1511,3 +1511,24 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Alternatives rejected: allow price 0 after a confirmation (a free first layer is never right, a gift at 1 Toman is close enough);
   lift the drawer rows to 44 px (no measured mis-tap, D-094).
 - Tests: `tools/qa/qa_30_zero_price_far_date.py` (26 checks) and the mobile suite scenarios `zero-price*`, `date-*-ahead`.
+
+### D-098: Mobile round 4, only what a number proved
+- Status: Final
+- Date: 2026-10-07
+- Decided by: Sina ("check once more and make the phone experience better")
+- Decision: a new audit measured the pages from angles the earlier rounds had not (header text, number wrapping, card tint, page length, input
+  attributes, transfer size under Slow 4G with a 4x slower CPU). Each fix below has its number in `docs/UI_EVOLUTION_LOG.md` ("round 4"):
+  (1) the header title shows two lines (three at 320 px) instead of 150 px of one line (38 of 132 page states were cut; now 1, a 60-character
+  product name); (2) the amount filters on sales, purchasing and expenses are `NumericInput` text boxes (`type=number` dropped Persian digits: a typed
+  «۱۲۰۰۰۰» left the box empty); (3) the dashboard dues card folds each group to its first 5 rows with a «نمایش N مورد دیگر» button (9,177 px ->
+  3,486 px); (4) invoice rows of the record-payment form are two lines with the amount at the far edge (111 split numbers); (5) a short
+  document number, date or code is never split mid-token (`is-token`, 63 distinct tokens broke); (6) row tints (hover, which sticks after a tap, overdue,
+  today, open form) are painted on the whole card row, not on cells (642 of 1,134 card rows showed a white notch); (7) return lines are
+  name / three figures / two inputs; (8) `GZipMiddleware` after WhiteNoise (HTML 40-140 KB -> 7-12 KB; first paint on Slow 4G about 0.2-0.4 s
+  earlier on the heaviest pages; BREACH is mitigated by Django's per-request CSRF masking and nothing secret is reflected); (9) the invoice pages
+  set `overscroll-behavior-y: contain` so an Android pull-to-refresh cannot discard a half-typed invoice (browser-documented behaviour, the one change
+  without a number: headless Chrome has no pull-to-refresh).
+- Not changed on purpose: product hints and long forms (a design call, not a defect), autofill attributes (no way to measure a browser's autofill
+  popup headless), the 60-character product name test case (clamped to the title's lines, the full name is in the page heading).
+- Tests: `tools/qa/qa_31_filters_gzip.py` (10 checks); the mobile suite now also checks that the header title is not cut, that no number or date is split
+  across lines, that card cells carry no paint of their own, and the dues fold behaviour.

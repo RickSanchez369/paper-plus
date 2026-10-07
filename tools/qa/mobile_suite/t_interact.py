@@ -385,6 +385,38 @@ def offline(rec, b):
     ctx.close()
 
 
+def dues_fold(rec, w):
+    """D-098: each group of the dashboard dues card shows its first rows; one button reveals the rest and says how many."""
+    pg = w.page
+    w.drain()
+    w.goto("/")
+    tag = "dues-fold /"
+    groups = pg.evaluate("""() => [...document.querySelectorAll('#dues .table-card')].map(c => ({
+        rows: [...c.querySelectorAll('tbody tr')].filter(r => !r.hasAttribute('data-card-skip')).length,
+        visible: [...c.querySelectorAll('tbody tr')].filter(r => !r.hasAttribute('data-card-skip') && r.getBoundingClientRect().height > 0).length,
+        btn: !!(c.nextElementSibling && c.nextElementSibling.classList.contains('dues-more'))}))""")
+    big = [g for g in groups if g["rows"] > 6]
+    rec.check("dues-fold", f"{tag}: every group with more than 6 rows is folded to its first 5 ({len(big)} of {len(groups)} groups)",
+              all(g["visible"] == 5 and g["btn"] for g in big), big)
+    rec.check("dues-fold", f"{tag}: a short group is left alone", all(g["visible"] == g["rows"] for g in groups if g["rows"] <= 6), groups)
+    h0 = pg.evaluate("document.documentElement.scrollHeight")
+    btn = pg.locator(".dues-more").first
+    if btn.count():
+        label = btn.inner_text()
+        rec.check("dues-fold", f"{tag}: the button says how many are hidden ({label})", "نمایش" in label and "مورد" in label, label)
+        rec.check("dues-fold", f"{tag}: the button is a 44 px target", btn.bounding_box()["height"] >= 43.5, btn.bounding_box())
+        btn.scroll_into_view_if_needed()
+        btn.tap()
+        pg.wait_for_timeout(250)
+        rec.check("dues-fold", f"{tag}: tapping opens the group and flips aria-expanded", btn.get_attribute("aria-expanded") == "true"
+                  and pg.evaluate("document.documentElement.scrollHeight") > h0, btn.get_attribute("aria-expanded"))
+        rec.check("layout", f"{tag}: no overflow when open", D.page_overflow(pg) <= 0, D.page_overflow(pg))
+        btn.tap()
+        pg.wait_for_timeout(250)
+        rec.check("dues-fold", f"{tag}: tapping again folds it back", btn.get_attribute("aria-expanded") == "false", btn.get_attribute("aria-expanded"))
+    clean(rec, w, tag)
+
+
 def body(a, rec, b):
     ctx = b.context("390x844")
     w = Watched(ctx, b.base)
@@ -399,7 +431,7 @@ def body(a, rec, b):
     units += [("palette", p) for p in ("/", "/sales/new/", "/inventory/", "/reports/")]
     units += [("filters", p) for p in LISTS]
     units += [("presets", p) for p in RANGE_PAGES]
-    units += [("date", None), ("pagination", None), ("cards", None)]
+    units += [("date", None), ("pagination", None), ("cards", None), ("duesfold", None)]
     units += [("details", p) for p in MAIN]
     units += [("keyboard", None), ("rotation", None), ("offline", None), ("confirms", None)]
     units = [u for k, u in enumerate(units) if k % a.n == a.i]
@@ -421,6 +453,8 @@ def body(a, rec, b):
                 pagination(rec, w)
             elif kind == "cards":
                 card_links(rec, w)
+            elif kind == "duesfold":
+                dues_fold(rec, w)
             elif kind == "details":
                 disclosures(rec, w, arg)
             elif kind == "keyboard":

@@ -109,3 +109,31 @@
   .page-head .quick-party-disclosure > summary.btn::after,
   .sale-form__customer .quick-party-disclosure > summary::after { content: none; }
 }
+
+/* ---- Round 4 (D-098): the header title had 150 px (120 px at 360) and cut a document number or a name:
+   38 of 132 page states at 390 px. Two lines fit the 64 px header. ---- */
+@media (max-width: 720px) {
+  .header__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+    font-size: 14px;
+  }
+}
+
+/* Round 4: at 320 px the title has about 85 px next to four 44 px controls; three small lines still fit the 64 px header. */
+@media (max-width: 359px) {
+  /* Tighter header gutters buy the title about 30 px (80 -> 110). */
+  .header { gap: 4px; padding-inline: var(--space-2); }
+  .header__lead { gap: 4px; }
+  .header__title {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+}

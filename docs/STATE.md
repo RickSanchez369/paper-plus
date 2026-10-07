@@ -145,6 +145,12 @@ the purchase print sheet.
 (gift = 1 Toman), invoices/expenses dated more than 30 days ahead are refused, drawer rows stay 37 px, purchase cancel opens the sale-style
 effects dialog. `qa_30_zero_price_far_date` (26 checks) added; `tools/qa/run_script.py` runs any qa script on a throwaway SQLite copy.
 
+**Batch 2026-10-07 mobile round 4 (D-098), on `dev` only:** header titles no longer cut (38 -> 1 of 132 states), amount filters accept Persian digits,
+the dashboard dues card folds (9,177 -> 3,486 px), pay-form invoice rows and card tints fixed, numbers no longer split mid-token, pages gzipped.
+65,550 phone checks run; the only reds are the 134 A4 print sheets and one deliberately absurd 60-character product name. All `tools/qa` scripts pass.
+**Before deploying:** `manage.py update`; `GZipMiddleware` is new, so check one page's `Content-Encoding` once on the host (a host that already
+compresses is unaffected).
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or

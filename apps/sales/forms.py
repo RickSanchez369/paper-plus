@@ -70,8 +70,8 @@ class SalesFilterForm(forms.Form):
         queryset=Product.objects.filter(is_active=True).order_by("name"),
         empty_label="— همهٔ کالاها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0, widget=NumericInput())
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0, widget=NumericInput())
 
     def clean(self):
         cleaned = super().clean()

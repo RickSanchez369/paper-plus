@@ -269,3 +269,25 @@ Not changed, reported to Sina (STATE.md "Open items"): price 0 accepted on a sal
 inflates profit); an invoice dated 11 years ahead is accepted; drawer rows are 37 px and its close button 40 px (frozen, D-065); a
 purchase is cancelled by a plain `confirm()` while a sale gets a dialog listing every effect.
 Not measurable here: real iOS/Android keyboards, the Android back button, glide typing; the production 404 page (DEBUG shows Django's).
+
+## D-098 round 4: a fresh audit from new angles, 2026-10-07 (Sina: "check once more and do more for the phone")
+Method: full-page screenshots of 27 pages read by eye, then a probe per suspicion over the 132 page states at 390, 360 and 320 px, and a
+Slow 4G + 4x CPU load measurement. Only suspicions that a number confirmed were changed.
+
+| Measured | Before | After |
+|---|---|---|
+| header title cut (2 lines allowed), page states of 132 at 390 / 360 px | 38 / 52 | 1 / 1 (a 60-character product name) |
+| dashboard page height at 390 px (demo data, 54 due rows); the dues card alone | 10,597 px; 9,177 px | 4,906 px; 3,486 px (each group folded to 5 rows) |
+| distinct numbers or dates split across lines (pages x 3 widths) | 63 | 0 mid-digit; only breaks after a «/» remain |
+| card rows with an empty half cell, so a hover/overdue tint left a white notch | 642 of 1,134 | tint is on the row: 0 painted cells |
+| amount filter typed «۱۲۰۰۰۰» (Persian digits) | empty box | `120000` |
+| HTML of /receivables/ | 136 KB | 12 KB gzipped |
+| first paint on Slow 4G, 4x CPU, DEBUG static (uncompressed), receivables / dashboard | 3.64 s / 3.61 s | 3.21 s / 3.43 s |
+| same, production-like (DEBUG off, WhiteNoise gzip, middleware on) | n/a | 1.2-1.9 s on the four heaviest pages |
+
+Also: return lines (name / three figures / two inputs; the last input was alone with a white notch), invoice picker rows of the payment form
+(two lines, amount at the far edge), `overscroll-behavior-y: contain` on the invoice pages (no measurement possible headless).
+Totals: 65,550 phone checks; reds are the 134 A4 print sheets and 5 states of one 60-character product name; the 22 drawer-row reds of round 3 are
+now a guard (rows must stay >= 36.5 px, D-097). Suspicions that did NOT survive measurement and were left alone: input `autocomplete`
+attributes (a browser's autofill popup cannot be measured headless), long product-form hints, safe-area insets (without `viewport-fit=cover` the
+browser already insets the page).

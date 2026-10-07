@@ -460,8 +460,8 @@ class ExpenseFilterForm(forms.Form):
         queryset=BankAccount.objects.filter(is_active=True),
         empty_label="— همهٔ حساب‌ها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0, widget=NumericInput())
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0, widget=NumericInput())
     status = forms.ChoiceField(
         required=False, label="وضعیت پرداخت",
         choices=[("", "همه"), ("owed", "پرداخت‌نشده (نسیه / چک در انتظار)"), ("paid", "پرداخت‌شده")],

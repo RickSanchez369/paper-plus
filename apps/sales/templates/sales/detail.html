@@ -174,7 +174,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
                 {% elif allocation.payment.is_credit_note %}{{ allocation.payment.note }}
                 {% else %}نقدی{% endif %}
                 {% if allocation.reversal_payment %}
-                  <span class="badge badge--bad">برگشت داده شد {{ allocation.reversal_payment.payment_date|jalali }}</span>
+                  <span class="badge badge--bad">برگشت داده شد <span class="is-token">{{ allocation.reversal_payment.payment_date|jalali }}</span></span>
                 {% endif %}
               </td>
             </tr>

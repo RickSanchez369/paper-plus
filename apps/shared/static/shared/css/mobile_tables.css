@@ -176,3 +176,49 @@
 @media (max-width: 720px) {
   .ident { white-space: normal; overflow-wrap: anywhere; }
 }
+
+/* ---- Round 4 (D-098): row tints belong to the whole card ----
+   Hover (which sticks after a tap on a touchscreen), focus, "overdue", "today" and an open form were painted on the cells; a card
+   whose last half-width cell is empty (642 of 1,134 card rows) then showed a white notch. Painted on the row, the card is one block. */
+@media (max-width: 720px) {
+  :root:root table.data-table[data-cards] tbody tr > td { background: transparent; }
+  :root:root table.data-table[data-cards] tbody tr:hover,
+  :root:root table.data-table[data-cards] tbody tr:focus-within { background: var(--row-hover); }
+  :root:root table.data-table[data-cards] tbody tr.is-overdue { background: var(--negative-100); }
+  :root:root table.data-table[data-cards] tbody tr.is-today { background: var(--warning-100); }
+  :root:root table.data-table[data-cards] tbody tr.is-overdue:hover,
+  :root:root table.data-table[data-cards] tbody tr.is-overdue:focus-within { background: var(--negative-200); }
+  :root:root table.data-table[data-cards] tbody tr.is-void:hover { background: var(--surface-tint); }
+  :root:root table.data-table[data-cards] tbody tr:has(details[open]) { background: var(--row-open); }
+}
+
+/* ---- Round 4: a return line is name / three figures / two inputs; the generic two-column card put the last input alone ---- */
+@media (max-width: 720px) {
+  :root:root table.data-table[data-cards] tr[data-return-row] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(2),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(3),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(4) { grid-column: span 2; }
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(5),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(6) { grid-column: span 3; }
+  .ret-qty { max-width: none; }
+}
+
+/* ---- Round 4: a document number, date or code that fits on one line is never split (a date over a lone digit): 63 distinct tokens
+   broke on the pages at 320-390 px. mobile.js marks single-token cells; the long-text safety net (overflow-wrap) stays for the rest. ---- */
+@media (max-width: 720px) {
+  .is-token { white-space: nowrap; overflow-wrap: normal; }
+  :root:root table.data-table[data-cards] td.is-token { white-space: nowrap; overflow-wrap: normal; }
+}
+
+/* ---- Round 4: the dashboard dues card was 9,177 px (11 screens) with the demo data; each group shows its first rows
+   (the earliest dates come first) and one button for the rest ---- */
+@media (max-width: 720px) {
+  #dues .is-folded tbody tr[data-more] { display: none; }
+  .dues-more { display: flex; width: 100%; min-height: 44px; margin-top: var(--space-2); justify-content: center; }
+}
+
+/* Round 4: an amount with its unit ("۹۷٬۴۳۸٬۴۰۰ تومان") in a cell is one unit; it split after a thousands separator at 320 px. */
+@media (max-width: 720px) {
+  .num > strong, td.num { overflow-wrap: normal; }
+  .num > strong { white-space: nowrap; }
+}
