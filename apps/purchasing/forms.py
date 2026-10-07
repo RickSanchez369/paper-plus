@@ -16,7 +16,7 @@ from apps.partners.models import Supplier
 from apps.payments.forms import ENTRY_METHOD_CHOICES, AccountSelect, InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
 from apps.products.models import Product
-from apps.shared.forms import JalaliDateField
+from apps.shared.forms import MAX_DAYS_AHEAD, JalaliDateField
 
 from .models import PurchaseInvoice, PurchaseItem, PurchasePaymentEntry
 
@@ -63,7 +63,7 @@ class PurchaseInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     """Header fields: who, when, the supplier's own invoice number. No
     discount field -- the model has none."""
 
-    invoice_date = JalaliDateField(label="تاریخ فاکتور")
+    invoice_date = JalaliDateField(label="تاریخ فاکتور", max_days_ahead=MAX_DAYS_AHEAD)
     # Freight (D-082): a tick reveals the amount. It is part of the total owed to the supplier and is
     # spread over the lines in their cost; unticked, whatever was typed is ignored.
     has_freight = forms.BooleanField(required=False, label="کرایه بار")

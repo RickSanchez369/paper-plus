@@ -36,7 +36,7 @@ from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
 from apps.products.models import PriceTier, Product
 from apps.products.units import split_units, units_phrase
-from apps.shared.forms import JalaliDateField
+from apps.shared.forms import MAX_DAYS_AHEAD, JalaliDateField
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 
@@ -90,7 +90,7 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     state (D-025) except the due date of an unpaid (نسیه) remainder.
     """
 
-    invoice_date = JalaliDateField(label="تاریخ فاکتور")
+    invoice_date = JalaliDateField(label="تاریخ فاکتور", max_days_ahead=MAX_DAYS_AHEAD)
     # BigIntegerField has no built-in non-negativity; only the DB
     # CheckConstraint (`sales_invoice_discount_non_negative`) enforces
     # discount_amount >= 0 -- declared explicitly so a negative discount

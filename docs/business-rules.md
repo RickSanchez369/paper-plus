@@ -153,4 +153,5 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-093 `Product.unit` is gone (packs are the only counting unit since D-081); the unit-conversion tooling was removed.
 - D-094 UI work is evolution only: preserve the design DNA, every change needs measured proof of a real UX gain (docs/UI_EVOLUTION.md).
 - D-095 Mobile pass: structure may change, models/data may not; drawer and identity frozen; every change measured with `tools/qa/mobile_audit.py`.
+- D-097 No zero price on invoice lines or opening cost (gift = 1 Toman); invoice/expense dates at most 30 days ahead; purchase cancel shows an effects dialog.
 - D-096 Mobile test suite (`tools/qa/mobile_suite/`); fixed costs repeat at most every 3,650 days / 120 months; opening stock <= 10^8 packs at <= 10^10 Toman.

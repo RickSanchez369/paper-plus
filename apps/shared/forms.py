@@ -53,6 +53,10 @@ class JalaliDateInput(forms.TextInput):
         return dates.format_date(value)
 
 
+# D-097: how far ahead an invoice or expense may be dated.
+MAX_DAYS_AHEAD = 30
+
+
 class JalaliDateField(forms.Field):
     """
     A date typed in Jalali, stored in Gregorian.
@@ -68,11 +72,18 @@ class JalaliDateField(forms.Field):
         "invalid": "تاریخ را به شکل ۱۴۰۵/۰۷/۰۳ وارد کنید.",
         "nonexistent": "این تاریخ در تقویم وجود ندارد.",
         "out_of_range": "سال تاریخ باید بین ۱۳۸۰ و ۱۴۵۰ باشد (تاریخ شمسی وارد کنید).",
+        "too_far_ahead": "تاریخ بیش از %(days)s روز بعد از امروز است؛ سال و ماه را بررسی کنید.",
     }
 
     # A Gregorian date typed by mistake ("2026/09/30" reads as Jalali year
     # 2026) or a slipped digit would otherwise date an invoice centuries away.
     MIN_YEAR, MAX_YEAR = 1380, 1450
+
+    def __init__(self, *args, max_days_ahead=None, **kwargs):
+        # D-097: a document date (invoice, expense) is never months ahead; a slipped digit (1415 for 1405)
+        # would hide it from every this-month list and report. Cheque due dates do not use this.
+        self.max_days_ahead = max_days_ahead
+        super().__init__(*args, **kwargs)
 
     def to_python(self, value):
         if value in self.empty_values:
@@ -88,6 +99,11 @@ class JalaliDateField(forms.Field):
             raise ValidationError(self.error_messages["invalid"], code="invalid")
         if not self.MIN_YEAR <= dates.to_jalali(parsed).year <= self.MAX_YEAR:
             raise ValidationError(self.error_messages["out_of_range"], code="out_of_range")
+        if self.max_days_ahead is not None and (parsed - timezone.localdate()).days > self.max_days_ahead:
+            raise ValidationError(
+                self.error_messages["too_far_ahead"], code="too_far_ahead",
+                params={"days": dates.to_persian_digits(self.max_days_ahead)},
+            )
         return parsed
 
 

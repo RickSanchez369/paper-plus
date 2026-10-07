@@ -46,6 +46,8 @@ and serves it on http://localhost:8001. It never touches PostgreSQL or `.env`. O
 `DEBUG=True` (otherwise `ALLOWED_HOSTS` is empty and the test client gets 400).
 
 ## Mobile layer (D-095)
+- `qa_30_zero_price_far_date`: price 0 and dates over 30 days ahead refused, purchase cancel dialog (D-097).
+- `python tools/qa/run_script.py qa_30_zero_price_far_date.py` runs a script on a throwaway SQLite copy of the suite's demo DB; plain `manage.py shell` would use the `.env` database.
 - `qa_29_input_bounds`: huge fixed-cost periods and opening stock are refused, never a 500 (D-096).
 - `qa_28_mobile_layer`: search folding (digits, ك/ي, word order), dashboard stock alert, phone stylesheets linked, dues card hook.
 - `python tools/qa/mobile_env.py NAME PORT` builds a throwaway demo DB under `tools/qa/.mobile/` and serves it (several can run at once).

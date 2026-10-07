@@ -350,33 +350,6 @@ def cancel_invoice(rec, w, dlg, idx, kind_):
     base = "/sales/" if kind_ == "sale" else "/purchasing/"
     w.drain()
     w.goto(f"{base}{inv.pk}/")
-    if kind_ == "purchase":
-        # purchases cancel through a plain window.confirm (sales have a dialog that lists every effect)
-        form = pg.locator('form[action$="/cancel/"]')
-        rec.check("cancel", f"{tag}: the cancel button is there for a superuser", form.count() == 1)
-        dlg.texts.clear()
-        dlg.accept = False
-        form.locator("button[type=submit]").tap()
-        pg.wait_for_timeout(400)
-        inv.refresh_from_db()
-        rec.check("cancel", f"{tag}: the confirm names what happens and says it cannot be undone", bool(dlg.texts) and "بازگشت" in dlg.texts[-1], dlg.texts)
-        rec.check("cancel", f"{tag}: dismissing keeps the invoice confirmed", inv.status == "confirmed", inv.status)
-        dlg.accept = True
-        try:
-            with pg.expect_navigation(timeout=10000):
-                form.locator("button[type=submit]").tap()
-        except Exception:
-            pass
-        pg.wait_for_load_state("networkidle")
-        inv.refresh_from_db()
-        rec.check("cancel", f"{tag}: cancelled", inv.status == "cancelled", (inv.status, D.visible_errors(pg)))
-        if inv.status == "cancelled":
-            for it in items:
-                rec.check("cancel", f"{tag}: stock of {it.product.sku} fell by {it.quantity}", stocks[it.product_id] - stock_of(it.product) == it.quantity, (stocks[it.product_id], stock_of(it.product)))
-        js, con, failed = w.drain()
-        rec.check("cancel", f"{tag}: no JS error / 5xx", not js and not [f for f in failed if f.startswith("5")], (js, failed))
-        rec.check("layout", f"{tag}: no horizontal overflow", D.page_overflow(pg) <= 0, D.page_overflow(pg))
-        return
     btn = pg.locator("[data-sp-dialog-open='cancel-dialog']")
     rec.check("cancel", f"{tag}: the cancel button is there for a superuser", btn.count() == 1)
     if not btn.count():
@@ -384,7 +357,7 @@ def cancel_invoice(rec, w, dlg, idx, kind_):
     btn.tap()
     pg.wait_for_selector("#cancel-dialog[open]")
     effects = pg.locator("#cancel-dialog .cancel-dialog__effects li").count()
-    rec.check("cancel", f"{tag}: the dialog lists what will happen ({effects} effects)", effects >= 1)
+    rec.check("cancel", f"{tag}: the dialog lists what will happen ({effects} effects)", effects >= 1)      # sales and purchases alike (D-097)
     fits = pg.evaluate("() => { const r = document.getElementById('cancel-dialog').getBoundingClientRect(); return r.left >= -1 && r.right <= innerWidth + 1 && r.height <= innerHeight + 2 || document.getElementById('cancel-dialog').scrollHeight > 0; }")
     rec.check("cancel", f"{tag}: the dialog fits the phone width", D.page_overflow(pg) <= 0 and fits)
     pg.locator("#cancel-dialog [data-sp-dialog-close]").tap()

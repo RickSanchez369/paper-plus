@@ -42,6 +42,7 @@ DATE_OPT = [(l, v, "accept" if l == "empty" else e) for l, v, e in DATE_REQ]
 
 
 # opening stock: empty / zero mean "no stock" for the box under test, but the cost partner is then orphaned, so they are refused too
+# D-097: an opening cost of 0 is refused (see the opening_unit_cost field below)
 OPEN_QTY = [("empty", "", "reject"), ("zero", "0", "reject"), ("one", "1", "accept"), ("twelve", "12", "accept"), ("million", "1000000", "accept"),
             ("over-the-cap", "200000000", "reject"), ("huge", "99999999999999999999", "reject"), ("negative", "-3", "reject"), ("decimal", "2.5", "reject"),
             ("persian", "۱۲", "accept"), ("text", "x", "reject")]
@@ -104,7 +105,7 @@ def specs():
             F("name", "text", True, "کالای فازی {u}"), F("sku", "text", True, "FZ{u}"), F("pack_per_carton", "count", True, "6"),
             F("default_selling_price", "money", True, "10000", zero_ok=True), F("wholesale_selling_price", "money", False, ""),
             F("retail_carton_price", "money", False, ""), F("wholesale_pack_price", "money", False, ""),
-            F("opening_cartons", "count", False, "", table=OPEN_QTY), F("opening_packs", "count", False, "", table=OPEN_QTY), F("opening_unit_cost", "money", False, "", zero_ok=True, table=[(l, v, e) for l, v, e in MONEY_OPT if l not in ("empty",)] + [("empty", "", "reject")])],
+            F("opening_cartons", "count", False, "", table=OPEN_QTY), F("opening_packs", "count", False, "", table=OPEN_QTY), F("opening_unit_cost", "money", False, "", zero_ok=True, table=[(l, v, "reject" if l == "zero" else e) for l, v, e in MONEY_OPT if l not in ("empty",)] + [("empty", "", "reject")])],
              count=lambda: Product.objects.count()),
         Spec("expense-new", "/expenses/new/", [
             F("expense_date", "date", True, "1405/07/10"), F("reason", "text", True, "هزینه فازی {u}"), F("amount", "money", True, "50000"),

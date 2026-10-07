@@ -44,7 +44,6 @@ def gen(seed=1406):
         add(f"supplier:{s[:12]}", sup=s, rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)])
     add("freight-only-spread", rows=[dict(sku="R-101", cartons=0, packs=5, up=2000), dict(sku="R-102", cartons=0, packs=10, up=3000)], freight=150000)
     add("long-supplier-invoice-number", rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], invno="N" * 120, expect="ok_or_error")
-    add("edge:zero-price-line", rows=[dict(sku="R-105", cartons=0, packs=3, up=0)], expect="ok_or_error")
     add("edge:credit-without-due-date", rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], pay=dict(k="credit", due=""), expect="ok_or_error")
     add("html-in-invoice-number", rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], invno="<b>x</b>&amp;\"'", expect="ok_or_error")
     bad = [
@@ -64,6 +63,10 @@ def gen(seed=1406):
         ("no-payment-method", dict(rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], pay=dict(k="none")), ["روش", "پرداخت"]),
         ("split-over-total", dict(rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], pay=dict(k="split_over_total", due="30")), ["مبلغ", "جمع"]),
         ("bad-date", dict(rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], date="1405/00/99"), ["تاریخ"]),
+        # D-097: a price of 0 and a date far ahead are refused
+        ("zero-price", dict(rows=[dict(sku="R-105", cartons=0, packs=3, up=0)]), ["صفر"]),
+        ("date-45-days-ahead", dict(rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], date=45), ["تاریخ"]),
+        ("date-11-years-ahead", dict(rows=[dict(sku="R-105", cartons=0, packs=3, up=3000)], date=4000), ["تاریخ"]),
     ]
     for tag, kw, words in bad:
         add("refuse:" + tag, expect="error", kw=words, **kw)
@@ -194,9 +197,6 @@ def run_one(b, rec, w, sc):
         if not (created == 1 and on_detail):
             return
     inv = PurchaseInvoice.objects.order_by("-created_at").first()
-    if sc["tag"] == "edge:zero-price-line":
-        rec.check("business-safety", f"{tag}: a purchase line typed with price 0 is refused or flagged (it books stock at cost 0 and inflates profit)", False,
-                  f"accepted: total {inv.total_amount}")
     rec.check("totals", f"{tag}: total equals oracle ({total})", inv.total_amount == total, f"db={inv.total_amount}")
     rec.check("totals", f"{tag}: freight equals oracle ({freight})", inv.freight_amount == freight, inv.freight_amount)
     rec.check("totals", f"{tag}: supplier is {sc['sup']}", inv.supplier.name == sc["sup"], inv.supplier.name)

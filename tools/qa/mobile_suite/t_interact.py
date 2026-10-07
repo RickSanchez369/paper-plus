@@ -34,9 +34,9 @@ def drawer(rec, w, path):
         rec.check("drawer", f"{tag}/{how}: panel sits inside the screen", box[0] >= -1 and box[1] <= box[3] + 1 and box[2] > 150, box)
         rec.check("drawer", f"{tag}/{how}: page behind is inert and the button says expanded", pg.evaluate("() => document.querySelector('.main').inert && document.querySelector('[data-nav-open]').getAttribute('aria-expanded') === 'true'"))
         rec.check("drawer", f"{tag}/{how}: focus moved inside the drawer", pg.evaluate("() => document.getElementById('site-nav').contains(document.activeElement)"))
-        # The drawer is frozen (D-065), so a short row is reported as a decision for the owner, not silently "fixed".
+        # The drawer is frozen (D-065) and its 37 px rows were kept on purpose (D-097): this only guards them against getting smaller.
         if how == "escape":
-          rec.check("needs-decision", f"{tag}: every menu link and the close button are 44px tall (drawer is frozen, D-065)", pg.evaluate("() => [...document.querySelectorAll('#site-nav .nav-link, #site-nav .nav-close')].every(a => a.getBoundingClientRect().height >= 43.5)"))
+            rec.check("drawer", f"{tag}: every menu link and the close button stay at least 36.5 px tall (frozen at 37 px, D-097)", pg.evaluate("() => [...document.querySelectorAll('#site-nav .nav-link, #site-nav .nav-close')].every(a => a.getBoundingClientRect().height >= 36.5)"))
         if how == "escape":
             pg.keyboard.press("Escape")
         elif how == "overlay":

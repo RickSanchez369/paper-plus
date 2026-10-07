@@ -197,6 +197,10 @@ class CartonPackItemFormMixin(forms.Form):
                     cleaned[price] = self.suggested_price(product, "carton") if count else 0
                 else:
                     cleaned[price] = self.suggested_price(product, "pack") if (count or not self.price_required) else 0
+            # D-097: a zero price on a part that is used is never a real price (a purchase at 0 would
+            # inflate profit later); a gift or sample is entered at 1 Toman.
+            if count and not cleaned.get(price) and price not in self.errors:
+                self.add_error(price, f"قیمت هر {label} نمی‌تواند صفر باشد (برای هدیه یا نمونه ۱ تومان بزنید).")
         return cleaned
 
 

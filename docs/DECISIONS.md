@@ -1496,3 +1496,18 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   repeat at most every 3,650 days / 120 months and remind at most 365 days ahead (`RecurringExpenseForm`), and an opening stock is
   limited to 10^8 packs at 10^10 Toman per pack (`InventoryProductForm`). Not decided here, left to Sina: a sale or purchase line priced
   0, an invoice dated years ahead, the 37 px drawer rows, and the purchase-cancel confirmation.
+
+### D-097: Zero prices and far-future dates refused, purchase cancel gets the effects dialog, drawer rows stay 37 px
+- Status: Final
+- Date: 2026-10-07
+- Decided by: Sina (answers to the four questions left open in D-096)
+- Decision: (1) A sale or purchase line whose used part (cartons or packs) has price 0, typed or filled from an unpriced product, is
+  refused ("قیمت ... نمی‌تواند صفر باشد"); an opening stock with cost 0 is refused too. A gift or sample is entered at 1 Toman
+  (`CartonPackItemFormMixin`, `InventoryProductForm`). (2) An invoice (sale, purchase) or expense dated more than 30 days after today is
+  refused (`JalaliDateField(max_days_ahead=MAX_DAYS_AHEAD)`); past dates and cheque due dates are unchanged. (3) The drawer keeps its
+  37 px rows and 40 px close button (frozen, D-065); the mobile suite now only guards that they do not shrink below 36.5 px.
+  (4) Cancelling a purchase opens the same effects dialog as a sale (stock leaving, payments refunded, cheques voided, supplier balance),
+  and says it fails when part of the goods was already sold; `cancel_purchase` itself is unchanged.
+- Alternatives rejected: allow price 0 after a confirmation (a free first layer is never right, a gift at 1 Toman is close enough);
+  lift the drawer rows to 44 px (no measured mis-tap, D-094).
+- Tests: `tools/qa/qa_30_zero_price_far_date.py` (26 checks) and the mobile suite scenarios `zero-price*`, `date-*-ahead`.

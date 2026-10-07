@@ -128,7 +128,7 @@ def scenarios(h):
     check("P16 absurdly large price does not crash (no 500)", outcomes[str(10**19)][0] != 500 and outcomes[str(2**63)][0] != 500, outcomes)
     c0 = n_inv()
     r = h.post_purchase(sup, [(a, 1, 0)], account=acct)
-    check("P16 a zero price is allowed (free goods) and creates a cost-0 layer", r.status_code == 302 and n_inv() == c0 + 1)
+    check("P16 a zero price is refused (D-097: a cost-0 layer would inflate profit; free goods go in at 1 Toman)", r.status_code == 200 and n_inv() == c0)
 
     # ---------------------------------------------------------------- header validation
     c0 = n_inv()

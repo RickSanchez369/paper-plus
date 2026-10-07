@@ -18,7 +18,7 @@ from django import forms
 from apps.shared.utils import format_toman
 
 from apps.shared.widgets import NumericInput
-from apps.shared.forms import JalaliDateField
+from apps.shared.forms import MAX_DAYS_AHEAD, JalaliDateField
 
 from .models import BankAccount, Cheque, Expense, Payment, RecurringExpense
 
@@ -486,7 +486,7 @@ class ExpenseForm(forms.ModelForm):
     `recurring` (hidden) ties the expense to a fixed cost it settles (D-073).
     """
 
-    expense_date = JalaliDateField(label="تاریخ")
+    expense_date = JalaliDateField(label="تاریخ", max_days_ahead=MAX_DAYS_AHEAD)
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",

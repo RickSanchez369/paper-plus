@@ -141,6 +141,10 @@ huge opening stock), duplicate ids and dangling `aria-describedby`, purchase pri
 scripts on SQLite. **Before deploying:** `manage.py update`, then on a real phone: sale entry with the keyboard open, a receivables payment,
 the purchase print sheet.
 
+**Batch 2026-10-07 D-097, on `dev` only:** Sina's answers to the four open questions: a line priced 0 (sale, purchase, opening cost) is refused
+(gift = 1 Toman), invoices/expenses dated more than 30 days ahead are refused, drawer rows stay 37 px, purchase cancel opens the sale-style
+effects dialog. `qa_30_zero_price_far_date` (26 checks) added; `tools/qa/run_script.py` runs any qa script on a throwaway SQLite copy.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
@@ -153,11 +157,7 @@ inventory_unit_report, convert_units --dry-run) was run end to end on the demo d
 (confirmed by Sina, D-091; the shared host has no PostgreSQL). Nothing was run on the host.
 
 ## Open items (raise with Sina before touching)
-- **Zero price on an invoice line (decision needed, found 2026-10-07):** a sale line typed with price 0 books a free line; a purchase
-  line with price 0 books stock at cost 0 (inflates profit later). Options: refuse, or ask for a confirmation. Same for opening stock cost 0.
-- **No upper bound on the invoice date:** an invoice dated 2037 is accepted (a typo of the year). Option: refuse more than N days ahead.
-- **Drawer rows are 37 px, its close button 40 px** (below the 44 px touch line); the drawer is frozen (D-065), so only Sina can lift it.
-- **Purchase cancel is a plain `confirm()`**, a sale gets a dialog listing stock, money and cheques; make them alike?
+- *(The four D-096 questions were answered 2026-10-07 and built as D-097: price 0 refused, dates > 30 days ahead refused, drawer stays 37 px, purchase cancel dialog.)*
 - **Real company details/logo for the printed invoice** — Sina will send them.
 - **USD rate on the host** — tgju is read with stdlib `urllib` (D-080); whether the shared host allows outbound HTTPS is
   untested, and the cron line `manage.py fetch_usd_rate` still has to be added there.

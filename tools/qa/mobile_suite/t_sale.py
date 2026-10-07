@@ -114,14 +114,17 @@ def gen(seed=1405):
         ("split-rows-over-total", dict(rows=[dict(sku="R-105", cartons=0, packs=2)], pay=dict(k="split_over_total", due="30")), ["مبلغ", "جمع"]),
         ("cheque-bad-due-text", dict(rows=[dict(sku="R-105", cartons=0, packs=2)], pay=dict(k="split_tr_cheque_credit", chq_due="zzz", due="30")), ["تاریخ", "سررسید"]),
         ("bad-invoice-date", dict(rows=[dict(sku="R-105", cartons=0, packs=2)], date="1405/13/45"), ["تاریخ"]),
+        # D-097: a price of 0 and a date far ahead are refused
+        ("zero-pack-price", dict(rows=[dict(sku="R-105", cartons=0, packs=2, up=0)]), ["صفر"]),
+        ("date-45-days-ahead", dict(rows=[dict(sku="R-105", cartons=0, packs=2)], date=45), ["تاریخ"]),
+        ("date-11-years-ahead", dict(rows=[dict(sku="R-105", cartons=0, packs=2)], date=4000), ["تاریخ"]),
         
     ]
     for tag, kw, words in bad:
         add("refuse:" + tag, expect="error", kw=words, **kw)
     # behaviours the app decides for itself; the oracle checks consistency whichever way it goes
-    add("edge:zero-price-line", rows=[dict(sku="R-105", cartons=0, packs=2, up=0)], expect="ok_or_error")
     add("edge:credit-without-due-date", rows=[dict(sku="R-105", cartons=0, packs=2)], pay=dict(k="credit", due=""), expect="ok_or_error")
-    add("edge:date-11-years-ahead", rows=[dict(sku="R-105", cartons=0, packs=2)], date=4000, expect="ok_or_error")
+    add("edge:date-29-days-ahead", rows=[dict(sku="R-105", cartons=0, packs=2)], date=29)      # D-097: up to 30 days ahead is fine
     add("edge:both-methods-typed-over-total", rows=[dict(sku="R-105", cartons=0, packs=2)], pay=dict(k="full_both_mismatch"), expect="ok_or_error")
     return S
 
@@ -323,12 +326,6 @@ def run_one(b, rec, w, sc):
         if not (created == 1 and on_detail):
             return
     inv = SalesInvoice.objects.order_by("-created_at").first()
-    if sc["tag"] == "edge:zero-price-line":
-        rec.check("business-safety", f"{tag}: a sale line typed with price 0 is refused or flagged (it silently books a free line)", False,
-                  f"accepted: line total {inv.total}")
-    if sc["tag"] == "edge:date-11-years-ahead":
-        rec.check("business-safety", f"{tag}: a typo like a year 11 years ahead is refused or flagged", False,
-                  f"accepted invoice dated {inv.invoice_date}")
     rec.check("totals", f"{tag}: invoice total equals oracle ({total})", inv.total == total, f"db={inv.total} oracle={total}")
     rec.check("totals", f"{tag}: discount stored as whole Toman ({disc_amount})", inv.discount_amount == disc_amount, inv.discount_amount)
     rec.check("totals", f"{tag}: price tier is {tier}", inv.price_tier == tier, inv.price_tier)

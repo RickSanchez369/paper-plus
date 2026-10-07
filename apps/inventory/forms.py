@@ -82,6 +82,9 @@ class InventoryProductForm(QuickProductForm):
         if not too_much and not too_dear:
             if quantity and cost is None:
                 self.add_error("opening_unit_cost", "همراه موجودی فعلی، بهای خرید هر بسته هم لازم است.")
+            elif quantity and cost == 0:
+                # D-097: a free first layer would make every later sale of it pure profit.
+                self.add_error("opening_unit_cost", "بهای خرید نمی‌تواند صفر باشد؛ بهای واقعی را وارد کنید.")
             if cost is not None and not quantity:
                 self.add_error("opening_cartons", "بها بدون مقدار معنایی ندارد؛ مقدار را وارد کنید یا بها را خالی بگذارید.")
         return cleaned
