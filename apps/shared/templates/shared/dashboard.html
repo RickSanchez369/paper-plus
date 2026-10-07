@@ -56,8 +56,8 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
   {# The one thing an owner must act on today goes first, not under eight tiles. #}
   {# One link per figure: a single "#dues" anchor left the overdue payables 1,300 px below where it landed. #}
   <div class="alert-strip">
-    {% if dues.receivable.overdue_total %}<a href="#dues-receivable">مطالبات سررسیدگذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></a>{% endif %}
-    {% if dues.payable.overdue_total %}<a href="#dues-payable">بدهی سررسیدگذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></a>{% endif %}
+    {% if dues.receivable.overdue_total %}<a href="#dues-receivable">مطالبات سررسید گذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></a>{% endif %}
+    {% if dues.payable.overdue_total %}<a href="#dues-payable">بدهی سررسید گذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></a>{% endif %}
     {% if cheques_incomplete.total_count %}<a href="#dues">{{ cheques_incomplete.total_count|fa_number }} چک نیازمند تکمیل</a>{% endif %}
   </div>
 {% endif %}

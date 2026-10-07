@@ -105,6 +105,17 @@
     .filter(td => { const c = getComputedStyle(td).backgroundColor; const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return false; const a = m[1].split(',').map(parseFloat); return a.length === 3 ? true : a[3] > 0.01; })
     .map(td => label(td)).slice(0, 4) : [];
 
+  // Round 5 (D-099): a row flex box drops the source space between a text label and an element next to it ("انتظار۳۳۳,۳۳۳"), and a badge
+  // squeezed by a narrow cell wrapped its label one letter per line (4+ lines). Both showed on every width, so they are checked everywhere.
+  out.glued = [...document.querySelectorAll('main *, header *')].filter(e => {
+    const cs = getComputedStyle(e);
+    if (!/flex/.test(cs.display) || cs.flexDirection.startsWith('column') || !shown(e)) return false;
+    const kids = [...e.childNodes].filter(k => (k.nodeType === 3 && k.textContent.trim()) || (k.nodeType === 1 && shown(k)));
+    return kids.some(k => k.nodeType === 3) && kids.some(k => k.nodeType === 1) && !(parseFloat(cs.columnGap) > 0);
+  }).map(e => label(e)).slice(0, 4);
+  out.squeezed_badges = [...document.querySelectorAll('.badge')].filter(shown)
+    .filter(b => b.getBoundingClientRect().height > 3.4 * (parseFloat(getComputedStyle(b).lineHeight) || 20) + 4).map(b => label(b)).slice(0, 4);
+
   // bottom clearance: scrolled to the end, the last piece of content must not sit under a fixed/sticky bottom bar
   scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'});
   const bars = [...document.querySelectorAll('.sale-dock, .undo-bar, [class*=dock], .toast')].filter(e => shown(e) && ['fixed', 'sticky'].includes(getComputedStyle(e).position));

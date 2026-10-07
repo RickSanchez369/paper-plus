@@ -65,6 +65,8 @@ def body(a, rec, b):
         rec.check("contrast", f"{tag} text contrast (solid backgrounds)", m["low_contrast_n"] == 0, m["low_contrast"])
         rec.check("bars", f"{tag} bottom bar covers no content", m["bar_cover"] == 0, m["bar_cover"])
         rec.check("text", f"{tag} header title is not cut", not m["title_cut"], m["title_cut"])
+        rec.check("text", f"{tag} a label and its figure keep a gap", not m["glued"], m["glued"])
+        rec.check("text", f"{tag} no badge squeezed to one letter per line", not m["squeezed_badges"], m["squeezed_badges"])
         rec.check("text", f"{tag} no number or date split across lines", not m["split_tokens"], m["split_tokens"])
         rec.check("cards", f"{tag} card cells carry no paint of their own (row tint is one block)", not m["card_notch"], m["card_notch"])
 

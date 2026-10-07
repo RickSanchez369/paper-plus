@@ -151,6 +151,7 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  column-gap: 0.35em;   /* flex items drop the source space between the label and the figure */
   color: inherit;
 }
 
@@ -190,6 +191,9 @@
     align-items: center;
     min-height: 44px;
   }
+
+  /* inline-flex swallowed the spaces: "انتظار۳۳۳,۳۳۳ تومان" ran together and the count sat a card-width away. */
+  :root:root .dues-legend a { flex-wrap: wrap; column-gap: 0.4em; }
 
   /* On the dark profit card the explanation link was cyan on navy and the negative figure a thin red. */
   .stat-card--primary .stat-card__more,

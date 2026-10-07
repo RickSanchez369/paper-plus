@@ -156,3 +156,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-098 Mobile round 4 (header title, amount filters take Persian digits, dues fold, no split numbers, gzip); no money or stock rule changed.
 - D-097 No zero price on invoice lines or opening cost (gift = 1 Toman); invoice/expense dates at most 30 days ahead; purchase cancel shows an effects dialog.
 - D-096 Mobile test suite (`tools/qa/mobile_suite/`); fixed costs repeat at most every 3,650 days / 120 months; opening stock <= 10^8 packs at <= 10^10 Toman.
+- D-099 Mobile round 5 (label/figure gaps, squeezed date badge, one-per-row payment shape cards on phones); no money or stock rule changed.

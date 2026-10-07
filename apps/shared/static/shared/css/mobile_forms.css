@@ -132,6 +132,9 @@
 
   /* Expense method cards: three equal rows (two columns pushed «چک» half out of the card). */
   .exb-voucher .payment-mode { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+  /* Sale/purchase payment shape: two 150 px cards wrapped the title to 6 lines (94 px text column); one card per row reads in 2. */
+  .payment-mode:has(.payment-mode__text) { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
 }
 
 @media (max-width: 720px) {

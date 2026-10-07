@@ -151,6 +151,10 @@ the dashboard dues card folds (9,177 -> 3,486 px), pay-form invoice rows and car
 **Before deploying:** `manage.py update`; `GZipMiddleware` is new, so check one page's `Content-Encoding` once on the host (a host that already
 compresses is unaffected).
 
+**Batch 2026-10-07 mobile round 5 (D-099), on `dev` only:** label/figure gaps (alert strip, dues legend, badges), a squeezed date badge, one-per-row payment shape
+cards on phones, one wording fix. Suite grew to 69,086 checks (two new guards); reds unchanged (134 A4 print sheets + one 60-character name). Run the suite in
+waves (pages+links+interact, sale+purchase, the rest): 22 workers at once time out at login. Desktop pixels change only by the badge/alert gaps.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or

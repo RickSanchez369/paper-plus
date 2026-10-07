@@ -1532,3 +1532,19 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   popup headless), the 60-character product name test case (clamped to the title's lines, the full name is in the page heading).
 - Tests: `tools/qa/qa_31_filters_gzip.py` (10 checks); the mobile suite now also checks that the header title is not cut, that no number or date is split
   across lines, that card cells carry no paint of their own, and the dues fold behaviour.
+
+### D-099: Mobile round 5, gaps and squeezed cards
+- Status: Final
+- Date: 2026-10-07
+- Decided by: Sina ("check again and make the phone side more responsive and comfortable")
+- Decision: the 69,086-check mobile suite was re-run (green except the known reds), then pages were read by eye at 390/320 px and every
+  suspicion was probed with a number. Four defects were real and are fixed in CSS/templates only (no model, service or URL change):
+  (1) a flex container drops the source space between a text label and an element next to it: the dashboard alert links, the dues legend of
+  receivables/payables and every `.badge` that carries a figure ("بستانکاری۲۵۰,۰۰۰") now have a column gap (the `.badge` dot margin became the
+  same gap); (2) a badge "label + date" in a narrow cell was squeezed to one letter per line (81 px tall) and now wraps the date under the label
+  (42 px); (3) the sale/purchase payment shape cards ("تسویهٔ کامل" / "تفکیکی / چک / نسیه") are one card per row on phones (title text column
+  94 px / 6 lines -> 192-213 px / 2 lines); (4) the dashboard alert wording «سررسیدگذشته» is now «سررسید گذشته» like the card below it.
+- Not changed on purpose: the 60-character product name in the header title (the full name is in the page heading), `.badge` wrapping for all
+  badges (tried: a plain `flex-wrap` wrapped the status dot onto its own line at 768 px, so it is limited to badges that carry a date).
+- Tests: the mobile suite now checks, on every page state and width, that a label and its figure keep a gap and that no badge is squeezed to
+  4+ lines. 69,086 checks; reds are the 134 A4 print sheets and 5 states of the 60-character name. `qa_14/19/24/28/31` pass.

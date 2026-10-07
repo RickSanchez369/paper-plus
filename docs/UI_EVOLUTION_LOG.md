@@ -291,3 +291,16 @@ Totals: 65,550 phone checks; reds are the 134 A4 print sheets and 5 states of on
 now a guard (rows must stay >= 36.5 px, D-097). Suspicions that did NOT survive measurement and were left alone: input `autocomplete`
 attributes (a browser's autofill popup cannot be measured headless), long product-form hints, safe-area insets (without `viewport-fit=cover` the
 browser already insets the page).
+
+## D-099 round 5: gaps and squeezed cards, 2026-10-07 (Sina: "check again, make it more responsive and comfortable on the phone")
+Method: the suite re-run in three light waves (one run with 22 workers at once timed out at login: load, not the app), then 14 pages read by eye
+before/after, then a probe per suspicion (`flex` boxes with text next to an element and no gap; elements 3+ lines tall under 110 px wide).
+
+| Measured | Before | After |
+|---|---|---|
+| flex label+figure boxes with no gap (dashboard alerts, dues legend x2 pages, badges with a figure) | 10 | 0 on every page state and width (suite check) |
+| «label + date» badge in the sale/purchase payment table at 390 px | 130 x 81 px, label broken per letter | 130 x 42 px |
+| payment shape cards on the sale form at 390 px: title/text column | 94 px wide, 6 lines (card about 145 px) | 192-213 px, 2 lines (two cards 43 px each) |
+
+Also: «سررسیدگذشته» -> «سررسید گذشته» on the dashboard. Tried and reverted: `flex-wrap` on every badge (the status dot wrapped alone onto its own line at
+768 px; now only on badges that carry a date). Suite: 69,086 checks, reds = 134 A4 print sheets + 5 states of the 60-character product name.

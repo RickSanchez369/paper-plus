@@ -532,6 +532,7 @@ summary:focus-visible,
 .badge {
   display: inline-flex;
   align-items: center;
+  column-gap: var(--space-1);   /* a flex container drops the space between "بستانکاری" and its figure */
   padding: 1px var(--space-2);
   border-radius: 999px;
   font-size: 12px;
@@ -539,6 +540,9 @@ summary:focus-visible,
   background: var(--ink-100);
   color: var(--ink-700);
 }
+
+/* A label + date badge ("برگشت داده شد ۱۴۰۵/۰۷/۱۵") in a narrow cell was squeezed to one letter per line; the date drops to its own line instead. */
+.badge:has(> .is-token) { flex-wrap: wrap; }
 
 .badge--pending { background: var(--warning-100); color: var(--warning-700); }
 .badge--good { background: var(--positive-100); color: var(--positive-700); }
@@ -551,7 +555,6 @@ summary:focus-visible,
   content: "";
   width: 6px;
   height: 6px;
-  margin-inline-end: var(--space-1);
   border-radius: 50%;
   background: currentColor;
 }
