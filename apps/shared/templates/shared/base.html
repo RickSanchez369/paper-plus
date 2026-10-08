@@ -5,14 +5,14 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ page_title|default:"پیپر پلاس" }}{% endblock %} | پیپر پلاس</title>
+  <title>{% block title %}{{ page_title|default:"کاغذ پلاس" }}{% endblock %} | کاغذ پلاس</title>
   <meta name="theme-color" content="#0a1f44">
-  <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <link rel="icon" type="image/png" href="{% static 'shared/img/favicon.png' %}">
   {% comment %} D-095: installable on a phone home screen (standalone window, own icon). No service worker: a ledger must never be served stale from a cache. {% endcomment %}
   <link rel="manifest" href="{% static 'shared/manifest.webmanifest' %}">
   <link rel="apple-touch-icon" href="{% static 'shared/img/apple-touch-icon.png' %}">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="پیپر پلاس">
+  <meta name="apple-mobile-web-app-title" content="کاغذ پلاس">
   <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   {% comment %} D-095: phone layer. Every rule sits in a media query, so desktop output is unchanged. {% endcomment %}
@@ -51,7 +51,7 @@ content. RTL is not a modifier here, it is the only direction. {% endcomment %}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
           {# Home link with the brand mark: the product name is otherwise only inside the closed drawer. Hidden on phones. #}
-          <a class="header__brand" href="{% url 'dashboard' %}" aria-label="پیپر پلاس، داشبورد">{% include "shared/_brand_mark.html" %}</a>
+          <a class="header__brand" href="{% url 'dashboard' %}" aria-label="کاغذ پلاس، داشبورد">{% include "shared/_brand_mark.html" %}</a>
           {% comment %} "بازگشت" goes one level UP (the parent list/page), never
              history.back(): the previous page may be a validation error. The chevron
              points right: "up one level" in an RTL page. The word is kept for

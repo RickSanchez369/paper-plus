@@ -3702,11 +3702,6 @@ nav.breadcrumbs,
   --scrim: rgb(10 31 68 / 55%);
   --ring-on-navy: #8fd8ff;
 
-  /* Brand mark (shared/_brand_mark.html): colours come from here, so it works on white and navy. */
-  --mark-tile: #0a1f44;
-  --mark-sheet: #fff;
-  --mark-fold: #c9e8f7;
-  --mark-accent: #26a9e0;
 
   color-scheme: light;  /* UA scrollbars and controls stay light even if the OS is dark */
 }
@@ -3810,25 +3805,21 @@ body.nav-open .nav-overlay:not([hidden]) {
   outline-color: var(--accent-700);
 }
 
-/* ---- G042: brand mark ---- */
-.brand-mark { width: 30px; height: 30px; flex-shrink: 0; display: block; }
-.brand-mark__tile { fill: var(--mark-tile); }
-.brand-mark__back { fill: none; stroke: var(--mark-accent); stroke-width: 1.6; opacity: 0.6; }
-.brand-mark__sheet { fill: var(--mark-sheet); }
-.brand-mark__fold { fill: var(--mark-fold); }
-.brand-mark__plus { fill: none; stroke: var(--mark-accent); stroke-width: 2.2; stroke-linecap: round; }
+/* ---- brand mark: the logo image (D-103) ---- */
+.brand-mark { height: 32px; width: auto; flex-shrink: 0; display: block; }
 
-/* On the navy drawer and sign-in backdrop the dark tile would vanish: use the lighter chrome tile. */
-.sidebar .brand-mark,
-.auth .brand-mark { --mark-tile: #213368; }
-
-.auth .brand-mark {
-  width: 56px;
-  height: 56px;
-  filter: drop-shadow(0 6px 14px rgb(38 169 224 / 35%));
+/* The logo is navy on transparent: on the navy drawer it sits on a white plate. */
+.sidebar .brand-mark {
+  height: 42px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--white);
 }
 
-.brand-mark--mono { --mark-tile: #000; --mark-sheet: #fff; --mark-fold: #999; --mark-accent: #fff; }
+.auth .brand-mark {
+  height: auto;
+  width: min(240px, 70%);
+}
 
 .header__brand {
   display: grid;
@@ -3838,7 +3829,7 @@ body.nav-open .nav-overlay:not([hidden]) {
 }
 
 .header__brand:hover { text-decoration: none; }
-.header__brand .brand-mark { width: 28px; height: 28px; }
+.header__brand .brand-mark { height: 30px; }
 
 /* Loading signal: a thin cyan line under the header while an htmx request is out (ui.js
    sets <html data-loading>). The delay keeps fast requests (search as you type) from flickering. */

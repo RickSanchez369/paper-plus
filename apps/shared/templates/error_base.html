@@ -5,8 +5,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %} | پیپر پلاس</title>
-  <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <title>{% block title %}{% endblock %} | کاغذ پلاس</title>
+  <link rel="icon" type="image/png" href="{% static 'shared/img/favicon.png' %}">
   <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
 </head>
@@ -18,7 +18,6 @@
     <div class="auth__card error-card">
       <div class="auth__brand">
         {% include "shared/_brand_mark.html" %}
-        <span class="auth__title">پیپر پلاس</span>
       </div>
       <p class="error-card__code num"><span class="sr-only">کد خطا </span>{% block code %}{% endblock %}</p>
       <h1>{% block title_h1 %}{% endblock %}</h1>

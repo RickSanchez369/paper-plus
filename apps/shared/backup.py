@@ -94,7 +94,7 @@ def restore_backup(path):
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
         if "manifest.json" not in names or "database.json" not in names:
-            raise ValueError("این فایل یک پشتیبان معتبر پیپر پلاس نیست.")
+            raise ValueError("این فایل یک پشتیبان معتبر کاغذ پلاس نیست.")
         manifest = json.loads(archive.read("manifest.json"))
         if manifest.get("format") != FORMAT_VERSION:
             raise ValueError("نسخهٔ فرمت این پشتیبان پشتیبانی نمی‌شود.")

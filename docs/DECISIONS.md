@@ -1610,3 +1610,13 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - **Sidebar:** «مطالبات و بدهی» and «هزینه‌ها» are single folded entries (`<details>`) that open to their views; the group holding the
   current page starts open.
 - Tests: `tools/qa/qa_33_remove_product_print_nav.py` (15). Purchase print sheet untouched (a plain internal copy).
+
+## D-103 Brand: «کاغذ پلاس» everywhere, the real logo, customer name only on the invoice (2026-10-08)
+- The product name is «کاغذ پلاس» in every screen, title, manifest, admin header, error page, backup message and the `COMPANY_NAME` default
+  (was «پیپر پلاس»). Code identifiers (`PaperPlusAdminSite`, repo and folder `paper-plus`) are technical names and stay. If the host `.env` sets
+  `COMPANY_NAME`, that value wins: change it there too.
+- The logo is Sina's image (`shared/img/logo.png`, transparent, name inside it): header, sidebar (on a white plate, since it is navy), sign-in and
+  error pages, the printed sales invoice (grayscale in the black-and-white mode). Favicon, home-screen and apple-touch icons use its three-sheet
+  mark on white (`favicon.png`, `icon-*.png`). The old SVG mark and `favicon.svg` are gone. Colours and layout (D-062/D-065) are unchanged; the
+  invoice keeps its green accents.
+- The printed sales invoice shows the customer's name only (no phone, no address); the company's own phones stay in the footer.

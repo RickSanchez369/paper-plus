@@ -111,24 +111,12 @@
   gap: 3mm;
 }
 
-.inv__brand-name {
-  font-size: 21pt;
-  font-weight: 800;
-  color: var(--inv-navy);
-  white-space: nowrap;
-}
-
+/* The real logo (D-103), 900x367 px source: sharp even at 300 dpi. */
 .inv__logo {
-  width: 17mm;
-  height: 17mm;
+  display: block;
+  width: 56mm;
+  height: auto;
 }
-
-.inv__logo-back { fill: var(--inv-green-mid); }
-.inv__logo-sheet { fill: var(--inv-paper); stroke: var(--inv-navy); stroke-width: 2.4; }
-.inv__logo-fold { fill: var(--inv-green-pale); stroke: var(--inv-navy); stroke-width: 2.4; stroke-linejoin: round; }
-.inv__logo-line { fill: none; stroke: var(--inv-navy); stroke-width: 2.4; stroke-linecap: round; }
-.inv__logo-plus-bg { fill: var(--inv-green); }
-.inv__logo-plus { fill: none; stroke: var(--inv-paper); stroke-width: 3; stroke-linecap: round; }
 
 /* ---- invoice details and buyer */
 .inv__info {
@@ -219,8 +207,7 @@
 .inv--dense .inv__lines td { font-size: 8pt; line-height: 1.3; }
 .inv--dense .inv__head { min-height: 17mm; }
 .inv--dense .inv__title { font-size: 20pt; }
-.inv--dense .inv__brand-name { font-size: 17pt; }
-.inv--dense .inv__logo { width: 13mm; height: 13mm; }
+.inv--dense .inv__logo { width: 40mm; }
 .inv--dense .inv__info { margin: 2mm 0 3mm; font-size: 9pt; line-height: 1.5; }
 .inv--dense .inv__lines th { padding-block: 1.6mm; }
 .inv--dense .inv__middle { font-size: 9pt; }
@@ -449,9 +436,7 @@
 .inv--mono .inv__words { border-inline-start-color: #000000; }
 .inv--mono .inv__foot { background: #ffffff; color: #000000; border-top: 0.5mm solid #000000; }
 .inv--mono .inv__icon { border: 0.3mm solid #000000; }
-.inv--mono .inv__logo-back { fill: #e0e0e0; }
-.inv--mono .inv__logo-plus-bg { fill: #000000; }
-.inv--mono .inv__logo-fold { fill: #ffffff; }
+.inv--mono .inv__logo { filter: grayscale(1) contrast(1.1); }
 
 @media print {
   /* The page padding (print_invoice.css) would push the 297 mm sheet onto a second page;

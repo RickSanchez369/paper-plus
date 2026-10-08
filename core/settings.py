@@ -154,7 +154,7 @@ USD_RATE_STALE_HOURS = env.int("USD_RATE_STALE_HOURS", default=12)
 # Who issues the printed sales invoice. Read from .env so a host can change it
 # without a code update; an empty value simply leaves that line off the paper.
 COMPANY = {
-    "name": env.str("COMPANY_NAME", default="پیپر پلاس"),
+    "name": env.str("COMPANY_NAME", default="کاغذ پلاس"),
     "legal_name": env.str("COMPANY_LEGAL_NAME", default=""),
     "economic_code": env.str("COMPANY_ECONOMIC_CODE", default=""),
     "registration_no": env.str("COMPANY_REGISTRATION_NO", default=""),

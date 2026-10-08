@@ -22,8 +22,8 @@ from django.contrib.admin.apps import AdminConfig
 class PaperPlusAdminSite(AdminSite):
     """Django admin, reachable by active superusers only."""
 
-    site_header = "مدیریت پیپر پلاس"
-    site_title = "پیپر پلاس"
+    site_header = "مدیریت کاغذ پلاس"
+    site_title = "کاغذ پلاس"
     index_title = "پنل فنی"
 
     def has_permission(self, request):

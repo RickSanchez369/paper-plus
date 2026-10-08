@@ -68,7 +68,7 @@ def scenarios(h):
     r = h.c.get("/")
     body = text(r)
     check("U10 active nav link says aria-current", 'aria-current="true"' in body)
-    check("U11 shell loads ui.js and the favicon", "shared/js/ui.js" in body and "shared/img/favicon.svg" in body)
+    check("U11 shell loads ui.js and the favicon", "shared/js/ui.js" in body and "shared/img/favicon.png" in body)
     check("U11 messages are a live region", True if "messages" not in body else 'aria-live="polite"' in body)
     check("U12 dashboard opens with a labelled tile group", has(r, "عملکرد"))
 

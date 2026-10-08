@@ -1,4 +1,4 @@
-# Paper Plus
+# Kaghaz Plus (کاغذ پلاس)
 
 A single-business web application for a paper-products trading company:
 sales, purchasing, inventory (real FIFO costing), payments, cheques,

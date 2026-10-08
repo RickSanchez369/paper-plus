@@ -47,5 +47,17 @@ def scenarios(h):
     check("NV02 folded groups are closed elsewhere", "nav-fold\">" in body or 'nav-group nav-fold"' in body and 'nav-fold" open' not in body)
     check("NV03 expenses group is folded too", body.count("nav-fold__summary") == 2, body.count("nav-fold__summary"))
 
+    # ---- brand (D-103)
+    cust2 = h.customer("مشتری فقط نام", phone="09121112233", address="نشانی آزمون برند")
+    h.post_sale(cust2, [(stocked, 1, 900)], account=acct)
+    inv2 = SalesInvoice.objects.filter(customer=cust2).order_by("-created_at").first()
+    body = text(h.c.get(f"/sales/{inv2.pk}/print/"))
+    check("BR01 the invoice shows the customer name", "مشتری فقط نام" in body)
+    check("BR02 but not the customer's phone or address", "09121112233" not in body and "۰۹۱۲۱۱۱۲۲۳۳" not in body and "نشانی آزمون برند" not in body)
+    check("BR03 the invoice carries the real logo", "shared/img/logo.png" in body and "inv__logo-sheet" not in body)
+    dash = text(h.c.get("/"))
+    check("BR04 the app says کاغذ پلاس and never پیپر پلاس", "کاغذ پلاس" in dash and "پیپر" not in dash and "logo.png" in dash)
+    check("BR05 the sign-in page too", "پیپر" not in text(h.anon.get("/login/")))
+
 
 run("remove_product_print_nav", scenarios)
