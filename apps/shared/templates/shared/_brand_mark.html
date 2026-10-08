@@ -1,13 +1,5 @@
-{% comment %}
-The brand mark: a paper sheet with a plus, drawn as paths so it never depends
-on a font (the old mark was the letter "پ" in a coloured box). Colours come
-from CSS variables (.brand-mark in app.css), so the same markup works on the
-navy drawer, the white header and the sign-in page.
-{% endcomment %}
-<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-  <rect class="brand-mark__tile" width="32" height="32" rx="9"/>
-  <rect class="brand-mark__back" x="8" y="5.5" width="14" height="18" rx="2.5"/>
-  <path class="brand-mark__sheet" d="M11.5 9h8l4.5 4.5V25a2 2 0 0 1-2 2h-10.5a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2z"/>
-  <path class="brand-mark__fold" d="M19.5 9v3a1.5 1.5 0 0 0 1.5 1.5h3z"/>
-  <path class="brand-mark__plus" d="M16.8 17v6.5M13.55 20.25h6.5"/>
-</svg>
+{% load static %}{% comment %}
+The brand mark is the real logo (D-103): one transparent PNG that already carries the name
+"کاغذ پلاس", so no text sits beside it. Its navy parts vanish on the dark drawer; there the
+CSS puts it on a white plate (.sidebar .brand-mark). Size per place lives in app.css.
+{% endcomment %}<img class="brand-mark" src="{% static 'shared/img/logo.png' %}" width="900" height="367" alt="کاغذ پلاس" decoding="async">

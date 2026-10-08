@@ -5,8 +5,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ورود | پیپر پلاس</title>
-  <link rel="icon" type="image/svg+xml" href="{% static 'shared/img/favicon.svg' %}">
+  <title>ورود | کاغذ پلاس</title>
+  <link rel="icon" type="image/png" href="{% static 'shared/img/favicon.png' %}">
   <link rel="preload" href="{% static 'shared/fonts/Vazirmatn.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
 </head>
@@ -14,8 +14,8 @@
   <main class="auth auth--split">
     {% comment %} Brand pane: wide screens only (CSS hides it on phones, where the
        card stays alone). It only describes what is already in the product. {% endcomment %}
-    <section class="auth__aside" aria-label="درباره پیپر پلاس">
-      <p class="auth__kicker">پیپر پلاس</p>
+    <section class="auth__aside" aria-label="درباره کاغذ پلاس">
+      <p class="auth__kicker">کاغذ پلاس</p>
       <p class="auth__pitch">فروش، انبار و چک‌ها؛ همه در یک نگاه</p>
       <ul class="auth__facts">
         <li>فاکتور فروش و خرید با محاسبهٔ خودکار</li>
@@ -29,7 +29,7 @@
     <div class="auth__card">
       <div class="auth__brand">
         {% include "shared/_brand_mark.html" %}
-        <h1 class="auth__title">پیپر پلاس</h1>
+        <h1 class="sr-only">کاغذ پلاس</h1>
         <span class="auth__lede">ورود به سامانهٔ مدیریت فروش و انبار</span>
       </div>
 

@@ -27,7 +27,7 @@ def scenarios(h):
     r = h.c.get(url)
     check("PR02 renders for a signed-in user", r.status_code == 200)
     check("PR03 has both stamp-and-signature boxes", has(r, "مهر و امضای فروشنده") and has(r, "مهر و امضای خریدار"))
-    check("PR04 buyer name and address print", has(r, cust.name) and has(r, "تهران، خیابان آزادی"))
+    check("PR04 only the buyer name prints (D-103: no address)", has(r, cust.name) and not has(r, "تهران، خیابان آزادی"))
     check("PR05 amount in words: 3000-500 = 2500", has(r, "دو هزار و پانصد تومان"))
     check("PR06 discount line shows, note prints", has(r, "تخفیف") and has(r, "تحویل درب انبار"))
     # The on-screen (no-print) note may name a missing field; the printed header must not carry the label.

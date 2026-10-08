@@ -65,16 +65,8 @@ deliberately not printed (D-088): it is for the owner, on the detail page.
         <p class="inv__subtitle">فروش {{ invoice.get_price_tier_display }}{% if company.legal_name %} · {{ company.legal_name }}{% endif %}</p>
       </div>
       <div class="inv__brand">
-        {# The paper logo: two stacked sheets with a folded corner and a plus. #}
-        <svg class="inv__logo" viewBox="0 0 64 64" aria-hidden="true">
-          <rect class="inv__logo-back" x="14" y="6" width="36" height="46" rx="4" transform="rotate(-8 32 29)"/>
-          <path class="inv__logo-sheet" d="M18 12h22l10 10v32a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z"/>
-          <path class="inv__logo-fold" d="M40 12v8a2 2 0 0 0 2 2h8z"/>
-          <path class="inv__logo-line" d="M21 30h16M21 37h20M21 44h12"/>
-          <circle class="inv__logo-plus-bg" cx="46" cy="48" r="10"/>
-          <path class="inv__logo-plus" d="M46 42.5v11M40.5 48h11"/>
-        </svg>
-        <span class="inv__brand-name">{{ company.brand }}</span>
+        {# The real logo (D-103); it already carries the brand name. #}
+        <img class="inv__logo" src="{% static 'shared/img/logo.png' %}" alt="{{ company.brand }}">
       </div>
     </header>
 
@@ -87,8 +79,6 @@ deliberately not printed (D-088): it is for the owner, on the detail page.
       </dl>
       <dl class="inv__buyer">
         <div><dt>نام مشتری</dt><dd>{{ invoice.customer.name }}</dd></div>
-        {% if invoice.customer.phone %}<div><dt>تلفن</dt><dd class="num">{{ invoice.customer.phone|fa_digits }}</dd></div>{% endif %}
-        {% if invoice.customer.address %}<div class="inv__wide"><dt>نشانی</dt><dd>{{ invoice.customer.address }}</dd></div>{% endif %}
         {% if company.economic_code %}<div><dt>شمارهٔ اقتصادی فروشنده</dt><dd class="num">{{ company.economic_code|fa_digits }}</dd></div>{% endif %}
       </dl>
     </section>

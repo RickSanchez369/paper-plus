@@ -6,7 +6,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>فاکتور {{ invoice.invoice_number }} | پیپر پلاس</title>
+  <title>فاکتور {{ invoice.invoice_number }} | کاغذ پلاس</title>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
 </head>
@@ -16,7 +16,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
 
   <div class="print-invoice">
     <header class="print-invoice__head">
-      <h1>پیپر پلاس</h1>
+      <h1>کاغذ پلاس</h1>
       <div>
         <p>فاکتور خرید شمارهٔ {{ invoice.invoice_number|fa_digits }}</p>
         <p>تاریخ: {{ invoice.invoice_date|jalali_long }}</p>

@@ -7,6 +7,7 @@ line. Read-only helpers for SalesPrintView; nothing here writes.
 from django.conf import settings
 
 from apps.payments.models import BankAccount, Cheque
+from apps.shared.dates import format_date
 
 # A blank .env key must not blank the paper: these are the owner's own details.
 _DEFAULTS = {
@@ -77,13 +78,18 @@ def settlement_rows(invoice):
         if payment.is_credit_note:  # value of goods brought back (D-089)
             label, detail = "مرجوعی", payment.note.rsplit(" ", 1)[-1]
         elif cheque is not None:
-            label, detail = "چک", " · ".join(x for x in (cheque.cheque_number, cheque.bank_name) if x)
+            # A cheque that already cleared shows its number AND the date it fell due; a pending one
+            # shows the due date in the date column.
+            due = f"سررسید {format_date(cheque.due_date)}" if cheque.due_date else ""
+            label, detail = "چک", " · ".join(x for x in (cheque.cheque_number, cheque.bank_name, due) if x)
         elif invoice.confirmed_at and payment.created_at < invoice.confirmed_at:
             label, detail = "از بستانکاری قبلی", ""
-        elif payment.bank_account and payment.bank_account.account_type == BankAccount.AccountType.POS:
-            label, detail = "کارت‌خوان", ""
         else:
-            label, detail = "حواله بانکی", ""
+            # Which account the money went to: name and number, so the paper says where to look.
+            account = payment.bank_account
+            detail = " · ".join(x for x in (account.name, account.account_number) if x) if account else ""
+            is_pos = account is not None and account.account_type == BankAccount.AccountType.POS
+            label = "کارت‌خوان" if is_pos else "حواله بانکی"
         rows.append({"label": label, "detail": detail, "date": payment.payment_date,
                      "amount": allocation.amount, "state": "پرداخت شد"})
 
