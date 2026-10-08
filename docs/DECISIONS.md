@@ -1620,3 +1620,12 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   mark on white (`favicon.png`, `icon-*.png`). The old SVG mark and `favicon.svg` are gone. Colours and layout (D-062/D-065) are unchanged; the
   invoice keeps its green accents.
 - The printed sales invoice shows the customer's name only (no phone, no address); the company's own phones stay in the footer.
+
+## D-104 Sales invoice print layout and payment details (2026-10-08)
+- The payment/terms block and the totals now sit just above the signature boxes, pinned to the bottom of the A4 sheet; the free height opens
+  between the table and that block (`.inv__middle { margin-top: auto }`).
+- Row spacing follows the line count (server `density`): up to 4 lines roomy, 5-6 airy, 7-8 snug, 9-10 close, 11+ the old compact/dense/tiny steps.
+  Sizes were measured so each tier leaves a few mm of gap; the JS fit (tighter steps, then zoom) still guarantees one sheet.
+- Payment rows name where the money went: card reader and bank transfer show the account name and number; a cleared cheque shows its number and
+  due date (a pending one shows it in the date column); the credit part shows its due date.
+- Tests: `qa_33` PL01..PL06.

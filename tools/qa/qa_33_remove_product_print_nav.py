@@ -59,5 +59,29 @@ def scenarios(h):
     check("BR04 the app says کاغذ پلاس and never پیپر پلاس", "کاغذ پلاس" in dash and "پیپر" not in dash and "logo.png" in dash)
     check("BR05 the sign-in page too", "پیپر" not in text(h.anon.get("/login/")))
 
+    # ---- print layout and payment details (D-104)
+    import datetime, jdatetime
+    from apps.payments.models import BankAccount
+    pos = h.account("کارت‌خوان آزمون", kind="pos")
+    cur = h.account("حساب جاری آزمون")
+    c3 = h.customer("مشتری روش‌ها")
+    due = jdatetime.date.fromgregorian(date=datetime.date.today() + datetime.timedelta(days=9)).strftime("%Y/%m/%d")
+    prods = [h.product(price=100000, stock=10, cost=1000) for _ in range(3)]
+    h.post_sale(c3, [(p, 1, 100000) for p in prods], extra={"pos_account": str(pos.pk), "transfer_account": str(cur.pk), "pos_amount": "100000"})
+    inv3 = SalesInvoice.objects.filter(customer=c3).order_by("-created_at").first()
+    body = text(h.c.get(f"/sales/{inv3.pk}/print/"))
+    check("PL01 a card-reader row names its account number", pos.account_number in body or digits_fa(pos.account_number) in body)
+    check("PL02 a transfer row names the account it went to", cur.account_number in body or digits_fa(cur.account_number) in body)
+    check("PL03 few lines print roomy rows", "inv inv--roomy" in body)
+    c4 = h.customer("مشتری چک و نسیه")
+    h.post_sale(c4, [(prods[0], 2, 100000)], mode="split",
+                payments=[{"method": "cheque", "amount": "50000", "cheque_number": "778899", "due_date": due}], credit_due=due)
+    inv4 = SalesInvoice.objects.filter(customer=c4).order_by("-created_at").first()
+    body = text(h.c.get(f"/sales/{inv4.pk}/print/"))
+    check("PL04 a pending cheque shows its number", "778899" in body or digits_fa("778899") in body)
+    check("PL05 the credit part shows its due date", digits_fa(due) in body or due in body)
+    html = body
+    check("PL06 payment and totals come right before the signatures (below the table)", html.index("inv__middle") < html.index("inv__bottom") and html.index("inv__lines") < html.index("inv__middle"))
+
 
 run("remove_product_print_nav", scenarios)

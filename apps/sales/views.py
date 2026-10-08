@@ -373,8 +373,8 @@ class SalesPrintView(LoginRequiredMixin, DetailView):
         context.update({
             "company": company_print_info(),
             "items": items,
-            # Long invoices shrink their rows so the paper stays one A4 sheet (D-088).
-            "density": "dense inv--tiny" if len(items) > 30 else "dense" if len(items) > 18 else "compact" if len(items) > 10 else "",
+            # Few lines get airy rows; long invoices shrink theirs so the paper stays one A4 sheet (D-088, D-104).
+            "density": "dense inv--tiny" if len(items) > 30 else "dense" if len(items) > 18 else "compact" if len(items) > 10 else "close" if len(items) > 8 else "snug" if len(items) > 6 else "airy" if len(items) > 4 else "roomy",
             "settlement": settlement_rows(invoice),
             "thank_you": thank_you_line(invoice),
             "printed_on": timezone.localdate(),

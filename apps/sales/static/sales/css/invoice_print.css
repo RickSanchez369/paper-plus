@@ -200,6 +200,16 @@
 
 .inv__lines tr { break-inside: avoid; }
 
+/* Few lines get open rows, since the sheet has the room (D-104): up to 4 roomy, 5-6 airy, 7-8 snug,
+   9-10 close; from 11 lines on the tighter steps below take over. Sizes were measured so each tier
+   still leaves a few mm between the table and the payment block. */
+.inv--roomy { --inv-row-gap: 3mm; --inv-row-pad: 4.2mm; }
+.inv--roomy .inv__lines td { font-size: 10.5pt; }
+.inv--airy { --inv-row-gap: 2.4mm; --inv-row-pad: 3.2mm; }
+.inv--snug { --inv-row-gap: 1.3mm; --inv-row-pad: 1.9mm; }
+.inv--close { --inv-row-gap: 1.1mm; --inv-row-pad: 1.6mm; }
+.inv--close .inv__lines td { font-size: 9pt; line-height: 1.45; }
+
 /* Long invoices: tighter rows and type, so the page stays one sheet. */
 .inv--compact { --inv-row-gap: 0.9mm; --inv-row-pad: 1.2mm; }
 .inv--compact .inv__lines td { font-size: 9pt; line-height: 1.45; }
@@ -224,11 +234,15 @@
 .inv--tiny { --inv-row-gap: 0.2mm; --inv-row-pad: 0.2mm; }
 
 /* ---- payment, terms, totals */
+/* D-104: payment/terms and the totals sit just above the signatures, pinned to the bottom of the
+   sheet (the auto top margin takes all the free height); the empty space opens between the table and
+   this block instead. */
 .inv__middle {
   display: grid;
   grid-template-columns: 1.35fr 1fr;
   gap: 7mm;
-  margin-top: 1mm;
+  margin-top: auto;
+  padding-top: 5mm;
 }
 
 .inv__h {
@@ -308,7 +322,6 @@
 
 /* ---- signatures and thanks: pushed to the bottom of the sheet */
 .inv__bottom {
-  margin-top: auto;
   padding-top: 4mm;
 }
 

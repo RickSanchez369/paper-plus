@@ -173,6 +173,9 @@ Checked: `qa_33` (15), `qa_14`, `qa_04`, `qa_03`, `qa_24`, `qa_28`; browser: 120
 the sales invoice prints the customer's name only. Checked: `qa_14`, `qa_24`, `qa_28`, `qa_07`, `qa_33` (20); browser: sign-in, drawer, invoice. **Before deploying:** `manage.py update` (static files);
 if the host `.env` has `COMPANY_NAME`, change it to «کاغذ پلاس».
 
+**Batch 2026-10-08 D-104, on `dev` only:** sales print layout (payment + totals above the signatures, spacing by line count, still one sheet from 4 to 90 lines) and
+account numbers / cheque and credit due dates in the payment rows. Checked: `qa_33` (26), `qa_14`; browser: 4..10, 14, 25, 40, 90 lines all fit.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or
