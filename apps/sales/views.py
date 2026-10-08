@@ -26,7 +26,7 @@ from apps.inventory.selectors import get_average_cost_map, get_stock_map
 from apps.partners.forms import QuickCustomerForm
 from apps.partners.models import Customer
 from apps.products.forms import excluded_product_ids
-from apps.products.models import PriceTier, Product
+from apps.products.models import Product
 from apps.payments.selectors import get_credit_map
 from apps.shared import dates
 from apps.shared.forms import DateRangeForm
@@ -182,9 +182,10 @@ class ProductSearchView(LoginRequiredMixin, View):
             {
                 "product": p,
                 "stock": stock_map.get(p.pk, 0),
-                # All four prices ride on the result so the row can price cartons and packs
-                # on either sale type, and switch type, without a second request (D-081, D-090).
-                "prices": {key: cell["price"] for key, cell in p.price_grid.items()},
+                # Both prices ride on the result so a picked row fills its pack and carton prices
+                # without a second request (D-081, D-100).
+                "pack_price": p.pack_price,
+                "carton_price": p.carton_price,
                 "cost": cost_map.get(p.pk),
             }
             for p in products
@@ -202,21 +203,6 @@ def _is_uuid(value):
     return True
 
 
-def _posted_tier(data):
-    """The sale type a posted sale form asks for: its radio, else the chosen customer's type, else retail."""
-    tier = data.get("price_tier")
-    if tier in PriceTier.values:
-        return tier
-    pk = data.get("customer", "")
-    customer = Customer.objects.filter(pk=pk).only("price_tier").first() if _is_uuid(pk) else None
-    return customer.price_tier if customer else PriceTier.RETAIL
-
-
-def _customer_tiers():
-    """{customer pk: default sale type} for the new-sale page: picking a customer preselects it (D-090)."""
-    return {str(pk): tier for pk, tier in Customer.objects.filter(is_active=True).values_list("pk", "price_tier")}
-
-
 def _empty_forms():
     return {
         # JalaliDateField stores/reads Gregorian (D-004); dates.today()
@@ -227,7 +213,6 @@ def _empty_forms():
         "quick_customer_form": QuickCustomerForm(),
         "quick_customer_url": reverse("customers:quick_new"),
         "party_credits": get_credit_map(Customer),
-        "customer_tiers": _customer_tiers(),
     }
 
 
@@ -261,8 +246,8 @@ class SalesCreateView(LoginRequiredMixin, View):
 
     def post(self, request):
         invoice_form = SaleInvoiceForm(request.POST)
-        # Blank line prices are filled from the sale type (D-090): the posted one, else the customer's.
-        item_formset = SaleItemFormSet(request.POST, prefix="items", form_kwargs={"price_tier": _posted_tier(request.POST)})
+        # Blank line prices are filled from the product by the unit typed (D-100).
+        item_formset = SaleItemFormSet(request.POST, prefix="items")
         payment_formset = SalesPaymentEntryFormSet(request.POST, prefix="payments")
 
         forms_valid = invoice_form.is_valid() and item_formset.is_valid()
@@ -315,7 +300,6 @@ class SalesCreateView(LoginRequiredMixin, View):
             "quick_customer_form": QuickCustomerForm(),
             "quick_customer_url": reverse("customers:quick_new"),
             "party_credits": get_credit_map(Customer),
-            "customer_tiers": _customer_tiers(),
         }
         return render(request, self.template_name, context)
 
@@ -345,7 +329,7 @@ class SalesDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["can_cancel"] = (
             self.object.status == SalesInvoice.Status.CONFIRMED and is_privileged(self.request.user)
-            and not self.object.returns.exists()  # a return blocks cancelling (D-089)
+            and not self.object.returns.filter(status="active").exists()  # an active return blocks cancelling (D-089, D-101)
         )
         return context
 

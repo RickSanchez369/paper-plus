@@ -22,6 +22,8 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
   <div class="hero__actions">
     <a href="{% url 'sales:new' %}" class="btn btn--light">{% icon "plus" %}فاکتور فروش جدید</a>
     <a href="{% url 'purchasing:new' %}" class="btn btn--ghost">{% icon "plus" %}فاکتور خرید جدید</a>
+    {# Collecting a debt is the most frequent job after selling; it was 4-5 gestures from here (strip, scroll, swipe, tap). #}
+    <a href="{% url 'receivables:list' %}#dues-parties" class="btn btn--ghost">{% icon "pay" %}ثبت دریافت از مشتری</a>
   </div>
 </section>
 
@@ -52,29 +54,37 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
 
 {% if dues.receivable.overdue_total or dues.payable.overdue_total or cheques_incomplete.total_count %}
   {# The one thing an owner must act on today goes first, not under eight tiles. #}
-  <a class="alert-strip" href="#dues">
-    {% if dues.receivable.overdue_total %}<span>مطالبات سررسیدگذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></span>{% endif %}
-    {% if dues.payable.overdue_total %}<span>بدهی سررسیدگذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></span>{% endif %}
-    {% if cheques_incomplete.total_count %}<span>{{ cheques_incomplete.total_count|fa_number }} چک نیازمند تکمیل</span>{% endif %}
+  {# One link per figure: a single "#dues" anchor left the overdue payables 1,300 px below where it landed. #}
+  <div class="alert-strip">
+    {% if dues.receivable.overdue_total %}<a href="#dues-receivable">مطالبات سررسید گذشته: <strong class="num">{{ dues.receivable.overdue_total|toman }}</strong></a>{% endif %}
+    {% if dues.payable.overdue_total %}<a href="#dues-payable">بدهی سررسید گذشته: <strong class="num">{{ dues.payable.overdue_total|toman }}</strong></a>{% endif %}
+    {% if cheques_incomplete.total_count %}<a href="#dues">{{ cheques_incomplete.total_count|fa_number }} چک نیازمند تکمیل</a>{% endif %}
+  </div>
+{% endif %}
+
+{% if out_of_stock %}
+  {# A stock-out is also "what needs action today"; it used to be visible only after opening the inventory page. #}
+  <a class="alert-strip alert-strip--stock" href="{% url 'inventory:list' %}?stock=out">
+    <span><strong class="num">{{ out_of_stock|fa_number }}</strong> کالا ناموجود است</span>
   </a>
 {% endif %}
 
 <h2 class="section-label">عملکرد · این ماه و امروز</h2>
 <div class="stats stats--performance">
-  {# Month-to-date vs the same days of last Jalali month (like for like); the card opens last month's full report. #}
-  <a class="stat-card stat-card--in stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
+  {# Month-to-date vs the same days of last Jalali month (like for like); the card opens THIS month's report (it used to open last month's, which read as 0 sales). #}
+  <a class="stat-card stat-card--in stat-card--link" href="{% url 'reports:index' %}?preset=month" title="دیدن گزارش کامل این ماه">
     <span class="stat-card__label">فروش این ماه</span>
     <span class="stat-card__value num">{{ kpi.month.sales|toman_split }}</span>
     {% include "shared/_kpi_compare.html" with c=kpi.compare.sales label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.sales|toman }}</strong></span>
   </a>
-  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
+  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=month" title="دیدن گزارش کامل این ماه">
     <span class="stat-card__label">خرید این ماه</span>
     <span class="stat-card__value num">{{ kpi.month.purchases|toman_split }}</span>
     {% include "shared/_kpi_compare.html" with c=kpi.compare.purchases label=kpi.compare_label %}
     <span class="field__hint">امروز: <strong class="num">{{ kpi.today.purchases|toman }}</strong></span>
   </a>
-  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=prev_month" title="دیدن گزارش کامل ماه قبل">
+  <a class="stat-card stat-card--out stat-card--link" href="{% url 'reports:index' %}?preset=month" title="دیدن گزارش کامل این ماه">
     <span class="stat-card__label">هزینه‌های این ماه</span>
     <span class="stat-card__value num">{{ kpi.month.expenses|toman_split }}</span>
     {% include "shared/_kpi_compare.html" with c=kpi.compare.expenses label=kpi.compare_label %}
@@ -121,7 +131,7 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
       </p>
     {% endif %}
     <div class="dues-grid">
-      <section class="dues-col">
+      <section class="dues-col" id="dues-receivable">
         <div class="page-head__row">
           <h3>مطالبات (دریافتنی)</h3>
           <span class="field__hint">جمع: <strong class="num">{{ dues.receivable.total|toman }}</strong></span>
@@ -130,7 +140,7 @@ other row is either "right now" (row 2) or the dues card (row 3, D-079).
         {% include "shared/_dues_group.html" with title="چک‌های دریافتنی" group=dues.receivable.cheques empty="چک دریافتنی نزدیک سررسید نیست." %}
         {% include "shared/_dues_group.html" with title="نسیهٔ مشتریان" group=dues.receivable.credit empty="نسیهٔ نزدیک سررسید نیست." %}
       </section>
-      <section class="dues-col">
+      <section class="dues-col" id="dues-payable">
         <div class="page-head__row">
           <h3>بدهی‌ها (پرداختنی)</h3>
           <span class="field__hint">جمع: <strong class="num">{{ dues.payable.total|toman }}</strong></span>

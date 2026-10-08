@@ -11,7 +11,7 @@ non-negotiable as every other module: views never write.
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -20,8 +20,9 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.products.forms import SellingPriceForm
 from apps.products.models import Product
-from apps.products.services import update_selling_prices
+from apps.products.services import remove_product, update_selling_prices
 from apps.shared.listing import paginate, sort_rows
+from apps.shared.text import search_key
 
 from .forms import InventoryProductForm
 from .models import InventoryMovement
@@ -94,8 +95,9 @@ class InventoryListView(LoginRequiredMixin, TemplateView):
             r["is_low"] = 0 < r["stock"] <= low_cartons * r["product"].pack_per_carton
         low_count = sum(1 for r in rows if r["stock"] <= low_cartons * r["product"].pack_per_carton)
         if q:
-            needle = q.lower()
-            rows = [r for r in rows if needle in r["product"].name.lower() or needle in r["product"].sku.lower()]
+            # Digits, ك/ي and word order must not decide whether "we have it" (D-095): fold both sides.
+            terms = search_key(q).split()
+            rows = [r for r in rows if all(t in search_key(f'{r["product"].name} {r["product"].sku}') for t in terms)]
         if in_stock:
             rows = [r for r in rows if r["stock"] > 0]
         if stock_filter == "out":
@@ -165,7 +167,7 @@ class ProductCreateView(LoginRequiredMixin, View):
 
 
 class SellingPriceUpdateView(LoginRequiredMixin, View):
-    """POST-only: the per-product "قیمت فروش" form (retail + wholesale).
+    """POST-only: the per-product "قیمت فروش" form (pack price + carton price).
     update_selling_prices changes those fields only -- no invoice, layer or
     cost is touched."""
 
@@ -178,8 +180,6 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
                     product, request.user,
                     retail=form.cleaned_data.get("default_selling_price"),
                     wholesale=form.cleaned_data.get("wholesale_selling_price"),
-                    retail_carton=form.cleaned_data.get("retail_carton_price"),
-                    wholesale_pack=form.cleaned_data.get("wholesale_pack_price"),
                 )
             except ValidationError as exc:
                 messages.error(request, "؛ ".join(exc.messages))
@@ -189,6 +189,28 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
             messages.error(request, "؛ ".join(error for errors in form.errors.values() for error in errors))
         # Back to the form itself, so the new price is read in context (the card has an anchor).
         return redirect(reverse("inventory:detail", args=[pk]) + "#selling-price")
+
+
+class ProductRemoveView(LoginRequiredMixin, View):
+    """POST-only: remove a product from the warehouse. The service decides between a real
+    delete (never used) and archiving (has history) and enforces superuser + zero stock."""
+
+    def post(self, request, pk):
+        product = get_object_or_404(Product, pk=pk)
+        try:
+            outcome = remove_product(product, request.user)
+        except PermissionDenied as exc:
+            messages.error(request, str(exc))
+        except ValidationError as exc:
+            messages.error(request, "؛ ".join(exc.messages))
+        else:
+            messages.success(
+                request,
+                "کالا حذف شد." if outcome == "deleted"
+                else "این کالا سابقه دارد و حذف کامل نمی‌شود؛ از انبار و فاکتورهای جدید کنار گذاشته شد و سابقه‌اش حفظ شد.",
+            )
+            return redirect("inventory:list")
+        return redirect("inventory:detail", pk=pk)
 
 
 class InventoryDetailView(LoginRequiredMixin, DetailView):
@@ -221,8 +243,6 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
             initial={
                 "default_selling_price": product.default_selling_price,
                 "wholesale_selling_price": product.wholesale_selling_price,
-                "retail_carton_price": product.retail_carton_price,
-                "wholesale_pack_price": product.wholesale_pack_price,
             },
         )
 
@@ -253,7 +273,7 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         rows = []
         for i, record in enumerate(records):
             prev = records[i + 1] if i + 1 < len(records) else None
-            fields = ("default_selling_price", "retail_carton_price", "wholesale_pack_price", "wholesale_selling_price")
+            fields = ("default_selling_price", "wholesale_selling_price")
             cells = [
                 {"value": getattr(record, f), "delta": change(getattr(record, f), getattr(prev, f)) if prev else None}
                 for f in fields

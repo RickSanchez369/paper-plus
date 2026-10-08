@@ -57,6 +57,8 @@ class AuditLog(BaseModel):
         APPLY_CREDIT = "apply_credit", "کسر بستانکاری از فاکتور"
         SALES_RETURN = "sales_return", "ثبت مرجوعی فروش"
         PURCHASE_RETURN = "purchase_return", "ثبت مرجوعی خرید"
+        CANCEL_SALES_RETURN = "cancel_sales_return", "لغو مرجوعی فروش"
+        CANCEL_PURCHASE_RETURN = "cancel_purchase_return", "لغو مرجوعی خرید"
         RECORD_EXPENSE = "record_expense", "ثبت هزینه"
         CANCEL_EXPENSE = "cancel_expense", "لغو هزینه"
         PAY_EXPENSE = "pay_expense", "پرداخت هزینه"

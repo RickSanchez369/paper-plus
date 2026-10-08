@@ -5,11 +5,13 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>فاکتور {{ invoice.invoice_number }} | پیپر پلاس</title>
   <link rel="stylesheet" href="{% static_v 'shared/css/app.css' %}">
   <link rel="stylesheet" href="{% static_v 'shared/css/print_invoice.css' %}">
 </head>
 <body class="print-page">
+  <a href="{% url 'purchasing:detail' invoice.pk %}" class="btn btn--quiet no-print print-page__back">بازگشت</a>
   <button type="button" class="btn no-print print-page__trigger" onclick="(document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { window.print(); })">چاپ</button>
 
   <div class="print-invoice">
@@ -27,6 +29,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
       {% if invoice.supplier_invoice_number %}<p><strong>شماره فاکتور تأمین‌کننده:</strong> {{ invoice.supplier_invoice_number }}</p>{% endif %}
     </section>
 
+    <div class="print-invoice__table-wrap">
     <table class="data-table">
       <thead>
         <tr>
@@ -50,6 +53,7 @@ A print-friendly render of the purchase invoice -- mirrors sales/print.html.
         {% endfor %}
       </tbody>
     </table>
+    </div>
 
     <div class="print-invoice__totals">
       {% if invoice.freight_amount %}

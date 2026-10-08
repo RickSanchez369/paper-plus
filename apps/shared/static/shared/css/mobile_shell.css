@@ -1,0 +1,139 @@
+/* ==========================================================================
+   D-095 phone layer: shell (header, controls, card padding). Desktop is untouched.
+   ========================================================================== */
+/* Control height: 41 px (and 40 px for row buttons) become 44 px, the Apple/WCAG-AAA touch line. */
+@media (max-width: 720px), (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --ctl-sm: 44px;
+  }
+
+  .btn { min-height: 44px; }
+
+  .nav-toggle,
+  .cmdk-trigger {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Nested paddings (page 16 + card 24 + table card) left 77-79 % of a phone's width for content. */
+@media (max-width: 720px) {
+  .card__body { padding: var(--space-4); }
+}
+
+/* Chips, presets and disclosure buttons that app.css pins at 32-42 px: same 44 px line as .btn. */
+@media (max-width: 720px), (pointer: coarse) {
+  :root:root .daterange__preset,
+  :root:root .sf-chip,
+  :root:root .price-chips .btn,
+  :root:root .preset-chip,
+  :root:root .filters__more > summary,
+  :root:root .btn--remove,
+  :root:root .quick-party__match .btn,
+  :root:root summary.btn,
+  :root:root .sale-form__totals-discount [data-freight-suggest] {
+    min-height: 44px;
+  }
+}
+
+/* The period presets are 5 buttons in a row: wider than a 360 px card (20-28 px page overflow on purchasing/expenses). */
+@media (max-width: 720px) {
+  .daterange__presets {
+    display: flex;
+    flex-wrap: wrap;
+    max-inline-size: 100%;
+  }
+
+  .daterange__preset {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* Inventory stock-lens chips and the phone sort chips were 36 px high (only .btn had been raised). */
+@media (max-width: 720px), (pointer: coarse) {
+  :root:root .inv-chip { min-height: 44px; }
+}
+
+/* ---- Review fixes (c101 / c104 re-audit) ---- */
+@media (max-width: 720px), (pointer: coarse) {
+  /* The header's back control was the only 40 px target, 8 px from the 44 px menu button. */
+  :root:root .header__back { min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 720px) {
+  /* G039's titled band and edge-to-edge table use -24 px margins, written for 24 px card padding; with the 16 px
+     phone padding they poked 7 px outside the card on each side. */
+  .card__body > h2:first-child {
+    margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
+    padding-inline: var(--space-4);
+  }
+
+  .card__body > h2:first-child + .table-card { margin-inline: calc(-1 * var(--space-4)); }
+
+  .card__body > h2:first-child + .table-card:last-child { margin-bottom: calc(-1 * var(--space-4)); }
+}
+
+/* Five period presets fit one row from 380 px up (they wrapped 4+1 and cost 90 px); narrower phones keep two rows. */
+@media (min-width: 380px) and (max-width: 720px) {
+  .daterange__presets { flex-wrap: nowrap; }
+
+  .daterange__preset { flex: 1 1 0; padding-inline: 4px; font-size: 12.5px; white-space: nowrap; }
+}
+
+/* ---- Round 2 (D-095): header, empty card cells, KPI noise, chevrons ---- */
+.header__logout-icon { display: none; }
+
+@media (max-width: 720px) {
+  /* Logout was a 76 px word button in the header's best spot; a 44 px icon gives the title the room. The touch confirm stays. */
+  :root:root .header__logout { min-width: 44px; padding-inline: 0; justify-content: center; }
+  .header__logout-label { display: none; }
+  .header__logout-icon { display: block; inline-size: 22px; block-size: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* A title that repeats the header's title; its action buttons stay. */
+  .is-dup-title { display: none; }
+  .page-head:has(> .is-dup-title:only-child) { display: none; }
+  .page-head__row:has(> .is-dup-title) { justify-content: flex-start; }
+
+  /* Card cells with nothing in them ("—") printed a label over a dash. */
+  table[data-cards] [data-empty] { display: none; }
+
+  /* "No percentage" lines said the same thing in every KPI card (50-60 px each); the previous-period figure under it stays. */
+  .stat-card__delta--none { display: none; }
+
+  /* Odd last tile spans the row instead of leaving half a row empty. */
+  .stats:not(.stats--hero) > .stat-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  /* The disclosure arrow on a page-level "+ new" button pointed the wrong way for an RTL "go". */
+  .page-head .quick-party-disclosure > summary.btn::after,
+  .sale-form__customer .quick-party-disclosure > summary::after { content: none; }
+}
+
+/* ---- Round 4 (D-098): the header title had 150 px (120 px at 360) and cut a document number or a name:
+   38 of 132 page states at 390 px. Two lines fit the 64 px header. ---- */
+@media (max-width: 720px) {
+  .header__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+    font-size: 14px;
+  }
+}
+
+/* Round 4: at 320 px the title has about 85 px next to four 44 px controls; three small lines still fit the 64 px header. */
+@media (max-width: 359px) {
+  /* Tighter header gutters buy the title about 30 px (80 -> 110). */
+  .header { gap: 4px; padding-inline: var(--space-2); }
+  .header__lead { gap: 4px; }
+  .header__title {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+}

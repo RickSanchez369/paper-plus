@@ -52,7 +52,7 @@ status, direction and due-date range.
                   </span>
                 </td>
                 <td>
-                  <a href="{% url 'cheques:detail' cheque.pk %}">{% if cheque.cheque_number %}{{ cheque.cheque_number|ident }}{% else %}(بدون شماره){% endif %}</a>
+                  <a href="{% url 'cheques:detail' cheque.pk %}" class="card-link">{% if cheque.cheque_number %}{{ cheque.cheque_number|ident }}{% else %}(بدون شماره){% endif %}</a>
                   {% if cheque.status == "pending" and not cheque.due_date or cheque.status == "pending" and not cheque.cheque_number %}{% flag_badge "pending" "ناقص" %}{% endif %}
                   <small class="cell-sub">{{ cheque.customer|default:cheque.supplier|dash }}</small>
                 </td>

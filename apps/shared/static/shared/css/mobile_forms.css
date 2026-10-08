@@ -1,0 +1,213 @@
+/* ==========================================================================
+   D-095 phone layer: forms. iOS Safari zooms the page when a focused field is under 16 px, which
+   shoves the layout sideways (64 fields on 26 pages measured in the baseline). Only touch or narrow
+   screens are touched; desktop keeps its 14 px controls.
+   ========================================================================== */
+@media (max-width: 720px), (pointer: coarse) {
+  /* `:root:root` out-ranks the (0,2,1) `.field > input:not(...)` rule in app.css without !important. */
+  :root:root input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"], [type="submit"], [type="button"], [type="file"]),
+  :root:root select,
+  :root:root textarea {
+    font-size: 16px;
+  }
+}
+
+/* ---- Sale / purchase confirm dock (D-095, c005): evidence in docs/UI_EVOLUTION_LOG.md ------------------ */
+@media (max-width: 720px) {
+  /* Cancel sat 12 px from the irreversible confirm in the easiest thumb zone; one tap on it dropped a filled
+     invoice (no draft exists). The header's back control already leaves the page. */
+  .sale-form__submit .btn--quiet { display: none; }
+
+  /* One compact row: the total at the start, the confirm filling the rest. */
+  :root:root .sale-dock {
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sale-dock__btns { flex: 1 1 0; min-width: 0; }
+
+  .sale-dock__btns .btn:not(.btn--quiet) { flex: 1; min-width: 0; }
+
+  .sale-dock__total { flex: none; }
+
+  .sale-dock__total-value .num { font-size: 18px; }
+
+  .sale-dock__total-value small { font-size: 12px; }
+
+  /* The ordinary recap ("for whom, paid how") stays visible as ONE truncated line; it hid completely before,
+     so at the irreversible tap the screen did not say who was being invoiced. */
+  .sale-dock .sale-dock__recap:not(.is-warn) {
+    display: block;
+    overflow: hidden;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Purchase confirm bar: same single row. */
+  .sale-form__submit .sale-form__consequence {
+    flex: 1 0 100%;
+    margin: 0;
+    overflow: hidden;
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sale-form__submit:not(.sale-dock) { flex-wrap: wrap; }
+
+  .sale-form__submit:not(.sale-dock) > .btn:not(.btn--quiet) { flex: 1 1 100%; }
+
+  /* Money-critical controls: 44 px and no edge-to-edge neighbours (a mis-tap on the neighbouring discount
+     segment changed a 3,625,000 total to 3,725,000). */
+  :root:root .sale-dock__link,
+  :root:root .sale-dock__blocked .sale-dock__link {
+    min-height: 44px;
+    padding-inline: var(--space-3);
+  }
+
+  .sale-dock__recap.is-warn { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+  :root:root .sf-seg__opt,
+  :root:root .tier-pick__opt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  :root:root .cust-combo__list li {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  :root:root .undo-bar__action { min-height: 44px; padding-inline: var(--space-4); }
+
+  /* The undo bar and the toast sit above the REAL height of the dock (set by mobile.js), not above a guess. */
+  :root:root .undo-bar { bottom: calc(var(--dock-h, 96px) + var(--space-3)); }
+
+  body:has(.sale-form__submit) .toast { bottom: calc(var(--dock-h, 64px) + var(--space-4) + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---- Pay forms on /receivables/ and /payables/ (D-095, c102) ---- */
+@media (max-width: 720px) {
+  /* A Jalali date wrapped mid-number ("۱۴۰۵/۰ / ۷/۰۷") in the invoice picker row. */
+  .invoice-picker__date { white-space: nowrap; }
+}
+
+/* ---- Review fixes (c101 / c104 re-audit) ---- */
+@media (max-width: 720px) {
+  /* The recap ("for whom, paid how") is the last check before an irreversible confirm, so it is never hidden while
+     typing (an earlier rule did, on every focus including a ticked checkbox: the payment card was never seen). */
+  /* "Choose a payment method": the message gets its own line and the three quick buttons share one row under it
+     (it was 166 px: text, then two buttons on separate rows, 6 px above the confirm). */
+  .sale-dock__recap.is-warn { gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2); }
+
+  .sale-dock__msg { flex: 1 0 100%; font-size: 12.5px; }
+
+  .sale-dock__recap.is-warn > .sale-dock__link { flex: 1 1 0; margin: 0; justify-content: center; min-width: 0; padding-inline: var(--space-2); }
+
+  /* The purchase confirm bar shows what confirming does (it was display:none: the bar said nothing). */
+  .sale-form__submit .sale-form__consequence:not(:empty) { display: block; }
+
+  /* Return form: cancel sat 4 px from confirm. */
+  .form-actions { flex-wrap: wrap; gap: var(--space-4); }
+}
+
+/* ---- Round 2 (D-095) ---- */
+@media (max-width: 720px) {
+  /* Customer field and "+ new customer" share one row; the mini form (open) takes the full width. */
+  .sale-form__customer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-2); align-items: end; }
+  .sale-form__customer > .quick-party-disclosure { margin-top: 0; }
+  .sale-form__customer:has(> .quick-party-disclosure[open]) { grid-template-columns: minmax(0, 1fr); }
+  .sale-form__customer > .field { margin-bottom: 0; }
+  .sale-form__customer .quick-party-disclosure > summary { white-space: nowrap; }
+
+  /* Sale type: one segmented control, no fieldset frame and legend-on-the-border. */
+  .tier-pick { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+  .tier-pick .field__label { padding: 0; }
+  .tier-pick__opts { display: flex; inline-size: 100%; }
+  .tier-pick__opt { flex: 1; justify-content: center; }
+
+  /* Expense method cards: three equal rows (two columns pushed «چک» half out of the card). */
+  .exb-voucher .payment-mode { display: grid; grid-template-columns: minmax(0, 1fr); }
+
+  /* Sale/purchase payment shape: two 150 px cards wrapped the title to 6 lines (94 px text column); one card per row reads in 2. */
+  .payment-mode:has(.payment-mode__text) { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+}
+
+@media (max-width: 720px) {
+  /* "Enter moves to the next cell" is keyboard advice; a phone keyboard has no such flow. */
+  .sale-form__keys { display: none; }
+}
+
+/* ---- Round 3 (D-095) ---- */
+.amount-echo { display: none; }
+
+@media (max-width: 720px) {
+  /* Grouped figure under a money field; the field itself stays plain digits. */
+  .amount-echo:not([hidden]) { display: block; margin-top: var(--space-1); color: var(--text-muted); font-size: 13px; font-weight: 600; }
+
+  /* The stock line printed its label twice ("موجودی" above "موجودی: 18 carton"). */
+  .item-row__stock[data-label]::before { display: none; }
+
+  /* The save buttons of the price and payment forms stay under the thumb while the fields scroll. */
+  #price-form { position: relative; }
+  #price-save,
+  .payment-form:not(.data-table .payment-form) [data-pay-submit] {
+    position: sticky;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    box-shadow: 0 6px 18px rgb(10 31 68 / 28%);
+  }
+  #price-save { inline-size: 100%; }
+
+  .data-table tr[hidden] { display: none !important; }
+
+  .dues-find { margin-bottom: var(--space-4); }
+  .dues-find .field__hint { margin: var(--space-1) 0 0; }
+}
+
+/* ---- Round 3: the confirm dock is taller than the 88 px root scroll-padding when it carries a warning (142 px): a tapped or focused
+   field near the end of the form was scrolled to just under it. The real height is published by mobile.js. */
+@media (max-width: 720px) {
+  html:has(.sale-form__submit) { scroll-padding-bottom: calc(var(--dock-h, 88px) + var(--space-3)); }
+}
+
+/* ---- Round 3: the date picker's «today» and «clear» were 31 px high (prev/next/day cells are 40) ---- */
+@media (max-width: 720px), (pointer: coarse) {
+  :root:root .jdp [data-jdp="today"],
+  :root:root .jdp [data-jdp="clear"] { min-height: 44px; }
+}
+
+/* ---- Round 3: «repeat every [n] [unit]» sat in two columns; with the largest OS text size they were 71 px wider than the card ---- */
+@media (max-width: 720px) {
+  .exb-repeat { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  .exb-repeat > .field { min-width: 0; }
+}
+
+/* ---- Round 4 (D-098): invoice picker rows (the daily "record a payment" form): checkbox + label + date + amount shared one
+   line, squeezed the label and split the number (111 breaks on /receivables/ and /payables/). Two lines: the number and the date
+   on the start side, the amount at the far edge, the whole row a 44 px target. ---- */
+@media (max-width: 720px) {
+  .invoice-picker__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: var(--space-3);
+    row-gap: 0;
+    align-items: center;
+    min-height: 44px;
+  }
+  .invoice-picker__row > input { grid-row: 1 / span 2; }
+  .invoice-picker__label { grid-column: 2; }
+  .invoice-picker__date { grid-column: 2; grid-row: 2; }
+  .invoice-picker__due { grid-column: 3; grid-row: 1 / span 2; margin-inline-start: 0; }
+}
+
+/* ---- Round 4: Chrome on Android reloads the page when the finger drags down at the very top; on a long invoice that discards
+   everything typed (the back and logout controls already ask first). The invoice pages keep the drag to themselves.
+   Documented browser behaviour: not measurable in headless Chrome, so this is the one change here without a number. ---- */
+@media (max-width: 720px) {
+  html:has(#sale-form), html:has(#purchase-form) { overscroll-behavior-y: contain; }
+}

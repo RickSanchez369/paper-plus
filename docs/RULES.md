@@ -43,6 +43,9 @@ any `D-0xx` in [DECISIONS.md](DECISIONS.md) (append-only, wins on conflict).
   history rewrites need the user's explicit OK.
 - Always `git --no-pager`.
 
+## UI work
+- Follows docs/UI_EVOLUTION.md (D-094): refine, never replace; no measured proof of a real UX gain = no change.
+
 ## Testing
 - Verification scripts live in `scripts/` (gitignored, throwaway);
   operational scripts in `tools/` (tracked).

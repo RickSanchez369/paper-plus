@@ -184,7 +184,7 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
             .select_related("bank_account")
             .order_by("-payment_date", "-created_at")
         )
-        returns = list(SalesReturn.objects.filter(invoice__customer=customer).select_related("invoice"))
+        returns = list(SalesReturn.objects.filter(invoice__customer=customer, status="active").select_related("invoice"))
         cheques = customer.cheques.order_by("-created_at")
 
         ledger = sorted(
@@ -199,8 +199,9 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
                 {
                     "date": p.payment_date,
                     # A refund (D-055) gives money back: it works against the
-                    # earlier credit, so it is a debit line.
-                    "kind": "debit" if p.is_reversal else "credit",
+                    # earlier credit, so it is a debit line. Money coming in (a payment, or a refund taken
+                    # back when a return is cancelled, D-101) is a credit line.
+                    "kind": "credit" if p.direction == Payment.Direction.IN else "debit",
                     "label": p.note or ("برگشت وجه" if p.is_reversal else "پرداخت دریافتی"),
                     "amount": p.amount,
                     "url": None,

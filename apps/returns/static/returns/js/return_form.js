@@ -28,6 +28,9 @@
     var refund = form.querySelector('input[name="settle_mode"][value="refund"]');
     var box = form.querySelector("[data-refund-account]");
     if (box) box.hidden = !(refund && refund.checked);
+    // A cash refund against a cheque that has not cleared has nothing behind it if the cheque bounces (D-101).
+    var warn = form.querySelector("[data-pending-warning]");
+    if (warn) warn.hidden = !(refund && refund.checked);
   }
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -47,5 +50,12 @@
     });
     syncAccount(form);
     form.querySelectorAll("[data-return-row]").forEach(checkRow);
+    // Typing the quantity is the whole job: start there (like the invoice forms) instead of eight Tab stops
+    // away, unless the page came back with errors the user has to read first.
+    var firstQty = form.querySelector(".ret-qty");
+    var shownError = Array.prototype.some.call(document.querySelectorAll(".field__error, [role=alert]"), function (el) {
+      return el.offsetHeight > 0; // the per-row over-limit note exists in the DOM but starts hidden
+    });
+    if (firstQty && !shownError) firstQty.focus();
   });
 })();

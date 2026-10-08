@@ -1,0 +1,227 @@
+/* ==========================================================================
+   D-095 phone layer: tables and lists. Loaded after app.css; every rule is inside a
+   media query so desktop output does not move. Evidence for each block: docs/UI_EVOLUTION_LOG.md "Mobile pass".
+   ========================================================================== */
+@media (max-width: 720px) {
+  /* A totals row (data-card-skip) no longer vetoes card mode; it reads as one summary line, not as a card. */
+  table.data-table[data-cards] tr[data-card-skip] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-sunken);
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+  }
+
+  table.data-table[data-cards] tr[data-card-skip] td {
+    padding: 0;
+    font-weight: var(--fw-heading);
+  }
+
+  table.data-table[data-cards] tr[data-card-skip] td:empty { display: none; }
+
+  /* Dashboard dues card: date + amount on one line, what it is for under it, then the action row.
+     The generic card is 149-236 px per row; this is the same data in about a third less height. */
+  #dues table.data-table[data-cards] tr:not([data-card-skip]) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-block: var(--space-3);
+  }
+
+  #dues table.data-table[data-cards] td[data-label]::before { display: none; }
+
+  #dues table.data-table[data-cards] td:nth-child(1) { grid-column: 1; grid-row: 1; }
+
+  #dues table.data-table[data-cards] td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: end;
+    font-weight: var(--fw-heading);
+  }
+
+  #dues table.data-table[data-cards] td:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    color: var(--text-muted);
+  }
+
+  #dues table.data-table[data-cards] td:nth-child(4) { grid-column: 1 / -1; grid-row: 3; }
+
+  #dues .dues-actions { gap: var(--space-2); }
+
+  #dues .dues-actions .btn { flex: 1 1 auto; }
+
+  #dues .dues-actions a.field__hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    margin: 0;
+    padding-inline: var(--space-3);
+  }
+
+  /* Stacked product cards: both columns may shrink below their content, so a long value wraps instead of
+     pushing the card 6-12 px past its edge (seen at 360 px). */
+  .data-table--stack tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .data-table--stack td { min-width: 0; overflow-wrap: anywhere; }
+}
+
+/* The pager is 344 px wide at its natural size; a 360 px phone has 278 px inside the card. */
+@media (max-width: 420px) {
+  .pagination__nav { gap: var(--space-1); max-width: 100%; }
+
+  .pagination__page { min-width: 0; padding-inline: var(--space-1); }
+
+  .pagination__btn { min-width: 48px; padding-inline: var(--space-2); }
+
+  .pagination__btn--icon { min-width: 40px; }
+}
+
+@media (max-width: 720px) {
+  table.data-table[data-cards] td.cell-actions .btn { min-height: 44px; }
+}
+
+@media (max-width: 720px) {
+  /* Customer / supplier balance: the figure and its status badge need the whole card width; squeezed into half a
+     column the badge broke mid-word («تسویه‌ش ده») and the figure was clipped. */
+  table.data-table[data-cards] td:has(> .balance-cell) { grid-column: 1 / -1; }
+
+  .balance-cell { flex-wrap: wrap; }
+
+  .balance-cell .badge { white-space: nowrap; }
+}
+
+@media (max-width: 720px) {
+  /* A marked footer row (reports, ledgers) is a summary line in card mode, like the dues totals. */
+  table.data-table[data-cards] tfoot,
+  table.data-table[data-cards] tfoot tr[data-card-skip] { display: flex; }
+
+  table.data-table[data-cards] tfoot { flex-direction: column; }
+
+  table.data-table[data-cards] tfoot tr[data-card-skip] {
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-sunken);
+    border-top: 1px solid var(--border);
+  }
+
+  table.data-table[data-cards] tfoot td { display: block; padding: 0; }
+
+  table.data-table[data-cards] tfoot td:empty { display: none; }
+
+  /* The card's one document link (invoice, cheque, customer) opens the whole card: it was a 90x21 px target in a
+     294x279 px card. Every other link and control stays above the overlay. */
+  table.data-table[data-cards] tbody tr { position: relative; }
+
+  table.data-table[data-cards] .card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  table.data-table[data-cards] tbody tr a:not(.card-link),
+  table.data-table[data-cards] tbody tr button,
+  table.data-table[data-cards] tbody tr details,
+  table.data-table[data-cards] tbody tr input,
+  table.data-table[data-cards] tbody tr select,
+  table.data-table[data-cards] tbody tr label {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* A settlement badge («کسر از فاکتور ۳۵۰٬۰۰۰ تومان») needs the card width, like the balance cell. */
+  table.data-table[data-cards] td:has(> .badge .num) { grid-column: 1 / -1; }
+
+  table.data-table[data-cards] td:has(> .badge .num) > .badge { white-space: nowrap; }
+}
+
+/* ---- Round 3: unbreakable text inside a card ----------------------------------------------------------------------
+   A ledger row's source line ("... settlement of invoice ...", an issuer or bank written without spaces) was one 311 px word in a
+   146 px cell and widened the whole page by 132 px (bank account page with real data). Cards let any cell break anywhere. */
+@media (max-width: 720px) {
+  table[data-cards] td,
+  table[data-cards] .cell-sub,
+  .stat-card,
+  .card__body { overflow-wrap: anywhere; }
+
+  /* A long party name is a normal sub-line in a card; app.css keeps it on one line for the wide table. */
+  table[data-cards] .cell-sub { white-space: normal; }
+}
+
+/* A 120-character supplier invoice number or a 200-character name with no spaces widened the whole page by 125-1116 px (invoice /
+   customer detail). Anything typed by a person may be unbreakable; on a phone every text in the content area may wrap anywhere. */
+@media (max-width: 720px) {
+  .content { overflow-wrap: anywhere; }
+}
+
+/* ---- Round 3: tablets and phones in landscape (721-900 px) -----------------------------------------------------------------
+   Above 720 px the tables are not turned into cards, and their no-wrap columns (customers' ledger, sales list) are 1026 px wide inside
+   a 762 px card. The card scrolls, but Chrome on a phone then widens the whole page (215 px at 844x390, 291 px at 768x1024 with real
+   data) so everything shrinks or slides. Cells may wrap at these widths; 1024 px and up are untouched. */
+@media (min-width: 721px) and (max-width: 900px) {
+  :root:root .data-table td,
+  :root:root .data-table th { white-space: normal; min-width: 0; }
+
+  .balance-cell { flex-wrap: wrap; }
+}
+
+/* ---- Round 3: identifiers (phone, SKU, cheque and supplier-invoice numbers) are no-wrap runs; a 120-character supplier invoice number made
+   the invoice page 1,214 px wide. They stay in one piece while they fit the line and break only when they cannot. ---- */
+@media (max-width: 720px) {
+  .ident { white-space: normal; overflow-wrap: anywhere; }
+}
+
+/* ---- Round 4 (D-098): row tints belong to the whole card ----
+   Hover (which sticks after a tap on a touchscreen), focus, "overdue", "today" and an open form were painted on the cells; a card
+   whose last half-width cell is empty (642 of 1,134 card rows) then showed a white notch. Painted on the row, the card is one block. */
+@media (max-width: 720px) {
+  :root:root table.data-table[data-cards] tbody tr > td { background: transparent; }
+  :root:root table.data-table[data-cards] tbody tr:hover,
+  :root:root table.data-table[data-cards] tbody tr:focus-within { background: var(--row-hover); }
+  :root:root table.data-table[data-cards] tbody tr.is-overdue { background: var(--negative-100); }
+  :root:root table.data-table[data-cards] tbody tr.is-today { background: var(--warning-100); }
+  :root:root table.data-table[data-cards] tbody tr.is-overdue:hover,
+  :root:root table.data-table[data-cards] tbody tr.is-overdue:focus-within { background: var(--negative-200); }
+  :root:root table.data-table[data-cards] tbody tr.is-void:hover { background: var(--surface-tint); }
+  :root:root table.data-table[data-cards] tbody tr:has(details[open]) { background: var(--row-open); }
+}
+
+/* ---- Round 4: a return line is name / three figures / two inputs; the generic two-column card put the last input alone ---- */
+@media (max-width: 720px) {
+  :root:root table.data-table[data-cards] tr[data-return-row] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(2),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(3),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(4) { grid-column: span 2; }
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(5),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(6) { grid-column: span 3; }
+  /* Sales returns (D-101): the condition select and the deduction box take half a row each, not one narrow sixth. */
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(7),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(8) { grid-column: span 3; }
+  .ret-qty { max-width: none; }
+}
+
+/* ---- Round 4: a document number, date or code that fits on one line is never split (a date over a lone digit): 63 distinct tokens
+   broke on the pages at 320-390 px. mobile.js marks single-token cells; the long-text safety net (overflow-wrap) stays for the rest. ---- */
+@media (max-width: 720px) {
+  .is-token { white-space: nowrap; overflow-wrap: normal; }
+  :root:root table.data-table[data-cards] td.is-token { white-space: nowrap; overflow-wrap: normal; }
+}
+
+/* ---- Round 4: the dashboard dues card was 9,177 px (11 screens) with the demo data; each group shows its first rows
+   (the earliest dates come first) and one button for the rest ---- */
+@media (max-width: 720px) {
+  #dues .is-folded tbody tr[data-more] { display: none; }
+  .dues-more { display: flex; width: 100%; min-height: 44px; margin-top: var(--space-2); justify-content: center; }
+}
+
+/* Round 4: an amount with its unit ("۹۷٬۴۳۸٬۴۰۰ تومان") in a cell is one unit; it split after a thousands separator at 320 px. */
+@media (max-width: 720px) {
+  .num > strong, td.num { overflow-wrap: normal; }
+  .num > strong { white-space: nowrap; }
+}

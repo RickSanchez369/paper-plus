@@ -448,3 +448,11 @@
   font-size: 12.5px;
   color: var(--text-muted);
 }
+
+/* On a phone the internal purchase copy (no viewport meta before) rendered at 980 px and was unreadably small; with the meta the
+   four-column table needs its own scroll area instead of widening the page. Print output is untouched. */
+@media screen {
+  .print-invoice__table-wrap { overflow-x: auto; }
+
+  .print-page__back { margin-inline-end: var(--space-2); }
+}

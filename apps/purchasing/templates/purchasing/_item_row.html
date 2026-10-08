@@ -14,7 +14,7 @@ __prefix__, swapped for a real index by purchase_form.js).
     <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"
            data-item-row-search
            hx-get="{% url 'purchasing:product_search' %}"
-           hx-trigger="keyup changed delay:300ms, focus"
+           hx-trigger="input changed delay:300ms, focus"
            hx-target="next .item-row__results"
            hx-swap="innerHTML"
            name="q"

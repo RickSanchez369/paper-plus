@@ -81,15 +81,17 @@ def sales_returns_total(start, end):
     """Value of goods customers brought back, by return date (D-089); the sales they came from stay as they were."""
     from apps.returns.models import SalesReturn
 
-    return SalesReturn.objects.filter(return_date__gte=start, return_date__lte=end).aggregate(
+    return SalesReturn.objects.filter(return_date__gte=start, return_date__lte=end, status="active").aggregate(
         t=Sum("total_amount"))["t"] or 0
 
 
 def returns_profit(start, end):
-    """Profit the period's sales returns take back: their value minus the FIFO cost that came back to the shelf."""
+    """Profit the period's sales returns take back: what the customer is credited minus the FIFO cost that came
+    back to the shelf (damaged goods put nothing back, D-101). Cancelled returns count for nothing."""
     from apps.returns.models import SalesReturn
 
-    returns = SalesReturn.objects.filter(return_date__gte=start, return_date__lte=end).prefetch_related("items")
+    returns = SalesReturn.objects.filter(
+        return_date__gte=start, return_date__lte=end, status="active").prefetch_related("items")
     return sum(r.profit_given_back for r in returns)
 
 
@@ -97,8 +99,17 @@ def purchase_returns_total(start, end):
     """Goods price of what went back to suppliers, by return date (D-089)."""
     from apps.returns.models import PurchaseReturn
 
-    return PurchaseReturn.objects.filter(return_date__gte=start, return_date__lte=end).aggregate(
+    return PurchaseReturn.objects.filter(return_date__gte=start, return_date__lte=end, status="active").aggregate(
         t=Sum("total_amount"))["t"] or 0
+
+
+def purchase_returns_loss(start, end):
+    """Freight lost on goods sent back to suppliers: shelf value taken off beyond the goods price refunded (D-101)."""
+    from apps.returns.models import PurchaseReturn
+
+    returns = PurchaseReturn.objects.filter(
+        return_date__gte=start, return_date__lte=end, status="active").prefetch_related("items")
+    return sum(r.lost_freight for r in returns)
 
 
 def summary_cards(start, end):
@@ -113,13 +124,14 @@ def summary_cards(start, end):
     gross = gross_profit(start, end)
     sales_back = sales_returns_total(start, end)
     profit_back = returns_profit(start, end)
-    net = gross - profit_back - expenses
+    freight_lost = purchase_returns_loss(start, end)
+    net = gross - profit_back - freight_lost - expenses
 
     prev_sales = sales_total(prev_start, prev_end)
     prev_purchases = purchases_total(prev_start, prev_end)
     prev_expenses = expenses_total(prev_start, prev_end)
     prev_gross = gross_profit(prev_start, prev_end)
-    prev_net = prev_gross - returns_profit(prev_start, prev_end) - prev_expenses
+    prev_net = prev_gross - returns_profit(prev_start, prev_end) - purchase_returns_loss(prev_start, prev_end) - prev_expenses
 
     return {
         "sales": {"value": sales, "change": pct_change(sales, prev_sales)},
@@ -131,6 +143,9 @@ def summary_cards(start, end):
         "sales_returns": {"value": sales_back},
         "returns_profit": {"value": profit_back},
         "purchase_returns": {"value": purchase_returns_total(start, end)},
+        "purchase_returns_loss": {"value": freight_lost},
+        # Sales after what customers brought back (D-101): the headline sales figure itself stays gross.
+        "net_sales": {"value": sales - sales_back},
         # What the goods that were actually sold cost (FIFO). Not the
         # period's purchases: those only fill the shelf, and cost nothing
         # until the goods leave it.

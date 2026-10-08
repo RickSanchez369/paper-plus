@@ -150,3 +150,13 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-090 Four prices (retail/wholesale x pack/carton, unset = derived, `price_for`); sale type chosen on the invoice, preset from `Customer.price_tier`, kept at confirmation; below-cost line hint.
 - D-091 The live host runs SQLite (shared host without PostgreSQL): test every change on SQLite, no PostgreSQL-only features.
 - D-092 `update` on SQLite copies the DB file before migrating; `reset_business_data` wipes all business data, keeps users (file backup first).
+- D-093 `Product.unit` is gone (packs are the only counting unit since D-081); the unit-conversion tooling was removed.
+- D-094 UI work is evolution only: preserve the design DNA, every change needs measured proof of a real UX gain (docs/UI_EVOLUTION.md).
+- D-095 Mobile pass: structure may change, models/data may not; drawer and identity frozen; every change measured with `tools/qa/mobile_audit.py`.
+- D-098 Mobile round 4 (header title, amount filters take Persian digits, dues fold, no split numbers, gzip); no money or stock rule changed.
+- D-097 No zero price on invoice lines or opening cost (gift = 1 Toman); invoice/expense dates at most 30 days ahead; purchase cancel shows an effects dialog.
+- D-096 Mobile test suite (`tools/qa/mobile_suite/`); fixed costs repeat at most every 3,650 days / 120 months; opening stock <= 10^8 packs at <= 10^10 Toman.
+- D-099 Mobile round 5 (label/figure gaps, squeezed date badge, one-per-row payment shape cards on phones); no money or stock rule changed.
+- D-100 Two prices by unit (carton = wholesale, pack = retail; `price_for(unit)`), the sale type is only an invoice label, `Customer.price_tier` removed; supersedes D-090's four-price grid.
+- D-101 Returns v2: a sales-return line is resalable or damaged (damaged never enters stock) with a damage deduction; a return can be cancelled by a superuser while its effects are undoable; freight lost on purchase returns reduces net profit; return dates follow the 30-day rule.
+- D-102 Remove a product (superuser, zero stock; delete if unused, else archive); sales print always one A4 sheet (zoom fallback) with colour / black-and-white radios; sidebar groups folded.

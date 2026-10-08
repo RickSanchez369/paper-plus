@@ -364,6 +364,7 @@
     due.value = PaperJalali.format(term === "eom" ? PaperJalali.endOfNextMonth(base) : base + parseInt(term, 10));
     due.setAttribute("aria-invalid", "false");
     if (due.closest(".field")) due.closest(".field").classList.remove("field--invalid");
+    due.dispatchEvent(new Event("input", { bubbles: true })); // refresh the dock recap (it kept an amber "set the due date")
     activeTerm = String(term);
     markTerm();
     if (remember) {

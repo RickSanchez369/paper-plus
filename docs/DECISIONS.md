@@ -1455,3 +1455,158 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   (`before-reset-<time>.sqlite3`), then empties every table of the business apps (products, parties, invoices, payments,
   cheques, expenses, returns, stock, audit log, counters; numbers restart) and keeps users, permissions and the schema.
   Rehearsed on a SQLite copy built with the old `deploy` code: update, reset, then the QA scripts pass on the empty database.
+
+### D-093: `Product.unit` is dropped
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina
+- Decision: since D-081 every product is counted in packs (a carton is `pack_per_carton` packs), so the `unit` column
+  (and its `HistoricalProduct` twin) carried nothing. Migration `products.0011` drops both; `Product.Unit`, the one-time
+  conversion tooling (`unit_conversion.py`, `convert_units`, `inventory_unit_report`, `qa_23`, `deploy/UNIT_CONVERSION.md`)
+  are deleted with it, as no host database holds a carton-counted product any more (reset, D-092). Old migrations 0007/0009
+  still read `unit` on their own historical models, so a fresh database migrates cleanly. Checked on a SQLite copy with data
+  (migrate, all `tools/qa` scripts pass) and on an empty one.
+
+### D-094: UI changes are evolution only, and need proof
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina (dropped the 64 deferred audit items; asked for a refinement pass under an "evolution mode" brief)
+- Decision: the existing UI is the design DNA and is refined, never replaced (changes graded L1..L5, L5 prohibited without
+  approval, Design Preservation Score >= 8). Golden rule: a change that cannot be PROVEN, by before/after measurement in the
+  real browser, to improve the real user experience may not be made; "no change required" is a valid result. Evidence goes in
+  `docs/UI_EVOLUTION_LOG.md`; rules and DNA inventory in `docs/UI_EVOLUTION.md`. `docs/UI_AUDIT_200_DEFERRED.md` stays unbuilt.
+
+### D-095: Mobile pass to 9/10, structure may change, models and data may not
+- Status: Final
+- Date: 2026-10-05
+- Decided by: Sina (rates the site 7/10, wants the phone experience at 9/10; allowed structural change wherever models and data are
+  untouched; chose 100 read-only critics then grouped implementation)
+- Decision: evolution rules of D-094 stay (golden rule: no measured proof, no change; drawer and identity frozen). Mobile changes
+  go in new `mobile_*.css` files and, only when CSS cannot do it, in templates/JS without breaking any hook the JS and `tools/qa`
+  rely on. Progress is measured by `tools/qa/mobile_audit.py` (Playwright dev tool, not in requirements.txt) against the
+  baseline in `docs/UI_EVOLUTION_LOG.md`; throwaway servers per critic via `tools/qa/mobile_env.py` (`QA_PORT`, per-database login file).
+
+### D-096: Mobile test suite, input bounds, four owner questions left open
+- Status: Final (suite and bounds); the four questions are listed under "Open items" in STATE.md
+- Date: 2026-10-07
+- Decided by: Sina (asked for every part tested on a phone, thousands of cases if needed)
+- Decision: `tools/qa/mobile_suite/` (README in `tools/qa`) is the phone regression suite; it only ever touches throwaway SQLite
+  copies. Defects it found are fixed under the D-094 golden rule with the numbers in `docs/UI_EVOLUTION_LOG.md` ("round 3"). Two
+  server-side bounds were added because SQLite does not enforce column ranges and the inputs crashed with a 500: a fixed cost may
+  repeat at most every 3,650 days / 120 months and remind at most 365 days ahead (`RecurringExpenseForm`), and an opening stock is
+  limited to 10^8 packs at 10^10 Toman per pack (`InventoryProductForm`). Not decided here, left to Sina: a sale or purchase line priced
+  0, an invoice dated years ahead, the 37 px drawer rows, and the purchase-cancel confirmation.
+
+### D-097: Zero prices and far-future dates refused, purchase cancel gets the effects dialog, drawer rows stay 37 px
+- Status: Final
+- Date: 2026-10-07
+- Decided by: Sina (answers to the four questions left open in D-096)
+- Decision: (1) A sale or purchase line whose used part (cartons or packs) has price 0, typed or filled from an unpriced product, is
+  refused ("قیمت ... نمی‌تواند صفر باشد"); an opening stock with cost 0 is refused too. A gift or sample is entered at 1 Toman
+  (`CartonPackItemFormMixin`, `InventoryProductForm`). (2) An invoice (sale, purchase) or expense dated more than 30 days after today is
+  refused (`JalaliDateField(max_days_ahead=MAX_DAYS_AHEAD)`); past dates and cheque due dates are unchanged. (3) The drawer keeps its
+  37 px rows and 40 px close button (frozen, D-065); the mobile suite now only guards that they do not shrink below 36.5 px.
+  (4) Cancelling a purchase opens the same effects dialog as a sale (stock leaving, payments refunded, cheques voided, supplier balance),
+  and says it fails when part of the goods was already sold; `cancel_purchase` itself is unchanged.
+- Alternatives rejected: allow price 0 after a confirmation (a free first layer is never right, a gift at 1 Toman is close enough);
+  lift the drawer rows to 44 px (no measured mis-tap, D-094).
+- Tests: `tools/qa/qa_30_zero_price_far_date.py` (26 checks) and the mobile suite scenarios `zero-price*`, `date-*-ahead`.
+
+### D-098: Mobile round 4, only what a number proved
+- Status: Final
+- Date: 2026-10-07
+- Decided by: Sina ("check once more and make the phone experience better")
+- Decision: a new audit measured the pages from angles the earlier rounds had not (header text, number wrapping, card tint, page length, input
+  attributes, transfer size under Slow 4G with a 4x slower CPU). Each fix below has its number in `docs/UI_EVOLUTION_LOG.md` ("round 4"):
+  (1) the header title shows two lines (three at 320 px) instead of 150 px of one line (38 of 132 page states were cut; now 1, a 60-character
+  product name); (2) the amount filters on sales, purchasing and expenses are `NumericInput` text boxes (`type=number` dropped Persian digits: a typed
+  «۱۲۰۰۰۰» left the box empty); (3) the dashboard dues card folds each group to its first 5 rows with a «نمایش N مورد دیگر» button (9,177 px ->
+  3,486 px); (4) invoice rows of the record-payment form are two lines with the amount at the far edge (111 split numbers); (5) a short
+  document number, date or code is never split mid-token (`is-token`, 63 distinct tokens broke); (6) row tints (hover, which sticks after a tap, overdue,
+  today, open form) are painted on the whole card row, not on cells (642 of 1,134 card rows showed a white notch); (7) return lines are
+  name / three figures / two inputs; (8) `GZipMiddleware` after WhiteNoise (HTML 40-140 KB -> 7-12 KB; first paint on Slow 4G about 0.2-0.4 s
+  earlier on the heaviest pages; BREACH is mitigated by Django's per-request CSRF masking and nothing secret is reflected); (9) the invoice pages
+  set `overscroll-behavior-y: contain` so an Android pull-to-refresh cannot discard a half-typed invoice (browser-documented behaviour, the one change
+  without a number: headless Chrome has no pull-to-refresh).
+- Not changed on purpose: product hints and long forms (a design call, not a defect), autofill attributes (no way to measure a browser's autofill
+  popup headless), the 60-character product name test case (clamped to the title's lines, the full name is in the page heading).
+- Tests: `tools/qa/qa_31_filters_gzip.py` (10 checks); the mobile suite now also checks that the header title is not cut, that no number or date is split
+  across lines, that card cells carry no paint of their own, and the dues fold behaviour.
+
+### D-099: Mobile round 5, gaps and squeezed cards
+- Status: Final
+- Date: 2026-10-07
+- Decided by: Sina ("check again and make the phone side more responsive and comfortable")
+- Decision: the 69,086-check mobile suite was re-run (green except the known reds), then pages were read by eye at 390/320 px and every
+  suspicion was probed with a number. Four defects were real and are fixed in CSS/templates only (no model, service or URL change):
+  (1) a flex container drops the source space between a text label and an element next to it: the dashboard alert links, the dues legend of
+  receivables/payables and every `.badge` that carries a figure ("بستانکاری۲۵۰,۰۰۰") now have a column gap (the `.badge` dot margin became the
+  same gap); (2) a badge "label + date" in a narrow cell was squeezed to one letter per line (81 px tall) and now wraps the date under the label
+  (42 px); (3) the sale/purchase payment shape cards ("تسویهٔ کامل" / "تفکیکی / چک / نسیه") are one card per row on phones (title text column
+  94 px / 6 lines -> 192-213 px / 2 lines); (4) the dashboard alert wording «سررسیدگذشته» is now «سررسید گذشته» like the card below it.
+- Not changed on purpose: the 60-character product name in the header title (the full name is in the page heading), `.badge` wrapping for all
+  badges (tried: a plain `flex-wrap` wrapped the status dot onto its own line at 768 px, so it is limited to badges that carry a date).
+- Tests: the mobile suite now checks, on every page state and width, that a label and its figure keep a gap and that no badge is squeezed to
+  4+ lines. 69,086 checks; reds are the 134 A4 print sheets and 5 states of the 60-character name. `qa_14/19/24/28/31` pass.
+
+### D-100: Two selling prices by unit; the sale type is only a label (amends D-090, returns to D-081's pricing)
+- Status: Final
+- Date: 2026-10-08
+- Decided by: Sina ("carton sales are wholesale, pack sales are retail; drop the four prices")
+- Decision: a product has two selling prices again: the pack price (`default_selling_price`, retail) and the carton price
+  (`wholesale_selling_price`, wholesale; 0 = unset, then pack price x ratio). The UNIT of a sale line decides its price: a carton line
+  gets the carton price, a pack line the pack price (`Product.price_for(unit)`; the tier argument is gone), a blank price is filled that
+  way (forms, `SaleItem.clean_fields`, the product search result `data-pack-price` / `data-carton-price`), a typed price always wins and
+  stays a snapshot. The «فروش خرد / فروش عمده» choice stays on the sale form but is ONLY A LABEL of the invoice (list filter, badge,
+  print subtitle, the «فروش عمده و خرد» report); it never changes a price, so the reprice-on-switch JS, the "N lines kept" note and the
+  customer preselect are gone. `Customer.price_tier` («نوع مشتری») is removed (`partners.0004`, field dropped). Inventory edits and shows
+  two prices (list, product page, price history, new product form, admin); `update_selling_prices(product, user, retail=, wholesale=)`.
+- Existing data: old invoices keep their `price_tier` and every line price (snapshots, nothing rewritten). `Product.retail_carton_price`
+  and `wholesale_pack_price` stay as unused columns (no value is lost, old history rows still read); `price_grid`, `price_is_set` and
+  `prices_incomplete` are removed, «قیمت ناقص» now means "no carton price set".
+- Rejected: dropping the two unused columns (a table rebuild on SQLite for no gain), deriving the label from the lines automatically
+  (Sina chose a plain label), keeping the customer type as a default label.
+- Tests: `tools/qa/qa_27_tier_prices.py` (24 checks, rewritten), `qa_17` / `qa_03` adjusted, the mobile suite's sale oracle prices by unit.
+
+### D-101: Returns v2 - damaged goods, deduction, cancelling a return, freight loss, honest reports (amends D-089)
+- Status: Final
+- Date: 2026-10-08
+- Decided by: Sina (after a review of the D-089 logic; chosen per question: per-line condition + deduction, cancel with conditions,
+  free refund with a warning on pending cheques, purchase returns stay tied to the purchase line's own layer)
+- Decision:
+  (1) **Condition per sales-return line**: `SalesReturnItem.condition` is `resalable` (back on the shelf as a new FIFO layer, as before)
+  or `damaged` (no layer, no movement: it never enters stock). `deduction` («کسر خسارت», 0 <= deduction <= the line's value) lowers what
+  the customer is credited: `total_amount` = sum(amount - deduction). `profit_given_back` = credited - cost back on the shelf, so a
+  damaged line gives back its whole credit and its cost stays a loss (`damaged_cost`).
+  (2) **Cancel a return** (`cancel_sales_return` / `cancel_purchase_return`, superuser, button + dialog on the return page): only while every
+  effect can be undone. Sales: the goods it put back are still unsold (else refused), the credit it made was not used by another invoice
+  (else refused). Purchase: the layer is intact. Effects: the layer is cancelled / refilled with an `adjustment_out` / `adjustment_in`
+  movement (and a negative consumption row), the credit note is voided (`Payment.voided_at`, out of every credit selector) and its share
+  on the invoice released through a credit-note reversal payment, a paid refund is booked back (customer: money comes back in; supplier:
+  money goes out again). The return is marked `cancelled` (`status`, `cancelled_at`, `cancelled_by`), never deleted; an invoice is
+  blocked from cancelling only by ACTIVE returns; reports, statements and returnable quantities ignore cancelled returns.
+  (3) **Value shares** are now "share of what is still unreturned on the line, the last piece takes the rest" (was a running floor), so the
+  pieces add up to the whole line even after a cancelled piece was returned again.
+  (4) **Pending cheques**: the cash refund stays allowed; the form warns (a refund against a cheque that has not cleared has nothing
+  behind it if the cheque bounces) and recommends credit.
+  (5) **Freight lost** on a purchase return (shelf value off with freight - goods price refunded) is `PurchaseReturn.lost_freight`, shown on
+  its page and subtracted in net profit (`purchase_returns_loss`, a row in the profit bridge). The report adds «فروش پس از مرجوعی».
+  (6) A return date follows the document-date rule: at most 30 days ahead (D-097).
+- Not changed on purpose: a purchase return is still tied to the purchase line's own FIFO layer (Sina: keep), a card reader still never pays
+  a refund (D-069), averaged cost of a multi-layer sold line on a returned layer (a rounding-level effect).
+- Schema: `returns.0002`, `payments.0014` (`voided_at`, credit-note constraint now allows its reversal), `shared.0022` (two audit events).
+- Tests: `tools/qa/qa_32_returns_v2.py` (52 checks), `qa_26` / `qa_07` / `qa_09` / `qa_11` net-profit identities include the freight loss;
+  the mobile suite covers damaged / deduction forms and the return cancel dialog.
+
+## D-102 Remove a product, one-sheet print with a colour choice, folded sidebar groups (2026-10-08)
+- **Remove a product (superuser, zero stock):** `products.services.remove_product`. Nothing ever pointed at it (typo, test entry): really
+  deleted. Any history (opening stock, invoice line, layer, return): archived (`is_active=False`), because documents and the FIFO cost trail
+  must keep reading; it leaves the inventory list and the sale/purchase pickers, its detail page still opens. Stock must be zero first
+  (no write-off path exists, D-044). Audit events `product.deleted` / `product.archived`. Button on the product page.
+- **Sales print is one A4 sheet under any condition:** after the server density and the tighter-row steps, a last-resort `zoom`
+  (`--inv-fit`, down to 0.3) shrinks the whole sheet until it fits; the old "spill onto page 2" fallback is gone. The page padding that
+  pushed the 297 mm sheet onto a second page in print is removed and the printed sheet is 296 mm. The list/detail «چاپ» links now open the
+  print page (no hidden-iframe direct print), where «فاکتور رنگی» / «فاکتور سیاه‌وسفید» are two radio options (last choice remembered).
+- **Sidebar:** «مطالبات و بدهی» and «هزینه‌ها» are single folded entries (`<details>`) that open to their views; the group holding the
+  current page starts open.
+- Tests: `tools/qa/qa_33_remove_product_print_nav.py` (15). Purchase print sheet untouched (a plain internal copy).

@@ -189,7 +189,10 @@
     input.setAttribute("aria-expanded", "false");
     input.setAttribute("aria-controls", "cust-combo-list");
     input.setAttribute("aria-autocomplete", "list");
-    input.placeholder = "نام مشتری را بنویسید؛ اگر نبود، Enter = ثبت مشتری جدید";
+    // Enter means nothing on a phone keyboard, and the long hint was cut mid-sentence at 390 px.
+    input.placeholder = window.matchMedia && window.matchMedia("(max-width: 720px)").matches
+      ? "جستجوی نام مشتری"
+      : "نام مشتری را بنویسید؛ اگر نبود، Enter = ثبت مشتری جدید";
     list = document.createElement("ul");
     list.className = "cust-combo__list";
     list.id = "cust-combo-list";
@@ -218,9 +221,13 @@
 
     // The quick-create success swaps a NEW <select id="id_customer"> in (out-of-band) with the
     // new customer selected: fold it again, show the name, close the panel, carry on.
+    // Tracked by identity, not by the folded class: htmx carries the old element's classes over
+    // while it settles, so the class is present on the new node yet gone again after the settle.
+    var folded = sel;
     new MutationObserver(function () {
       var fresh = select();
-      if (!fresh || fresh.classList.contains("cust-combo__native")) return;
+      if (!fresh || fresh === folded) return;
+      folded = fresh;
       fold(fresh);
       input.value = selectedText(fresh);
       var open = disclosure();
@@ -228,9 +235,17 @@
       fresh.dispatchEvent(new Event("change", { bubbles: true }));
       toProducts();
     }).observe(field, { childList: true });
+    // The settle resets the class list: fold again so the native select stays hidden.
+    document.body.addEventListener("htmx:afterSettle", function () {
+      var current = select();
+      if (current && current === folded) fold(current);
+    });
 
     // A fresh invoice starts at the customer; with one chosen already (?customer=) the product box leads.
-    if (!sel.value) input.focus();
+    // Not on a touchscreen: focusing opens the result list, which then covers the "+ مشتری جدید" button and the
+    // first thing a phone user sees; they tap the box when they are ready (D-095).
+    var touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (!sel.value && !touch) input.focus();
   }
 
   // Opening the manual "+ مشتری جدید" panel puts the cursor in the name box (toggle does not bubble).

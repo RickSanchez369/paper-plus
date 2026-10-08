@@ -35,12 +35,6 @@ _WIDGETS = {
     "wholesale_selling_price": NumericInput(
         attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
     ),
-    "retail_carton_price": NumericInput(
-        attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
-    ),
-    "wholesale_pack_price": NumericInput(
-        attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}
-    ),
 }
 
 
@@ -197,6 +191,10 @@ class CartonPackItemFormMixin(forms.Form):
                     cleaned[price] = self.suggested_price(product, "carton") if count else 0
                 else:
                     cleaned[price] = self.suggested_price(product, "pack") if (count or not self.price_required) else 0
+            # D-097: a zero price on a part that is used is never a real price (a purchase at 0 would
+            # inflate profit later); a gift or sample is entered at 1 Toman.
+            if count and not cleaned.get(price) and price not in self.errors:
+                self.add_error(price, f"قیمت هر {label} نمی‌تواند صفر باشد (برای هدیه یا نمونه ۱ تومان بزنید).")
         return cleaned
 
 
@@ -208,7 +206,6 @@ class QuickProductForm(forms.ModelForm):
         model = Product
         fields = (
             "name", "sku", "pack_per_carton", "default_selling_price", "wholesale_selling_price",
-            "retail_carton_price", "wholesale_pack_price",
         )
         widgets = _WIDGETS
         error_messages = {
@@ -225,10 +222,9 @@ class QuickProductForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        # Blank carton price = unset (0): a carton is then suggested at pack price x ratio (D-081).
-        for field in ("wholesale_selling_price", "retail_carton_price", "wholesale_pack_price"):
-            if cleaned.get(field) is None:
-                cleaned[field] = 0  # blank = unset, derived by Product.price_for (D-090)
+        # Blank carton price = unset (0): a carton is then suggested at pack price x ratio (D-081, D-100).
+        if cleaned.get("wholesale_selling_price") is None:
+            cleaned["wholesale_selling_price"] = 0
         return cleaned
 
     def __init__(self, *args, **kwargs):
@@ -242,9 +238,6 @@ class QuickProductForm(forms.ModelForm):
         self.fields["wholesale_selling_price"].required = False
         self.fields["wholesale_selling_price"].initial = None
         self.fields["wholesale_selling_price"].help_text = "اگر خالی بماند، قیمت کارتن = قیمت هر بسته × تعداد بسته در کارتن."
-        for field in ("retail_carton_price", "wholesale_pack_price"):
-            self.fields[field].required = False
-            self.fields[field].initial = None
         self.fields["pack_per_carton"].min_value = 1
         self.fields["pack_per_carton"].validators.append(MinValueValidator(1))
         # Already required (the model field has no blank=True); only the
@@ -258,7 +251,7 @@ class QuickProductForm(forms.ModelForm):
 
 class SellingPriceForm(forms.Form):
     """The prices a user sets by hand after creation: what the product sells
-    for from now on, retail and wholesale (feeds
+    for from now on: the pack price (retail) and the carton price (wholesale) (D-100; feeds
     products.services.update_selling_prices). A blank box leaves that price
     alone. Purchase cost is never typed here -- it comes only from purchase
     invoices, and inventory value only ever reads that cost."""
@@ -277,23 +270,8 @@ class SellingPriceForm(forms.Form):
         widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
         error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
     )
-    # D-090: the other two cells; 0 = unset (derived), blank = leave alone.
-    retail_carton_price = forms.IntegerField(
-        required=False,
-        min_value=0,
-        label="قیمت فروش خرد - هر کارتن (تومان)",
-        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
-    )
-    wholesale_pack_price = forms.IntegerField(
-        required=False,
-        min_value=0,
-        label="قیمت فروش عمده - هر بسته (تومان)",
-        widget=NumericInput(attrs={"class": "field__control", "dir": "ltr", "inputmode": "numeric"}),
-        error_messages={"min_value": "قیمت فروش نمی‌تواند منفی باشد."},
-    )
 
-    PRICE_FIELDS = ("default_selling_price", "wholesale_selling_price", "retail_carton_price", "wholesale_pack_price")
+    PRICE_FIELDS = ("default_selling_price", "wholesale_selling_price")
 
     def clean(self):
         cleaned = super().clean()

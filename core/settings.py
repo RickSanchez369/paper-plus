@@ -59,6 +59,8 @@ MIDDLEWARE = [
     # Serves the collected static files from the app itself, so no host-specific
     # web-server rule is needed for CSS/JS (see deploy/UPDATING.md).
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    # D-098: HTML pages are 40-140 KB of repeated markup (11x smaller gzipped); static files are already compressed by WhiteNoise above.
+    'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

@@ -3,11 +3,14 @@
 
 {% comment %}
 One return (D-089): what came back, its value, the FIFO cost back on (or off)
-the shelf, and how the money was settled. Read-only: a return is never edited.
+the shelf, and how the money was settled. Read-only: a return is never edited; a superuser can cancel it
+while every effect is still undoable (D-101).
 {% endcomment %}
 
 {% block title %}مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %} {{ doc.return_number|fa_digits }}{% endblock %}
 {% block header %}مرجوعی {% if purchase %}خرید{% else %}فروش{% endif %} {{ doc.return_number|fa_digits }}{% endblock %}
+{# The cancel dialog opens through the shared handler of the invoice pages. #}
+{% block head %}<script src="{% static_v 'sales/js/sales_pages.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs">
@@ -21,7 +24,9 @@ the shelf, and how the money was settled. Read-only: a return is never edited.
     فاکتور <a href="{% url invoice_url doc.invoice.pk %}">{{ doc.invoice.invoice_number|fa_digits }}</a> ·
     تاریخ: <span class="num">{{ doc.return_date|jalali }}</span> ·
     ثبت‌کننده: {{ doc.created_by.get_full_name|default:doc.created_by.phone|fa_digits }}
+    {% if doc.is_cancelled %}· <span class="badge badge--muted">لغوشده</span> <span class="num">{{ doc.cancelled_at|jalali }}</span>{% endif %}
   </p>
+  {% if can_cancel %}<button type="button" class="btn btn--danger" data-sp-dialog-open="cancel-dialog">لغو مرجوعی</button>{% endif %}
 </div>
 
 <div class="stats">
@@ -30,7 +35,7 @@ the shelf, and how the money was settled. Read-only: a return is never edited.
     <span class="stat-card__value num">{{ doc.total_amount|toman_split }}</span>
   </div>
   <div class="stat-card">
-    <span class="stat-card__label">{% if purchase %}ارزش انبار خارج‌شده{% else %}بهای کالای برگشته به انبار{% endif %}</span>
+    <span class="stat-card__label">{% if purchase %}ارزش انبار خارج‌شده{% else %}بهای کالای سالم برگشته به انبار{% endif %}</span>
     <span class="stat-card__value num">{{ doc.cost_amount|toman_split }}</span>
   </div>
   {% if not purchase %}
@@ -38,6 +43,25 @@ the shelf, and how the money was settled. Read-only: a return is never edited.
     <span class="stat-card__label">سود برگشتی</span>
     <span class="stat-card__value num">{{ doc.profit_given_back|toman_split }}</span>
   </div>
+  {% if doc.damaged_cost %}
+  <div class="stat-card">
+    <span class="stat-card__label">بهای کالای معیوب (زیان)</span>
+    <span class="stat-card__value num">{{ doc.damaged_cost|toman_split }}</span>
+  </div>
+  {% endif %}
+  {% if doc.deduction_total %}
+  <div class="stat-card">
+    <span class="stat-card__label">کسر خسارت</span>
+    <span class="stat-card__value num">{{ doc.deduction_total|toman_split }}</span>
+  </div>
+  {% endif %}
+  {% else %}
+  {% if doc.lost_freight %}
+  <div class="stat-card">
+    <span class="stat-card__label">کرایهٔ از دست‌رفته</span>
+    <span class="stat-card__value num">{{ doc.lost_freight|toman_split }}</span>
+  </div>
+  {% endif %}
   {% endif %}
 </div>
 
@@ -59,13 +83,15 @@ the shelf, and how the money was settled. Read-only: a return is never edited.
     <h2>اقلام</h2>
     <div class="table-card">
       <table class="data-table">
-        <thead><tr><th>کالا</th><th>مقدار</th><th>مبلغ</th><th>{% if purchase %}ارزش انبار{% else %}بهای تمام‌شده{% endif %}</th></tr></thead>
+        <thead><tr><th>کالا</th><th>مقدار</th>{% if not purchase %}<th>وضعیت</th>{% endif %}<th>مبلغ</th>{% if not purchase %}<th>کسر خسارت</th>{% endif %}<th>{% if purchase %}ارزش انبار{% else %}بهای تمام‌شده{% endif %}</th></tr></thead>
         <tbody>
           {% for row in doc.items.all %}
             <tr>
               <td>{% if purchase %}{{ row.purchase_item.product.name }}{% else %}{{ row.sale_item.product.name }}{% endif %}</td>
               <td class="num">{% if row.cartons %}{{ row.cartons|fa_number }} کارتن{% if row.loose_packs %} + {% endif %}{% endif %}{% if row.loose_packs %}{{ row.loose_packs|fa_number }} بسته{% endif %}{% if row.cartons %} ({{ row.quantity|fa_number }} بسته){% endif %}</td>
+              {% if not purchase %}<td>{% if row.condition == "damaged" %}<span class="badge badge--bad">{{ row.get_condition_display }}</span>{% else %}<span class="badge badge--good">{{ row.get_condition_display }}</span>{% endif %}</td>{% endif %}
               <td class="num">{{ row.amount|toman }}</td>
+              {% if not purchase %}<td class="num">{% if row.deduction %}{{ row.deduction|toman }}{% else %}—{% endif %}</td>{% endif %}
               <td class="num">{{ row.cost|toman }}</td>
             </tr>
           {% endfor %}
@@ -74,4 +100,36 @@ the shelf, and how the money was settled. Read-only: a return is never edited.
     </div>
   </div>
 </div>
+{% if can_cancel %}
+<dialog class="quick-dialog cancel-dialog" id="cancel-dialog" aria-labelledby="cancel-title" data-sp-dialog-backdrop>
+  <form method="post" action="{% url cancel_url doc.pk %}">
+    {% csrf_token %}
+    <h2 class="quick-dialog__title" id="cancel-title">لغو مرجوعی {{ doc.return_number|fa_digits }}؟</h2>
+    <p class="field__hint">با لغو این مرجوعی، این‌ها به‌صورت خودکار انجام می‌شود:</p>
+    <ul class="cancel-dialog__effects">
+      {% for row in doc.items.all %}
+        {% if purchase %}
+          <li><span class="cancel-dialog__tag">انبار</span>{{ row.quantity|fa_number }} بسته «{{ row.purchase_item.product.name }}» دوباره به انبار برمی‌گردد</li>
+        {% elif row.condition == "resalable" %}
+          <li><span class="cancel-dialog__tag">انبار</span>{{ row.quantity|fa_number }} بسته «{{ row.sale_item.product.name }}» از انبار خارج می‌شود (باید هنوز در انبار باشد)</li>
+        {% endif %}
+      {% endfor %}
+      {% if doc.applied_amount %}
+        <li><span class="cancel-dialog__tag">فاکتور</span><span class="num">{{ doc.applied_amount|toman }}</span> دوباره به مانده باز فاکتور برمی‌گردد</li>
+      {% endif %}
+      {% if doc.credit_amount %}
+        <li><span class="cancel-dialog__tag">حساب</span><span class="num">{{ doc.credit_amount|toman }}</span> {% if purchase %}پیش‌پرداخت نزد تأمین‌کننده{% else %}بستانکاری مشتری{% endif %} باطل می‌شود (اگر در فاکتور دیگری مصرف شده باشد، لغو انجام نمی‌شود)</li>
+      {% endif %}
+      {% if doc.refund_amount %}
+        <li><span class="cancel-dialog__tag">پول</span><span class="num">{{ doc.refund_amount|toman }}</span> {% if purchase %}دوباره از حساب «{{ doc.bank_account.name }}» به تأمین‌کننده پرداخت می‌شود{% else %}دوباره به حساب «{{ doc.bank_account.name }}» برمی‌گردد (باید آن را از مشتری پس بگیرید){% endif %}</li>
+      {% endif %}
+    </ul>
+    <p class="field__hint">مرجوعی لغوشده قابل ویرایش نیست و سابقه‌اش می‌ماند؛ برای اصلاح، مرجوعی تازه ثبت کنید.</p>
+    <div class="cancel-dialog__actions">
+      <button type="submit" class="btn btn--danger">بله، مرجوعی {{ doc.return_number|fa_digits }} لغو شود</button>
+      <button type="button" class="btn btn--quiet" data-sp-dialog-close autofocus>انصراف، مرجوعی بماند</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}

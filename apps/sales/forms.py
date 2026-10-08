@@ -36,7 +36,7 @@ from apps.payments.forms import InvoicePaymentFields, PaymentEntryFormMixin
 from apps.products.forms import CartonPackItemFormMixin, SelectedProductMixin
 from apps.products.models import PriceTier, Product
 from apps.products.units import split_units, units_phrase
-from apps.shared.forms import JalaliDateField
+from apps.shared.forms import MAX_DAYS_AHEAD, JalaliDateField
 
 from .models import SaleItem, SalesInvoice, SalesPaymentEntry
 
@@ -70,8 +70,8 @@ class SalesFilterForm(forms.Form):
         queryset=Product.objects.filter(is_active=True).order_by("name"),
         empty_label="— همهٔ کالاها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0, widget=NumericInput())
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0, widget=NumericInput())
 
     def clean(self):
         cleaned = super().clean()
@@ -90,7 +90,7 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
     state (D-025) except the due date of an unpaid (نسیه) remainder.
     """
 
-    invoice_date = JalaliDateField(label="تاریخ فاکتور")
+    invoice_date = JalaliDateField(label="تاریخ فاکتور", max_days_ahead=MAX_DAYS_AHEAD)
     # BigIntegerField has no built-in non-negativity; only the DB
     # CheckConstraint (`sales_invoice_discount_non_negative`) enforces
     # discount_amount >= 0 -- declared explicitly so a negative discount
@@ -141,7 +141,7 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
             # form at all. The `form` attribute reattaches this one field
             # to #sale-form despite living outside its DOM subtree.
             "customer": forms.Select(attrs={"class": "field__control", "form": "sale-form"}),
-            # D-090: picked once per invoice; every price on it follows this choice.
+            # D-100: a label of the invoice only (list filter, badge, report); prices follow the unit sold.
             "price_tier": forms.RadioSelect,
         }
         error_messages = {
@@ -153,16 +153,12 @@ class SaleInvoiceForm(InvoicePaymentFields, forms.ModelForm):
         self.fields["customer"].queryset = Customer.objects.filter(is_active=True).order_by("name")
         self.fields["customer"].empty_label = "— انتخاب مشتری —"
         self.fields["price_tier"].label = "نوع فروش"
-        # Not posted (an older page, a script): the customer's own type decides, then retail (D-090).
+        # Not posted (an older page, a script): retail (D-100).
         self.fields["price_tier"].required = False
         self.fields["price_tier"].initial = PriceTier.RETAIL
 
     def clean_price_tier(self):
-        tier = self.cleaned_data.get("price_tier")
-        if tier:
-            return tier
-        customer = self.cleaned_data.get("customer")
-        return customer.price_tier if customer else PriceTier.RETAIL
+        return self.cleaned_data.get("price_tier") or PriceTier.RETAIL
 
     def clean_discount_mode(self):
         return self.cleaned_data.get("discount_mode") or DISCOUNT_MODE_AMOUNT
@@ -190,22 +186,9 @@ class SaleItemForm(CartonPackItemFormMixin, SelectedProductMixin, forms.ModelFor
     pack price for packs, the carton price for cartons); a typed one wins.
     """
 
-    def __init__(self, *args, price_tier=PriceTier.RETAIL, **kwargs):
-        # The invoice's sale type (D-090): a blank price is filled from that tier's cell.
-        self.price_tier = price_tier if price_tier in PriceTier.values else PriceTier.RETAIL
-        super().__init__(*args, **kwargs)
-
     def suggested_price(self, product, unit):
-        return product.price_for(self.price_tier, unit)
-
-    @cached_property
-    def selected_prices(self):
-        """The four prices of the product this row already holds (D-090), so a re-rendered
-        row can still reprice on a tier switch and keep its live total."""
-        product = self.selected_product
-        if product is None:
-            return None
-        return {key: cell["price"] for key, cell in product.price_grid.items()}
+        """A blank price is filled from the product: the unit alone decides (D-100)."""
+        return product.price_for(unit)
 
     @cached_property
     def selected_cost(self):

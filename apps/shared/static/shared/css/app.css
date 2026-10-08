@@ -324,6 +324,38 @@ body.nav-open {
   color: var(--accent-500);
 }
 
+/* Folded group: the summary looks like a top-level link; a chevron shows the state. */
+.nav-fold__summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.nav-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-fold__chev {
+  width: 16px;
+  height: 16px;
+  margin-inline-start: auto;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+
+.nav-fold[open] > .nav-fold__summary .nav-fold__chev {
+  transform: rotate(180deg);
+}
+
+/* A group summary is not a page: no accent bar, only the active child carries it. */
+.nav-fold__summary.is-active {
+  box-shadow: none;
+  background: none;
+}
+
 .nav-icon {
   width: 18px;
   height: 18px;
@@ -532,6 +564,7 @@ summary:focus-visible,
 .badge {
   display: inline-flex;
   align-items: center;
+  column-gap: var(--space-1);   /* a flex container drops the space between "بستانکاری" and its figure */
   padding: 1px var(--space-2);
   border-radius: 999px;
   font-size: 12px;
@@ -539,6 +572,9 @@ summary:focus-visible,
   background: var(--ink-100);
   color: var(--ink-700);
 }
+
+/* A label + date badge ("برگشت داده شد ۱۴۰۵/۰۷/۱۵") in a narrow cell was squeezed to one letter per line; the date drops to its own line instead. */
+.badge:has(> .is-token) { flex-wrap: wrap; }
 
 .badge--pending { background: var(--warning-100); color: var(--warning-700); }
 .badge--good { background: var(--positive-100); color: var(--positive-700); }
@@ -551,7 +587,6 @@ summary:focus-visible,
   content: "";
   width: 6px;
   height: 6px;
-  margin-inline-end: var(--space-1);
   border-radius: 50%;
   background: currentColor;
 }
@@ -1848,6 +1883,13 @@ form + .card {
   filter: brightness(0.97);
 }
 
+/* A stock-out is a warning, not a money loss: amber instead of red, same strip. */
+.alert-strip--stock {
+  border-inline-start-color: var(--warning-700);
+  background: var(--warning-100);
+  color: var(--warning-700);
+}
+
 /* The number the owner reads first gets the weight; a loss is red, never a quiet number. */
 .stat-card--primary {
   background: var(--chrome);
@@ -2449,7 +2491,7 @@ input[type="radio"]:focus-visible {
 .summary-strip__item--owed .summary-strip__value .money__unit,
 .summary-strip__item--settled .summary-strip__value .money__unit {
   color: inherit;
-  opacity: 0.8;
+  opacity: 1; /* the old 0.8 fade dropped the 12px unit to 3.9:1 on the tinted card; size and weight keep it quiet */
 }
 
 .summary-strip__status {
@@ -2503,6 +2545,12 @@ input[type="radio"]:focus-visible {
 .stat-card__value.is-negative .money__unit {
   color: inherit;
   opacity: 0.8;
+}
+
+/* Where the muted caption colour above wins, the 0.8 fade only drops it to 3.9:1 (12px text): keep it solid. */
+.stats:not(.stats--performance, .stats--position) .stat-card__value.is-loss .money__unit,
+.stats:not(.stats--performance, .stats--position) .stat-card__value.is-negative .money__unit {
+  opacity: 1;
 }
 
 /* ------------------------------------------------------ D025 textarea, D032 rhythm */
@@ -3104,6 +3152,8 @@ h3 {
 /* Light-on-dark money colours come from tokens instead of literals. */
 .stat-card--primary .stat-card__delta--up { color: var(--positive-300); }
 .stat-card--primary .stat-card__delta--down { color: var(--negative-300); }
+/* The neutral delta line (e.g. "no base for a percent") kept the light-theme grey: 1.9-2.4:1 on navy. */
+.stat-card--primary .stat-card__delta { color: var(--ink-200); }
 
 /* Half pixels (12.5 / 13.5) were noise, not hierarchy: snap them to the scale. */
 .field__hint,
@@ -6385,12 +6435,8 @@ form[hx-post].htmx-request::after {
   margin-bottom: var(--space-5);
 }
 
-#selling-price,
-#price-history,
-#fifo-layers,
-#movements {
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
-}
+/* (D-095) No scroll-margin here: `html { scroll-padding-top }` already clears the header, and adding both landed
+   these sections 80 px too low (the price form was off-screen after "تغییر قیمت‌ها"). */
 
 #price-history:target,
 #fifo-layers:target,
@@ -7771,10 +7817,12 @@ html { scroll-behavior: smooth; }
   color: var(--accent-500);
 }
 
-#profit-how,
-#sales-by-product {
-  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+/* accent-500 on the tinted card measured 2.68:1 (AA needs 4.5); the dark primary card keeps its own colour. */
+.stat-card:not(.stat-card--primary) .stat-card__more {
+  color: var(--accent-700);
 }
+
+/* (D-095) see the note at #selling-price: the root scroll-padding is the only offset. */
 
 #profit-how:target,
 #sales-by-product:target {

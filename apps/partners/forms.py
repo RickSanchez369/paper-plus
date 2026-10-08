@@ -25,24 +25,13 @@ _WIDGETS = {
 }
 
 
-class _CustomerTierMixin:
-    """`price_tier` may be left out of a POST (older pages): keep what the customer had, else retail (D-090)."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["price_tier"].required = False
-
-    def clean_price_tier(self):
-        return self.cleaned_data.get("price_tier") or getattr(self.instance, "price_tier", None) or "retail"
-
-
-class QuickCustomerForm(_CustomerTierMixin, forms.ModelForm):
+class QuickCustomerForm(forms.ModelForm):
     """New customer, inline. Reused by the Customers page and the sale form."""
 
     class Meta:
         model = Customer
-        fields = ("name", "phone", "price_tier", "address", "note")
-        widgets = {**_WIDGETS, "price_tier": forms.Select(attrs={"class": "field__control"})}
+        fields = ("name", "phone", "address", "note")
+        widgets = _WIDGETS
         error_messages = {
             "name": {
                 # Names are globally unique now that there is one business
@@ -69,7 +58,7 @@ class QuickSupplierForm(forms.ModelForm):
         }
 
 
-class CustomerForm(_CustomerTierMixin, forms.ModelForm):
+class CustomerForm(forms.ModelForm):
     """Full edit form for the Customers detail page --
     the quick-create form only asks name/phone/address/note; this one adds
     is_active, since deactivating a customer is an edit-page action, not a
@@ -77,10 +66,9 @@ class CustomerForm(_CustomerTierMixin, forms.ModelForm):
 
     class Meta:
         model = Customer
-        fields = ("name", "phone", "price_tier", "address", "note", "is_active")
+        fields = ("name", "phone", "address", "note", "is_active")
         widgets = {
             **_WIDGETS,
-            "price_tier": forms.Select(attrs={"class": "field__control"}),
             "is_active": forms.CheckboxInput(),
         }
         error_messages = {
@@ -129,4 +117,6 @@ class CustomerFilterForm(forms.Form):
 
     q = forms.CharField(required=False, label="جست‌وجو (نام یا تلفن)")
     account_status = forms.ChoiceField(required=False, label="وضعیت حساب", choices=ACCOUNT_STATUS_CHOICES)
-    is_active = forms.ChoiceField(required=False, label="وضعیت فعالیت", choices=ACTIVE_CHOICES, initial="true")
+    # data-fold-default: the phone filter fold (mobile.js) must not read the default «فعال» as an applied filter.
+    is_active = forms.ChoiceField(required=False, label="وضعیت فعالیت", choices=ACTIVE_CHOICES, initial="true",
+                                  widget=forms.Select(attrs={"data-fold-default": "true"}))

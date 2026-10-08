@@ -79,5 +79,5 @@ ok("expense: transfer", h.c.post("/expenses/new/", {
     "bank_account": str(cur.pk)}))
 
 # A product with no stock, to see the out-of-stock state.
-Product.objects.get_or_create(sku="QA-P9", defaults={"name": "کالای ناموجود (نمونه)", "unit": "بسته", "default_selling_price": 90000})
+Product.objects.get_or_create(sku="QA-P9", defaults={"name": "کالای ناموجود (نمونه)", "default_selling_price": 90000})
 print("demo data ready")

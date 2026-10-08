@@ -9,6 +9,6 @@ Arrow + sign carry the direction, so it never rides on colour alone.
     {% if c.direction > 0 %}▲ +{% elif c.direction < 0 %}▼ {% else %}● {% endif %}{{ c.change|fa_percent }} نسبت به همین مدت ماه قبل
   </span>
 {% elif c.diff %}
-  <span class="stat-card__delta">ماه قبل مبنایی برای درصد نداشت</span>
+  <span class="stat-card__delta stat-card__delta--none">ماه قبل مبنایی برای درصد نداشت</span>
 {% endif %}
 <span class="field__hint">ماه قبل تا {{ label }}: <strong class="num">{{ c.prev|toman }}</strong></span>

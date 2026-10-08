@@ -293,12 +293,11 @@ class SaleItem(CartonLine, BaseModel):
         never touch it (it's a snapshot, not a live reference).
         """
         if self.product_id:
-            # The invoice's sale type picks the cell of the price grid (D-090).
-            tier = self.invoice.price_tier if self.invoice_id else PriceTier.RETAIL
+            # The unit alone picks the price: pack -> pack price, carton -> carton price (D-100).
             if self.unit_price is None:
-                self.unit_price = self.product.price_for(tier, "pack")
+                self.unit_price = self.product.price_for("pack")
             if self.cartons and not self.carton_price:
-                self.carton_price = self.product.price_for(tier, "carton")
+                self.carton_price = self.product.price_for("carton")
         super().clean_fields(exclude=exclude)
 
     def __str__(self):

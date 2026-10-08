@@ -11,6 +11,8 @@ stricter -- blocked once any of this purchase's stock has been sold).
 {# Kind word first so it survives tab truncation; Persian digits like the h1. #}
 {% block title %}خرید {{ invoice.invoice_number|fa_digits }} · {{ invoice.supplier.name }}{% if invoice.status == "cancelled" %} (لغو شده){% endif %}{% endblock %}
 {% block header %}فاکتور خرید {{ invoice.invoice_number|fa_digits }}{% endblock %}
+{# Only the dialog open/close part of this script is used here (D-097); the print hooks find no link. #}
+{% block head %}<script src="{% static_v 'sales/js/sales_pages.js' %}" defer></script>{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs">
@@ -35,11 +37,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
       {% if invoice.status == "confirmed" %}<a href="{% url 'returns:purchase_new' invoice.pk %}" class="btn btn--quiet">ثبت مرجوعی</a>{% endif %}
       <a href="{% url 'purchasing:print' invoice.pk %}" class="btn btn--quiet">چاپ فاکتور</a>
       {% if can_cancel %}
-        <form method="post" action="{% url 'purchasing:cancel' invoice.pk %}"
-              onsubmit="return confirm('این فاکتور خرید لغو شود؟ کالاهای آن از موجودی کم می‌شود و این عملیات بازگشت‌ناپذیر است.');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn--danger">لغو فاکتور</button>
-        </form>
+        <button type="button" class="btn btn--danger" data-sp-dialog-open="cancel-dialog">لغو فاکتور</button>
       {% endif %}
     </div>
   </div>
@@ -49,20 +47,21 @@ stricter -- blocked once any of this purchase's stock has been sold).
   {% include "shared/_invoice_summary.html" with total=invoice.total_amount paid=invoice.paid_amount outstanding=invoice.outstanding payment_status=invoice.payment_status %}
 {% endif %}
 
-<div class="card">
-  {% if invoice.returns.all %}
+{% if invoice.returns.all %}
 {# D-089: goods and money that came back on this invoice. #}
 <div class="card">
   <div class="card__body">
     <h2>مرجوعی‌های این فاکتور</h2>
     <ul class="ret-list">
       {% for doc in invoice.returns.all %}
-        <li><a href="{% url 'returns:purchase_detail' doc.pk %}">مرجوعی {{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span> {% include "returns/_settle_chips.html" with purchase=True %}</li>
+        <li><a href="{% url 'returns:purchase_detail' doc.pk %}">مرجوعی {{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span> {% if doc.is_cancelled %}<span class="badge badge--muted">لغوشده</span>{% else %}{% include "returns/_settle_chips.html" with purchase=True %}{% endif %}</li>
       {% endfor %}
     </ul>
   </div>
 </div>
 {% endif %}
+
+<div class="card">
 
 <div class="card__body">
     <h2>اقلام فاکتور</h2>
@@ -135,7 +134,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
                 {% elif allocation.payment.is_credit_note %}{{ allocation.payment.note }}
                 {% else %}نقدی{% endif %}
                 {% if allocation.reversal_payment %}
-                  <span class="badge badge--bad">برگشت داده شد {{ allocation.reversal_payment.payment_date|jalali }}</span>
+                  <span class="badge badge--bad">برگشت داده شد <span class="is-token">{{ allocation.reversal_payment.payment_date|jalali }}</span></span>
                 {% endif %}
               </td>
             </tr>
@@ -175,4 +174,35 @@ stricter -- blocked once any of this purchase's stock has been sold).
     {% endif %}
   </div>
 </div>
+{% if can_cancel %}
+<dialog class="quick-dialog cancel-dialog" id="cancel-dialog" aria-labelledby="cancel-title" data-sp-dialog-backdrop>
+  <form method="post" action="{% url 'purchasing:cancel' invoice.pk %}">
+    {% csrf_token %}
+    <h2 class="quick-dialog__title" id="cancel-title">لغو فاکتور {{ invoice.invoice_number|fa_digits }}؟</h2>
+    <p class="field__hint">با لغو این فاکتور، این‌ها به‌صورت خودکار انجام می‌شود:</p>
+    <ul class="cancel-dialog__effects">
+      {% for item in invoice.items.all %}
+        <li><span class="cancel-dialog__tag">انبار</span>{{ item|line_units }} «{{ item.product.name }}» از موجودی کم می‌شود</li>
+      {% endfor %}
+      {% for allocation in invoice.payment_allocations.all %}{% if not allocation.reversal_payment %}
+        <li><span class="cancel-dialog__tag">پول</span><span class="num">{{ allocation.amount|toman }}</span>
+          {% if allocation.payment.bank_account %}به حساب «{{ allocation.payment.bank_account.name }}»{% endif %}
+          {% if allocation.payment.cheque %}(پرداخت با چک {{ allocation.payment.cheque.cheque_number|default:"بدون شماره" }}){% endif %}
+          برگشت داده می‌شود (ثبت پرداخت معکوس با تاریخ امروز)</li>
+      {% endif %}{% endfor %}
+      {% for cheque in invoice.cheques.all %}{% if cheque.status == "pending" %}
+        <li><span class="cancel-dialog__tag">چک</span>چک {{ cheque.cheque_number|default:"(بدون شماره)" }} به مبلغ <span class="num">{{ cheque.amount|toman }}</span> باطل می‌شود</li>
+      {% endif %}{% endfor %}
+      {% if invoice.outstanding %}
+        <li><span class="cancel-dialog__tag">حساب تأمین‌کننده</span>مانده <span class="num">{{ invoice.outstanding|toman }}</span> از بدهی به «{{ invoice.supplier.name }}» کم می‌شود</li>
+      {% endif %}
+    </ul>
+    <p class="field__hint">اگر بخشی از این کالا قبلاً فروخته شده باشد، لغو انجام نمی‌شود و پیام خطا می‌گیرید. فاکتور لغوشده قابل ویرایش یا بازگشایی نیست؛ برای اصلاح، یک فاکتور جدید ثبت کنید. سابقهٔ فاکتور و پرداخت‌ها حفظ می‌شود.</p>
+    <div class="cancel-dialog__actions">
+      <button type="submit" class="btn btn--danger">بله، فاکتور {{ invoice.invoice_number|fa_digits }} لغو شود</button>
+      <button type="button" class="btn btn--quiet" data-sp-dialog-close autofocus>انصراف، فاکتور بماند</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}

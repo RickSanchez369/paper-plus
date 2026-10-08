@@ -53,7 +53,7 @@ the form is the plain form it always was.
           {% with due=invoice.outstanding %}
           <label class="invoice-picker__row" data-outstanding="{{ due|unlocalize }}" data-name="{{ invoice.invoice_number|fa_digits }}">
             {{ choice.tag }}
-            <span class="invoice-picker__label">فاکتور {{ invoice.invoice_number|fa_digits }}</span>
+            <span class="invoice-picker__label">فاکتور <span class="is-token">{{ invoice.invoice_number|fa_digits }}</span></span>
             <span class="invoice-picker__date num">{{ invoice.invoice_date|jalali }}</span>
             <span class="invoice-picker__due num">{{ due|toman }}</span>
           </label>

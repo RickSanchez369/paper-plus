@@ -30,6 +30,12 @@ each row touched and a link back to its source invoice; and a
         موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|units:product.pack_per_carton }}</strong>
       </p>
     </div>
+    {% if request.user.is_superuser %}
+      <form method="post" action="{% url 'inventory:remove' product.pk %}" onsubmit="return confirm('کالای «{{ product.name|escapejs }}» از انبار حذف شود؟ اگر سابقه داشته باشد فقط کنار گذاشته می‌شود و سابقه‌اش می‌ماند.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--danger"{% if stock %} disabled title="موجودی باید صفر باشد"{% endif %}>حذف کالا</button>
+      </form>
+    {% endif %}
   </div>
 </div>
 
@@ -70,21 +76,15 @@ each row touched and a link back to its source invoice; and a
 
   <div class="price-board__group price-board__group--sell" id="selling-price">
     <h2 class="price-board__title">قیمت فروش</h2>
-    {# D-090: the four-cell grid; a derived cell says what it was worked out from. #}
+    {# D-100: two prices; the unit sold decides which one a sale line gets. #}
     <dl class="price-board__list price-grid">
-      {% with g=product.price_grid %}
-      <div><dt><a href="#price-history">خرد · هر بسته</a></dt><dd class="num">{{ g.retail_pack.price|toman }}</dd></div>
-      <div><dt><a href="#price-history">خرد · هر کارتن</a></dt><dd class="num">{{ g.retail_carton.price|toman }}</dd>
-        {% if not g.retail_carton.set %}<small class="field__hint">محاسبه‌شده: بسته × {{ product.pack_per_carton|fa_number }}</small>{% endif %}</div>
-      <div><dt><a href="#price-history">عمده · هر بسته</a></dt><dd class="num">{{ g.wholesale_pack.price|toman }}</dd>
-        {% if not g.wholesale_pack.set %}<small class="field__hint">محاسبه‌شده{% if product.wholesale_selling_price %}: کارتن عمده ÷ {{ product.pack_per_carton|fa_number }}{% else %}: همان قیمت بسته خرد{% endif %}</small>{% endif %}</div>
-      <div><dt><a href="#price-history">عمده · هر کارتن</a></dt><dd class="num">{{ g.wholesale_carton.price|toman }}</dd>
-        {% if not g.wholesale_carton.set %}<small class="field__hint">محاسبه‌شده</small>{% endif %}</div>
-      {% endwith %}
+      <div><dt><a href="#price-history">هر بسته (خرد)</a></dt><dd class="num">{{ product.pack_price|toman }}</dd></div>
+      <div><dt><a href="#price-history">هر کارتن (عمده)</a></dt><dd class="num">{{ product.carton_price|toman }}</dd>
+        {% if not product.wholesale_selling_price %}<small class="field__hint">محاسبه‌شده: بسته × {{ product.pack_per_carton|fa_number }}</small>{% endif %}</div>
     </dl>
 
     <div class="price-board__edit">
-      <h3 class="price-board__subtitle">تغییر قیمت‌های فروش (خرد و عمده، بسته و کارتن)</h3>
+      <h3 class="price-board__subtitle">تغییر قیمت‌های فروش (بستهٔ خرد و کارتن عمده)</h3>
       <p class="field__hint">
         فقط قیمت پیشنهادی فاکتورهای فروش بعدی عوض می‌شود؛ فاکتورهای قبلی، بهای خرید، لایه‌های FIFO و ارزش موجودی دست نمی‌خورند.
       </p>
@@ -107,12 +107,10 @@ each row touched and a link back to its source invoice; and a
         <div class="price-board__fields">
           {% include "shared/_field.html" with field=price_form.default_selling_price %}
           {% include "shared/_field.html" with field=price_form.wholesale_selling_price %}
-          {% include "shared/_field.html" with field=price_form.retail_carton_price %}
-          {% include "shared/_field.html" with field=price_form.wholesale_pack_price %}
         </div>
         <label class="price-auto" hidden><input type="checkbox" id="wholesale-auto"{% if product.wholesale_is_unset %} checked{% endif %}>
           قیمت کارتن خودکار: قیمت بسته × {{ product.pack_per_carton|fa_number }}</label>
-        <p class="field__hint">خالی بگذارید = بدون تغییر · ۰ (به‌جز قیمت بسته خرد) = جدا تعیین نشود و از قیمت‌های دیگر محاسبه شود.</p>
+        <p class="field__hint">خالی بگذارید = بدون تغییر · ۰ برای قیمت کارتن = جدا تعیین نشود و برابر قیمت بسته × تعداد بسته در کارتن حساب شود.</p>
 
         <div class="price-preview" id="price-preview" aria-live="polite" hidden>
           <div class="price-preview__row" data-row="retail">
@@ -153,10 +151,8 @@ each row touched and a link back to its source invoice; and a
           <thead>
             <tr>
               <th>تاریخ</th>
-              <th>خرد · بسته</th>
-              <th>خرد · کارتن</th>
-              <th>عمده · بسته</th>
-              <th>عمده · کارتن</th>
+              <th>بسته (خرد)</th>
+              <th>کارتن (عمده)</th>
               <th>نوع تغییر</th>
               <th>کاربر</th>
             </tr>

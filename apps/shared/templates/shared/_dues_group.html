@@ -22,7 +22,7 @@ invoice link stays beside it.
           <td class="num">{{ item.amount|money }}</td>
           <td>
             {% if item.kind == "cheque" %}<div class="dues-actions">
-              <a class="btn btn--quiet" href="{% if item.obj.direction == 'in' %}{% url 'receivables:list' %}{% else %}{% url 'payables:list' %}{% endif %}#chq-{{ item.obj.pk }}">{% icon "check" %}{% if item.obj.direction == 'in' %}وصول شد{% else %}پاس شد{% endif %}</a>
+              <a class="btn btn--quiet" href="{% if item.obj.direction == 'in' %}{% url 'receivables:list' %}{% else %}{% url 'payables:list' %}{% endif %}#chq-{{ item.obj.pk }}">{% icon "check" %}{% if item.obj.direction == 'in' %}ثبت وصول{% else %}ثبت پاس{% endif %}</a>
               <a class="field__hint" href="{% url 'cheques:detail' item.obj.pk %}">جزئیات</a>
             </div>
             {% elif item.kind == "recurring" %}<a class="btn btn--quiet" href="{% url 'expenses:new' %}?recurring={{ item.obj.pk }}">{% icon "pay" %}ثبت پرداخت</a>
@@ -39,7 +39,7 @@ invoice link stays beside it.
         </tr>
         {% endwith %}
       {% endfor %}
-      <tr><td colspan="2"><strong>جمع {{ title }}</strong></td><td class="num"><strong>{{ group.total|toman }}</strong></td><td></td></tr>
+      <tr data-card-skip class="dues-total"><td colspan="2"><strong>جمع {{ title }}</strong></td><td class="num"><strong>{{ group.total|toman }}</strong></td><td></td></tr>
     </tbody>
   </table></div>
 {% else %}

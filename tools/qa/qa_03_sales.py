@@ -118,7 +118,7 @@ def scenarios(h):
     r = h.c.post("/sales/new/", d)
     check("S21 a blank price falls back to the product's selling price", r.status_code == 302 and last(cust).items.get().unit_price == 1000, r.status_code)
     r = h.post_sale(cust, [(a, 1, 0)], account=acct)
-    check("S22 a zero price is allowed (free item)", r.status_code == 302)
+    check("S22 a zero price is refused (D-097; a gift goes in at 1 Toman)", r.status_code == 200)
 
     c0 = n_inv()
     inactive = h.customer(is_active=False)
@@ -208,7 +208,7 @@ def scenarios(h):
     r = h.c.get("/sales/?q=" + cust.name + "&payment_status=unpaid")
     check("S35 filter + search combine", r.status_code == 200)
     r = h.c.get("/sales/product-search/?q=" + a.name)
-    check("S36 product search shows stock and price data", has(r, str(a.pk)) and has(r, "data-retail-pack"))
+    check("S36 product search shows stock and price data", has(r, str(a.pk)) and has(r, "data-pack-price") and has(r, "data-carton-price"))
     r = h.c.get(f"/sales/product-search/?q={a.name}&exclude={a.pk}")
     check("S36 exclude hides a chosen product", not has(r, str(a.pk)))
     r = h.c.get("/sales/product-search/?q=" + zero.name)

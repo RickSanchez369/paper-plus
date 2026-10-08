@@ -53,12 +53,15 @@
 
   function eligible(table) {
     if (table.classList.contains("data-table--stack") || table.classList.contains("data-table--scroll")) { return false; }
-    if (table.hasAttribute("data-no-cards") || !table.tHead || table.tHead.rows.length !== 1 || table.tFoot) { return false; }
+    if (table.hasAttribute("data-no-cards") || !table.tHead || table.tHead.rows.length !== 1) { return false; }
+    // A footer is fine when every row of it is a marked totals row (reports, ledgers): it is shown as a summary line.
+    if (table.tFoot && !Array.prototype.every.call(table.tFoot.rows, function (r) { return r.hasAttribute("data-card-skip"); })) { return false; }
     var cols = table.tHead.rows[0].cells.length;
     var rows = 0;
     for (var b = 0; b < table.tBodies.length; b++) {
       for (var r = 0; r < table.tBodies[b].rows.length; r++) {
         var row = table.tBodies[b].rows[r];
+        if (row.hasAttribute("data-card-skip")) { continue; } // a totals row spans columns: it must not veto the cards
         rows++;
         if (row.cells.length !== cols) { return false; }
         for (var c = 0; c < row.cells.length; c++) {
@@ -73,8 +76,20 @@
     var heads = Array.prototype.map.call(table.tHead.rows[0].cells, headerText);
     Array.prototype.forEach.call(table.tBodies, function (body) {
       Array.prototype.forEach.call(body.rows, function (row) {
+        if (row.hasAttribute("data-card-skip")) { return; }
+        // The one document link of a card (invoice no., cheque no., customer) gets a stretched hit area on phones.
+        var first = row.cells[0];
+        if (first && first.querySelectorAll("a[href]").length === 1) { first.querySelector("a[href]").classList.add("card-link"); }
+        Array.prototype.forEach.call(row.querySelectorAll(".cell-sub"), function (sub) {
+          var shown = sub.cloneNode(true);
+          Array.prototype.forEach.call(shown.querySelectorAll(".sr-only"), function (x) { x.remove(); });
+          if (/^[\s—-]*$/.test(shown.textContent)) { sub.setAttribute("data-empty", ""); }
+        });
         Array.prototype.forEach.call(row.cells, function (td, i) {
           if (td.tagName !== "TD" || td.hasAttribute("data-label") || td.classList.contains("cell-actions")) { return; }
+          // An empty cell ("—") would print its label over nothing in a card; CSS hides it on phones.
+          var plain = td.textContent.replace(/\s/g, "");
+          if ((plain === "" || plain === "—" || plain === "-") && !td.querySelector("a, button, input, select, details")) { td.setAttribute("data-empty", ""); }
           // A header-less (or screen-reader-only) column that holds buttons is the card's action row.
           if (!heads[i] && td.querySelector(ACTION_SEL)) {
             td.classList.add("cell-actions");

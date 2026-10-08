@@ -57,7 +57,7 @@ this page lists and finds; it has no "new" button of its own.
                 <td>{{ doc.party.name }}</td>
                 <td><a href="{% if kind == 'purchase' %}{% url 'purchasing:detail' doc.invoice.pk %}{% else %}{% url 'sales:detail' doc.invoice.pk %}{% endif %}">{{ doc.invoice.invoice_number|fa_digits }}</a></td>
                 <td class="num">{{ doc.total_amount|toman }}</td>
-                <td>{% include "returns/_settle_chips.html" %}</td>
+                <td>{% if doc.is_cancelled %}<span class="badge badge--muted">لغوشده</span>{% else %}{% include "returns/_settle_chips.html" %}{% endif %}</td>
               </tr>
             {% endfor %}
           </tbody>

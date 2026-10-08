@@ -47,7 +47,7 @@ this range alone.
         {% if cards.sales.change > 0 %}+{% endif %}{{ cards.sales.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
@@ -59,7 +59,7 @@ this range alone.
         {% if cards.purchases.change > 0 %}+{% endif %}{{ cards.purchases.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
@@ -70,7 +70,7 @@ this range alone.
         {% if cards.expenses.change > 0 %}+{% endif %}{{ cards.expenses.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card">
@@ -81,7 +81,7 @@ this range alone.
         {% if cards.gross_profit.change > 0 %}+{% endif %}{{ cards.gross_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   <div class="stat-card stat-card--primary">
@@ -93,7 +93,7 @@ this range alone.
         {% if cards.net_profit.change > 0 %}+{% endif %}{{ cards.net_profit.change|fa_percent }} نسبت به بازهٔ قبل
       </span>
     {% else %}
-      <span class="stat-card__delta">بازهٔ قبل صفر بود؛ درصدی نیست</span>
+      <span class="stat-card__delta stat-card__delta--none">بازهٔ قبل صفر بود؛ درصدی نیست</span>
     {% endif %}
   </div>
   {% if cards.sales_returns.value or cards.purchase_returns.value %}
@@ -102,6 +102,7 @@ this range alone.
     <span class="stat-card__label">مرجوعی‌ها</span>
     <span class="stat-card__value num">{{ cards.sales_returns.value|toman_split }}</span>
     <span class="field__hint">مرجوعی فروش · سود برگشتی <span class="num">{{ cards.returns_profit.value|toman }}</span>{% if cards.purchase_returns.value %} · مرجوعی خرید <span class="num">{{ cards.purchase_returns.value|toman }}</span>{% endif %}</span>
+    <span class="field__hint">فروش پس از مرجوعی: <strong class="num">{{ cards.net_sales.value|toman }}</strong></span>
     <a class="stat-card__more no-print" href="{% url 'returns:list' %}">دیدن مرجوعی‌ها ‹</a>
   </div>
   {% endif %}
@@ -204,7 +205,7 @@ this range alone.
         </tbody>
         {# The unfiltered total is the server's own figure, so the table visibly ties to «جمع فروش» above. #}
         <tfoot>
-          <tr>
+          <tr data-card-skip>
             <td><strong>جمع <span id="product-totals-label">همهٔ کالاها</span></strong></td>
             <td></td>
             <td class="num"><strong id="tot-amount">{{ cards.sales.value|toman }}</strong></td>

@@ -2,7 +2,7 @@
 {% comment %}
 Live product-search results (ProductSearchView). Each result carries
 everything sale_form.js needs on click -- id, name, stock in packs, the
-packs-per-carton ratio, the four prices (D-090) and the average cost per pack
+packs-per-carton ratio, the pack and carton prices (D-100) and the average cost per pack
 (below-cost hint) -- as data-* attributes, so picking one needs no second request.
 {% endcomment %}
 {% if rows %}
@@ -12,15 +12,13 @@ packs-per-carton ratio, the four prices (D-090) and the average cost per pack
             data-name="{{ row.product.name }}"
             data-stock="{{ row.stock }}"
             data-ratio="{{ row.product.pack_per_carton }}"
-            data-retail-pack="{{ row.prices.retail_pack }}"
-            data-retail-carton="{{ row.prices.retail_carton }}"
-            data-wholesale-pack="{{ row.prices.wholesale_pack }}"
-            data-wholesale-carton="{{ row.prices.wholesale_carton }}"
+            data-pack-price="{{ row.pack_price }}"
+            data-carton-price="{{ row.carton_price }}"
             data-cost="{{ row.cost|default_if_none:'' }}">
       <span class="item-row__result-name" title="{{ row.product.name }}">{{ row.product.name }}</span>
       <span class="item-row__result-meta">
         <span class="num item-row__result-stock{% if row.stock <= 0 %} item-row__result-stock--out{% endif %}">{% if row.stock <= 0 %}ناموجود{% else %}موجودی: {{ row.stock|units:row.product.pack_per_carton }}{% endif %}</span>
-        <span class="num item-row__result-price">بسته خرد {{ row.prices.retail_pack|toman }} · عمده {{ row.prices.wholesale_pack|toman }}</span>
+        <span class="num item-row__result-price">بسته {{ row.pack_price|toman }} · کارتن {{ row.carton_price|toman }}</span>
       </span>
     </button>
   {% endfor %}

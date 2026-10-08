@@ -118,9 +118,9 @@ def scenarios(h):
     s0 = reports.sales_returns_total(today, today)
     check("R26 sales returns total for today includes these returns", s0 >= 23000 + 4000 + 2000 + 6000, s0)
     cards = reports.summary_cards(today, today)
-    check("R27 net profit = gross - profit given back - expenses",
+    check("R27 net profit = gross - profit given back - freight lost on purchase returns - expenses (D-101)",
           cards["net_profit"]["value"] == cards["gross_profit"]["value"] - cards["returns_profit"]["value"]
-          - cards["expenses"]["value"])
+          - cards["purchase_returns_loss"]["value"] - cards["expenses"]["value"])
 
     # ---------------------------------------------------------------- purchases
     sup = h.supplier()

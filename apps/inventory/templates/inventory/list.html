@@ -33,8 +33,9 @@ changes through purchase and sales invoices only (D-044).
 <form method="get" class="toolbar" id="inv-filter"
       hx-get="{% url 'inventory:list' %}"
       hx-trigger="input changed delay:250ms from:#q, change"
-      hx-target="#inv-results" hx-select="#inv-results" hx-swap="outerHTML" hx-push-url="true" hx-sync="this:replace">
+      hx-target="#inv-results" hx-select="#inv-results" hx-swap="outerHTML" hx-replace-url="true" hx-sync="this:replace">
   {# Live filtering is an enhancement: the button below stays the no-JS path (and Enter still submits). #}
+  {% include "shared/_keep_sort.html" %}
   <div class="filters">
     <div class="field">
       <label for="q">جستجوی کالا</label>
@@ -75,6 +76,9 @@ changes through purchase and sales invoices only (D-044).
 </div>
 
 <div id="inv-results">
+{% comment %}Phones only (CSS): the table header with the sort links is not shown on a card layout. Inside the swapped
+block so the links are rebuilt with the current search (they used to drop it and show a stale active chip).{% endcomment %}
+{% sort_chips "نام:name" "موجودی:stock" "ارزش:value" %}
 {% if rows %}
 <div class="card">
   <div class="card__body">
@@ -86,8 +90,8 @@ changes through purchase and sales invoices only (D-044).
             {% sort_th "موجودی" "stock" %}
             <th>میانگین قیمت خرید (هر بسته)</th>
             <th>آخرین قیمت خرید</th>
-            <th>قیمت فروش خرد (بسته / کارتن)</th>
-            <th>قیمت فروش عمده (بسته / کارتن)</th>
+            <th>قیمت بسته (خرد)</th>
+            <th>قیمت کارتن (عمده)</th>
             {% sort_th "ارزش موجودی (به بهای خرید)" "value" %}
             <th>سهم از کل</th>
             <th></th>
@@ -106,10 +110,8 @@ changes through purchase and sales invoices only (D-044).
               </td>
               <td class="num" data-label="میانگین خرید (هر بسته)">{% if row.average_cost is not None %}{{ row.average_cost|toman }}{% else %}—{% endif %}</td>
               <td class="num" data-label="آخرین قیمت خرید">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
-              {% with g=row.product.price_grid %}
-              <td class="num" data-label="فروش خرد (بسته / کارتن)">{{ g.retail_pack.price|toman }}<small class="cell-sub">کارتن: {{ g.retail_carton.price|toman }}</small></td>
-              <td class="num" data-label="فروش عمده (بسته / کارتن)">{{ g.wholesale_pack.price|toman }}<small class="cell-sub">کارتن: {{ g.wholesale_carton.price|toman }}</small>{% if row.product.prices_incomplete %} <span class="badge badge--pending" title="بعضی از چهار قیمت (خرد/عمده × بسته/کارتن) جدا تعیین نشده و محاسبه می‌شود">قیمت ناقص</span>{% endif %}</td>
-              {% endwith %}
+              <td class="num" data-label="قیمت بسته (خرد)">{{ row.product.pack_price|toman }}</td>
+              <td class="num" data-label="قیمت کارتن (عمده)">{{ row.product.carton_price|toman }}{% if row.product.wholesale_is_unset %} <span class="badge badge--pending" title="قیمت کارتن جدا تعیین نشده و برابر قیمت بسته × تعداد بسته در کارتن حساب می‌شود">قیمت ناقص</span>{% endif %}</td>
               <td class="num" data-label="ارزش موجودی">{{ row.value|toman }}</td>
               <td class="num" data-label="سهم از کل">
                 <span class="inv-share">

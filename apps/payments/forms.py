@@ -18,7 +18,7 @@ from django import forms
 from apps.shared.utils import format_toman
 
 from apps.shared.widgets import NumericInput
-from apps.shared.forms import JalaliDateField
+from apps.shared.forms import MAX_DAYS_AHEAD, JalaliDateField
 
 from .models import BankAccount, Cheque, Expense, Payment, RecurringExpense
 
@@ -460,8 +460,8 @@ class ExpenseFilterForm(forms.Form):
         queryset=BankAccount.objects.filter(is_active=True),
         empty_label="— همهٔ حساب‌ها —",
     )
-    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0)
-    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0)
+    amount_min = forms.IntegerField(required=False, label="حداقل مبلغ (تومان)", min_value=0, widget=NumericInput())
+    amount_max = forms.IntegerField(required=False, label="حداکثر مبلغ (تومان)", min_value=0, widget=NumericInput())
     status = forms.ChoiceField(
         required=False, label="وضعیت پرداخت",
         choices=[("", "همه"), ("owed", "پرداخت‌نشده (نسیه / چک در انتظار)"), ("paid", "پرداخت‌شده")],
@@ -486,7 +486,7 @@ class ExpenseForm(forms.ModelForm):
     `recurring` (hidden) ties the expense to a fixed cost it settles (D-073).
     """
 
-    expense_date = JalaliDateField(label="تاریخ")
+    expense_date = JalaliDateField(label="تاریخ", max_days_ahead=MAX_DAYS_AHEAD)
     amount = forms.IntegerField(
         min_value=1,
         label="مبلغ (تومان)",
@@ -605,3 +605,19 @@ class RecurringExpenseForm(forms.ModelForm):
         if value < 1:
             raise forms.ValidationError("تعداد تکرار باید حداقل ۱ باشد.")
         return value
+
+    # A period is a day count up to ten years or a month count up to ten years: "every 1,000,000 months" was accepted (SQLite does not
+    # enforce the 16-bit column limit) and then crashed "skip" and "pay" with a 500 when the next date left the calendar.
+    MAX_EVERY = {"day": 3650, "month": 120}
+    MAX_REMIND_DAYS = 365
+
+    def clean(self):
+        cleaned = super().clean()
+        every, unit = cleaned.get("repeat_every"), cleaned.get("repeat_unit")
+        limit = self.MAX_EVERY.get(unit)
+        if every and limit and every > limit:
+            self.add_error("repeat_every", f"تعداد تکرار نمی‌تواند از {limit} بیشتر باشد.")
+        remind = cleaned.get("remind_days_before")
+        if remind is not None and remind > self.MAX_REMIND_DAYS:
+            self.add_error("remind_days_before", f"یادآوری حداکثر {self.MAX_REMIND_DAYS} روز قبل ممکن است.")
+        return cleaned

@@ -8,7 +8,8 @@ from apps.shared.utils import format_number
 
 
 class PriceTier(models.TextChoices):
-    """The two ways the business sells (D-075): to shops in bulk, or to walk-in buyers."""
+    """The two kinds of sale an invoice can be labelled with (D-075): bulk to shops, or to walk-in buyers.
+    Since D-100 it is only a label (list filter, badge, report); prices follow the unit sold, not this."""
 
     RETAIL = "retail", "خرد"
     WHOLESALE = "wholesale", "عمده"
@@ -59,12 +60,6 @@ class Product(BaseModel):
     pack split is only how it is entered and shown.
     """
 
-    class Unit(models.TextChoices):
-        # Retired by D-081 (a product is no longer counted in one chosen unit); the column
-        # stays until the data conversion has run, then a later migration drops it.
-        PACK = "بسته", "بسته"
-        CARTON = "کارتن", "کارتن"
-
     name = models.CharField(
         max_length=200,
         verbose_name="نام کالا",
@@ -72,12 +67,6 @@ class Product(BaseModel):
     sku = models.CharField(
         max_length=50,
         verbose_name="کد کالا",
-    )
-    unit = models.CharField(
-        max_length=20,
-        choices=Unit.choices,
-        default=Unit.PACK,
-        verbose_name="واحد",
     )
     description = models.TextField(
         blank=True,
@@ -111,8 +100,8 @@ class Product(BaseModel):
         verbose_name="قیمت فروش عمده - هر کارتن (تومان)",
         help_text="قیمت یک کارتن کامل. صفر یعنی تعیین نشده؛ در این صورت قیمت کارتن = قیمت هر بسته × تعداد بسته در کارتن.",
     )
-    # D-090: the other two cells of the price grid (sale type x unit). 0 = unset;
-    # `price_for` then suggests a value from the prices that are set, never a free item.
+    # D-090 added these two cells; D-100 took them out of use again (a carton is always sold at the carton price,
+    # a pack at the pack price). The columns stay so no stored value is lost and old history rows still read.
     retail_carton_price = models.BigIntegerField(
         default=0,
         verbose_name="قیمت فروش خرد - هر کارتن (تومان)",
@@ -169,52 +158,13 @@ class Product(BaseModel):
             return self.wholesale_selling_price
         return self.default_selling_price * self.pack_per_carton
 
-    def price_for(self, tier, unit):
+    def price_for(self, unit):
         """
-        The suggested price of one ``unit`` ("pack"/"carton") on a ``tier`` (PriceTier) invoice (D-090):
-        the one place the four-cell grid is read. An unset cell (0) is derived only from cells
-        the owner did set, in a fixed order, and never comes out lower than a set cell implies:
-
-        - retail pack: the retail pack price;
-        - retail carton: set, else retail pack x ratio;
-        - wholesale carton: set, else wholesale pack x ratio, else the retail carton;
-        - wholesale pack: set, else wholesale carton / ratio (rounded up to a Toman), else retail pack.
+        The suggested price of one ``unit`` ("pack"/"carton") (D-100): the unit alone decides, never the sale
+        type or the customer. A pack is the pack (retail) price, a carton the carton (wholesale) price, or pack
+        price x ratio while that is unset -- see `carton_price`.
         """
-        ratio = self.pack_per_carton or 1
-        retail_pack = self.default_selling_price
-        retail_carton = self.retail_carton_price or retail_pack * ratio
-        if tier == PriceTier.WHOLESALE:
-            if unit == "carton":
-                return self.wholesale_selling_price or (self.wholesale_pack_price * ratio) or retail_carton
-            if self.wholesale_pack_price:
-                return self.wholesale_pack_price
-            if self.wholesale_selling_price:
-                return -(-self.wholesale_selling_price // ratio)
-            return retail_pack
-        return retail_carton if unit == "carton" else retail_pack
-
-    def price_is_set(self, tier, unit):
-        """True when that cell of the grid was typed by the owner, not derived."""
-        field = {
-            (PriceTier.RETAIL, "pack"): "default_selling_price",
-            (PriceTier.RETAIL, "carton"): "retail_carton_price",
-            (PriceTier.WHOLESALE, "pack"): "wholesale_pack_price",
-            (PriceTier.WHOLESALE, "carton"): "wholesale_selling_price",
-        }[(tier, unit)]
-        return getattr(self, field) > 0
-
-    @property
-    def price_grid(self):
-        """The four suggested prices with a set/derived flag each, for pages and data-* attributes."""
-        return {
-            f"{tier}_{unit}": {"price": self.price_for(tier, unit), "set": self.price_is_set(tier, unit)}
-            for tier in (PriceTier.RETAIL, PriceTier.WHOLESALE) for unit in ("pack", "carton")
-        }
-
-    @property
-    def prices_incomplete(self):
-        """True while any of the four cells is derived rather than set -- flagged in Inventory (D-090)."""
-        return not all(cell["set"] for cell in self.price_grid.values())
+        return self.carton_price if unit == "carton" else self.pack_price
 
     @property
     def wholesale_is_unset(self):
