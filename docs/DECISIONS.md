@@ -1597,3 +1597,16 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Schema: `returns.0002`, `payments.0014` (`voided_at`, credit-note constraint now allows its reversal), `shared.0022` (two audit events).
 - Tests: `tools/qa/qa_32_returns_v2.py` (52 checks), `qa_26` / `qa_07` / `qa_09` / `qa_11` net-profit identities include the freight loss;
   the mobile suite covers damaged / deduction forms and the return cancel dialog.
+
+## D-102 Remove a product, one-sheet print with a colour choice, folded sidebar groups (2026-10-08)
+- **Remove a product (superuser, zero stock):** `products.services.remove_product`. Nothing ever pointed at it (typo, test entry): really
+  deleted. Any history (opening stock, invoice line, layer, return): archived (`is_active=False`), because documents and the FIFO cost trail
+  must keep reading; it leaves the inventory list and the sale/purchase pickers, its detail page still opens. Stock must be zero first
+  (no write-off path exists, D-044). Audit events `product.deleted` / `product.archived`. Button on the product page.
+- **Sales print is one A4 sheet under any condition:** after the server density and the tighter-row steps, a last-resort `zoom`
+  (`--inv-fit`, down to 0.3) shrinks the whole sheet until it fits; the old "spill onto page 2" fallback is gone. The page padding that
+  pushed the 297 mm sheet onto a second page in print is removed and the printed sheet is 296 mm. The list/detail «چاپ» links now open the
+  print page (no hidden-iframe direct print), where «فاکتور رنگی» / «فاکتور سیاه‌وسفید» are two radio options (last choice remembered).
+- **Sidebar:** «مطالبات و بدهی» and «هزینه‌ها» are single folded entries (`<details>`) that open to their views; the group holding the
+  current page starts open.
+- Tests: `tools/qa/qa_33_remove_product_print_nav.py` (15). Purchase print sheet untouched (a plain internal copy).

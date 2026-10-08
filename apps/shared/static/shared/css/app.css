@@ -324,6 +324,38 @@ body.nav-open {
   color: var(--accent-500);
 }
 
+/* Folded group: the summary looks like a top-level link; a chevron shows the state. */
+.nav-fold__summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.nav-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-fold__chev {
+  width: 16px;
+  height: 16px;
+  margin-inline-start: auto;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s;
+}
+
+.nav-fold[open] > .nav-fold__summary .nav-fold__chev {
+  transform: rotate(180deg);
+}
+
+/* A group summary is not a page: no accent bar, only the active child carries it. */
+.nav-fold__summary.is-active {
+  box-shadow: none;
+  background: none;
+}
+
 .nav-icon {
   width: 18px;
   height: 18px;

@@ -40,7 +40,7 @@ cancel_sale -- D-023, this view never writes stock/money itself).
       {% endif %}
       {% if invoice.status == "confirmed" %}<a href="{% url 'returns:sales_new' invoice.pk %}" class="btn btn--quiet">ثبت مرجوعی</a>{% endif %}
       <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet" data-sp-print
-         title="چاپ مستقیم (Ctrl+P). برای پیش‌نمایش، با Ctrl+کلیک باز کنید.">چاپ فاکتور</a>
+         title="صفحهٔ چاپ: رنگی یا سیاه‌وسفید (Ctrl+P)">چاپ فاکتور</a>
       {% if can_cancel %}
         <button type="button" class="btn btn--danger" data-sp-dialog-open="cancel-dialog">لغو فاکتور</button>
       {% endif %}

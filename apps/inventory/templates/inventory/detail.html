@@ -30,6 +30,12 @@ each row touched and a link back to its source invoice; and a
         موجودی: <strong class="num{% if stock < 0 %} field__error{% endif %}">{{ stock|units:product.pack_per_carton }}</strong>
       </p>
     </div>
+    {% if request.user.is_superuser %}
+      <form method="post" action="{% url 'inventory:remove' product.pk %}" onsubmit="return confirm('کالای «{{ product.name|escapejs }}» از انبار حذف شود؟ اگر سابقه داشته باشد فقط کنار گذاشته می‌شود و سابقه‌اش می‌ماند.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--danger"{% if stock %} disabled title="موجودی باید صفر باشد"{% endif %}>حذف کالا</button>
+      </form>
+    {% endif %}
   </div>
 </div>
 

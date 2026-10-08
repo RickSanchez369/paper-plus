@@ -11,7 +11,7 @@ non-negotiable as every other module: views never write.
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -20,7 +20,7 @@ from django.views.generic import DetailView, TemplateView
 
 from apps.products.forms import SellingPriceForm
 from apps.products.models import Product
-from apps.products.services import update_selling_prices
+from apps.products.services import remove_product, update_selling_prices
 from apps.shared.listing import paginate, sort_rows
 from apps.shared.text import search_key
 
@@ -189,6 +189,28 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
             messages.error(request, "؛ ".join(error for errors in form.errors.values() for error in errors))
         # Back to the form itself, so the new price is read in context (the card has an anchor).
         return redirect(reverse("inventory:detail", args=[pk]) + "#selling-price")
+
+
+class ProductRemoveView(LoginRequiredMixin, View):
+    """POST-only: remove a product from the warehouse. The service decides between a real
+    delete (never used) and archiving (has history) and enforces superuser + zero stock."""
+
+    def post(self, request, pk):
+        product = get_object_or_404(Product, pk=pk)
+        try:
+            outcome = remove_product(product, request.user)
+        except PermissionDenied as exc:
+            messages.error(request, str(exc))
+        except ValidationError as exc:
+            messages.error(request, "؛ ".join(exc.messages))
+        else:
+            messages.success(
+                request,
+                "کالا حذف شد." if outcome == "deleted"
+                else "این کالا سابقه دارد و حذف کامل نمی‌شود؛ از انبار و فاکتورهای جدید کنار گذاشته شد و سابقه‌اش حفظ شد.",
+            )
+            return redirect("inventory:list")
+        return redirect("inventory:detail", pk=pk)
 
 
 class InventoryDetailView(LoginRequiredMixin, DetailView):

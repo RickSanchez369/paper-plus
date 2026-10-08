@@ -25,7 +25,13 @@ def navigation(request):
     if match is not None:
         current = match.namespace or (match.url_name or "")
 
+    # The folded group (receivables/payables/cheques, expenses) that holds the current page
+    # starts open, so the active child is visible without a click.
+    open_group = next(
+        (g.label for g in NAVIGATION if any(i.match_prefix == current for i in g.items)), ""
+    )
     return {
         "navigation": NAVIGATION,
         "current_section": current,
+        "open_nav_group": open_group,
     }

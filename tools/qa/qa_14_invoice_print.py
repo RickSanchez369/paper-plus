@@ -45,7 +45,7 @@ def scenarios(h):
     r = h.c.get(url)
     check("PR14 brand, both phones with names and the email print", has(r, "کاغذ پلاس") and has(r, "09145572511") and
           has(r, "خندانی") and has(r, "09145589832") and has(r, "حقگو") and has(r, "kaghazplus1@gmail.com"))
-    check("PR15 a black-and-white switch is offered", has(r, 'id="mono-toggle"') and has(r, "سیاه‌وسفید"))
+    check("PR15 a black-and-white switch is offered", has(r, 'id="mode-mono"') and has(r, 'id="mode-color"') and has(r, "سیاه‌وسفید"))
     from apps.sales.printing import THANK_YOU_LINES, settlement_rows, thank_you_line
     check("PR16 a thank-you line prints, and the same one on a reprint",
           has(r, thank_you_line(inv)) and thank_you_line(inv) == thank_you_line(SalesInvoice.objects.get(pk=inv.pk)))

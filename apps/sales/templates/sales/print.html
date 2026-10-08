@@ -23,7 +23,10 @@ deliberately not printed (D-088): it is for the owner, on the detail page.
   <div class="print-toolbar no-print">
     <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn--quiet">بازگشت</a>
     <button type="button" class="btn" id="print-go">چاپ فاکتور</button>
-    <label class="check inv-mono-switch"><input type="checkbox" id="mono-toggle"> سیاه‌وسفید</label>
+    <fieldset class="inv-mode" aria-label="حالت چاپ">
+      <label class="check"><input type="radio" name="inv-mode" id="mode-color" value="color"> فاکتور رنگی</label>
+      <label class="check"><input type="radio" name="inv-mode" id="mode-mono" value="mono"> فاکتور سیاه‌وسفید</label>
+    </fieldset>
     <p class="print-toolbar__what" id="print-what">
       چاپ می‌شود: فاکتور <b>{{ invoice.invoice_number|fa_digits|default:"—" }}</b> · {{ invoice.customer.name }} ·
       <span class="num">{{ invoice.total|toman }}</span> · یک برگ A4 عمودی
@@ -38,7 +41,7 @@ deliberately not printed (D-088): it is for the owner, on the detail page.
     {% if "dense" in density %}
       <p class="print-note">ردیف‌های این فاکتور زیاد است؛ برای جا شدن در یک برگ، ردیف‌ها فشرده‌تر چاپ می‌شوند.</p>
     {% endif %}
-    <p class="print-note print-note--danger" id="overflow-note" hidden>این فاکتور حتی با فشرده‌ترین حالت در یک برگ جا نمی‌شود؛ بخشی از آن روی برگ دوم می‌رود.</p>
+    <p class="print-note" id="overflow-note" hidden>ردیف‌های این فاکتور بسیار زیاد است؛ برای ماندن در یک برگ، کل برگه کوچک‌تر چاپ می‌شود.</p>
     <details class="print-tip">
       <summary>روی کاغذ تاریخ یا نشانی سایت چاپ شد؟</summary>
       <p>در پنجرهٔ چاپ مرورگر، گزینهٔ «سرصفحه و پاصفحه» (Headers and footers) را خاموش و «گرافیک پس‌زمینه» (Background graphics) را روشن کنید.</p>
@@ -202,20 +205,27 @@ deliberately not printed (D-088): it is for the owner, on the detail page.
   <script>
     (function () {
       var sheet = document.getElementById("invoice-sheet");
-      var mono = document.getElementById("mono-toggle");
+      var mono = document.getElementById("mode-mono");
+      var color = document.getElementById("mode-color");
       // The colour choice is a per-printer convenience: remembered in this browser only.
-      try { mono.checked = window.localStorage.getItem("invoice-print-mono") === "1"; } catch (e) {}
+      var saved = "0";
+      try { saved = window.localStorage.getItem("invoice-print-mono") || "0"; } catch (e) {}
+      mono.checked = saved === "1";
+      color.checked = !mono.checked;
       function applyMono() {
         sheet.classList.toggle("inv--mono", mono.checked);
         try { window.localStorage.setItem("invoice-print-mono", mono.checked ? "1" : "0"); } catch (e) {}
       }
       mono.addEventListener("change", applyMono);
+      color.addEventListener("change", applyMono);
       applyMono();
 
-      // One sheet, always (D-088): the server picks a density from the line count; if the
-      // sheet still overflows, step to tighter rows, then shrink the line text until it fits.
-      function fits() { return sheet.scrollHeight <= sheet.clientHeight + 1; }
+      // One sheet, always (D-088, D-102): the server picks a density from the line count; if the
+      // sheet still overflows, step to tighter rows, shrink the line text, and as the last
+      // resort scale the whole sheet down (zoom) until it fits. Never a second page.
+      function fits() { return sheet.scrollHeight <= sheet.clientHeight; }
       function fit() {
+        sheet.style.removeProperty("--inv-fit");
         var steps = ["inv--compact", "inv--dense", "inv--tiny"];
         for (var i = 0; i < steps.length && !fits(); i++) {
           if (!sheet.classList.contains(steps[i])) sheet.classList.add(steps[i]);
@@ -225,10 +235,13 @@ deliberately not printed (D-088): it is for the owner, on the detail page.
           size -= 0.5;
           sheet.style.setProperty("--inv-line-font", size + "pt");
         }
-        var over = !fits();
-        sheet.classList.toggle("inv--overflow", over);
+        var scale = 1;
+        while (!fits() && scale > 0.3) {
+          scale = Math.round((scale - 0.02) * 100) / 100;
+          sheet.style.setProperty("--inv-fit", scale);
+        }
         var warn = document.getElementById("overflow-note");
-        if (warn) warn.hidden = !over;
+        if (warn) warn.hidden = scale === 1;
       }
       (document.fonts ? document.fonts.ready : Promise.resolve()).then(fit);
 

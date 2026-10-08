@@ -20,8 +20,12 @@
 
   position: relative;
   box-sizing: border-box;
-  width: 210mm;
-  height: 297mm;
+  /* --inv-fit < 1 is the last-resort shrink (print.html): zoom scales the layout, so the
+     box is widened/heightened by the inverse and still occupies exactly one A4 sheet. */
+  --inv-fit: 1;
+  zoom: var(--inv-fit);
+  width: calc(210mm / var(--inv-fit));
+  height: calc(297mm / var(--inv-fit));
   margin: 0 auto;
   padding: 12mm 13mm 0;
   overflow: hidden;
@@ -449,22 +453,30 @@
 .inv--mono .inv__logo-plus-bg { fill: #000000; }
 .inv--mono .inv__logo-fold { fill: #ffffff; }
 
-.inv-mono-switch {
-  margin: 0;
-}
-
 @media print {
+  /* The page padding (print_invoice.css) would push the 297 mm sheet onto a second page;
+     the sheet carries its own margins. 1 mm of slack absorbs rounding. */
+  .print-page:has(.inv) { padding: 0; }
   .inv {
     margin: 0;
     box-shadow: none;
+    height: calc(296mm / var(--inv-fit));
+    break-after: avoid;
+    break-inside: avoid;
   }
-  /* Overflow that could not be avoided goes to a second sheet instead of being cut. */
-  .inv.inv--overflow { height: auto; overflow: visible; }
+}
+
+.inv-mode {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 @media screen and (max-width: 840px) {
   /* A phone shows the sheet scaled, not reflowed: it is a picture of the paper. */
   .inv {
-    zoom: 0.46;
+    zoom: calc(0.46 * var(--inv-fit));
   }
 }

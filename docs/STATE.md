@@ -165,6 +165,10 @@ lowers the credit, a superuser can cancel a return while its effects are undoabl
 «فروش پس از مرجوعی», return dates follow the 30-day rule. **Before deploying:** `manage.py update` applies `payments.0014`, `returns.0002`, `shared.0022`
 (and `partners.0004` from D-100).
 
+**Batch 2026-10-08 D-102, on `dev` only:** product removal (superuser; delete when unused, archive when it has history, stock must be 0), sales print
+always one sheet (zoom fallback, colour/black-and-white radios on the print page, list/detail print links open it), folded sidebar groups. No migration.
+Checked: `qa_33` (15), `qa_14`, `qa_04`, `qa_03`, `qa_24`, `qa_28`; browser: 120-line invoice scaled to exactly A4, sidebar fold. Mobile suite not re-run (Sina's call).
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or

@@ -88,7 +88,7 @@ answer "how are we doing right now."
                 <td class="num cell-money cell-soft">{{ invoice.profit|toman_bare }}</td>
                 <td class="cell-act">
                   <a href="{% url 'sales:print' invoice.pk %}" class="btn btn--quiet btn--sm" data-sp-print
-                     title="چاپ مستقیم فاکتور (برای پیش‌نمایش با Ctrl+کلیک باز کنید)">{% icon "print" %}چاپ</a>
+                     title="صفحهٔ چاپ: رنگی یا سیاه‌وسفید">{% icon "print" %}چاپ</a>
                 </td>
               </tr>
             {% endfor %}

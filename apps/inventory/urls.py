@@ -8,6 +8,7 @@ from django.urls import path
 from .views import (
     InventoryDetailView,
     InventoryListView,
+    ProductRemoveView,
     ProductCreateView,
     SellingPriceUpdateView,
 )
@@ -19,4 +20,5 @@ urlpatterns = [
     path("products/new/", ProductCreateView.as_view(), name="product_new"),
     path("<uuid:pk>/", InventoryDetailView.as_view(), name="detail"),
     path("<uuid:pk>/selling-price/", SellingPriceUpdateView.as_view(), name="selling_price"),
+    path("<uuid:pk>/remove/", ProductRemoveView.as_view(), name="remove"),
 ]
