@@ -28,6 +28,9 @@
     var refund = form.querySelector('input[name="settle_mode"][value="refund"]');
     var box = form.querySelector("[data-refund-account]");
     if (box) box.hidden = !(refund && refund.checked);
+    // A cash refund against a cheque that has not cleared has nothing behind it if the cheque bounces (D-101).
+    var warn = form.querySelector("[data-pending-warning]");
+    if (warn) warn.hidden = !(refund && refund.checked);
   }
 
   document.addEventListener("DOMContentLoaded", function () {

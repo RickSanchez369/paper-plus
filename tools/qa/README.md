@@ -49,6 +49,7 @@ and serves it on http://localhost:8001. It never touches PostgreSQL or `.env`. O
 - `qa_31_filters_gzip`: amount filters take Persian digits, pages are gzipped, invoice number in a no-split span (D-098).
 - `qa_30_zero_price_far_date`: price 0 and dates over 30 days ahead refused, purchase cancel dialog (D-097).
 - `qa_27_tier_prices`: two prices by unit (carton = wholesale, pack = retail), the sale type is only a label, no customer type (D-100).
+- `qa_32_returns_v2`: damaged goods and deduction, cancelling a return (stock, credit note, refund), freight loss, pending-cheque warning, return date limit (D-101).
 - `python tools/qa/run_script.py qa_30_zero_price_far_date.py` runs a script on a throwaway SQLite copy of the suite's demo DB; plain `manage.py shell` would use the `.env` database.
 - `qa_29_input_bounds`: huge fixed-cost periods and opening stock are refused, never a 500 (D-096).
 - `qa_28_mobile_layer`: search folding (digits, ك/ي, word order), dashboard stock alert, phone stylesheets linked, dues card hook.

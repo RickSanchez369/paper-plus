@@ -1567,3 +1567,33 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
 - Rejected: dropping the two unused columns (a table rebuild on SQLite for no gain), deriving the label from the lines automatically
   (Sina chose a plain label), keeping the customer type as a default label.
 - Tests: `tools/qa/qa_27_tier_prices.py` (24 checks, rewritten), `qa_17` / `qa_03` adjusted, the mobile suite's sale oracle prices by unit.
+
+### D-101: Returns v2 - damaged goods, deduction, cancelling a return, freight loss, honest reports (amends D-089)
+- Status: Final
+- Date: 2026-10-08
+- Decided by: Sina (after a review of the D-089 logic; chosen per question: per-line condition + deduction, cancel with conditions,
+  free refund with a warning on pending cheques, purchase returns stay tied to the purchase line's own layer)
+- Decision:
+  (1) **Condition per sales-return line**: `SalesReturnItem.condition` is `resalable` (back on the shelf as a new FIFO layer, as before)
+  or `damaged` (no layer, no movement: it never enters stock). `deduction` («کسر خسارت», 0 <= deduction <= the line's value) lowers what
+  the customer is credited: `total_amount` = sum(amount - deduction). `profit_given_back` = credited - cost back on the shelf, so a
+  damaged line gives back its whole credit and its cost stays a loss (`damaged_cost`).
+  (2) **Cancel a return** (`cancel_sales_return` / `cancel_purchase_return`, superuser, button + dialog on the return page): only while every
+  effect can be undone. Sales: the goods it put back are still unsold (else refused), the credit it made was not used by another invoice
+  (else refused). Purchase: the layer is intact. Effects: the layer is cancelled / refilled with an `adjustment_out` / `adjustment_in`
+  movement (and a negative consumption row), the credit note is voided (`Payment.voided_at`, out of every credit selector) and its share
+  on the invoice released through a credit-note reversal payment, a paid refund is booked back (customer: money comes back in; supplier:
+  money goes out again). The return is marked `cancelled` (`status`, `cancelled_at`, `cancelled_by`), never deleted; an invoice is
+  blocked from cancelling only by ACTIVE returns; reports, statements and returnable quantities ignore cancelled returns.
+  (3) **Value shares** are now "share of what is still unreturned on the line, the last piece takes the rest" (was a running floor), so the
+  pieces add up to the whole line even after a cancelled piece was returned again.
+  (4) **Pending cheques**: the cash refund stays allowed; the form warns (a refund against a cheque that has not cleared has nothing
+  behind it if the cheque bounces) and recommends credit.
+  (5) **Freight lost** on a purchase return (shelf value off with freight - goods price refunded) is `PurchaseReturn.lost_freight`, shown on
+  its page and subtracted in net profit (`purchase_returns_loss`, a row in the profit bridge). The report adds «فروش پس از مرجوعی».
+  (6) A return date follows the document-date rule: at most 30 days ahead (D-097).
+- Not changed on purpose: a purchase return is still tied to the purchase line's own FIFO layer (Sina: keep), a card reader still never pays
+  a refund (D-069), averaged cost of a multi-layer sold line on a returned layer (a rounding-level effect).
+- Schema: `returns.0002`, `payments.0014` (`voided_at`, credit-note constraint now allows its reversal), `shared.0022` (two audit events).
+- Tests: `tools/qa/qa_32_returns_v2.py` (52 checks), `qa_26` / `qa_07` / `qa_09` / `qa_11` net-profit identities include the freight loss;
+  the mobile suite covers damaged / deduction forms and the return cancel dialog.

@@ -280,7 +280,11 @@ def return_cases():
     return [("one-pack", dict(packs=1), "ok"), ("one-carton", dict(cartons=1), "ok"), ("carton-and-pack", dict(cartons=1, packs=1), "ok"),
             ("zero", dict(packs=0), "bad"), ("negative", dict(packs="-1"), "bad"), ("decimal", dict(packs="1.5"), "bad"), ("text", dict(packs="x"), "bad"),
             ("over-the-invoice", dict(packs=99999), "bad"), ("persian-digits", dict(packs="۱"), "ok"), ("refund-no-account", dict(packs=1, mode="refund", account=False), "bad"),
-            ("refund-with-account", dict(packs=1, mode="refund", account=True), "ok_or_bad"), ("bad-date", dict(packs=1, date="1405/99/99"), "bad")]
+            ("refund-with-account", dict(packs=1, mode="refund", account=True), "ok_or_bad"), ("bad-date", dict(packs=1, date="1405/99/99"), "bad"),
+            # D-101: damaged goods never enter stock; a deduction above the line's value or a non-number is refused
+            ("damaged", dict(packs=1, condition="damaged"), "ok_damaged"), ("damaged-deduction", dict(packs=1, condition="damaged", deduction="1"), "ok_damaged"),
+            ("deduction-too-big", dict(packs=1, deduction="99999999999"), "bad"), ("deduction-text", dict(packs=1, deduction="x"), "bad"),
+            ("far-date", dict(packs=1, date="1499/01/01"), "bad")]
 
 
 def sales_return(rec, w, idx, label, kw, kind):
@@ -310,6 +314,10 @@ def sales_return(rec, w, idx, label, kw, kind):
         pg.locator(f'input[name="packs_{item.pk}"]').fill(str(k))
     if "date" in kw:
         pg.locator('input[name="return_date"]').fill(kw["date"])
+    if kw.get("condition"):
+        pg.locator(f'select[name="condition_{item.pk}"]').select_option(kw["condition"])
+    if kw.get("deduction") is not None:
+        pg.locator(f'input[name="deduction_{item.pk}"]').fill(str(kw["deduction"]))
     if kw.get("mode") == "refund":
         pg.locator('input[name="settle_mode"][value="refund"]').locator("xpath=ancestor::label").tap()
         sel = pg.locator('select[name="bank_account"]')
@@ -330,10 +338,74 @@ def sales_return(rec, w, idx, label, kw, kind):
     if kind == "bad" or (kind == "ok_or_bad" and made == 0):
         rec.check("returns", f"{tag}: refused, nothing booked, stock unchanged", made == 0 and stock_of(p) == st, (made, st, stock_of(p)))
         rec.check("returns", f"{tag}: a visible reason", bool(errs) or pg.evaluate("() => [...document.querySelectorAll(':invalid')].length > 0"), errs)
+    elif kind == "ok_damaged":
+        rec.check("returns", f"{tag}: booked and moved to the return page", made == 1 and "/returns/sales/" in pg.url, (made, errs, pg.url[-40:]))
+        rec.check("returns", f"{tag}: a damaged line leaves the stock alone", stock_of(p) == st, (st, stock_of(p)))
+        doc = SalesReturn.objects.order_by("-created_at").first()
+        rec.check("returns", f"{tag}: the line is stored as damaged", doc and doc.items.filter(condition="damaged").exists())
     else:
         want = (int(D.ascii_digits(str(c or 0))) * item.pack_per_carton) + int(D.ascii_digits(str(k or 0)))
         rec.check("returns", f"{tag}: booked and moved to the return page", made == 1 and "/returns/sales/" in pg.url, (made, errs, pg.url[-40:]))
         rec.check("returns", f"{tag}: stock rose by {want} packs", stock_of(p) - st == want, (st, stock_of(p)))
+    rec.check("layout", f"{tag}: no horizontal overflow", D.page_overflow(pg) <= 0, D.page_overflow(pg))
+
+
+def cancel_return(rec, w, idx, kind_):
+    """D-101: a superuser cancels a return through its dialog; backing out changes nothing, confirming undoes the stock."""
+    from apps.inventory.models import InventoryLayer
+    from apps.returns.models import PurchaseReturn, SalesReturn
+    pg = w.page
+    purchase = kind_ == "purchase"
+    model = PurchaseReturn if purchase else SalesReturn
+    cands = []
+    for r in model.objects.filter(status="active").order_by("-created_at"):
+        if purchase:
+            ok = all(not InventoryLayer.objects.get(purchase_item=i.purchase_item).cancelled_at for i in r.items.all())
+        else:
+            ok = all(InventoryLayer.objects.get(sales_return_item=i).quantity_remaining == i.quantity
+                     for i in r.items.all() if i.condition == "resalable")
+        if ok and not (r.credit_note and r.credit_note.allocations.exclude(**{("purchase_invoice" if purchase else "sales_invoice"): r.invoice}).exists()):
+            cands.append(r)
+    if not cands:
+        return
+    r = cands[idx % len(cands)]
+    products = [(i.purchase_item if purchase else i.sale_item).product for i in r.items.all()]
+    stocks = [stock_of(pr) for pr in products]
+    tag = f"cancel-return-{kind_}:{r.return_number}"
+    w.drain()
+    w.goto(f"/returns/{'purchases' if purchase else 'sales'}/{r.pk}/")
+    btn = pg.locator("[data-sp-dialog-open='cancel-dialog']")
+    rec.check("cancel", f"{tag}: the cancel button is there for a superuser", btn.count() == 1)
+    if not btn.count():
+        return
+    btn.tap()
+    pg.wait_for_selector("#cancel-dialog[open]")
+    rec.check("cancel", f"{tag}: the dialog fits the phone width", D.page_overflow(pg) <= 0)
+    pg.locator("#cancel-dialog [data-sp-dialog-close]").tap()
+    pg.wait_for_timeout(300)
+    r.refresh_from_db()
+    rec.check("cancel", f"{tag}: backing out keeps the return active", r.status == "active", r.status)
+    pg.locator("[data-sp-dialog-open='cancel-dialog']").tap()
+    pg.wait_for_selector("#cancel-dialog[open]")
+    try:
+        with pg.expect_navigation(timeout=10000):
+            pg.locator("#cancel-dialog button.btn--danger").tap()
+    except Exception:
+        pass
+    pg.wait_for_load_state("networkidle")
+    r.refresh_from_db()
+    rec.check("cancel", f"{tag}: cancelled", r.status == "cancelled", (r.status, D.visible_errors(pg)))
+    if r.status == "cancelled":
+        for pr, before, item in zip(products, stocks, r.items.all()):
+            moved = stock_of(pr) - before
+            if purchase:
+                want = item.quantity
+            else:
+                want = -item.quantity if item.condition == "resalable" else 0
+            rec.check("cancel", f"{tag}: stock of {pr.sku} moved by {want}", moved == want, (before, stock_of(pr)))
+        rec.check("cancel", f"{tag}: the page says it is cancelled", "لغوشده" in pg.evaluate("document.body.innerText"))
+    js, con, failed = w.drain()
+    rec.check("cancel", f"{tag}: no JS error / 5xx", not js and not [f for f in failed if f.startswith("5")], (js, failed))
     rec.check("layout", f"{tag}: no horizontal overflow", D.page_overflow(pg) <= 0, D.page_overflow(pg))
 
 
@@ -488,6 +560,9 @@ def body(a, rec, b):
         units.append(("cheque", (i, ch.pk, acts[i % len(acts)])))
     for i, (label, kw, kind) in enumerate(return_cases()):
         units.append(("return", (i, label, kw, kind)))
+    for i in range(2):
+        units.append(("return-cancel", (i, "sales")))
+    units.append(("return-cancel", (0, "purchase")))
     for i in range(5):
         units.append(("cancel", (i, "sale")))
     for i in range(3):
@@ -512,6 +587,8 @@ def body(a, rec, b):
                     cheque_flow(rec, w, dlg, i, ch, act)
             elif kind == "return":
                 sales_return(rec, w, args[0], args[1], args[2], args[3])
+            elif kind == "return-cancel":
+                cancel_return(rec, w, args[0], args[1])
             elif kind == "cancel":
                 cancel_invoice(rec, w, dlg, args[0], args[1])
             elif kind == "expense":

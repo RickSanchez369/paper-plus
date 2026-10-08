@@ -160,6 +160,11 @@ waves (pages+links+interact, sale+purchase, the rest): 22 workers at once time o
 price columns stay unused. **Before deploying:** `manage.py update` (applies `partners.0004`). The `.env` dev PostgreSQL is several migrations behind
 (`products.0010/0011`, `partners.0003/0004`, `shared.0019..0021`, ...) and was not migrated.
 
+**Batch 2026-10-08 D-101 (returns v2), on `dev` only:** sales-return lines are resalable or damaged (damaged never enters stock), a damage deduction
+lowers the credit, a superuser can cancel a return while its effects are undoable, freight lost on purchase returns reduces net profit, the report shows
+«فروش پس از مرجوعی», return dates follow the 30-day rule. **Before deploying:** `manage.py update` applies `payments.0014`, `returns.0002`, `shared.0022`
+(and `partners.0004` from D-100).
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or

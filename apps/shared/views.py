@@ -119,7 +119,12 @@ def _profit_bridge(cards):
         # D-089: profit the period's sales returns took back (their value minus the cost back on the shelf).
         {"label": "− سود برگشتی مرجوعی‌ها", "note": "مبلغ مرجوعی فروش منهای بهای کالای برگشته به انبار",
          "value": cards["returns_profit"]["value"], "kind": "minus", "offset": 0, "width": pct(cards["returns_profit"]["value"])},
-    ] if cards["returns_profit"]["value"] else []) + [
+    ] if cards["returns_profit"]["value"] else []) + ([
+        # D-101: freight paid on goods that went back to a supplier is not refunded, so it is a loss.
+        {"label": "− کرایهٔ از دست‌رفتهٔ مرجوعی خرید", "note": "ارزش انبار خارج‌شده (با کرایه) منهای مبلغ کالا که تأمین‌کننده برمی‌گرداند",
+         "value": cards["purchase_returns_loss"]["value"], "kind": "minus", "offset": 0,
+         "width": pct(cards["purchase_returns_loss"]["value"])},
+    ] if cards["purchase_returns_loss"]["value"] else []) + [
         {"label": "− هزینه‌ها", "value": expenses, "kind": "minus", "link": "expenses",
          "offset": pct(gross - expenses) if gross >= expenses else 0, "width": pct(expenses)},
         {"label": "= سود خالص", "value": net, "kind": "loss" if net < 0 else "result", "offset": 0, "width": pct(net)},

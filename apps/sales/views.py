@@ -329,7 +329,7 @@ class SalesDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["can_cancel"] = (
             self.object.status == SalesInvoice.Status.CONFIRMED and is_privileged(self.request.user)
-            and not self.object.returns.exists()  # a return blocks cancelling (D-089)
+            and not self.object.returns.filter(status="active").exists()  # an active return blocks cancelling (D-089, D-101)
         )
         return context
 

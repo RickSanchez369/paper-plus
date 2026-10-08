@@ -3,7 +3,7 @@
 """Returns pages (D-089): one list with two tabs, a form per invoice, a detail page per return."""
 
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,14 +11,18 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, TemplateView
 
+from apps.payments.models import Cheque
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared import dates
 from apps.shared.listing import paginate
+from apps.shared.permissions import is_privileged
 
 from .forms import ReturnForm
-from .models import PurchaseReturn, SalesReturn
-from .services import record_purchase_return, record_sales_return, returnable_lines
+from .models import ItemCondition, PurchaseReturn, ReturnStatus, SalesReturn
+from .services import (
+    cancel_purchase_return, cancel_sales_return, record_purchase_return, record_sales_return, returnable_lines,
+)
 
 
 class ReturnListView(LoginRequiredMixin, TemplateView):
@@ -67,7 +71,15 @@ class _ReturnCreateView(LoginRequiredMixin, View):
             key = str(row["item"].pk)
             row["typed_cartons"] = (typed or {}).get(f"cartons_{key}", "")
             row["typed_packs"] = (typed or {}).get(f"packs_{key}", "")
+            row["typed_condition"] = (typed or {}).get(f"condition_{key}", ItemCondition.RESALABLE)
+            row["typed_deduction"] = (typed or {}).get(f"deduction_{key}", "")
+        # A cheque still pending is not money yet: a cash refund made against it has nothing behind it if it bounces (D-101).
+        pending = Cheque.objects.filter(
+            **{("purchase_invoice" if self.purchase else "sales_invoice"): invoice}, status=Cheque.Status.PENDING,
+        ).aggregate(t=Sum("amount"))["t"] or 0
         return {
+            "pending_cheque_total": pending,
+            "conditions": ItemCondition.choices,
             "invoice": invoice,
             "party": invoice.supplier if self.purchase else invoice.customer,
             "purchase": self.purchase,
@@ -99,8 +111,17 @@ class _ReturnCreateView(LoginRequiredMixin, View):
                 if not (cartons.isdigit() and packs.isdigit()):
                     error = f"«{item.product.name}»: مقدار باید عدد صحیح و مثبت باشد."
                     break
-                if int(cartons) or int(packs):
+                if not (int(cartons) or int(packs)):
+                    continue
+                if self.purchase:
                     lines.append((item, int(cartons), int(packs)))
+                    continue
+                condition = request.POST.get(f"condition_{key}") or ItemCondition.RESALABLE
+                deduction = dates.to_ascii_digits(request.POST.get(f"deduction_{key}", "") or "0").strip().replace(",", "") or "0"
+                if not deduction.isdigit():
+                    error = f"«{item.product.name}»: کسر خسارت باید عدد صحیح و مثبت باشد."
+                    break
+                lines.append((item, int(cartons), int(packs), condition, int(deduction)))
             if error is None:
                 data = form.cleaned_data
                 try:
@@ -145,7 +166,11 @@ class SalesReturnDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"purchase": False, "party": self.object.invoice.customer, "invoice_url": "sales:detail"})
+        context.update({
+            "purchase": False, "party": self.object.invoice.customer, "invoice_url": "sales:detail",
+            "can_cancel": self.object.status == ReturnStatus.ACTIVE and is_privileged(self.request.user),
+            "cancel_url": "returns:sales_cancel",
+        })
         return context
 
 
@@ -162,5 +187,39 @@ class PurchaseReturnDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"purchase": True, "party": self.object.invoice.supplier, "invoice_url": "purchasing:detail"})
+        context.update({
+            "purchase": True, "party": self.object.invoice.supplier, "invoice_url": "purchasing:detail",
+            "can_cancel": self.object.status == ReturnStatus.ACTIVE and is_privileged(self.request.user),
+            "cancel_url": "returns:purchase_cancel",
+        })
         return context
+
+
+class _ReturnCancelView(LoginRequiredMixin, View):
+    """POST-only: the cancel service is the real guard (superuser, active return, effects still undoable)."""
+
+    model = None
+    service = None
+    detail_url = ""
+
+    def post(self, request, pk):
+        doc = get_object_or_404(self.model, pk=pk)
+        try:
+            type(self).service(doc, request.user)
+        except ValidationError as exc:
+            messages.error(request, "؛ ".join(exc.messages))
+        else:
+            messages.success(request, f"مرجوعی {dates.to_persian_digits(doc.return_number)} لغو شد.")
+        return redirect(self.detail_url, pk=pk)
+
+
+class SalesReturnCancelView(_ReturnCancelView):
+    model = SalesReturn
+    service = staticmethod(cancel_sales_return)
+    detail_url = "returns:sales_detail"
+
+
+class PurchaseReturnCancelView(_ReturnCancelView):
+    model = PurchaseReturn
+    service = staticmethod(cancel_purchase_return)
+    detail_url = "returns:purchase_detail"

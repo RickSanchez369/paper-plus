@@ -6,7 +6,7 @@ from django import forms
 
 from apps.payments.forms import AccountChoiceField
 from apps.payments.models import BankAccount
-from apps.shared.forms import JalaliDateField
+from apps.shared.forms import MAX_DAYS_AHEAD, JalaliDateField
 
 from .models import SettleMode
 
@@ -14,7 +14,7 @@ from .models import SettleMode
 class ReturnForm(forms.Form):
     """Date, what to do with the surplus, the refund account (current accounts only), a note."""
 
-    return_date = JalaliDateField(label="تاریخ مرجوعی")
+    return_date = JalaliDateField(label="تاریخ مرجوعی", max_days_ahead=MAX_DAYS_AHEAD)
     settle_mode = forms.ChoiceField(
         choices=SettleMode.choices,
         initial=SettleMode.CREDIT,

@@ -206,6 +206,19 @@ for inv in PurchaseInvoice.objects.filter(status="confirmed").order_by("created_
     if item:
         ok("purchase return", h.c.post(f"/returns/purchases/new/{inv.pk}/", {
             "return_date": j(0), "settle_mode": "credit", f"packs_{item.pk}": "1", "note": "نمونه"}))
+# D-101: a damaged line with a deduction, and a return that is booked and then cancelled (both states have their own pages)
+from apps.returns.services import cancel_sales_return  # noqa: E402
+for n, inv in enumerate(SalesInvoice.objects.filter(status="confirmed").order_by("created_at")[2:4]):
+    item = inv.items.first()
+    if not item:
+        continue
+    body = {"return_date": j(0), "settle_mode": "credit", f"packs_{item.pk}": "1", "note": "نمونه"}
+    if n == 0:
+        body.update({f"condition_{item.pk}": "damaged", f"deduction_{item.pk}": "1"})
+    ok("sales return v2", h.c.post(f"/returns/sales/new/{inv.pk}/", body))
+    if n == 1:
+        from apps.returns.models import SalesReturn as _SR
+        cancel_sales_return(_SR.objects.filter(invoice=inv).latest("created_at"), h.su)
 
 print("rich data ready:",
       f"{Customer.objects.count()} customers, {Supplier.objects.count()} suppliers, {Product.objects.count()} products,",

@@ -87,8 +87,13 @@ def all_pages():
             add(f"purchase-print:{tag}", f"/purchasing/{inv.pk}/print/")
         if inv.status == "confirmed" and len(seen) <= 5:
             add(f"purchase-return-new:{tag}", f"/returns/purchases/new/{inv.pk}/")
-    for r in SalesReturn.objects.order_by("created_at")[:2]:
-        add("sales-return-detail", f"/returns/sales/{r.pk}/")
+    seen = set()
+    for r in SalesReturn.objects.order_by("created_at"):
+        key = (r.status, bool(r.deduction_total), any(i.condition == "damaged" for i in r.items.all()))
+        if key in seen:
+            continue
+        seen.add(key)
+        add(f"sales-return-detail:{r.status}{'/damaged' if key[2] else ''}{'/deduction' if key[1] else ''}", f"/returns/sales/{r.pk}/")
     for r in PurchaseReturn.objects.order_by("created_at")[:1]:
         add("purchase-return-detail", f"/returns/purchases/{r.pk}/")
 

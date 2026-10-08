@@ -81,7 +81,7 @@ def get_credit_payments(customer=None, supplier=None):
     direction = Payment.Direction.IN if customer else Payment.Direction.OUT
     party = {"customer": customer} if customer else {"supplier": supplier}
     payments = (
-        Payment.objects.filter(direction=direction, is_reversal=False, **party)
+        Payment.objects.filter(direction=direction, is_reversal=False, voided_at__isnull=True, **party)
         .annotate(allocated=Coalesce(Sum("allocations__amount"), 0, output_field=BigIntegerField()))
         .filter(allocated__lt=F("amount"))
         .order_by("payment_date", "created_at")
@@ -104,7 +104,7 @@ def get_credit_balances(model):
     field = "customer" if model is Customer else "supplier"
     direction = Payment.Direction.IN if model is Customer else Payment.Direction.OUT
     rows = (
-        Payment.objects.filter(direction=direction, is_reversal=False, **{f"{field}__isnull": False})
+        Payment.objects.filter(direction=direction, is_reversal=False, voided_at__isnull=True, **{f"{field}__isnull": False})
         .annotate(allocated=Coalesce(Sum("allocations__amount"), 0, output_field=BigIntegerField()))
         .filter(allocated__lt=F("amount"))
         .values_list(f"{field}_id", "amount", "allocated")

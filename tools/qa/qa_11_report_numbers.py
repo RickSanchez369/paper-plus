@@ -64,8 +64,8 @@ def audit(tag, start, end):
     check(f"[{tag}] purchases total", reports.purchases_total(start, end) == purchases)
     check(f"[{tag}] expenses total", reports.expenses_total(start, end) == expenses)
     cards = reports.summary_cards(start, end)
-    check(f"[{tag}] net profit = gross profit - profit given back by returns - expenses (D-089)",
-          cards["net_profit"]["value"] == revenue - cogs - reports.returns_profit(start, end) - expenses,
+    check(f"[{tag}] net profit = gross profit - profit given back by returns - freight lost on purchase returns - expenses (D-089, D-101)",
+          cards["net_profit"]["value"] == revenue - cogs - reports.returns_profit(start, end) - reports.purchase_returns_loss(start, end) - expenses,
           f"{cards['net_profit']['value']} vs {revenue - cogs - expenses}")
     rows = reports.sales_by_product(start, end)
     check(f"[{tag}] per-product net amounts sum to sales total", sum(r["amount"] for r in rows) == revenue)

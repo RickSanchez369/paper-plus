@@ -54,7 +54,7 @@ stricter -- blocked once any of this purchase's stock has been sold).
     <h2>مرجوعی‌های این فاکتور</h2>
     <ul class="ret-list">
       {% for doc in invoice.returns.all %}
-        <li><a href="{% url 'returns:purchase_detail' doc.pk %}">مرجوعی {{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span> {% include "returns/_settle_chips.html" with purchase=True %}</li>
+        <li><a href="{% url 'returns:purchase_detail' doc.pk %}">مرجوعی {{ doc.return_number|fa_digits }}</a> · <span class="num">{{ doc.return_date|jalali }}</span> · <span class="num">{{ doc.total_amount|toman }}</span> {% if doc.is_cancelled %}<span class="badge badge--muted">لغوشده</span>{% else %}{% include "returns/_settle_chips.html" with purchase=True %}{% endif %}</li>
       {% endfor %}
     </ul>
   </div>

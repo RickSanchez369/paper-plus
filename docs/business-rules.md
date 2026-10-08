@@ -158,3 +158,4 @@ environment). Full rationale for any `D-0xx`: [DECISIONS.md](DECISIONS.md)
 - D-096 Mobile test suite (`tools/qa/mobile_suite/`); fixed costs repeat at most every 3,650 days / 120 months; opening stock <= 10^8 packs at <= 10^10 Toman.
 - D-099 Mobile round 5 (label/figure gaps, squeezed date badge, one-per-row payment shape cards on phones); no money or stock rule changed.
 - D-100 Two prices by unit (carton = wholesale, pack = retail; `price_for(unit)`), the sale type is only an invoice label, `Customer.price_tier` removed; supersedes D-090's four-price grid.
+- D-101 Returns v2: a sales-return line is resalable or damaged (damaged never enters stock) with a damage deduction; a return can be cancelled by a superuser while its effects are undoable; freight lost on purchase returns reduces net profit; return dates follow the 30-day rule.

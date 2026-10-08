@@ -200,6 +200,9 @@
   :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(4) { grid-column: span 2; }
   :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(5),
   :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(6) { grid-column: span 3; }
+  /* Sales returns (D-101): the condition select and the deduction box take half a row each, not one narrow sixth. */
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(7),
+  :root:root table.data-table[data-cards] tr[data-return-row] > td:nth-child(8) { grid-column: span 3; }
   .ret-qty { max-width: none; }
 }
 

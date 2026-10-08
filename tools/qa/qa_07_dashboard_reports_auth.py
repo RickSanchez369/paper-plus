@@ -140,8 +140,9 @@ def scenarios(h):
     # numbers audit
     s, e = t - datetime.timedelta(days=3), t + datetime.timedelta(days=3)
     cards = reports.summary_cards(s, e)
-    check("RP04 net = gross - profit given back by returns - expenses (D-089)", cards["net_profit"]["value"] ==
-          cards["gross_profit"]["value"] - cards["returns_profit"]["value"] - cards["expenses"]["value"])
+    check("RP04 net = gross - profit given back by returns - freight lost on purchase returns - expenses (D-089, D-101)", cards["net_profit"]["value"] ==
+          cards["gross_profit"]["value"] - cards["returns_profit"]["value"] - cards["purchase_returns_loss"]["value"]
+          - cards["expenses"]["value"])
     check("RP04 cogs = sales - gross", cards["cogs"] == cards["sales"]["value"] - cards["gross_profit"]["value"])
     rows = reports.sales_by_product(s, e)
     check("RP04 product rows sum to the cards", sum(x["amount"] for x in rows) == cards["sales"]["value"] and sum(x["profit"] for x in rows) == cards["gross_profit"]["value"])

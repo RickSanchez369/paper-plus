@@ -140,6 +140,13 @@ class Payment(BaseModel):
         default=False,
         verbose_name="سند اعتبار مرجوعی",
     )
+    # D-101: a credit note whose return was cancelled is taken out of the party's credit. The row itself is
+    # never edited otherwise (D-014); this one timestamp is the only state a credit note can change.
+    voided_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="زمان ابطال سند اعتبار",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -173,9 +180,10 @@ class Payment(BaseModel):
                 name="payment_party_matches_direction",
             ),
             models.CheckConstraint(
-                # A credit note moves no money (D-089): never a bank account, never a refund.
+                # A credit note moves no money (D-089): never a bank account. Its reversal (a cancelled return,
+                # D-101) is a credit note too, so it stays out of statements and bank balances.
                 condition=models.Q(is_credit_note=False)
-                | models.Q(is_credit_note=True, bank_account__isnull=True, is_reversal=False),
+                | models.Q(is_credit_note=True, bank_account__isnull=True),
                 name="payment_credit_note_moves_no_money",
             ),
         ]
