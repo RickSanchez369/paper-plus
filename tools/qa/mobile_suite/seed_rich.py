@@ -79,8 +79,7 @@ PRODUCTS = [
 ]
 for name, sku, ratio, price, carton, rcarton, wpack, stock in PRODUCTS:
     p, created = Product.objects.get_or_create(sku=sku, defaults=dict(
-        name=name, pack_per_carton=ratio, default_selling_price=price, wholesale_selling_price=carton,
-        retail_carton_price=rcarton, wholesale_pack_price=wpack))
+        name=name, pack_per_carton=ratio, default_selling_price=price, wholesale_selling_price=carton))
     if created and stock:
         set_opening_stock(p, stock, su, int(price * 0.6))
 Product.objects.get_or_create(sku="R-113", defaults=dict(name="کالای غیرفعال", pack_per_carton=2, default_selling_price=1000, is_active=False))
@@ -92,7 +91,7 @@ CUSTOMER_NAMES = ["علی رضایی", "مریم احمدی", "فروشگاه ن
                   "مشتری ۱۲۳", "Customer English"]
 for i, name in enumerate(CUSTOMER_NAMES):
     Customer.objects.get_or_create(name=name, defaults=dict(
-        phone=f"0912{random.randint(1000000, 9999999)}" if i % 3 else "", price_tier="wholesale" if i % 4 == 0 else "retail",
+        phone=f"0912{random.randint(1000000, 9999999)}" if i % 3 else "",
         address="تهران، خیابان آزمایش، پلاک " + str(i + 1) if i % 2 else "", is_active=i != 7))
 SUPPLIER_NAMES = ["پخش سراسری کاغذ", "شرکت صنایع بسته‌بندی", "تأمین ماژیک ایران", "واردات چین‌کالا", "بازرگانی میلاد", "تولیدی دفتر نگین"]
 for name in SUPPLIER_NAMES:
@@ -112,7 +111,7 @@ for i in range(36):
     if i % 3 == 0:
         rows.append((p2, random.randint(1, 4), p2.default_selling_price))
     kind = i % 9
-    extra = {"price_tier": c.price_tier}
+    extra = {"price_tier": "wholesale" if i % 4 == 0 else "retail"}      # only a label since D-100
     if i % 5 == 0:
         extra.update({"discount_mode": "percent", "discount_percent": "10"})
     discount = 5000 if i % 7 == 0 else ""

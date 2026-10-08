@@ -81,7 +81,7 @@
   // ---- Round 3: live amount echo under money fields, and a find-a-party box on long dues pages -----------------------
   // A 7-digit amount typed on a phone keyboard cannot be proofread ("1250000"); the field shows the grouped figure under it.
   // Only fields that hold Toman are echoed (counts, percentages and dates are not), and desktop never gets the element.
-  var MONEY = /(^|[-_])(amount|amount_min|amount_max|default_selling_price|wholesale_selling_price|retail_carton_price|wholesale_pack_price|unit_price|carton_price|freight|opening_balance|credit_limit)$/;
+  var MONEY = /(^|[-_])(amount|amount_min|amount_max|default_selling_price|wholesale_selling_price|unit_price|carton_price|freight|opening_balance|credit_limit)$/;
   var groupFa = new Intl.NumberFormat("fa-IR");
   function echoFor(input) {
     var next = input.nextElementSibling;

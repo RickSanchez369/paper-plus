@@ -155,6 +155,11 @@ compresses is unaffected).
 cards on phones, one wording fix. Suite grew to 69,086 checks (two new guards); reds unchanged (134 A4 print sheets + one 60-character name). Run the suite in
 waves (pages+links+interact, sale+purchase, the rest): 22 workers at once time out at login. Desktop pixels change only by the badge/alert gaps.
 
+**Batch 2026-10-08 D-100, on `dev` only:** two selling prices by unit again (carton = wholesale, pack = retail; the unit sold decides the price), the
+«فروش خرد / عمده» switch is only an invoice label, «نوع مشتری» removed (`partners.0004` drops `Customer.price_tier`). Old invoices untouched; the two retired
+price columns stay unused. **Before deploying:** `manage.py update` (applies `partners.0004`). The `.env` dev PostgreSQL is several migrations behind
+(`products.0010/0011`, `partners.0003/0004`, `shared.0019..0021`, ...) and was not migrated.
+
 **Bug-fix pass continues.** Sina reports bugs and defects page by page; each is
 fixed and verified in the browser before the next. The open items below stay
 open on purpose. Source comments no longer cite `REDESIGN_VISION` or

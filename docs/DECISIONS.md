@@ -1548,3 +1548,22 @@ line). Stock, FIFO consumption and layer costs are untouched, as before.
   badges (tried: a plain `flex-wrap` wrapped the status dot onto its own line at 768 px, so it is limited to badges that carry a date).
 - Tests: the mobile suite now checks, on every page state and width, that a label and its figure keep a gap and that no badge is squeezed to
   4+ lines. 69,086 checks; reds are the 134 A4 print sheets and 5 states of the 60-character name. `qa_14/19/24/28/31` pass.
+
+### D-100: Two selling prices by unit; the sale type is only a label (amends D-090, returns to D-081's pricing)
+- Status: Final
+- Date: 2026-10-08
+- Decided by: Sina ("carton sales are wholesale, pack sales are retail; drop the four prices")
+- Decision: a product has two selling prices again: the pack price (`default_selling_price`, retail) and the carton price
+  (`wholesale_selling_price`, wholesale; 0 = unset, then pack price x ratio). The UNIT of a sale line decides its price: a carton line
+  gets the carton price, a pack line the pack price (`Product.price_for(unit)`; the tier argument is gone), a blank price is filled that
+  way (forms, `SaleItem.clean_fields`, the product search result `data-pack-price` / `data-carton-price`), a typed price always wins and
+  stays a snapshot. The «فروش خرد / فروش عمده» choice stays on the sale form but is ONLY A LABEL of the invoice (list filter, badge,
+  print subtitle, the «فروش عمده و خرد» report); it never changes a price, so the reprice-on-switch JS, the "N lines kept" note and the
+  customer preselect are gone. `Customer.price_tier` («نوع مشتری») is removed (`partners.0004`, field dropped). Inventory edits and shows
+  two prices (list, product page, price history, new product form, admin); `update_selling_prices(product, user, retail=, wholesale=)`.
+- Existing data: old invoices keep their `price_tier` and every line price (snapshots, nothing rewritten). `Product.retail_carton_price`
+  and `wholesale_pack_price` stay as unused columns (no value is lost, old history rows still read); `price_grid`, `price_is_set` and
+  `prices_incomplete` are removed, «قیمت ناقص» now means "no carton price set".
+- Rejected: dropping the two unused columns (a table rebuild on SQLite for no gain), deriving the label from the lines automatically
+  (Sina chose a plain label), keeping the customer type as a default label.
+- Tests: `tools/qa/qa_27_tier_prices.py` (24 checks, rewritten), `qa_17` / `qa_03` adjusted, the mobile suite's sale oracle prices by unit.

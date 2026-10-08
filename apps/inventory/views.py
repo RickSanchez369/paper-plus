@@ -167,7 +167,7 @@ class ProductCreateView(LoginRequiredMixin, View):
 
 
 class SellingPriceUpdateView(LoginRequiredMixin, View):
-    """POST-only: the per-product "قیمت فروش" form (retail + wholesale).
+    """POST-only: the per-product "قیمت فروش" form (pack price + carton price).
     update_selling_prices changes those fields only -- no invoice, layer or
     cost is touched."""
 
@@ -180,8 +180,6 @@ class SellingPriceUpdateView(LoginRequiredMixin, View):
                     product, request.user,
                     retail=form.cleaned_data.get("default_selling_price"),
                     wholesale=form.cleaned_data.get("wholesale_selling_price"),
-                    retail_carton=form.cleaned_data.get("retail_carton_price"),
-                    wholesale_pack=form.cleaned_data.get("wholesale_pack_price"),
                 )
             except ValidationError as exc:
                 messages.error(request, "؛ ".join(exc.messages))
@@ -223,8 +221,6 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
             initial={
                 "default_selling_price": product.default_selling_price,
                 "wholesale_selling_price": product.wholesale_selling_price,
-                "retail_carton_price": product.retail_carton_price,
-                "wholesale_pack_price": product.wholesale_pack_price,
             },
         )
 
@@ -255,7 +251,7 @@ class InventoryDetailView(LoginRequiredMixin, DetailView):
         rows = []
         for i, record in enumerate(records):
             prev = records[i + 1] if i + 1 < len(records) else None
-            fields = ("default_selling_price", "retail_carton_price", "wholesale_pack_price", "wholesale_selling_price")
+            fields = ("default_selling_price", "wholesale_selling_price")
             cells = [
                 {"value": getattr(record, f), "delta": change(getattr(record, f), getattr(prev, f)) if prev else None}
                 for f in fields

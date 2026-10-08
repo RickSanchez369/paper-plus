@@ -7,7 +7,7 @@ clones -- `form` is `item_formset.empty_form` there, prefixed `form-__prefix__`,
 which sale_form.js swaps for a real index before inserting it.
 {% endcomment %}
 {% load paper %}
-<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}" data-ratio="{{ form.selected_product.pack_per_carton }}" data-retail-pack="{{ form.selected_prices.retail_pack }}" data-retail-carton="{{ form.selected_prices.retail_carton }}" data-wholesale-pack="{{ form.selected_prices.wholesale_pack }}" data-wholesale-carton="{{ form.selected_prices.wholesale_carton }}" data-cost="{{ form.selected_cost|default_if_none:'' }}"{% endif %}>
+<div class="item-row" data-item-row{% if form.selected_product %} data-stock="{{ form.selected_stock }}" data-ratio="{{ form.selected_product.pack_per_carton }}" data-pack-price="{{ form.selected_product.pack_price }}" data-carton-price="{{ form.selected_product.carton_price }}" data-cost="{{ form.selected_cost|default_if_none:'' }}"{% endif %}>
   {{ form.product }}
   <div class="item-row__search">
     <input type="text" class="field__control" placeholder="جست‌وجوی کالا…" aria-label="جست‌وجوی کالا" autocomplete="off"

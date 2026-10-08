@@ -136,7 +136,7 @@ def oracle(sc, db):
     from apps.products.models import Product
     from apps.sales.services import percent_to_amount
     cust = Customer.objects.filter(name=sc["cust"]).first() if sc["cust"] else None
-    tier = sc["tier"] or (cust.price_tier if cust else "retail")
+    tier = sc["tier"] or "retail"      # only a label of the invoice since D-100
     lines, need = [], {}
     for r in sc["rows"]:
         p = Product.objects.get(sku=r["sku"])
@@ -146,8 +146,8 @@ def oracle(sc, db):
             r["packs"] = {"STOCK": base, "STOCK+1": base + 1, "HALF+1": base // 2 + 1}[r["packs"]]
         c = int(D.ascii_digits(str(r.get("cartons") or 0)).strip() or 0) if re.fullmatch(r"\s*\d*\s*", D.ascii_digits(str(r.get("cartons") or ""))) else None
         k = int(D.ascii_digits(str(r.get("packs") or 0)).strip() or 0) if re.fullmatch(r"\s*\d+\s*", D.ascii_digits(str(r.get("packs") or ""))) else (0 if r.get("packs") in ("", None, 0) else None)
-        cp = r["cp"] if "cp" in r else p.price_for(tier, "carton")
-        up = r["up"] if "up" in r else p.price_for(tier, "pack")
+        cp = r["cp"] if "cp" in r else p.price_for("carton")
+        up = r["up"] if "up" in r else p.price_for("pack")
         # a typed 0 stays 0: the app books a free line (reported as a business-safety finding below)
         cp, up = int(D.ascii_digits(str(cp))), int(D.ascii_digits(str(up)))
         if c is None or k is None:

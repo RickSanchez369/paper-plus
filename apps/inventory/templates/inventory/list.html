@@ -90,8 +90,8 @@ block so the links are rebuilt with the current search (they used to drop it and
             {% sort_th "موجودی" "stock" %}
             <th>میانگین قیمت خرید (هر بسته)</th>
             <th>آخرین قیمت خرید</th>
-            <th>قیمت فروش خرد (بسته / کارتن)</th>
-            <th>قیمت فروش عمده (بسته / کارتن)</th>
+            <th>قیمت بسته (خرد)</th>
+            <th>قیمت کارتن (عمده)</th>
             {% sort_th "ارزش موجودی (به بهای خرید)" "value" %}
             <th>سهم از کل</th>
             <th></th>
@@ -110,10 +110,8 @@ block so the links are rebuilt with the current search (they used to drop it and
               </td>
               <td class="num" data-label="میانگین خرید (هر بسته)">{% if row.average_cost is not None %}{{ row.average_cost|toman }}{% else %}—{% endif %}</td>
               <td class="num" data-label="آخرین قیمت خرید">{% if row.last_cost is not None %}{{ row.last_cost|toman }}{% else %}—{% endif %}</td>
-              {% with g=row.product.price_grid %}
-              <td class="num" data-label="فروش خرد (بسته / کارتن)">{{ g.retail_pack.price|toman }}<small class="cell-sub">کارتن: {{ g.retail_carton.price|toman }}</small></td>
-              <td class="num" data-label="فروش عمده (بسته / کارتن)">{{ g.wholesale_pack.price|toman }}<small class="cell-sub">کارتن: {{ g.wholesale_carton.price|toman }}</small>{% if row.product.prices_incomplete %} <span class="badge badge--pending" title="بعضی از چهار قیمت (خرد/عمده × بسته/کارتن) جدا تعیین نشده و محاسبه می‌شود">قیمت ناقص</span>{% endif %}</td>
-              {% endwith %}
+              <td class="num" data-label="قیمت بسته (خرد)">{{ row.product.pack_price|toman }}</td>
+              <td class="num" data-label="قیمت کارتن (عمده)">{{ row.product.carton_price|toman }}{% if row.product.wholesale_is_unset %} <span class="badge badge--pending" title="قیمت کارتن جدا تعیین نشده و برابر قیمت بسته × تعداد بسته در کارتن حساب می‌شود">قیمت ناقص</span>{% endif %}</td>
               <td class="num" data-label="ارزش موجودی">{{ row.value|toman }}</td>
               <td class="num" data-label="سهم از کل">
                 <span class="inv-share">

@@ -92,7 +92,7 @@ def specs():
     cur_val = lambda: BankAccount.objects.filter(account_type="current", is_active=True).order_by("name").first().pk
     return [
         Spec("customer-new", "/customers/", [F("name", "text", True, "مشتری فازی {u}"), F("phone", "phone", False, "09120000000"),
-                                            F("price_tier", "select", True, "retail", ["retail", "wholesale"]), F("address", "text", False, "آدرس {u}"),
+                                            F("address", "text", False, "آدرس {u}"),
                                             F("note", "text", False, "یادداشت {u}")],
              open="details.quick-party-disclosure > summary", scope="details.quick-party-disclosure form", count=lambda: Customer.objects.count(), wait=1300, htmx=True),
         Spec("supplier-new", "/purchasing/suppliers/new/", [F("name", "text", True, "تأمین فازی {u}"), F("phone", "phone", False, "02100000000"),
@@ -104,7 +104,6 @@ def specs():
         Spec("product-new", "/inventory/products/new/", [
             F("name", "text", True, "کالای فازی {u}"), F("sku", "text", True, "FZ{u}"), F("pack_per_carton", "count", True, "6"),
             F("default_selling_price", "money", True, "10000", zero_ok=True), F("wholesale_selling_price", "money", False, ""),
-            F("retail_carton_price", "money", False, ""), F("wholesale_pack_price", "money", False, ""),
             F("opening_cartons", "count", False, "", table=OPEN_QTY), F("opening_packs", "count", False, "", table=OPEN_QTY), F("opening_unit_cost", "money", False, "", zero_ok=True, table=[(l, v, "reject" if l == "zero" else e) for l, v, e in MONEY_OPT if l not in ("empty",)] + [("empty", "", "reject")])],
              count=lambda: Product.objects.count()),
         Spec("expense-new", "/expenses/new/", [

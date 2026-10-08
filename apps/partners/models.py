@@ -2,7 +2,6 @@
 
 from django.db import models
 
-from apps.products.models import PriceTier
 from apps.shared.models import BaseModel
 
 
@@ -29,14 +28,6 @@ class Customer(BaseModel):
     is_active = models.BooleanField(
         default=True,
         verbose_name="فعال",
-    )
-    # D-090: the sale type a new invoice for this customer starts with (still changeable there).
-    price_tier = models.CharField(
-        max_length=10,
-        choices=PriceTier.choices,
-        default=PriceTier.RETAIL,
-        verbose_name="نوع مشتری",
-        help_text="فاکتور فروش جدید برای این مشتری با همین نوع (خرد/عمده) باز می‌شود؛ روی فاکتور قابل تغییر است.",
     )
 
     class Meta:

@@ -247,69 +247,15 @@
     if (recap) recap.hidden = blocked;
   }
 
-  // ---- wholesale / retail (D-090): four prices per product, the invoice's sale type picks two
-  function currentTier() {
-    var checked = document.querySelector('input[name="price_tier"]:checked');
-    return checked ? checked.value : "retail";
-  }
-
-  function tierPrice(row, unit, tier) {
-    var raw = row.dataset[(tier || currentTier()) + (unit === "carton" ? "Carton" : "Pack")];
-    var n = parseInt(raw, 10);
+  // ---- prices (D-100): a pack is sold at the pack price, a carton at the carton price. The «خرد / عمده»
+  // choice only labels the invoice; it changes no price.
+  function unitPrice(row, unit) {
+    var n = parseInt(row.dataset[unit === "carton" ? "cartonPrice" : "packPrice"], 10);
     return isNaN(n) ? "" : n;
   }
 
   function priceInputs(row) {
     return { pack: row.querySelector('input[name$="-unit_price"]'), carton: row.querySelector('input[name$="-carton_price"]') };
-  }
-
-  // A price box is "manual" when it no longer holds the given tier's price: derived from the
-  // numbers themselves (D-075's rule), so a re-rendered page keeps it without a stored flag.
-  function isManual(row, tier) {
-    var boxes = priceInputs(row);
-    return ["pack", "carton"].some(function (unit) {
-      var box = boxes[unit];
-      return box && box.value !== "" && String(intVal(box)) !== String(tierPrice(row, unit, tier));
-    });
-  }
-
-  // Switching the sale type reprices the lines still on the old type's prices and keeps the
-  // ones the cashier typed, saying how many (never silent).
-  var lastTier = null;
-  function applyTier(tier) {
-    var kept = 0;
-    document.querySelectorAll("#item-rows [data-item-row]").forEach(function (row) {
-      if (row.dataset.retailPack === undefined || !row.querySelector('input[name$="-product"]').value) return;
-      if (isManual(row, lastTier || tier)) {
-        kept += 1;
-        return;
-      }
-      var boxes = priceInputs(row);
-      boxes.pack.value = tierPrice(row, "pack", tier);
-      boxes.carton.value = tierPrice(row, "carton", tier);
-    });
-    lastTier = tier;
-    var note = document.getElementById("tier-note");
-    if (note) {
-      note.hidden = kept === 0;
-      note.textContent = kept ? String(kept).replace(/[0-9]/g, function (d) { return String.fromCharCode(0x06f0 + Number(d)); }) + " ردیف با قیمت دستی تغییر نکرد." : "";
-    }
-    recomputeInvoice();
-  }
-
-  // The customer's type preselects the sale type, until the cashier picks one by hand.
-  var tierTouched = false;
-  function customerTier(id) {
-    var el = document.getElementById("customer-tiers");
-    try { return (JSON.parse(el ? el.textContent : "{}"))[id] || ""; } catch (e) { return ""; }
-  }
-
-  function setTier(tier) {
-    var radio = document.querySelector('input[name="price_tier"][value="' + tier + '"]');
-    if (radio && !radio.checked) {
-      radio.checked = true;
-      applyTier(tier);
-    }
   }
 
   // Below the average purchase cost per pack: a hint on the line, never a block (D-090).
@@ -334,16 +280,15 @@
     row.querySelector('input[name$="-product"]').value = button.dataset.id;
     row.dataset.stock = button.dataset.stock;
     row.dataset.ratio = button.dataset.ratio || "1";
-    ["retailPack", "retailCarton", "wholesalePack", "wholesaleCarton"].forEach(function (key) {
-      row.dataset[key] = button.dataset[key] || "0";
-    });
+    row.dataset.packPrice = button.dataset.packPrice || "0";
+    row.dataset.cartonPrice = button.dataset.cartonPrice || "0";
     row.dataset.cost = button.dataset.cost || "";
     var search = row.querySelector("[data-item-row-search]");
     if (search) search.value = button.dataset.name;
 
-    // Both prices come from the invoice's sale type (D-090); the cashier can type over either.
-    row.querySelector('input[name$="-unit_price"]').value = tierPrice(row, "pack");
-    row.querySelector('input[name$="-carton_price"]').value = tierPrice(row, "carton");
+    // Each price comes from the product by its unit (D-100); the cashier can type over either.
+    row.querySelector('input[name$="-unit_price"]').value = unitPrice(row, "pack");
+    row.querySelector('input[name$="-carton_price"]').value = unitPrice(row, "carton");
     checkCost(row);
 
     var stockLabel = row.querySelector("[data-item-row-stock]");
@@ -633,14 +578,6 @@
       document.querySelectorAll('#payment-rows input[name$="-issuer"][data-auto]').forEach(function (issuer) {
         issuer.value = customerName();
       });
-      // The quick-created customer is not in the page's tier map yet; its option carries the tier.
-      var chosen = event.target.selectedOptions && event.target.selectedOptions[0];
-      var preset = customerTier(event.target.value) || (chosen && chosen.dataset.tier) || "";
-      if (preset && !tierTouched) setTier(preset);
-    }
-    if (event.target.matches('input[name="price_tier"]')) {
-      tierTouched = true;
-      applyTier(currentTier());
     }
   });
 
@@ -897,15 +834,6 @@
       percentRadio.checked = true;
     }
     showDiscountPanel(currentDiscountMode());
-    lastTier = currentTier();
-    // A customer already chosen (?customer=) presets the sale type on a fresh form only.
-    var customerSelect = document.getElementById("id_customer");
-    var isFresh = !document.querySelector(".form-error, .field--invalid") &&
-      !document.querySelector('#item-rows input[name$="-product"][value]:not([value=""])');
-    if (customerSelect && customerSelect.value && isFresh) {
-      var preset = customerTier(customerSelect.value);
-      if (preset) setTier(preset);
-    }
     document.querySelectorAll("#payment-rows [data-payment-row]").forEach(syncPaymentRow);
     recomputeInvoice();
     focusStart();

@@ -11,12 +11,11 @@ from .models import Product
 
 
 @transaction.atomic
-def update_selling_prices(product, user, *, retail=None, wholesale=None, retail_carton=None, wholesale_pack=None):
+def update_selling_prices(product, user, *, retail=None, wholesale=None):
     """
-    Set a product's current selling prices (D-075, D-090): ``retail`` is the
-    retail pack price (Product.default_selling_price), ``wholesale`` the wholesale
-    carton price (Product.wholesale_selling_price), ``retail_carton`` and
-    ``wholesale_pack`` the other two cells of the grid (0 = unset, derived).
+    Set a product's current selling prices (D-075, D-100): ``retail`` is the
+    pack price (Product.default_selling_price), ``wholesale`` the carton price
+    (Product.wholesale_selling_price; 0 = unset, a carton then follows pack price x ratio).
     ``None`` means "leave that one alone" -- never 0 -- so two people editing
     different prices cannot overwrite each other with a blank.
 
@@ -37,8 +36,6 @@ def update_selling_prices(product, user, *, retail=None, wholesale=None, retail_
     for tier, value, field in (
         ("retail", retail, "default_selling_price"),
         ("wholesale", wholesale, "wholesale_selling_price"),
-        ("retail_carton", retail_carton, "retail_carton_price"),
-        ("wholesale_pack", wholesale_pack, "wholesale_pack_price"),
     ):
         if value is None:
             continue
