@@ -26,6 +26,19 @@ from .services import (
 )
 
 
+def _return_integer(value, *, grouped=False):
+    text = dates.to_ascii_digits(value or "").strip()
+    if grouped:
+        text = text.replace(",", "").replace("٬", "")
+    text = text or "0"
+    if not text.isdecimal():
+        raise ValueError
+    digits = text.lstrip("0")
+    if len(digits) > 19:
+        raise ValueError
+    return int(digits or "0")
+
+
 class ReturnListView(LoginRequiredMixin, TemplateView):
     """Sales returns and purchase returns, newest first, one tab each (?kind=purchase)."""
 
@@ -107,22 +120,24 @@ class _ReturnCreateView(LoginRequiredMixin, FinancialSubmissionMixin, View):
             lines = []
             for item in invoice.items.all():
                 key = str(item.pk)
-                cartons = dates.to_ascii_digits(request.POST.get(f"cartons_{key}", "") or "0").strip() or "0"
-                packs = dates.to_ascii_digits(request.POST.get(f"packs_{key}", "") or "0").strip() or "0"
-                if not (cartons.isdigit() and packs.isdigit()):
+                try:
+                    cartons = _return_integer(request.POST.get(f"cartons_{key}"))
+                    packs = _return_integer(request.POST.get(f"packs_{key}"))
+                except ValueError:
                     error = f"«{item.product.name}»: مقدار باید عدد صحیح و مثبت باشد."
                     break
-                if not (int(cartons) or int(packs)):
+                if not (cartons or packs):
                     continue
                 if self.purchase:
-                    lines.append((item, int(cartons), int(packs)))
+                    lines.append((item, cartons, packs))
                     continue
                 condition = request.POST.get(f"condition_{key}") or ItemCondition.RESALABLE
-                deduction = dates.to_ascii_digits(request.POST.get(f"deduction_{key}", "") or "0").strip().replace(",", "") or "0"
-                if not deduction.isdigit():
+                try:
+                    deduction = _return_integer(request.POST.get(f"deduction_{key}"), grouped=True)
+                except ValueError:
                     error = f"«{item.product.name}»: کسر خسارت باید عدد صحیح و مثبت باشد."
                     break
-                lines.append((item, int(cartons), int(packs), condition, int(deduction)))
+                lines.append((item, cartons, packs, condition, deduction))
             if error is None:
                 data = form.cleaned_data
                 try:

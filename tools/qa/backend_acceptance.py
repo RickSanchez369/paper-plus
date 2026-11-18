@@ -1,5 +1,6 @@
 """Run the backend acceptance scenarios against an isolated, newly migrated SQLite database."""
 
+import argparse
 import os
 from pathlib import Path
 from runpy import run_path
@@ -22,6 +23,11 @@ SCENARIOS = (
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--all", action="store_true", help="Run every numbered QA scenario.")
+    args = parser.parse_args()
+    qa_dir = ROOT / "tools" / "qa"
+    scenarios = sorted(qa_dir.glob("qa_[0-9][0-9]_*.py")) if args.all else [qa_dir / name for name in SCENARIOS]
     sys.path.insert(0, str(ROOT))
     with TemporaryDirectory(prefix="paper-plus-backend-") as temporary:
         directory = Path(temporary)
@@ -42,6 +48,7 @@ def main():
         from django.test import override_settings
 
         from tools.qa.qa_lib import FAILS, RESULTS
+        from tools.qa.concurrent_stock import check_concurrent_stock
 
         failures = 0
         checks = 0
@@ -50,12 +57,17 @@ def main():
                 call_command("migrate", interactive=False, verbosity=0)
                 run_path(str(ROOT / "tools" / "qa" / "seed_qa_db.py"))
                 call_command("check")
-                for name in SCENARIOS:
+                for scenario in scenarios:
                     FAILS.clear()
                     RESULTS.clear()
-                    run_path(str(ROOT / "tools" / "qa" / name))
+                    run_path(str(scenario))
                     failures += len(FAILS)
                     checks += len(RESULTS)
+                FAILS.clear()
+                RESULTS.clear()
+                check_concurrent_stock()
+                failures += len(FAILS)
+                checks += len(RESULTS)
             finally:
                 connections.close_all()
         print(f"Backend acceptance: {checks - failures}/{checks} checks passed.")

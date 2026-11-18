@@ -60,6 +60,9 @@ def scenarios(h):
     check("R10 cannot return more than is left (3 cartons = 30 > 20)", msg and "حداکثر" in msg, msg)
     msg = refused(record_sales_return, inv, [(item, 0, 0)], today, SettleMode.CREDIT, h.su)
     check("R11 an empty return is refused", msg is not None)
+    msg = refused(record_sales_return, inv, [(item, 0, 11), (item, 0, 11)], today, SettleMode.CREDIT, h.su)
+    check("R11 duplicate return rows are refused without stock effects",
+          bool(msg and "یک‌بار" in msg) and h.stock(p) == stock0 + 5)
     msg = refused(record_sales_return, inv, [(item, 0, 1)], today - datetime.timedelta(days=400), SettleMode.CREDIT, h.su)
     check("R12 a return dated before the invoice is refused", msg is not None)
 
@@ -173,6 +176,12 @@ def scenarios(h):
     it9 = inv9.items.get()
     r = h.c.get(f"/returns/sales/new/{inv9.pk}/")
     check("V01 new sales-return page renders the line with what is left", r.status_code == 200 and has(r, p.name) and has(r, "قابل مرجوع"))
+    for quantity in ("نامعتبر", "1.5", "²", "9" * 4500):
+        bad = h.c.post(f"/returns/sales/new/{inv9.pk}/", {
+            "return_date": TODAY_J, "settle_mode": "credit", f"packs_{it9.pk}": quantity,
+        })
+        check("V02 malformed or oversized quantity returns a validation error",
+              bad.status_code == 422 and not inv9.returns.exists())
     r = h.c.post(f"/returns/sales/new/{inv9.pk}/", {"return_date": TODAY_J, "settle_mode": "credit", f"packs_{it9.pk}": "9"})
     check("V02 too many packs: 422 with the reason, nothing saved", r.status_code == 422 and has(r, "حداکثر") and not inv9.returns.exists())
     r = h.c.post(f"/returns/sales/new/{inv9.pk}/", {"return_date": TODAY_J, "settle_mode": "refund", f"packs_{it9.pk}": "2"})

@@ -61,6 +61,7 @@ def _clean_lines(lines, invoice, returned_field, doc_field):
     after checking each against what is left to return (cancelled returns do not count as returned).
     """
     out = []
+    seen = set()
     for line in lines:
         item, cartons, packs = line[:3]
         condition = line[3] if len(line) > 3 and line[3] else ItemCondition.RESALABLE
@@ -77,6 +78,9 @@ def _clean_lines(lines, invoice, returned_field, doc_field):
             continue
         if item.invoice_id != invoice.pk:
             raise ValidationError("ردیف انتخاب‌شده متعلق به این فاکتور نیست.")
+        if item.pk in seen:
+            raise ValidationError("هر ردیف فاکتور فقط یک‌بار در مرجوعی وارد می‌شود.")
+        seen.add(item.pk)
         already = _active_items(item, returned_field, doc_field).aggregate(t=Sum("quantity"))["t"] or 0
         left = item.quantity - already
         if quantity > left:
