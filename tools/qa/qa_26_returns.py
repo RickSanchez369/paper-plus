@@ -10,7 +10,7 @@ from apps.payments.selectors import (
 )
 from apps.purchasing.models import PurchaseInvoice
 from apps.returns.models import PurchaseReturn, SalesReturn, SettleMode
-from apps.returns.services import record_purchase_return, record_sales_return, returnable_lines
+from apps.returns.services import cancel_sales_return, record_purchase_return, record_sales_return, returnable_lines
 from apps.sales.models import SalesInvoice
 from apps.shared import reports
 from tools.qa.qa_lib import *
@@ -70,6 +70,20 @@ def scenarios(h):
     check("R13 returning a line in pieces adds up to exactly its net total", total_back == 23000, total_back)
     inv.refresh_from_db()
     check("R14 fully returned credit sale owes nothing, no credit", inv.outstanding == 0 and get_party_credit(customer=cust) == 0)
+    mixed = h.product(stock=1, cost=150)
+    h.post_purchase(h.supplier(), [(mixed, 1, 151)], account=acct)
+    mixed_customer = h.customer()
+    h.post_sale(mixed_customer, [(mixed, 2, 1000)], mode="split")
+    mixed_invoice = last_sale(mixed_customer)
+    mixed_item = mixed_invoice.items.get()
+    mixed_return = record_sales_return(mixed_invoice, [(mixed_item, 0, 2)], today, SettleMode.CREDIT, h.su)
+    returned = mixed_return.items.get()
+    layer_costs = sorted(returned.layers.values_list("quantity", "unit_cost"))
+    check("R14 mixed FIFO costs are conserved on a full return",
+          mixed_item.cost_of_goods == returned.cost == 301 and layer_costs == [(1, 150), (1, 151)] and h.stock(mixed) == 2)
+    cancel_sales_return(mixed_return, h.su)
+    check("R14 cancelling removes both layers and restores stock",
+          returned.layers.filter(cancelled_at__isnull=False).count() == 2 and h.stock(mixed) == 0)
     msg = refused(record_sales_return, inv, [(item, 0, 1)], today, SettleMode.CREDIT, h.su)
     check("R15 nothing left to return", msg and "حداکثر 0" in msg, msg)
 

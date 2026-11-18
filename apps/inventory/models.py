@@ -177,12 +177,12 @@ class InventoryLayer(BaseModel):
         related_name="layer",
         verbose_name="ردیف فاکتور خرید",
     )
-    sales_return_item = models.OneToOneField(
+    sales_return_item = models.ForeignKey(
         "returns.SalesReturnItem",
         on_delete=models.PROTECT,
         null=True,
         blank=True,  # only for goods that came back on a sales return (D-089)
-        related_name="layer",
+        related_name="layers",
         verbose_name="ردیف مرجوعی فروش",
     )
     quantity = models.PositiveIntegerField(

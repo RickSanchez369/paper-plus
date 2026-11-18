@@ -146,9 +146,8 @@ def record_sales_return(invoice, lines, return_date, settle_mode, user, bank_acc
     """
     A customer brings goods back from a confirmed sales invoice (D-089).
 
-    Stock comes back as a new FIFO layer per line, at that line's own FIFO cost per
-    pack (its proportional share, floored to whole Toman per pack), so the shelf value
-    and every later sale's cost stay real. The original sale, its consumptions and its
+    Stock comes back in FIFO layers that preserve the line's proportional cost
+    in whole Toman, including any remainder across packs. The original sale, its consumptions and its
     profit are never edited (D-014): the return is its own document, and reports book
     its value and profit on the return date.
 
@@ -195,22 +194,25 @@ def record_sales_return(invoice, lines, return_date, settle_mode, user, bank_acc
             raise ValidationError(
                 f"«{item.product.name}»: کسر خسارت ({deduction}) از ارزش این ردیف ({amount}) بیشتر است."
             )
-        unit_cost = cost // quantity  # the layer's per-pack cost; the line's cost is what the layer holds
         ret_item = SalesReturnItem.objects.create(
             sales_return=doc, sale_item=item, quantity=quantity, cartons=cartons,
-            pack_per_carton=item.pack_per_carton, amount=amount, cost=unit_cost * quantity,
+            pack_per_carton=item.pack_per_carton, amount=amount, cost=cost,
             condition=condition, deduction=deduction,
         )
         if condition == ItemCondition.RESALABLE:
-            layer = InventoryLayer.objects.create(
-                product=item.product, source=InventoryLayer.Source.SALES_RETURN, sales_return_item=ret_item,
-                quantity=quantity, quantity_remaining=quantity, unit_cost=unit_cost, created_by=user,
-            )
-            InventoryMovement.objects.create(
-                product=item.product, movement_type=InventoryMovement.MovementType.SALES_RETURN, quantity=quantity,
-                unit_price=unit_cost, sale_item=item, layer=layer, created_by=user,
-                note=f"مرجوعی فروش {doc.return_number} از فاکتور {invoice.invoice_number}",
-            )
+            unit_cost, remainder = divmod(cost, quantity)
+            for layer_quantity, layer_cost in ((quantity - remainder, unit_cost), (remainder, unit_cost + 1)):
+                if not layer_quantity:
+                    continue
+                layer = InventoryLayer.objects.create(
+                    product=item.product, source=InventoryLayer.Source.SALES_RETURN, sales_return_item=ret_item,
+                    quantity=layer_quantity, quantity_remaining=layer_quantity, unit_cost=layer_cost, created_by=user,
+                )
+                InventoryMovement.objects.create(
+                    product=item.product, movement_type=InventoryMovement.MovementType.SALES_RETURN,
+                    quantity=layer_quantity, unit_price=layer_cost, sale_item=item, layer=layer, created_by=user,
+                    note=f"مرجوعی فروش {doc.return_number} از فاکتور {invoice.invoice_number}",
+                )
         total += amount - deduction
     doc.total_amount = total
     _settle_money(doc, invoice, "sales_invoice", invoice.total, {"customer": invoice.customer},
@@ -363,24 +365,21 @@ def cancel_sales_return(doc, user):
     """
     doc = SalesReturn.objects.select_for_update().get(pk=doc.pk)
     _check_cancellable(doc, user)
-    items = list(doc.items.select_related("sale_item__product"))
-    layers = []
-    for ret_item in items:
-        if ret_item.condition != ItemCondition.RESALABLE:
-            continue  # damaged goods never entered stock
-        layer = InventoryLayer.objects.select_for_update().get(sales_return_item=ret_item)
+    layers = list(InventoryLayer.objects.select_for_update().filter(
+        sales_return_item__sales_return=doc,
+    ).select_related("product").order_by("pk"))
+    for layer in layers:
         if layer.quantity_remaining != layer.quantity:
             sold = layer.quantity - layer.quantity_remaining
             raise ValidationError(
-                f"«{ret_item.sale_item.product.name}»: {sold} بسته از کالای برگشتی دوباره فروخته شده است؛ لغو مرجوعی ممکن نیست."
+                f"«{layer.product.name}»: {sold} بسته از کالای برگشتی دوباره فروخته شده است؛ لغو مرجوعی ممکن نیست."
             )
-        layers.append((ret_item, layer))
     _undo_money(doc, "sales_invoice", {"customer": doc.invoice.customer}, user)
-    for ret_item, layer in layers:
+    for layer in layers:
         cancel_layer(layer, user)
         InventoryMovement.objects.create(
-            product=ret_item.sale_item.product, movement_type=InventoryMovement.MovementType.ADJUSTMENT_OUT,
-            quantity=ret_item.quantity, unit_price=layer.unit_cost, created_by=user,
+            product=layer.product, movement_type=InventoryMovement.MovementType.ADJUSTMENT_OUT,
+            quantity=layer.quantity, unit_price=layer.unit_cost, created_by=user,
             note=f"لغو مرجوعی فروش {doc.return_number}",
         )
     doc.status = ReturnStatus.CANCELLED
