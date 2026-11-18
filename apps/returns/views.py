@@ -15,6 +15,7 @@ from apps.payments.models import Cheque
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared import dates
+from apps.shared.submissions import FinancialSubmissionMixin
 from apps.shared.listing import paginate
 from apps.shared.permissions import is_privileged
 
@@ -53,7 +54,7 @@ class ReturnListView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class _ReturnCreateView(LoginRequiredMixin, View):
+class _ReturnCreateView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """GET: the invoice's lines with what is left to return; POST: book the return through its service."""
 
     invoice_model = None

@@ -33,6 +33,18 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class FinancialSubmission(BaseModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    path = models.CharField(max_length=255)
+    token = models.UUIDField()
+    location = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "path", "token"], name="unique_financial_submission"),
+        ]
+
+
 class AuditLog(BaseModel):
     """
     Append-only record of service-level events (D-029).

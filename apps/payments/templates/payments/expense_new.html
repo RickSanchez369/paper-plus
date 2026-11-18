@@ -47,6 +47,7 @@ cancel_expense instead.
     {% endif %}
     <form method="post" enctype="multipart/form-data" novalidate id="expense-form">
       {% csrf_token %}
+      {% financial_submission %}
       {% include "shared/_form_errors.html" with form=form %}
       {{ form.recurring }}
       {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}

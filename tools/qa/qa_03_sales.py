@@ -203,8 +203,11 @@ def scenarios(h):
                       ("?q=%25", "wildcard"), ("?q=" + "z" * 3000, "very long q")):
         r = h.c.get("/sales/" + qs)
         check(f"S35 list {label or 'default'} → 200", r.status_code == 200, r.status_code)
-    r = h.c.get("/sales/?q=" + cust.name)
-    check("S35 search by customer name finds the invoice", has(r, inv3.invoice_number))
+    from apps.shared.dates import format_date
+
+    invoice_day = format_date(inv3.invoice_date)
+    r = h.c.get("/sales/", {"q": cust.name, "preset": "custom", "start": invoice_day, "end": invoice_day})
+    check("S35 search by customer name in the selected date range finds the invoice", has(r, inv3.invoice_number))
     r = h.c.get("/sales/?q=" + cust.name + "&payment_status=unpaid")
     check("S35 filter + search combine", r.status_code == 200)
     r = h.c.get("/sales/product-search/?q=" + a.name)

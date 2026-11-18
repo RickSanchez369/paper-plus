@@ -29,6 +29,7 @@ from apps.partners.models import Customer, Supplier
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared import dates
+from apps.shared.submissions import FinancialSubmissionMixin
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
@@ -260,7 +261,7 @@ class PayablesListView(_DuesListView):
     pay_url_name = "payables:pay_invoice"
 
 
-class _PayInvoiceView(LoginRequiredMixin, View):
+class _PayInvoiceView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """
     POST: settle all or part of one invoice's credit part (D-071) -- books
     the Payment (customer money in / supplier money out) and allocates
@@ -268,6 +269,9 @@ class _PayInvoiceView(LoginRequiredMixin, View):
     services as every other payment. Redirects back to the list with a flash
     message; a refusal comes back as a message too.
     """
+
+    def submission_succeeded(self, response):
+        return getattr(response, "payment_recorded", False)
 
     invoice_model = None
     direction = None
@@ -308,6 +312,9 @@ class _PayInvoiceView(LoginRequiredMixin, View):
         else:
             amount_text = format_toman(data["amount"])
             messages.success(request, f"پرداخت {amount_text} برای فاکتور {invoice.invoice_number} ثبت شد.")
+            response = redirect(self.back_url_name)
+            response.payment_recorded = True
+            return response
         return redirect(self.back_url_name)
 
 
@@ -327,7 +334,7 @@ class PaySupplierInvoiceView(_PayInvoiceView):
     back_url_name = "payables:list"
 
 
-class _RecordPaymentView(LoginRequiredMixin, View):
+class _RecordPaymentView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """
     Shared POST handler behind the one "ثبت پرداخت" component: books the Payment, then allocates it
     across whichever open invoices were checked (all of them when none was),
@@ -336,6 +343,7 @@ class _RecordPaymentView(LoginRequiredMixin, View):
     it shows on the party pages and pays their next invoice first.
     """
 
+    submission_success_status = 200
     party_model = None
     invoice_model = None
     invoice_fk = ""  # "sales_invoice_id" or "purchase_invoice_id"
@@ -796,7 +804,7 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
         return {"today_total": today_total, "month_total": month_total, "owed_total": owed_total}
 
 
-class ExpenseCreateView(LoginRequiredMixin, View):
+class ExpenseCreateView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """New-expense one-shot form: atomic create of the Expense (and, for a
     transfer, its Payment(OUT); for a cheque, its pending Cheque) via
     record_expense -- no edit/delete after. `?recurring=<id>` pre-fills it

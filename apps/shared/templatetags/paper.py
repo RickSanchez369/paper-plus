@@ -8,6 +8,7 @@ wrap apps/shared/dates.py so no template ever converts a calendar itself.
 """
 
 import os
+from uuid import uuid4
 
 from django import template
 from django.contrib.staticfiles import finders
@@ -22,6 +23,13 @@ from apps.shared.utils import format_number, format_toman
 from apps.shared.words import number_to_words
 
 register = template.Library()
+
+
+@register.simple_tag(takes_context=True)
+def financial_submission(context):
+    request = context.get("request")
+    previous = request.POST.get("submission_id") if request and request.method == "POST" else None
+    return format_html('<input type="hidden" name="submission_id" value="{}">', previous or uuid4())
 
 
 @register.inclusion_tag("shared/_usd_rate_card.html", takes_context=True)

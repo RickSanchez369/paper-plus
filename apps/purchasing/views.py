@@ -36,6 +36,7 @@ from apps.products.forms import QuickProductForm, excluded_product_ids
 from apps.products.models import Product
 from apps.payments.selectors import get_credit_map
 from apps.shared import dates
+from apps.shared.submissions import FinancialSubmissionMixin
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
@@ -220,7 +221,7 @@ def _empty_forms():
     }
 
 
-class PurchaseCreateView(LoginRequiredMixin, View):
+class PurchaseCreateView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """
     The one-shot new-purchase page -- mirrors sales.views.SalesCreateView.
     No discount field to clean. Payment mode as on sales (D-053): full
