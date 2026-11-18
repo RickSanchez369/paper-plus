@@ -1,5 +1,6 @@
 """D-098: the amount filters are text boxes that take Persian digits (type=number dropped them), pages are gzipped for a client
 that accepts it, and the pay form's invoice rows carry a no-split number."""
+from apps.sales.models import SalesInvoice
 from tools.qa.qa_lib import *  # noqa: F401,F403
 
 
@@ -37,14 +38,13 @@ def scenarios(h):
     check("AF12 the cookie/Vary header says the page depends on the encoding", "Accept-Encoding" in r.headers.get("Vary", ""))
 
     # the pay form carries the no-split number
-    inv = SalesInvoice_last(cust)
+    debtor = h.customer()
+    sale = h.post_sale(debtor, [(p, 1, 1000)], mode="split")
+    inv = SalesInvoice.objects.filter(customer=debtor).first()
     r = h.c.get("/receivables/")
-    check("AF20 receivables pay form: the invoice number sits in a no-split span", 'class="is-token"' in text(r), r.status_code)
-
-
-def SalesInvoice_last(cust):
-    from apps.sales.models import SalesInvoice
-    return SalesInvoice.objects.filter(customer=cust).latest("created_at")
+    check("AF20 receivables pay form: the invoice number sits in a no-split span",
+          sale.status_code == 302 and inv is not None
+          and f'<span class="is-token">{digits_fa(inv.invoice_number)}</span>' in text(r), r.status_code)
 
 
 run("filters_gzip", scenarios)
