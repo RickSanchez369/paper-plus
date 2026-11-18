@@ -29,6 +29,7 @@ from apps.partners.models import Customer, Supplier
 from apps.purchasing.models import PurchaseInvoice
 from apps.sales.models import SalesInvoice
 from apps.shared import dates
+from apps.shared.submissions import FinancialActionMixin, FinancialSubmissionMixin
 from apps.shared.forms import DateRangeForm
 from apps.shared.listing import paginate, sort_rows
 from apps.shared.permissions import is_privileged
@@ -260,7 +261,7 @@ class PayablesListView(_DuesListView):
     pay_url_name = "payables:pay_invoice"
 
 
-class _PayInvoiceView(LoginRequiredMixin, View):
+class _PayInvoiceView(LoginRequiredMixin, FinancialActionMixin, View):
     """
     POST: settle all or part of one invoice's credit part (D-071) -- books
     the Payment (customer money in / supplier money out) and allocates
@@ -308,6 +309,7 @@ class _PayInvoiceView(LoginRequiredMixin, View):
         else:
             amount_text = format_toman(data["amount"])
             messages.success(request, f"پرداخت {amount_text} برای فاکتور {invoice.invoice_number} ثبت شد.")
+            return self.recorded(redirect(self.back_url_name))
         return redirect(self.back_url_name)
 
 
@@ -327,7 +329,7 @@ class PaySupplierInvoiceView(_PayInvoiceView):
     back_url_name = "payables:list"
 
 
-class _RecordPaymentView(LoginRequiredMixin, View):
+class _RecordPaymentView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """
     Shared POST handler behind the one "ثبت پرداخت" component: books the Payment, then allocates it
     across whichever open invoices were checked (all of them when none was),
@@ -336,6 +338,7 @@ class _RecordPaymentView(LoginRequiredMixin, View):
     it shows on the party pages and pays their next invoice first.
     """
 
+    submission_success_status = 200
     party_model = None
     invoice_model = None
     invoice_fk = ""  # "sales_invoice_id" or "purchase_invoice_id"
@@ -488,7 +491,7 @@ class ChequeDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class ChequeCompleteView(LoginRequiredMixin, View):
+class ChequeCompleteView(LoginRequiredMixin, FinancialActionMixin, View):
     """"تکمیل مشخصات" for a cheque entered incomplete from an invoice
     (4.3b) -- a plain save on the descriptive fields only, same as
     ChequeAdmin.save_model's `change` branch (status/payment stay
@@ -502,14 +505,19 @@ class ChequeCompleteView(LoginRequiredMixin, View):
 
         form = ChequeCompletionForm(request.POST, instance=cheque)
         if form.is_valid():
-            form.save()
-            messages.success(request, "مشخصات چک بروزرسانی شد.")
+            changed = Cheque.objects.filter(pk=pk, status=Cheque.Status.PENDING).update(
+                **form.cleaned_data, updated_at=timezone.now(),
+            )
+            if changed:
+                messages.success(request, "مشخصات چک بروزرسانی شد.")
+                return self.recorded(redirect("cheques:detail", pk=pk))
+            messages.error(request, "فقط چک در انتظار وصول قابل ویرایش است.")
         else:
             messages.error(request, "؛ ".join(error for errors in form.errors.values() for error in errors))
         return redirect("cheques:detail", pk=pk)
 
 
-class ChequeActionView(LoginRequiredMixin, View):
+class ChequeActionView(LoginRequiredMixin, FinancialActionMixin, View):
     """POST-only door to clear_cheque/bounce_cheque/cancel_cheque -- the
     services are the only real guard (must be PENDING)."""
 
@@ -540,6 +548,7 @@ class ChequeActionView(LoginRequiredMixin, View):
             messages.error(request, "؛ ".join(exc.messages))
         else:
             messages.success(request, f"چک {self._labels[self.action]} شد.")
+            return self.recorded(redirect(self._back(request, pk)))
         # The Receivables/Payables page posts here too and wants to land back
         # on itself; only a known local path is honoured.
         return redirect(self._back(request, pk))
@@ -796,7 +805,7 @@ class ExpensesListView(LoginRequiredMixin, TemplateView):
         return {"today_total": today_total, "month_total": month_total, "owed_total": owed_total}
 
 
-class ExpenseCreateView(LoginRequiredMixin, View):
+class ExpenseCreateView(LoginRequiredMixin, FinancialSubmissionMixin, View):
     """New-expense one-shot form: atomic create of the Expense (and, for a
     transfer, its Payment(OUT); for a cheque, its pending Cheque) via
     record_expense -- no edit/delete after. `?recurring=<id>` pre-fills it
@@ -954,7 +963,7 @@ def _uuid_or_none(value):
         return None
 
 
-class ExpensePayView(LoginRequiredMixin, View):
+class ExpensePayView(LoginRequiredMixin, FinancialActionMixin, View):
     """POST-only door to pay_expense (a نسیه expense, or one whose cheque bounced)."""
 
     def post(self, request, pk):
@@ -969,6 +978,7 @@ class ExpensePayView(LoginRequiredMixin, View):
             messages.error(request, "؛ ".join(exc.messages))
         else:
             messages.success(request, "پرداخت هزینه ثبت شد.")
+            return self.recorded(redirect("expenses:list"))
         return redirect("expenses:list")
 
 

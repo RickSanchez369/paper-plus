@@ -135,7 +135,7 @@ def get_total_receivables_as_of(as_of):
 
     invoices = SalesInvoice.objects.filter(
         status=SalesInvoice.Status.CONFIRMED, invoice_date__lte=as_of,
-    ).prefetch_related("payment_allocations__payment")
+    ).prefetch_related("items", "payment_allocations__payment")
     total = 0
     for invoice in invoices:
         paid = sum(
@@ -153,7 +153,7 @@ def get_total_payables_as_of(as_of):
 
     invoices = PurchaseInvoice.objects.filter(
         status=PurchaseInvoice.Status.CONFIRMED, invoice_date__lte=as_of,
-    ).prefetch_related("payment_allocations__payment")
+    ).prefetch_related("items", "payment_allocations__payment")
     total = 0
     for invoice in invoices:
         paid = sum(

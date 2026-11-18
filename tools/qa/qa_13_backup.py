@@ -13,7 +13,8 @@ from tools.qa.qa_lib import *
 
 def scenarios(h):
     p = h.product(stock=5)
-    h.post_sale(h.customer(), [(p, 1, 1000)], account="cash")
+    sale = h.post_sale(h.customer(), [(p, 1, 1000)], account=h.account())
+    check("BK00 the fixture sale is confirmed before backup", sale.status_code == 302)
 
     r = h.anon.get("/backup/")
     check("BK01 anonymous is sent to sign-in", r.status_code == 302 and "/login" in r["Location"])

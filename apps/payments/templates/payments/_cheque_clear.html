@@ -13,6 +13,7 @@ compact (rows inside a table).
       data-clear-form
       data-sentence="{{ cheque.amount|toman }} {% if cheque.direction == 'in' %}از «{{ party|default:'طرف حساب' }}» به حساب «{bank}» وارد می‌شود{% else %}{% if party %}به «{{ party }}» {% endif %}از حساب «{bank}» خارج می‌شود{% endif %}{% if cheque.sales_invoice %} و به فاکتور {{ cheque.sales_invoice.invoice_number|fa_digits }} تخصیص می‌یابد{% elif cheque.purchase_invoice %} و به فاکتور {{ cheque.purchase_invoice.invoice_number|fa_digits }} تخصیص می‌یابد{% endif %}.">
   {% csrf_token %}
+  {% financial_submission %}
   {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
   {% if compact %}
     {% if default_account %}

@@ -23,6 +23,7 @@ the form is the plain form it always was.
       data-verb="{% if form.customer %}دریافت{% else %}پرداخت{% endif %}"
       data-party="{{ form.customer|default:form.supplier }}">
   {% csrf_token %}
+  {% financial_submission %}
 
   {% include "shared/_form_errors.html" %}
 

@@ -9,11 +9,14 @@ touch stock or money go through a service inside transaction.atomic").
 These views only assemble forms, call the service, and render.
 """
 
+from uuid import UUID, uuid4
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.db import transaction
-from django.db.models import Q
+from django.db import IntegrityError, transaction
+from django.db.models import Prefetch, Q
+from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -95,7 +98,7 @@ class SalesListView(LoginRequiredMixin, TemplateView):
         base_qs = (
             SalesInvoice.objects.exclude(status=SalesInvoice.Status.DRAFT)
             .select_related("customer")
-            .prefetch_related("items__consumptions__layer", "payment_allocations")
+            .prefetch_related("items__consumptions__layer", Prefetch("payment_allocations", to_attr="list_payment_allocations"))
         )
         invoices = run_filters(base_qs.filter(invoice_date__gte=date_range[0], invoice_date__lte=date_range[1]))
 
@@ -144,12 +147,13 @@ class SalesListView(LoginRequiredMixin, TemplateView):
         confirmed = SalesInvoice.Status.CONFIRMED
         month_invoices = list(
             SalesInvoice.objects.filter(status=confirmed, invoice_date__gte=month_start, invoice_date__lte=month_end)
-            .prefetch_related("items__consumptions__layer", "payment_allocations")
+            .prefetch_related("items__consumptions__layer")
         )
         today_invoices = [i for i in month_invoices if i.invoice_date == today]
 
         open_invoices = list(
-            SalesInvoice.objects.filter(status=confirmed).prefetch_related("payment_allocations")
+            SalesInvoice.objects.filter(status=confirmed)
+            .prefetch_related("items", Prefetch("payment_allocations", to_attr="list_payment_allocations"))
         )
         open_count = sum(1 for i in open_invoices if i.payment_status != SalesInvoice.PaymentStatus.PAID)
 
@@ -235,6 +239,7 @@ class SalesCreateView(LoginRequiredMixin, View):
 
     def get(self, request):
         context = _empty_forms()
+        context["submission_id"] = uuid4()
         # "New sale" from a customer page arrives with ?customer=<pk>; an unknown or inactive id is ignored.
         pre = request.GET.get("customer", "")
         if pre:
@@ -245,6 +250,16 @@ class SalesCreateView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request):
+        raw_submission_id = request.POST.get("submission_id")
+        try:
+            submission_id = UUID(raw_submission_id) if raw_submission_id is not None else uuid4()
+        except ValueError:
+            return HttpResponseBadRequest("شناسهٔ ثبت فروش نامعتبر است.")
+        submitted = SalesInvoice.objects.filter(created_by=request.user, submission_id=submission_id)
+        existing = submitted.first()
+        if existing:
+            return redirect("sales:detail", pk=existing.pk)
+
         invoice_form = SaleInvoiceForm(request.POST)
         # Blank line prices are filled from the product by the unit typed (D-100).
         item_formset = SaleItemFormSet(request.POST, prefix="items")
@@ -260,6 +275,7 @@ class SalesCreateView(LoginRequiredMixin, View):
                 with transaction.atomic():
                     invoice = invoice_form.save(commit=False)
                     invoice.created_by = request.user
+                    invoice.submission_id = submission_id
                     invoice.save()
 
                     for form in item_formset:
@@ -288,11 +304,18 @@ class SalesCreateView(LoginRequiredMixin, View):
                     invoice, _ = confirm_sale(invoice, request.user)
             except ValidationError as exc:
                 error = "؛ ".join(exc.messages)
+            except IntegrityError:
+                # A concurrent POST may have committed this sale while we validated the forms.
+                existing = submitted.first()
+                if existing is None:
+                    raise
+                return redirect("sales:detail", pk=existing.pk)
             else:
                 messages.success(request, f"فاکتور {display_document_number(invoice.invoice_number)} ثبت شد.")
                 return redirect("sales:detail", pk=invoice.pk)
 
         context = {
+            "submission_id": submission_id,
             "invoice_form": invoice_form,
             "item_formset": item_formset,
             "payment_formset": payment_formset,

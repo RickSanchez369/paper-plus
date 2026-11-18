@@ -32,6 +32,7 @@ stock) and may carry a damage deduction that lowers what the customer is credite
 
 <form method="post" novalidate data-return-form>
   {% csrf_token %}
+  {% financial_submission %}
   {% include "shared/_form_errors.html" with form=form %}
 
   <div class="card">

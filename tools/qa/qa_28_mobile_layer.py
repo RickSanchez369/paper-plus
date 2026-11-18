@@ -67,8 +67,10 @@ def scenarios(h):
     check("ML18 the dues columns have their own anchors", 'id="dues-receivable"' in body and 'id="dues-payable"' in body)
 
     # ---------------------------------------------------------------- footers that must not veto card mode
+    sale = h.post_sale(h.customer(), [(p, 1, 1000)], account=h.account())
     rep = text(h.c.get("/reports/"))
-    check("ML19 the reports product table marks its total row so it can become cards", "<tfoot>" in rep and "data-card-skip" in rep.split("<tfoot>", 1)[1][:200])
+    check("ML19 the reports product table marks its total row so it can become cards",
+          sale.status_code == 302 and "<tfoot>" in rep and "data-card-skip" in rep.split("<tfoot>", 1)[1][:200])
     check("ML20 the customers filter marks its default activity value for the phone fold", 'data-fold-default="true"' in text(h.c.get("/customers/")))
     check("ML21 the dashboard alert strip links each figure to its own column when something is overdue",
           'id="dues-receivable"' in body and 'id="dues-payable"' in body)

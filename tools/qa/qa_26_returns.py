@@ -10,7 +10,7 @@ from apps.payments.selectors import (
 )
 from apps.purchasing.models import PurchaseInvoice
 from apps.returns.models import PurchaseReturn, SalesReturn, SettleMode
-from apps.returns.services import record_purchase_return, record_sales_return, returnable_lines
+from apps.returns.services import cancel_sales_return, record_purchase_return, record_sales_return, returnable_lines
 from apps.sales.models import SalesInvoice
 from apps.shared import reports
 from tools.qa.qa_lib import *
@@ -60,6 +60,9 @@ def scenarios(h):
     check("R10 cannot return more than is left (3 cartons = 30 > 20)", msg and "حداکثر" in msg, msg)
     msg = refused(record_sales_return, inv, [(item, 0, 0)], today, SettleMode.CREDIT, h.su)
     check("R11 an empty return is refused", msg is not None)
+    msg = refused(record_sales_return, inv, [(item, 0, 11), (item, 0, 11)], today, SettleMode.CREDIT, h.su)
+    check("R11 duplicate return rows are refused without stock effects",
+          bool(msg and "یک‌بار" in msg) and h.stock(p) == stock0 + 5)
     msg = refused(record_sales_return, inv, [(item, 0, 1)], today - datetime.timedelta(days=400), SettleMode.CREDIT, h.su)
     check("R12 a return dated before the invoice is refused", msg is not None)
 
@@ -70,6 +73,20 @@ def scenarios(h):
     check("R13 returning a line in pieces adds up to exactly its net total", total_back == 23000, total_back)
     inv.refresh_from_db()
     check("R14 fully returned credit sale owes nothing, no credit", inv.outstanding == 0 and get_party_credit(customer=cust) == 0)
+    mixed = h.product(stock=1, cost=150)
+    h.post_purchase(h.supplier(), [(mixed, 1, 151)], account=acct)
+    mixed_customer = h.customer()
+    h.post_sale(mixed_customer, [(mixed, 2, 1000)], mode="split")
+    mixed_invoice = last_sale(mixed_customer)
+    mixed_item = mixed_invoice.items.get()
+    mixed_return = record_sales_return(mixed_invoice, [(mixed_item, 0, 2)], today, SettleMode.CREDIT, h.su)
+    returned = mixed_return.items.get()
+    layer_costs = sorted(returned.layers.values_list("quantity", "unit_cost"))
+    check("R14 mixed FIFO costs are conserved on a full return",
+          mixed_item.cost_of_goods == returned.cost == 301 and layer_costs == [(1, 150), (1, 151)] and h.stock(mixed) == 2)
+    cancel_sales_return(mixed_return, h.su)
+    check("R14 cancelling removes both layers and restores stock",
+          returned.layers.filter(cancelled_at__isnull=False).count() == 2 and h.stock(mixed) == 0)
     msg = refused(record_sales_return, inv, [(item, 0, 1)], today, SettleMode.CREDIT, h.su)
     check("R15 nothing left to return", msg and "حداکثر 0" in msg, msg)
 
@@ -159,6 +176,12 @@ def scenarios(h):
     it9 = inv9.items.get()
     r = h.c.get(f"/returns/sales/new/{inv9.pk}/")
     check("V01 new sales-return page renders the line with what is left", r.status_code == 200 and has(r, p.name) and has(r, "قابل مرجوع"))
+    for quantity in ("نامعتبر", "1.5", "²", "9" * 4500):
+        bad = h.c.post(f"/returns/sales/new/{inv9.pk}/", {
+            "return_date": TODAY_J, "settle_mode": "credit", f"packs_{it9.pk}": quantity,
+        })
+        check("V02 malformed or oversized quantity returns a validation error",
+              bad.status_code == 422 and not inv9.returns.exists())
     r = h.c.post(f"/returns/sales/new/{inv9.pk}/", {"return_date": TODAY_J, "settle_mode": "credit", f"packs_{it9.pk}": "9"})
     check("V02 too many packs: 422 with the reason, nothing saved", r.status_code == 422 and has(r, "حداکثر") and not inv9.returns.exists())
     r = h.c.post(f"/returns/sales/new/{inv9.pk}/", {"return_date": TODAY_J, "settle_mode": "refund", f"packs_{it9.pk}": "2"})

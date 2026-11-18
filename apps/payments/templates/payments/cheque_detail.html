@@ -59,6 +59,7 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
               <form method="post" action="{% url 'cheques:cancel' cheque.pk %}" class="inline-form"
                     data-confirm="چک {{ cheque.cheque_number|default:'(بدون شماره)' }} به مبلغ {{ cheque.amount|toman }} لغو شود؟ این چک اشتباهی ثبت شده بوده؛ هیچ مبلغی روی حساب‌ها تغییر نمی‌کند و این کار قابل بازگشت نیست.">
                 {% csrf_token %}
+                {% financial_submission %}
                 <button type="submit" class="btn btn--danger">لغو چک</button>
               </form>
             </div>
@@ -134,6 +135,7 @@ cleared/bounced/cancelled those fields lock, same as a confirmed invoice.
           <h2>تکمیل مشخصات</h2>
           <form method="post" action="{% url 'cheques:complete' cheque.pk %}" novalidate>
             {% csrf_token %}
+            {% financial_submission %}
             {% include "shared/_form_errors.html" with form=completion_form %}
             {% for field in completion_form %}
               {% include "shared/_field.html" with field=field %}

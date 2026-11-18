@@ -54,6 +54,7 @@ field; see STATE.md commit 6d4521a). The new-product form lives in a
 
 <form method="post" id="purchase-form" novalidate>
   {% csrf_token %}
+  {% financial_submission %}
 
   <div class="card">
     <div class="card__body">

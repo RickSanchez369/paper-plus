@@ -1,5 +1,10 @@
 # QA scenario suite
 
+Run `python tools/qa/backend_acceptance.py --all` for all numbered scenarios and
+the concurrent-stock check. It migrates and seeds a temporary SQLite database,
+isolates uploaded files, and exits nonzero if any check fails. Omit `--all` for
+the smaller backend release suite.
+
 End-to-end checks that drive the real URLs (Django test client) inside ONE
 transaction that is rolled back, on fixtures each script builds for itself, so
 real data is never touched. Run from the repo root, venv active:

@@ -4,6 +4,8 @@ has an oracle read from the DB (outstanding, credit, bank balance, stock, status
 import datetime
 import re
 
+from django.db.models import F
+
 from tools.qa.mobile_suite import driver as D
 from tools.qa.mobile_suite.lib import Watched, run_module
 from tools.qa.mobile_suite.t_sale import jalali, stock_of
@@ -362,8 +364,9 @@ def cancel_return(rec, w, idx, kind_):
         if purchase:
             ok = all(not InventoryLayer.objects.get(purchase_item=i.purchase_item).cancelled_at for i in r.items.all())
         else:
-            ok = all(InventoryLayer.objects.get(sales_return_item=i).quantity_remaining == i.quantity
-                     for i in r.items.all() if i.condition == "resalable")
+            ok = not InventoryLayer.objects.filter(sales_return_item__sales_return=r).exclude(
+                quantity_remaining=F("quantity"),
+            ).exists()
         if ok and not (r.credit_note and r.credit_note.allocations.exclude(**{("purchase_invoice" if purchase else "sales_invoice"): r.invoice}).exists()):
             cands.append(r)
     if not cands:
