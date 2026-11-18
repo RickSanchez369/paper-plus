@@ -149,6 +149,7 @@ class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
         start, end = context["date_range"]
 
         cards = reports.summary_cards(start, end)
+        sales_by_product = reports.sales_by_product(start, end)
         context.update({
             "cards": cards,
             "today": timezone.localdate(),
@@ -157,10 +158,10 @@ class ReportsView(DateRangeMixin, LoginRequiredMixin, TemplateView):
             "profit_bridge": _profit_bridge(cards),
             # Carry the chosen range into the module lists the report rows link to.
             "range_qs": urlencode({key: self.request.GET[key] for key in ("preset", "start", "end") if self.request.GET.get(key)}),
-            "sales_by_product": reports.sales_by_product(start, end),
+            "sales_by_product": sales_by_product,
             "sales_by_tier": reports.sales_by_tier(start, end),
             "purchases_by_product": reports.purchases_by_product(start, end),
-            "top_sellers": reports.top_sellers(start, end),
+            "top_sellers": sales_by_product[:10],
             "inventory": reports.inventory_snapshot(start, end),
             "bank_accounts": reports.bank_accounts_as_of(start, end),
             "receivables_payables": reports.receivables_payables_as_of(end),

@@ -51,7 +51,7 @@ def sales_total(start, end):
     return sum(
         invoice.total for invoice in SalesInvoice.objects.filter(
             status=SalesInvoice.Status.CONFIRMED, invoice_date__gte=start, invoice_date__lte=end,
-        )
+        ).prefetch_related("items")
     )
 
 
@@ -59,7 +59,7 @@ def purchases_total(start, end):
     return sum(
         invoice.total_amount for invoice in PurchaseInvoice.objects.filter(
             status=PurchaseInvoice.Status.CONFIRMED, invoice_date__gte=start, invoice_date__lte=end,
-        )
+        ).prefetch_related("items")
     )
 
 

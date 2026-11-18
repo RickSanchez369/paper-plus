@@ -158,6 +158,9 @@ class SalesInvoice(BaseModel):
     def paid_amount(self):
         """Sum of PaymentAllocation rows against this invoice, in Toman (4.3),
         not counting allocations whose money was given back (D-055)."""
+        prefetched = getattr(self, "list_payment_allocations", None)
+        if prefetched is not None:
+            return sum(allocation.amount for allocation in prefetched if allocation.reversal_payment_id is None)
         return (
             self.payment_allocations.filter(reversal_payment__isnull=True)
             .aggregate(total=models.Sum("amount"))["total"]
@@ -329,10 +332,10 @@ class SaleItem(CartonLine, BaseModel):
         quantity x that layer's own unit_cost, so a cancelled line -- whose
         consumptions net to zero -- correctly costs nothing.
         """
-        return sum(
-            consumption.quantity * consumption.layer.unit_cost
-            for consumption in self.consumptions.select_related("layer")
-        )
+        consumptions = getattr(self, "_prefetched_objects_cache", {}).get("consumptions")
+        if consumptions is None:
+            consumptions = self.consumptions.select_related("layer")
+        return sum(consumption.quantity * consumption.layer.unit_cost for consumption in consumptions)
 
     @property
     def costed_quantity(self):

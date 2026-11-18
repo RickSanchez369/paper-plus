@@ -17,7 +17,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -69,7 +69,7 @@ class PurchasingListView(LoginRequiredMixin, TemplateView):
         qs = (
             PurchaseInvoice.objects.exclude(status=PurchaseInvoice.Status.DRAFT)
             .select_related("supplier")
-            .prefetch_related("payment_allocations")
+            .prefetch_related("items", Prefetch("payment_allocations", to_attr="list_payment_allocations"))
             .filter(invoice_date__gte=date_range[0], invoice_date__lte=date_range[1])
         )
 
@@ -121,12 +121,13 @@ class PurchasingListView(LoginRequiredMixin, TemplateView):
         confirmed = PurchaseInvoice.Status.CONFIRMED
         month_invoices = list(
             PurchaseInvoice.objects.filter(status=confirmed, invoice_date__gte=month_start, invoice_date__lte=month_end)
-            .prefetch_related("payment_allocations")
+            .prefetch_related("items")
         )
         today_invoices = [i for i in month_invoices if i.invoice_date == today]
 
         open_invoices = list(
-            PurchaseInvoice.objects.filter(status=confirmed).prefetch_related("payment_allocations")
+            PurchaseInvoice.objects.filter(status=confirmed)
+            .prefetch_related("items", Prefetch("payment_allocations", to_attr="list_payment_allocations"))
         )
         open_count = sum(1 for i in open_invoices if i.payment_status != PurchaseInvoice.PaymentStatus.PAID)
 

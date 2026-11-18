@@ -152,6 +152,9 @@ class PurchaseInvoice(BaseModel):
     def paid_amount(self):
         """Sum of PaymentAllocation rows against this invoice, in Toman (4.3),
         not counting allocations whose money was given back (D-055)."""
+        prefetched = getattr(self, "list_payment_allocations", None)
+        if prefetched is not None:
+            return sum(allocation.amount for allocation in prefetched if allocation.reversal_payment_id is None)
         return (
             self.payment_allocations.filter(reversal_payment__isnull=True)
             .aggregate(total=models.Sum("amount"))["total"]
