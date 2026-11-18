@@ -102,6 +102,7 @@ class SalesInvoice(BaseModel):
         related_name="sales_invoices",
         verbose_name="ثبت‌کننده",
     )
+    submission_id = models.UUIDField(null=True, blank=True, editable=False)
 
     history = HistoricalRecords()
 
@@ -110,6 +111,10 @@ class SalesInvoice(BaseModel):
         verbose_name_plural = "فاکتورهای فروش"
         ordering = ["-invoice_date", "-created_at"]
         constraints = [
+            models.UniqueConstraint(
+                fields=["created_by", "submission_id"],
+                name="unique_sales_submission_per_user",
+            ),
             models.UniqueConstraint(
                 fields=["invoice_number"],
                 condition=~models.Q(invoice_number=""),

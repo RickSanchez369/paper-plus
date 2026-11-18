@@ -68,6 +68,7 @@ payment rows ever reached the server).
 
 <form method="post" id="sale-form" novalidate>
   {% csrf_token %}
+  <input type="hidden" name="submission_id" value="{{ submission_id }}">
 
   <div class="card">
     <div class="card__body">
