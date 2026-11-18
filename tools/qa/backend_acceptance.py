@@ -52,7 +52,11 @@ def main():
 
         failures = 0
         checks = 0
-        with override_settings(MEDIA_ROOT=directory / "media", BACKUP_DIR=directory / "backups"):
+        with override_settings(
+            MEDIA_ROOT=directory / "media",
+            BACKUP_DIR=directory / "backups",
+            PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"],
+        ):
             try:
                 call_command("migrate", interactive=False, verbosity=0)
                 run_path(str(ROOT / "tools" / "qa" / "seed_qa_db.py"))
