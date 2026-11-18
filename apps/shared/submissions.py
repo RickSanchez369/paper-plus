@@ -42,3 +42,14 @@ class FinancialSubmissionMixin:
 
     def submission_succeeded(self, response):
         return response.status_code == self.submission_success_status
+
+
+class FinancialActionMixin(FinancialSubmissionMixin):
+    """A financial action that redirects on both success and validation failure."""
+
+    def submission_succeeded(self, response):
+        return getattr(response, "financial_action_recorded", False)
+
+    def recorded(self, response):
+        response.financial_action_recorded = True
+        return response

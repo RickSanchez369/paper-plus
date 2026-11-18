@@ -51,6 +51,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
                     <summary class="btn btn--quiet">پرداخت</summary>
                     <form method="post" action="{% url 'expenses:pay' item.obj.pk %}" class="payment-form">
                       {% csrf_token %}
+                      {% financial_submission %}
                       {% include "shared/_field.html" with field=item.pay_form.bank_account %}
                       {% include "shared/_field.html" with field=item.pay_form.payment_date %}
                       <button type="submit" class="btn btn--block">پرداخت {{ item.amount|toman }}</button>
@@ -153,6 +154,7 @@ invoice-shaped module here. Fixed costs about to fall due are flagged on top
                       <summary class="btn btn--quiet">پرداخت</summary>
                       <form method="post" action="{% url 'expenses:pay' expense.pk %}" class="payment-form">
                         {% csrf_token %}
+                        {% financial_submission %}
                         {% include "shared/_field.html" with field=row.pay_form.bank_account %}
                         {% include "shared/_field.html" with field=row.pay_form.payment_date %}
                         <button type="submit" class="btn btn--block">ثبت پرداخت</button>
